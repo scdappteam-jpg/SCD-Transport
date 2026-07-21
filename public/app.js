@@ -7241,6 +7241,35 @@ function openImportPreview(type, csvText, fileName) {
   initializeIcons();
 }
 
+function openXlsxImportPreview(file, fileBase64) {
+  if (!file || !fileBase64) throw new Error("ไม่พบไฟล์ Excel สำหรับ Import");
+  const guessedKind = /pickup/i.test(file.name) ? "Pickup Report" : /consol|planning/i.test(file.name) ? "Consol Planning" : "Auto detect";
+  state.pendingImport = { type: "xlsx", fileBase64, fileName: file.name, rows: [] };
+  $("#importPreviewFileName").textContent = file.name;
+  $("#importPreviewRowCount").textContent = "Excel";
+  $("#importPreviewTable").innerHTML = `
+    <div class="import-preview-summary">
+      <strong>ตรวจสอบไฟล์ Excel ก่อน Import</strong>
+      <span>${safeHtml(guessedKind)}</span>
+      <small>ระบบจะตรวจรูปแบบ Consol Planning / Pickup Report ตอนยืนยัน และจะแสดงสรุปงานใหม่ งานซ้ำ และงานที่อัปเดตหลังนำเข้า</small>
+    </div>
+    <div class="import-preview-table">
+      <table>
+        <thead><tr><th>รายการตรวจสอบ</th><th>สถานะ</th></tr></thead>
+        <tbody>
+          <tr><td>ชื่อไฟล์</td><td>${safeHtml(file.name)}</td></tr>
+          <tr><td>ขนาดไฟล์</td><td>${Math.round(file.size / 1024).toLocaleString("th-TH")} KB</td></tr>
+          <tr><td>ชนิดที่คาดว่าจะเป็น</td><td>${safeHtml(guessedKind)}</td></tr>
+          <tr><td>ขั้นตอนถัดไป</td><td>กด “นำเข้าข้อมูล / Import” เพื่อให้ระบบอ่านไฟล์และสรุปความเปลี่ยนแปลง</td></tr>
+        </tbody>
+      </table>
+    </div>`;
+  const modal = $("#importPreviewModal");
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  initializeIcons();
+}
+
 function closeImportPreview() {
   const modal = $("#importPreviewModal");
   modal.classList.remove("show");
@@ -7255,6 +7284,19 @@ async function confirmPendingImport() {
     const data = await api("/api/admin/import-scd", { csvText: pending.csvText, fileName: pending.fileName });
     showImportSummary(data, pending.fileName);
     toast(`Import สำเร็จ: ใหม่ ${data.newJobs} · ซ้ำ ${data.duplicateJobs} · เปลี่ยน ${data.changed}`);
+  } else if (pending.type === "xlsx") {
+    const data = await api("/api/admin/import-xlsx", { fileBase64: pending.fileBase64, fileName: pending.fileName });
+    if (data.dashboard) state.dashboard = data.dashboard;
+    const kindLabel = data.kind === "pickup" ? "Pickup Report" : "Consol Planning";
+    showImportSummary({
+      totalRows: data.imported || 0,
+      uniqueRows: data.imported || 0,
+      newJobs: data.newJobs || 0,
+      changed: data.changedJobs || 0,
+      duplicateJobs: Math.max(0, (data.imported || 0) - (data.newJobs || 0) - (data.changedJobs || 0)),
+      notIssued: data.notIssued || 0
+    }, `${pending.fileName} / ${kindLabel}`);
+    toast(`Import ${kindLabel} สำเร็จ: งานใหม่ ${data.newJobs || 0} · อัปเดต ${data.changedJobs || 0} รายการ`);
   } else {
     const data = await api("/api/admin/import-flight", { csvText: pending.csvText });
     showImportSummary({ totalRows: pending.rows.length - 1, uniqueRows: data.imported, newJobs: data.imported }, pending.fileName);
@@ -7992,6 +8034,12 @@ function bindEvents() {
       }
       if (btn) btn.hidden = false;
       if (zone) { zone.classList.add("has-file"); zone._pendingFile = file; }
+      const reader = new FileReader();
+      reader.onload = e => openXlsxImportPreview(file, e.target.result);
+      reader.onerror = () => {
+        if (box) { box.innerHTML = `<span class="error">อ่านไฟล์ Excel ไม่สำเร็จ</span>`; box.hidden = false; }
+      };
+      reader.readAsDataURL(file);
       return;
     }
     const reader = new FileReader();
@@ -8006,7 +8054,8 @@ function bindEvents() {
         if (btn) btn.hidden = false;
         if (zone) zone.classList.add("has-file");
         // Store file ref
-        zone._pendingFile = file;
+        if (zone) zone._pendingFile = file;
+        openImportPreview("scd", csvText, file.name);
       } catch (err) {
         if (box) { box.innerHTML = `<span class="error">${safeHtml(err.message)}</span>`; box.hidden = false; }
       }
@@ -9181,11 +9230,7 @@ ${buildCtfPreviewHtml({
         r.onerror = rej;
         r.readAsDataURL(file);
       });
-      const data = await api("/api/admin/import-xlsx", { fileBase64, fileName: file.name });
-      if (data.dashboard) state.dashboard = data.dashboard;
-      renderAll();
-      const kindLabel = data.kind === "pickup" ? "Pickup Report" : "Consol Planning";
-      toast(`Import ${kindLabel} สำเร็จ: งานใหม่ ${data.newJobs || 0} · อัปเดต ${data.changedJobs || 0} รายการ`);
+      openXlsxImportPreview(file, fileBase64);
       return;
     }
     const csvText = await new Promise((res, rej) => {
