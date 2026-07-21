@@ -1,0 +1,15 @@
+{
+  "name": "S.C.D.TRANSPORT Tracking",
+  "short_name": "SCD",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef4fb",
+  "theme_color": "#0b4ea2",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

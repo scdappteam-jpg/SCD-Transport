@@ -102,7 +102,7 @@ const AUTH_CONFIG = window.SCD_AUTH_CONFIG || { defaultPassword: "1234", userPas
 const WEB_AUTH_KEY = "scdTransportWebAuth";
 const WEB_AUTH_USER_KEY = "scdTransportWebUser";
 const configuredApiBase = window.SMART_LOGISTICS_API_BASE || "";
-const API_BASE = configuredApiBase || (location.port === "3000" ? "" : "http://localhost:3000");
+const API_BASE = configuredApiBase || "";
 
 function initializeIcons() {
   const navIcons = {

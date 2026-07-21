@@ -20,7 +20,7 @@ const $$ = selector => Array.from(document.querySelectorAll(selector));
 const AUTH_CONFIG = window.SCD_AUTH_CONFIG || { defaultPassword: "1234", userPasswords: {}, companyName: "S.C.D.TRANSPORT Co., LTD" };
 const MOBILE_AUTH_KEY = "scdTransportMobileAuth";
 const configuredApiBase = window.SMART_LOGISTICS_API_BASE || "";
-const API_BASE = configuredApiBase || (location.port === "3000" ? "" : "http://localhost:3000");
+const API_BASE = configuredApiBase || "";
 const i18nOriginalText = new WeakMap();
 
 function localizeText(text) {
