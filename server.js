@@ -14,6 +14,12 @@ let INVOICE_DIR = path.join(STORAGE_DIR, "invoices");
 let DB_FILE = path.join(DATA_DIR, "db.json");
 let IMPORT_FEED_DIR = process.env.IMPORT_FEED_DIR || path.join(DATA_DIR, "import-feed");
 const IMPORT_INTERVAL_MS = Number(process.env.IMPORT_INTERVAL_MS || 2 * 60 * 60 * 1000);
+const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "";
+const SUPABASE_STATE_TABLE = process.env.SUPABASE_STATE_TABLE || "app_state";
+const SUPABASE_STATE_ID = process.env.SUPABASE_STATE_ID || "scd-transport";
+let dbCache = null;
+let dbPersistTimer = null;
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -172,12 +178,92 @@ function ensureDbShape(db) {
   }
 }
 
-function readDb() {
+function supabaseEnabled() {
+  return Boolean(SUPABASE_URL && SUPABASE_KEY);
+}
+
+function sanitizedClone(db) {
+  return JSON.parse(JSON.stringify(db, (k, v) =>
+    typeof v === "string" ? v.replace(/[\uFFFD\uFFFE\uFFFF]/g, "") : v
+  ));
+}
+
+async function supabaseRequest(method, query, body) {
+  const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_STATE_TABLE}${query}`;
+  const response = await fetch(url, {
+    method,
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "resolution=merge-duplicates,return=representation"
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!response.ok) {
+    const message = await response.text().catch(() => response.statusText);
+    throw new Error(`Supabase ${method} ${response.status}: ${message}`);
+  }
+  return response.status === 204 ? null : response.json();
+}
+
+async function loadDbFromSupabase() {
+  if (!supabaseEnabled()) return;
   try {
-    const db = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    ensureCoreUsers(db);
-    ensureDbShape(db);
-    return db;
+    const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=data`, null);
+    if (Array.isArray(rows) && rows[0]?.data) {
+      dbCache = rows[0].data;
+      ensureCoreUsers(dbCache);
+      ensureDbShape(dbCache);
+      console.log(`[db] Loaded shared data from Supabase (${SUPABASE_STATE_TABLE}/${SUPABASE_STATE_ID}).`);
+      return;
+    }
+    const seed = readDbFromFile();
+    dbCache = seed;
+    await persistDbToSupabase(seed);
+    console.log(`[db] Seeded Supabase shared data from bundled/runtime db.json.`);
+  } catch (err) {
+    console.error(`[db] Supabase load failed, using local db.json fallback: ${err.message}`);
+    dbCache = null;
+  }
+}
+
+async function persistDbToSupabase(db) {
+  if (!supabaseEnabled()) return;
+  const data = sanitizedClone(db);
+  await supabaseRequest("POST", "", {
+    id: SUPABASE_STATE_ID,
+    data,
+    updated_at: new Date().toISOString()
+  });
+}
+
+function scheduleSupabasePersist(db) {
+  if (!supabaseEnabled()) return;
+  if (dbPersistTimer) clearTimeout(dbPersistTimer);
+  dbPersistTimer = setTimeout(() => {
+    dbPersistTimer = null;
+    persistDbToSupabase(db).catch(err => {
+      console.error(`[db] Supabase persist failed: ${err.message}`);
+    });
+  }, 250);
+}
+
+function readDbFromFile() {
+  const db = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+  ensureCoreUsers(db);
+  ensureDbShape(db);
+  return db;
+}
+
+function readDb() {
+  if (supabaseEnabled() && dbCache) {
+    ensureCoreUsers(dbCache);
+    ensureDbShape(dbCache);
+    return dbCache;
+  }
+  try {
+    return readDbFromFile();
   } catch (err) {
     console.error("[readDb] db.json parse error — returning empty DB:", err.message);
     const empty = { users: [], customers: [], jobs: [], locations: [], activityLogs: [], attachments: [], alerts: [], billing: [], integrations: {}, importChanges: [], warehouseMaps: [], warehouseProfiles: [], attendance: [], taskGroups: [], notifications: [] };
@@ -188,6 +274,12 @@ function readDb() {
 }
 
 function writeDb(db) {
+  if (supabaseEnabled()) {
+    ensureCoreUsers(db);
+    ensureDbShape(db);
+    dbCache = db;
+    scheduleSupabasePersist(db);
+  }
   try {
     // Sanitize strings to remove unpaired surrogates / bad Unicode before serializing
     const content = JSON.stringify(db, (k, v) =>
@@ -2071,6 +2163,12 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, {
       ok: true,
       seedBundleEnabled: String(process.env.SEED_BUNDLE_DB || "").toLowerCase() === "true",
+      sharedDatabase: supabaseEnabled() ? {
+        provider: "supabase",
+        table: SUPABASE_STATE_TABLE,
+        id: SUPABASE_STATE_ID,
+        loaded: Boolean(dbCache)
+      } : null,
       runtime: summarizeDb(db),
       bundled: bundled ? summarizeDb(bundled) : null,
       dataDir: DATA_DIR,
@@ -2094,11 +2192,15 @@ async function handleApi(req, res, pathname) {
     if (!bundled) return sendJson(res, 404, { ok: false, error: "Bundled data/db.json not found in deployment." });
     const backupFile = DB_FILE + ".before-manual-seed";
     if (fs.existsSync(DB_FILE)) fs.copyFileSync(DB_FILE, backupFile);
-    fs.copyFileSync(path.join(ROOT, "data", "db.json"), DB_FILE);
+    if (supabaseEnabled()) {
+      writeDb(bundled);
+    } else {
+      fs.copyFileSync(path.join(ROOT, "data", "db.json"), DB_FILE);
+    }
     const seeded = readDb();
     return sendJson(res, 200, {
       ok: true,
-      message: "Bundled local data copied to runtime database.",
+      message: supabaseEnabled() ? "Bundled local data copied to Supabase shared database." : "Bundled local data copied to runtime database.",
       backupFile,
       runtime: summarizeDb(seeded),
       dashboard: buildDashboard(seeded)
@@ -4584,6 +4686,17 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log("S.C.D.TRANSPORT server running → http://localhost:" + PORT);
+async function startServer() {
+  await loadDbFromSupabase();
+  server.listen(PORT, () => {
+    console.log("S.C.D.TRANSPORT server running → http://localhost:" + PORT);
+    if (supabaseEnabled()) {
+      console.log(`[db] Shared data enabled via Supabase table ${SUPABASE_STATE_TABLE}/${SUPABASE_STATE_ID}`);
+    }
+  });
+}
+
+startServer().catch(err => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
 });
