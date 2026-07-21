@@ -1,0 +1,2373 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#0b4ea2">
+    <title>S.C.D.TRANSPORT</title>
+    <link rel="icon" href="icon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css?v=19">
+    <script src="lucide.min.js"></script>
+  </head>
+  <body>
+    <section id="loginScreen" class="login-screen" aria-label="Login">
+      <div class="login-shell">
+        <div class="login-brand">
+          <div class="lb-top">
+            <div class="login-logo">SCD</div>
+            <div class="lb-name">
+              <strong>S.C.D.TRANSPORT Co., LTD</strong>
+              <span>Logistics Operation System</span>
+            </div>
+          </div>
+          <div class="lb-hero">
+            <h2>Air Cargo<br>Control Tower</h2>
+            <p>ติดตามงานขนส่งครบวงจร ตั้งแต่รับสินค้า คลัง WH3 จนถึงวางบิล — ในระบบเดียว</p>
+          </div>
+          <div class="lb-steps">
+            <span>Pickup</span><i></i><span>WH3</span><i></i><span>Terminal</span><i></i><span>Billing</span>
+          </div>
+        </div>
+        <div class="login-panel">
+          <form id="webLoginForm" autocomplete="on" onsubmit="return false;">
+          <p>ยินดีต้อนรับกลับ · Welcome back</p>
+          <h1>เข้าสู่ระบบ</h1>
+          <label>ผู้ใช้งาน</label>
+          <select id="webLoginUser">
+            <option value="u_driver_01">คนขับ A / Driver A · คนขับรถ / Driver · 70-1234</option>
+            <option value="u_wh_01">พนักงาน WH3 / WH Staff · WH</option>
+            <option value="u_terminal_01">Terminal Lead · Terminal</option>
+            <option value="u_billing_01">บัญชี / Billing</option>
+            <option value="u_admin_01">แอดมิน / Admin</option>
+            <option value="u_exec_01">ผู้บริหาร / Executive</option>
+            <option value="u_driver_02">Driver B / คนขับ B · คนขับรถ / Driver · 71-2234</option>
+            <option value="u_driver_03">Driver C / คนขับ C · คนขับรถ / Driver · 72-3345</option>
+          </select>
+          <label>รหัสผ่าน</label>
+          <input id="webLoginPassword" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอกรหัสผ่าน">
+          <button id="webLoginBtn" type="button" style="margin-top:10px">เข้าสู่ระบบ →</button>
+          <div id="webLoginMessage" class="login-message" role="status" aria-live="polite"></div>
+          </form>
+          <div class="quick-start-wrap">
+            <div class="quick-start-label"><i></i><span>เข้าด่วนสำหรับทดสอบ</span><i></i></div>
+            <div class="quick-start-grid">
+              <button class="qs-btn" onclick="quickLogin('u_admin_01')">🛡️ Admin</button>
+              <button class="qs-btn qs-exec" onclick="quickLogin('u_exec_01')">👔 Executive</button>
+              <button class="qs-btn qs-whl" onclick="quickLogin('u_wh_leader_01')">🏭 WH Leader</button>
+              <button class="qs-btn qs-driver" onclick="quickLogin('u_driver_01')">🚛 Driver A</button>
+              <button class="qs-btn qs-wh" onclick="quickLogin('u_wh_01')">📦 WH Staff</button>
+              <button class="qs-btn qs-transport" onclick="quickLogin('u_transport_01')">🔄 Transport</button>
+              <button class="qs-btn qs-cs" onclick="quickLogin('u_cs_01')">📋 CS</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">SCD</div>
+          <div>
+            <strong>S.C.D.TRANSPORT</strong>
+            <span>ระบบติดตามงานขนส่ง</span>
+          </div>
+        </div>
+
+        <nav class="side-nav" aria-label="Main navigation">
+
+          <div class="nav-group-label">ภาพรวม · Overview</div>
+          <button class="nav-item active" type="button" data-view="dashboard">
+            <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+            <b>แดชบอร์ด</b>
+          </button>
+          <button class="nav-item" type="button" data-view="calendar">
+            <i data-lucide="calendar-days" aria-hidden="true"></i>
+            <b>ปฏิทินงาน</b>
+          </button>
+          <button class="nav-item" type="button" data-view="alerts">
+            <i data-lucide="bell" aria-hidden="true"></i>
+            <b>แจ้งเตือน</b>
+            <span class="nav-badge" id="sidebarAlertBadge" hidden>0</span>
+          </button>
+
+          <div class="nav-group-label">ปฏิบัติการ · Operations</div>
+          <button class="nav-item" type="button" data-view="orders">
+            <i data-lucide="package-search" aria-hidden="true"></i>
+            <b>ติดตามงาน</b>
+          </button>
+          <button class="nav-item" type="button" data-view="admin">
+            <i data-lucide="file-plus" aria-hidden="true"></i>
+            <b>เปิดใบงาน · Import</b>
+          </button>
+          <button class="nav-item" type="button" data-view="cs-queue">
+            <i data-lucide="clipboard-check" aria-hidden="true"></i>
+            <b>รออนุมัติ (CS)</b>
+          </button>
+          <button class="nav-item" type="button" data-view="grouping">
+            <i data-lucide="layers" aria-hidden="true"></i>
+            <b>จัดกลุ่มงาน</b>
+          </button>
+          <button class="nav-item" type="button" data-view="warehouse">
+            <i data-lucide="map" aria-hidden="true"></i>
+            <b>แผนที่คลัง WH3</b>
+          </button>
+          <button class="nav-item" type="button" data-view="wh-status">
+            <i data-lucide="boxes" aria-hidden="true"></i>
+            <b>สถานะคลัง</b>
+          </button>
+          <button class="nav-item" type="button" data-view="load-plan">
+            <i data-lucide="plane-takeoff" aria-hidden="true"></i>
+            <b>ขาออก · Load Plan</b>
+          </button>
+          <button class="nav-item" type="button" data-view="outbound-open">
+            <i data-lucide="file-output" aria-hidden="true"></i>
+            <b>เปิดใบขาออก</b>
+          </button>
+
+          <div class="nav-group-label">การเงิน · Commercial</div>
+          <button class="nav-item" type="button" data-view="cargo-history">
+            <i data-lucide="history" aria-hidden="true"></i>
+            <b>ประวัติใบ Cargo</b>
+          </button>
+
+          <div class="nav-group-label">ทีมงาน · People</div>
+          <button class="nav-item" type="button" data-view="attendance">
+            <i data-lucide="user-check" aria-hidden="true"></i>
+            <span>การเข้างาน</span>
+          </button>
+          <button class="nav-item" type="button" data-view="staff">
+            <i data-lucide="users" aria-hidden="true"></i>
+            <b>พนักงาน</b>
+          </button>
+
+          <div class="nav-group-label">ระบบ · System</div>
+          <button class="nav-item" type="button" data-view="mobile">
+            <i data-lucide="smartphone" aria-hidden="true"></i>
+            <b>งานภาคสนาม · Field Ops</b>
+          </button>
+          <button class="nav-item" type="button" data-view="settings">
+            <i data-lucide="settings" aria-hidden="true"></i>
+            <b>ตั้งค่า</b>
+          </button>
+
+        </nav>
+
+        <div class="side-footer">
+          <button id="logoutBtn" class="side-link danger-text" type="button">ออกจากระบบ / Logout</button>
+          <div class="user-card">
+            <div class="avatar">JD</div>
+            <div>
+              <strong>John Doe</strong>
+              <span>Admin Account</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <button id="sidebarBackdrop" class="sidebar-backdrop" type="button" aria-label="Close menu"></button>
+
+      <div class="workspace">
+        <header class="topbar">
+          <button id="mobileMenuBtn" class="mobile-menu-button" type="button" aria-label="Open menu" aria-expanded="false"><i data-lucide="menu" aria-hidden="true"></i></button>
+          <div>
+            <p id="breadcrumb">ภาพรวม / Executive</p>
+            <h1 id="pageTitle">Executive Dashboard</h1>
+          </div>
+          <div class="top-actions">
+            <label class="search-box" aria-label="Search">
+              <span>⌕</span>
+              <input id="globalSearch" placeholder="ค้นหา AWB หรือ Order... / Search AWB or Orders...">
+            </label>
+            <div id="systemClock" class="system-clock"></div>
+            <a class="ghost-link" href="mobile.html">Mobile App</a>
+            <button id="languageToggle" class="ghost-button" type="button">TH / EN</button>
+            <button class="icon-button bell-button" id="alertBell" type="button" data-view="alerts" aria-label="Notifications / การแจ้งเตือน">
+              <i data-lucide="bell" aria-hidden="true"></i>
+              <span class="bell-badge" id="bellBadge" hidden>0</span>
+            </button>
+            <div class="profile-dot">JD</div>
+          </div>
+        </header>
+
+        <main class="content">
+          <section class="page active" id="view-dashboard" data-page="dashboard">
+            <div id="roleHomeStrip"></div>
+            <section class="exec-summary" id="executiveSummary">
+              <div class="exec-summary-main">
+                <div class="exec-eyebrow">SCD Control Tower</div>
+                <h2>สรุปภาพรวมปฏิบัติการ</h2>
+                <p id="execSummarySubtitle">กำลังโหลดข้อมูล...</p>
+                <div class="exec-summary-kpis">
+                  <article>
+                    <span>งานในช่วงที่เลือก</span>
+                    <strong id="execTotalJobs">0</strong>
+                  </article>
+                  <article>
+                    <span>งานเร่งด่วน</span>
+                    <strong id="execRiskJobs">0</strong>
+                  </article>
+                  <article>
+                    <span>Flight ที่เกี่ยวข้อง</span>
+                    <strong id="execFlightCount">0</strong>
+                  </article>
+                  <article>
+                    <span>ลูกค้าหลัก</span>
+                    <strong id="execTopCustomer">-</strong>
+                  </article>
+                </div>
+              </div>
+              <aside class="exec-summary-side">
+                <div class="exec-health">
+                  <div class="exec-health-ring" id="execHealthRing" style="--score:0">
+                    <strong id="execHealthScore">0%</strong>
+                    <span>Readiness</span>
+                  </div>
+                  <div>
+                    <h3>สถานะควบคุมงาน</h3>
+                    <p id="execHealthText">ยังไม่มีข้อมูลสำหรับประเมิน</p>
+                  </div>
+                </div>
+                <div class="exec-insights" id="execInsightList"></div>
+              </aside>
+            </section>
+            <section class="dashboard-filters card">
+              <div class="filter-title">
+                <div>
+                  <h2>ตัวกรองภาพรวม / Dashboard Filters</h2>
+                  <p>ค่าเริ่มต้นย้อนหลัง 10 วัน / Default last 10 days</p>
+                </div>
+                <span id="dashboardFilterCount" class="filter-count">0 งาน</span>
+              </div>
+              <div class="filter-grid">
+                <label>
+                  <span>วันที่เริ่ม / From date</span>
+                  <input id="dashboardDateFrom" type="date">
+                </label>
+                <label>
+                  <span>วันที่สิ้นสุด / To date</span>
+                  <input id="dashboardDateTo" type="date">
+                </label>
+                <label>
+                  <span>สถานะ / Status</span>
+                  <select id="dashboardStatusFilter">
+                    <option value="All">ทั้งหมด / All</option>
+                  </select>
+                </label>
+                <div class="filter-actions">
+                  <button id="applyDashboardFilters" class="primary-button" type="button">ดูข้อมูล / Apply</button>
+                  <button id="resetDashboardFilters" class="ghost-button" type="button">ย้อนหลัง 10 วัน / Last 10 days</button>
+                  <button id="exportDashboardPdf" class="ghost-button" type="button">ส่งออก PDF / Export PDF</button>
+                  <button id="exportDashboardExcel" class="ghost-button" type="button">ส่งออก Excel / Export Excel</button>
+                  <button id="exportDashboardImage" class="ghost-button" type="button">ส่งออกภาพ / Export Image</button>
+                </div>
+              </div>
+            </section>
+
+            <div class="ct-sec-head"><span>1</span><div><h3>ภาพรวมปฏิบัติการ</h3><small>Operations Overview</small></div></div>
+            <div class="ct-kpi-row" id="ctKpiRow"></div>
+            <section class="process-control-strip" id="processControlStrip" aria-label="Process control summary"></section>
+            <div hidden aria-hidden="true">
+              <span id="metricInbound"></span><em id="trendInbound"></em>
+              <span id="metricOutbound"></span><em id="trendOutbound"></em>
+              <span id="metricPendingJobs"></span><em id="trendPending"></em>
+              <span id="metricOverdue"></span><em id="trendOverdue"></em>
+            </div>
+
+            <div class="dashboard-grid">
+              <article class="card chart-card">
+                <div class="card-head">
+                  <div>
+                    <h2>ปริมาณงานรายวัน / Daily Order Volume</h2>
+                    <p id="dailyChartSubtitle">แสดงย้อนหลัง 10 วัน / Last 10 days</p>
+                  </div>
+                  <span class="trend" id="dailyChartTrend">↗ +24.5%</span>
+                </div>
+                <svg class="line-chart" viewBox="0 0 720 210" role="img" aria-label="Daily order volume chart">
+                  <defs>
+                    <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#2563eb" stop-opacity="0.14"></stop>
+                      <stop offset="100%" stop-color="#2563eb" stop-opacity="0"></stop>
+                    </linearGradient>
+                  </defs>
+                  <g class="grid-lines">
+                    <line x1="44" y1="24" x2="690" y2="24"></line>
+                    <line x1="44" y1="70" x2="690" y2="70"></line>
+                    <line x1="44" y1="117" x2="690" y2="117"></line>
+                    <line x1="44" y1="164" x2="690" y2="164"></line>
+                  </g>
+                  <path id="dailyChartArea" fill="url(#chartGradient)"></path>
+                  <path id="dailyChartPath" d="M44 164 L676 164" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                  <g id="dailyChartPoints" class="chart-points"></g>
+                  <g id="dailyChartValues" class="chart-values"></g>
+                  <g id="dailyChartLabels" class="axis-labels">
+                    <text x="45" y="196">-</text>
+                  </g>
+                </svg>
+              </article>
+
+              <article class="card status-card">
+                <div class="card-head">
+                  <div>
+                    <h2>มุมมองวิเคราะห์หลายมิติ</h2>
+                    <p id="statusTotalLabel">เลือกมิติที่ต้องการดู</p>
+                  </div>
+                </div>
+                <div class="dim-tabs" id="dimTabs">
+                  <button type="button" data-dim="status" class="active">สถานะ</button>
+                  <button type="button" data-dim="customer">ลูกค้า</button>
+                  <button type="button" data-dim="flight">Flight</button>
+                  <button type="button" data-dim="aging">อายุงาน</button>
+                  <button type="button" data-dim="billing">Billing</button>
+                  <button type="button" data-dim="staff">คนขับ</button>
+                </div>
+                <div id="statusBarsContainer" class="status-hbars"></div>
+              </article>
+            </div>
+
+            <div class="ct-sec-head"><span>2</span><div><h3>สถานะงานและความเสี่ยง</h3><small>Status &amp; Risk</small></div></div>
+            <div class="ct-grid-2">
+              <article class="card">
+                <div class="card-head"><div><h2>สัดส่วนสถานะงาน</h2><p id="ctDonutSub">ตามช่วงวันที่เลือก</p></div></div>
+                <div class="ct-donut-wrap">
+                  <svg id="ctDonut" viewBox="0 0 200 200" role="img" aria-label="สัดส่วนสถานะงาน"></svg>
+                  <div class="ct-donut-legend" id="ctDonutLegend"></div>
+                </div>
+              </article>
+              <article class="card">
+                <div class="card-head"><div><h2>งานเสี่ยง / ต้องเร่งจัดการ</h2><p id="ctRiskSub">-</p></div></div>
+                <div id="ctRiskList" class="ct-risk-list"></div>
+              </article>
+            </div>
+
+            <div class="ct-sec-head"><span>3</span><div><h3>เช็คอินพนักงานและตำแหน่ง GPS</h3><small>Attendance &amp; Live Position</small></div>
+              <button type="button" class="ct-sec-link" onclick="setView('attendance')">เปิดหน้าการเข้างาน →</button>
+            </div>
+            <div class="ct-grid-2">
+              <article class="card">
+                <div class="card-head"><div><h2>Operations Map</h2><p id="dashAttMapSub">จุดเริ่มต้น-สิ้นสุดวันนี้</p></div></div>
+                <div id="dashAttMap" class="att-ops-map compact"><div class="att-map-empty">กำลังโหลด...</div></div>
+                <div class="att-map-legend-row">
+                  <span><i class="att-legend-dot start"></i> เริ่มงาน</span>
+                  <span><i class="att-legend-dot end"></i> สิ้นสุด</span>
+                  <span><i class="att-legend-dot untagged"></i> ยังไม่ผูกกับงาน</span>
+                </div>
+              </article>
+              <article class="card">
+                <div class="card-head"><div><h2>เวลาเข้า-ออกวันนี้</h2><p id="dashAttListSub">-</p></div></div>
+                <div id="dashAttList" class="ct-att-list"></div>
+              </article>
+            </div>
+
+            <div class="ct-sec-head"><span>4</span><div><h3>การเงินและงานรอวางบิล</h3><small>Billing Pipeline</small></div>
+              <button type="button" class="ct-sec-link" onclick="setView('cargo-history')">ประวัติใบ Cargo →</button>
+            </div>
+            <article class="card">
+              <div class="ct-bill-chips" id="ctBillChips"></div>
+              <div id="ctBillList" class="ct-bill-list"></div>
+            </article>
+
+            <!-- Load Plan Summary Widget -->
+            <article class="card" id="lpDashWidget" style="border-left:4px solid #2563eb;display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+                <div>
+                  <h2 style="font-size:15px;font-weight:800;margin:0;color:var(--ink)">✈ Load Plan — ขาออกวันนี้</h2>
+                  <p id="lpWidgetTime" style="font-size:12px;color:var(--muted);margin:2px 0 0">ยังไม่มีข้อมูล</p>
+                </div>
+                <button onclick="setView('load-plan')" style="padding:7px 14px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">ดูทั้งหมด →</button>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">
+                <div style="text-align:center;background:#eff6ff;border-radius:10px;padding:12px 8px">
+                  <div style="font-size:24px;font-weight:800;color:#1d4ed8" id="lpWidgetTotal">—</div>
+                  <div style="font-size:11px;color:#3b82f6;font-weight:600">รายการทั้งหมด</div>
+                </div>
+                <div style="text-align:center;background:#f0fdf4;border-radius:10px;padding:12px 8px">
+                  <div style="font-size:24px;font-weight:800;color:#15803d" id="lpWidgetMatched">—</div>
+                  <div style="font-size:11px;color:#22c55e;font-weight:600">พบใน System</div>
+                </div>
+                <div style="text-align:center;background:#fff7ed;border-radius:10px;padding:12px 8px">
+                  <div style="font-size:24px;font-weight:800;color:#d97706" id="lpWidgetToday">—</div>
+                  <div style="font-size:11px;color:#f59e0b;font-weight:600">ส่งออกวันนี้</div>
+                </div>
+              </div>
+              <div id="lpWidgetChange" style="display:none;background:#fef3c7;border-radius:8px;padding:8px 12px;font-size:12px;color:#92400e;font-weight:600"></div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2>งานล่าสุด / Recent Orders</h2>
+                  <p>ติดตามงานขนส่งแบบ real-time / Real-time logistics monitoring</p>
+                </div>
+                <div class="button-pair">
+                  <button class="ghost-button" type="button" data-export-dashboard="pdf">ส่งออก PDF / Export PDF</button>
+                  <button class="ghost-button" type="button" data-export-dashboard="excel">ส่งออก Excel / Export Excel</button>
+                  <button class="primary-button" type="button" data-view-jump="orders">ดูงานทั้งหมด / View All</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>AWB / House</th>
+                      <th>สถานะ / Step</th>
+                      <th>ลูกค้า / Customer</th>
+                      <th>Flight</th>
+                      <th>Lead Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recentOrdersTable"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2>แจ้งเตือนไฟล์บิน / Flight Update Feed</h2>
+                  <p>งานใหม่ งานเปลี่ยน และงานที่ยังไม่ออกใบ / New, changed and not-issued jobs</p>
+                </div>
+              </div>
+              <div id="importChangeList" class="change-list"></div>
+            </article>
+          </section>
+
+          <section class="page" id="view-orders" data-page="orders">
+            <div class="orders-layout">
+              <aside class="orders-list card">
+                <label class="search-box full">
+                  <span>⌕</span>
+                  <input id="orderSearch" placeholder="ค้นหา AWB / Search order">
+                </label>
+                <div class="order-filter-cards">
+                  <button class="active" type="button" data-order-filter="today">
+                    <span>Today</span>
+                    <strong id="orderFilterToday">0</strong>
+                    <small>งานวันนี้ / Today jobs</small>
+                  </button>
+                  <button type="button" data-order-filter="pending">
+                    <span>Pending</span>
+                    <strong id="orderFilterPending">0</strong>
+                    <small>รอดำเนินการ / Waiting</small>
+                  </button>
+                  <button type="button" data-order-filter="overdue">
+                    <span>Overdue</span>
+                    <strong id="orderFilterOverdue">0</strong>
+                    <small>เสี่ยงเกินเวลา / At risk</small>
+                  </button>
+                  <button type="button" data-order-filter="all">
+                    <span>All</span>
+                    <strong id="orderFilterAll">0</strong>
+                    <small>งานทั้งหมด / All jobs</small>
+                  </button>
+                </div>
+                <div id="orderAlertSummary" style="display:none;flex-direction:column;gap:8px;padding:0 0 8px 0"></div>
+                <div id="orderCards" class="order-cards"></div>
+              </aside>
+
+              <section class="tracking-detail">
+                <article class="card shipment-hero">
+                  <div class="hero-icon"><i data-lucide="plane" aria-hidden="true"></i></div>
+                  <div>
+                    <h2 id="selectedOrderTitle">H-1001</h2>
+                    <p id="selectedOrderSubtitle">Flight / Customer</p>
+                  </div>
+                  <div class="route-box">
+                    <span>ORIGIN<br><b id="routeOrigin">WH3</b></span>
+                    <span>→</span>
+                    <span>DEST<br><b id="routeDest">TG/BFS</b></span>
+                    <span>WEIGHT<br><b id="routeWeight">25.5kg</b></span>
+                  </div>
+                </article>
+
+                <div class="detail-grid">
+                  <article class="card timeline-card">
+                    <div class="card-head">
+                      <h2>ไทม์ไลน์ปฏิบัติการ / Operational Timeline</h2>
+                      <span class="live">LIVE UPDATE</span>
+                    </div>
+                    <div id="timelineList" class="timeline-list"></div>
+                    <div style="padding:12px 0 4px">
+                      <button id="tlLpTagBtn" type="button"
+                        style="width:100%;padding:10px 16px;border-radius:10px;border:1.5px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;text-align:center">
+                        ✈ เพิ่มเข้า Load Plan
+                      </button>
+                    </div>
+                  </article>
+
+                  <aside class="side-stack">
+                    <article class="card">
+                      <h2>รายละเอียด / Shipment Details</h2>
+                      <div id="cargoIssueBanner" class="cargo-issue-banner">
+                        <div>
+                          <strong>ยังไม่ออกใบ Cargo</strong>
+                          <span>งานนี้มาจากไฟล์แล้ว ต้องออกใบก่อนส่งให้คนขับ / Issue Cargo form before dispatch.</span>
+                        </div>
+                        <button id="issueCargoBtn" type="button">ออกใบ Cargo</button>
+                      </div>
+                      <dl class="details-list">
+                        <dt>Service Type</dt><dd>Express Cargo</dd>
+                        <dt>Hazardous</dt><dd id="hazardInfo">No</dd>
+                        <dt>Handling</dt><dd>Fragile, Keep Dry</dd>
+                        <dt>Pickup Case</dt><dd id="pickupCaseInfo">-</dd>
+                        <dt>Cargo Form</dt><dd id="cargoIssuedInfo">Not issued</dd>
+                        <dt>Destination</dt><dd id="destinationInfo">-</dd>
+                        <dt>Driver</dt><dd id="driverInfo">-</dd>
+                        <dt>Pieces</dt><dd id="piecesInfo">-</dd>
+                        <dt>House Rows</dt><dd id="pickupItemsInfo">-</dd>
+                        <dt>Package</dt><dd id="packageInfo">-</dd>
+                        <dt>Sticker</dt><dd id="stickerInfo">-</dd>
+                        <dt>Checklist</dt><dd id="checklistInfo">-</dd>
+                        <dt>Next Module</dt><dd id="nextModuleInfo">-</dd>
+                      </dl>
+                    </article>
+                    <article class="card evidence-card">
+                      <h2>หลักฐาน / Evidence Gallery</h2>
+                      <div class="evidence-grid">
+                        <button type="button">รูปสินค้า<br>Product</button>
+                        <button type="button">น้ำหนัก<br>Weight</button>
+                        <button type="button">เอกสาร<br>Docs</button>
+                        <button type="button">ซีล<br>Seal</button>
+                      </div>
+                    </article>
+                  </aside>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="page" id="view-calendar" data-page="calendar">
+            <section class="calendar-shell card">
+              <div class="calendar-toolbar">
+                <div>
+                  <p>ภาพรวมกำหนดงานรายเดือน / Monthly Overview</p>
+                  <h2 id="calendarMonthTitle">-</h2>
+                </div>
+                <div class="calendar-toolbar-right">
+                  <div class="calendar-actions">
+                    <button id="calendarPrevBtn" class="icon-button" type="button" aria-label="Previous month"><i data-lucide="chevron-left"></i></button>
+                    <button id="calendarTodayBtn" class="ghost-button" type="button">เดือนปัจจุบัน / Current Month</button>
+                    <button id="calendarNextBtn" class="icon-button" type="button" aria-label="Next month"><i data-lucide="chevron-right"></i></button>
+                  </div>
+                  <div class="calendar-meta">
+                    <span id="calendarTodayDate">-</span>
+                    <span id="calendarAppVersion" class="version-badge">-</span>
+                  </div>
+                </div>
+              </div>
+              <div class="calendar-legend" aria-label="Status legend">
+                <span class="pending">รอดำเนินการ / Pending</span>
+                <span class="inbound">รับเข้า / Inbound</span>
+                <span class="outbound">ส่งออก / Outbound</span>
+                <span class="completed">เสร็จสิ้น / Completed</span>
+                <span class="overdue">เกินเวลา / Overdue</span>
+              </div>
+              <div class="calendar-weekdays" aria-hidden="true">
+                <span>อา. / Sun</span><span>จ. / Mon</span><span>อ. / Tue</span><span>พ. / Wed</span><span>พฤ. / Thu</span><span>ศ. / Fri</span><span>ส. / Sat</span>
+              </div>
+              <div id="calendarGrid" class="calendar-grid"></div>
+            </section>
+          </section>
+
+          <section class="page" id="view-staff" data-page="staff">
+            <div class="metric-grid">
+              <article class="metric-card"><i data-lucide="users" class="icon blue" aria-hidden="true"></i><p>พนักงานทั้งหมด / Total Staff</p><strong id="staffTotal">0</strong></article>
+              <article class="metric-card"><i data-lucide="bar-chart-2" class="icon purple" aria-hidden="true"></i><p>ประสิทธิภาพเฉลี่ย / Avg Performance</p><strong id="staffAvgKpi">0%</strong></article>
+              <article class="metric-card"><i data-lucide="link" class="icon green" aria-hidden="true"></i><p>LINE Connected</p><strong id="staffLineConnected">0</strong></article>
+              <article class="metric-card"><i data-lucide="activity" class="icon blue" aria-hidden="true"></i><p>System Uptime</p><strong>99.9%</strong></article>
+            </div>
+            <section class="card team-overview">
+              <div class="card-head">
+                <div><h2>ภาพรวมกำลังคนรายฝ่าย / Team Capacity</h2><p>กดเลือกฝ่ายเพื่อดูพนักงาน ภาระงาน และจุดที่ต้องเสริมกำลัง / Click a department to view staff & workload</p></div>
+                <button id="showAllTeamsBtn" class="ghost-button" type="button">แสดงทุกฝ่าย / All Depts</button>
+              </div>
+              <div id="teamDepartmentGrid" class="team-department-grid"></div>
+            </section>
+            <div class="staff-layout">
+              <article class="card">
+                <div class="card-head">
+                  <h2>จัดการพนักงาน / Staff Management</h2>
+                  <button id="openStaffFormBtn" class="primary-button" type="button">เพิ่มพนักงาน / Add Staff</button>
+                </div>
+                <form id="staffEditor" class="staff-editor" hidden>
+                  <div class="staff-form-head"><strong id="staffFormTitle">เพิ่มพนักงาน</strong><button id="closeStaffFormBtn" class="icon-button" type="button" aria-label="Close">×</button></div>
+                  <div class="staff-form-grid">
+                    <label>รหัสพนักงาน / Employee Code<input id="staffCode" required placeholder="เช่น EMP006"></label>
+                    <label>ชื่อ-นามสกุล / Full Name<input id="staffName" required></label>
+                    <label>บทบาท / Role
+                      <select id="staffRole" required>
+                        <option value="Driver">คนขับรถ / Driver</option>
+                        <option value="WH_Staff">พนักงานคลัง WH3 / WH Staff</option>
+                        <option value="Terminal">พนักงาน Terminal / Terminal</option>
+                        <option value="Billing">บัญชี / Billing</option>
+                        <option value="Admin">แอดมิน / Admin</option>
+                        <option value="Executive">ผู้บริหาร / Executive</option>
+                      </select>
+                    </label>
+                    <label id="staffVehicleField">ทะเบียนรถ / Vehicle Plate<input id="staffVehiclePlate" placeholder="เช่น 70-1234"></label>
+                    <label>เบอร์โทร / Phone<input id="staffPhone" inputmode="tel"></label>
+                    <label>LINE User ID<input id="staffLineId"></label>
+                    <label>สถานะ / Status<select id="staffStatus"><option value="Active">ใช้งาน / Active</option><option value="Inactive">ระงับ / Inactive</option></select></label>
+                  </div>
+                  <div class="form-actions"><button id="cancelStaffBtn" class="ghost-button" type="button">ยกเลิก / Cancel</button><button class="primary-button" type="submit">บันทึกพนักงาน / Save Staff</button></div>
+                </form>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Code</th><th>Name</th><th>Role</th><th>Jobs</th><th>Completed</th><th>Avg. Time</th><th>KPI</th><th>Action</th></tr></thead>
+                    <tbody id="staffTable"></tbody>
+                  </table>
+                </div>
+              </article>
+              <aside class="side-stack">
+                <article class="card staff-detail">
+                  <div id="staffDetailAvatar" class="large-avatar">-</div>
+                  <h2 id="staffDetailName">เลือกพนักงาน / Select Staff</h2>
+                  <p id="staffDetailMeta">-</p>
+                  <dl class="staff-kpi-detail"><dt>งานทั้งหมด / Total Jobs</dt><dd id="staffDetailJobs">0</dd><dt>งานสำเร็จ / Done</dt><dd id="staffDetailCompleted">0</dd><dt>เวลาเฉลี่ย / Avg Time</dt><dd id="staffDetailDuration">-</dd><dt>KPI</dt><dd id="staffDetailKpi">0%</dd></dl>
+                </article>
+                <article class="metric-card"><i data-lucide="check-circle" class="icon green" aria-hidden="true"></i><p>งานสำเร็จ / Completed</p><strong id="staffCompletedMetric">0</strong></article>
+                <article class="metric-card"><i data-lucide="x-circle" class="icon red" aria-hidden="true"></i><p>งานผิดพลาด / Errors</p><strong id="staffErrorMetric">0</strong></article>
+              </aside>
+            </div>
+          </section>
+
+          <section class="page" id="view-mobile" data-page="mobile">
+            <div class="ops-main-menu" aria-label="Operations menu">
+              <button class="ops-main-card active" type="button" data-role-target="Driver">
+                <span>1</span><strong>Pickup</strong><small>รับสินค้าจากลูกค้า / Pick up cargo</small>
+              </button>
+              <button class="ops-main-card" type="button" data-role-target="WH_Staff">
+                <span>2</span><strong>Inbound WH3</strong><small>รับเข้า & ย้าย Location / Inbound & Move</small>
+              </button>
+              <button class="ops-main-card" type="button" data-role-target="Terminal">
+                <span>3</span><strong>Outbound</strong><small>เบิก & ส่ง Terminal / Outbound</small>
+              </button>
+              <button class="ops-main-card" type="button" data-role-target="Billing">
+                <span>4</span><strong>Billing</strong><small>ตรวจเอกสาร & วางบิล / Docs & Billing</small>
+              </button>
+            </div>
+
+            <div class="operations-grid">
+              <section class="panel active" id="driverPanel" data-role-panel="Driver">
+                <div class="panel-title"><h2>Pickup</h2><span>Driver mobile workflow</span></div>
+                <label>วันที่ / Pickup Date</label>
+                <input id="driverPickupDate" type="date">
+                <label>ใบงาน / Assigned Job</label>
+                <select id="driverJobSelect"></select>
+                <input id="driverHouse" type="hidden" value="H-1001">
+                <label>ลูกค้า / Customer</label>
+                <input id="driverCustomerName" autocomplete="off" placeholder="ชื่อลูกค้า / Customer name">
+                <label>ทะเบียนรถ / Truck License</label>
+                <input id="driverVehiclePlate" autocomplete="off" placeholder="เช่น 70-3472">
+                <label>สถานที่เริ่มต้น / Start Place</label>
+                <input id="driverStartPlace" autocomplete="off" placeholder="คลังลูกค้า / Customer warehouse">
+                <p class="step-note">1) กดเช็คอินก่อน แล้วค่อยกรอกฟอร์ม/แนบรูป / Check in first, then fill form and attach photos.</p>
+                <button id="checkInBtn" type="button" class="checkin-button">เช็คอิน / Check-in</button>
+                <label>จำนวนสินค้า / Piece Count</label>
+                <input id="driverPieceCount" type="number" inputmode="numeric" placeholder="จำนวนกล่อง/ชิ้น">
+                <div class="field-head">
+                  <label>รายการงาน / Jobs</label>
+                  <button id="addDriverPickupItem" type="button" class="mini-add">+ เพิ่มงาน</button>
+                </div>
+                <div id="driverPickupItemRows" class="job-row-list"></div>
+                <textarea id="driverPickupItems" hidden></textarea>
+                <label>ประเภทการแพ็ค / Package Type</label>
+                <select id="driverPackageType">
+                  <option value="Carton">กล่อง / Carton</option>
+                  <option value="Bundle">มัด / Bundle</option>
+                  <option value="Pallet">พาเลท / Pallet</option>
+                  <option value="Mixed">ผสม / Mixed</option>
+                </select>
+                <label>ประเภทใบงาน / Pickup Case</label>
+                <select id="driverPickupCase">
+                  <option value="GeneralManual">งานทั่วไป / Driver writes Cargo</option>
+                  <option value="AdminPrepared">แอดมินเตรียมใบงาน / Admin prepared</option>
+                  <option value="SpecialMD">งานพิเศษ/MD/WD / Special job</option>
+                </select>
+                <label>สี Sticker (เฉพาะงาน WD/พิเศษ) / Sticker Color</label>
+                <input id="driverStickerColor" autocomplete="off" placeholder="เช่น เหลือง / Yellow">
+                <div class="pickup-checklist">
+                  <div class="checklist-title">ตรวจสินค้า 10 รายการ / 10-point check</div>
+                  <label><input class="pickup-check" type="checkbox" value="pickupDate"> วันที่รับสินค้า / Pickup date</label>
+                  <label><input class="pickup-check" type="checkbox" value="customer"> ชื่อลูกค้า / Customer</label>
+                  <label><input class="pickup-check" type="checkbox" value="pickupPlace"> สถานที่รับสินค้า / Pickup place</label>
+                  <label><input class="pickup-check" type="checkbox" value="driverPlate"> คนขับและทะเบียนรถ / Driver and plate</label>
+                  <label><input class="pickup-check" type="checkbox" value="housePieces"> House และจำนวนสินค้า / House and pieces</label>
+                  <label><input class="pickup-check" type="checkbox" value="packageType"> ประเภทแพ็ค / Package type</label>
+                  <label><input class="pickup-check" type="checkbox" value="inspectorSign"> ผู้ตรวจสอบลงนาม / Inspector sign</label>
+                  <label><input class="pickup-check" type="checkbox" value="receiverSign"> ผู้รับของลงนาม / Receiver sign</label>
+                  <label><input class="pickup-check" type="checkbox" value="tripRecord"> บันทึกการเดินทาง / Trip record</label>
+                  <label><input class="pickup-check" type="checkbox" value="destination"> ปลายทางตาม House / Destination by House</label>
+                </div>
+                <label>ผู้ตรวจสอบ / Inspector</label>
+                <input id="driverInspectorName" autocomplete="off" placeholder="ชื่อผู้ตรวจสอบ">
+                <label>เจ้าหน้าที่รับของ / Receiver</label>
+                <input id="driverReceiverName" autocomplete="off" placeholder="ชื่อผู้รับของ">
+                <label>สถานที่สิ้นสุด / End Place</label>
+                <input id="driverEndPlace" readonly placeholder="คำนวณจากปลายทางของแต่ละ House">
+                <label>รูปสินค้า / Product Photos (แนบได้หลายรูป)</label>
+                <input id="productImages" type="file" accept="image/*" capture="environment" multiple>
+                <label>รูปใบ Cargo / Cargo Form Photos (แนบได้หลายรูป)</label>
+                <input id="cargoImages" type="file" accept="image/*" capture="environment" multiple>
+                <canvas id="signaturePad" width="680" height="220"></canvas>
+                <div class="button-row">
+                  <button id="clearSignature" type="button" class="secondary">ล้างลายเซ็น</button>
+                  <button id="loadCargoBtn" type="button" class="load-button">โหลดสินค้าขึ้นรถ / Load Cargo</button>
+                  <button id="completePickupBtn" type="button">จบงาน / Check-out</button>
+                </div>
+              </section>
+
+              <section class="panel" id="whPanel" data-role-panel="WH_Staff">
+                <div class="panel-title"><h2>Inbound WH3</h2><span>Twin scanning</span></div>
+                <label>House Number</label>
+                <input id="scanHouse" inputmode="text" autocomplete="off" value="H-1001">
+                <div id="inboundJobInfo" class="result compact-result"></div>
+                <div id="currentLocationInfo" class="result compact-result"></div>
+                <div class="ops-menu">
+                  <button class="ops-tab active" type="button" data-ops-target="web-inbound-doc">เอกสาร / Docs</button>
+                  <button class="ops-tab" type="button" data-ops-target="web-inbound-scan">Scan</button>
+                  <button class="ops-tab" type="button" data-ops-target="web-inbound-putaway">จัดเก็บ / Putaway</button>
+                  <button class="ops-tab" type="button" data-ops-target="web-inbound-move">ย้าย / Move</button>
+                  <button class="ops-tab" type="button" data-ops-target="web-inbound-close">ปิดงาน / Close</button>
+                </div>
+                <div class="ops-section active" data-ops-section="web-inbound-doc">
+                  <label>สถานะเอกสาร / Document status</label>
+                  <select id="inboundDocStatus">
+                    <option value="Found">พบ Invoice/PO / Found</option>
+                    <option value="Missing">ไม่พบเอกสาร / Missing</option>
+                    <option value="EIConfirmed">EI Confirm แล้ว / EI confirmed</option>
+                  </select>
+                  <textarea id="inboundDocNote" rows="3" placeholder="หมายเหตุเอกสาร / Document note"></textarea>
+                  <input id="inboundDocFiles" type="file" accept="image/*,application/pdf" multiple>
+                  <div class="form-actions">
+                    <button id="docCheckBtn" type="button">บันทึกเอกสาร / Save Docs</button>
+                    <button id="openInboundBtn" type="button" class="secondary">เปิดงานรับเข้า / Open Inbound</button>
+                  </div>
+                </div>
+                <div class="ops-section" data-ops-section="web-inbound-scan">
+                  <label>Track Type</label>
+                  <select id="trackType">
+                    <option value="Single">Track เดี่ยว - เก็บเข้า WH3</option>
+                    <option value="Pair">Track คู่ - Cross-Dock ส่ง Terminal</option>
+                  </select>
+                  <select id="flightChanged">
+                    <option value="No">Flight ไม่เปลี่ยน</option>
+                    <option value="Yes">Flight เปลี่ยน ต้องพิมพ์ Track ใหม่</option>
+                  </select>
+                  <input id="updatedFlightNo" autocomplete="off" placeholder="Flight ใหม่ ถ้ามี">
+                  <button id="houseScanBtn" type="button">Scan House / ตรวจข้อมูล</button>
+                </div>
+                <div class="ops-section" data-ops-section="web-inbound-putaway">
+                  <input id="dimensionText" autocomplete="off" placeholder="Dimension เช่น 120 x 120 x 80 cm">
+                  <label>Location ID</label>
+                  <input id="scanLocation" inputmode="text" autocomplete="off" value="A-01">
+                  <button id="twinScanBtn" type="button">ล็อกตำแหน่ง / Lock Location</button>
+                </div>
+                <div class="ops-section" data-ops-section="web-inbound-move">
+                  <p class="step-note">สแกน House ก่อน แล้วกรอก Location ใหม่เพื่อย้ายตำแหน่งทันที</p>
+                  <label>Location ใหม่ / New Location</label>
+                  <input id="moveLocationId" inputmode="text" autocomplete="off" placeholder="เช่น B-02">
+                  <button id="moveLocationBtn" type="button">ย้าย Location / Move</button>
+                </div>
+                <div class="ops-section" data-ops-section="web-inbound-close">
+                  <input id="inboundEvidenceFiles" type="file" accept="image/*,application/pdf" multiple>
+                  <button id="closeInboundBtn" type="button" class="secondary">ปิดงานรับเข้า / Close</button>
+                </div>
+                <div id="locationList" class="location-list"></div>
+              </section>
+
+              <section class="panel" id="terminalPanel" data-role-panel="Terminal">
+                <div class="panel-title"><h2>Outbound Terminal</h2><span>Admin preparation → Staff execution</span></div>
+                <div class="outbound-phase-guide">
+                  <button class="outbound-phase active" type="button" data-outbound-phase="admin" data-open-outbound="web-outbound-transfer">
+                    <span>1</span><div><strong>แอดมินเตรียมงาน / Admin Preparation</strong><small>เลือกงานจาก CSV · ออก Cargo Transfer · ตรวจ Permit/Lithium</small></div>
+                  </button>
+                  <button class="outbound-phase" type="button" data-outbound-phase="staff" data-open-outbound="web-outbound-find">
+                    <span>2</span><div><strong>พนักงานตรวจและเบิก / Staff Execution</strong><small>ไป Location · สแกน House · EI · ถ่ายหลักฐาน</small></div>
+                  </button>
+                </div>
+                <label>House Number</label>
+                <input id="terminalHouse" autocomplete="off" value="H-1001">
+                <div id="terminalJobInfo" class="result compact-result"></div>
+                <div id="outboundLocationInfo" class="result compact-result"></div>
+                <div class="ops-menu">
+                  <button class="ops-tab active" type="button" data-ops-target="web-outbound-transfer">1. Admin Docs</button>
+                  <button class="ops-tab" type="button" data-ops-target="web-outbound-find">2. Staff Location</button>
+                  <button class="ops-tab" type="button" data-ops-target="web-outbound-pick">Pick/EI</button>
+                  <button class="ops-tab" type="button" data-ops-target="web-outbound-queue">AOT</button>
+                  <button class="ops-tab" type="button" data-ops-target="web-outbound-terminal">Terminal</button>
+                  <button class="ops-tab" type="button" data-ops-target="web-outbound-close">Close</button>
+                </div>
+                <div class="ops-section" data-ops-section="web-outbound-find">
+                  <label>Scan ป้ายสินค้า / Scan House label</label>
+                  <input id="outboundFoundScan" autocomplete="off" placeholder="ยิงบาร์โค้ด House ที่ตัวสินค้า">
+                  <button id="locateGoodsBtn" type="button">เจอสินค้าแล้ว / Confirm found</button>
+                </div>
+                <div class="ops-section active" data-ops-section="web-outbound-transfer">
+                  <div class="transfer-builder">
+                    <section class="outbound-preparation-queue">
+                      <div class="queue-heading">
+                        <div><strong>งานรอเตรียมเอกสารจาก CSV / Outbound Preparation Queue</strong><small>เลือก House ที่จะรวมใน Cargo Transfer ใบเดียวกัน</small></div>
+                        <span id="outboundPrepCount" class="filter-count">0 งาน</span>
+                      </div>
+                      <div class="prep-filter-row">
+                        <select id="outboundPrepFlightFilter"><option value="All">ทุกเที่ยวบิน / All flights</option></select>
+                        <button id="selectVisibleOutboundBtn" type="button" class="secondary">เลือกงานที่แสดง / Select shown</button>
+                        <button id="clearOutboundSelectionBtn" type="button" class="ghost-button">ล้างที่เลือก / Clear</button>
+                      </div>
+                      <div id="outboundPreparationQueue" class="outbound-prep-list"></div>
+                    </section>
+                    <div class="transfer-document-grid">
+                      <label>Permit / Security Document
+                        <input id="transferPermitFiles" type="file" accept="image/*,application/pdf" multiple>
+                        <small>แนบเอกสาร Permit ของชุดงานก่อนส่งให้พนักงาน</small>
+                      </label>
+                      <label>เอกสาร Lithium / Lithium Document
+                        <input id="transferLithiumFiles" type="file" accept="image/*,application/pdf" multiple>
+                        <small id="transferLithiumHint">แนบเมื่อในชุดงานมีสินค้าลิเทียม</small>
+                      </label>
+                    </div>
+                    <div class="transfer-form-grid">
+                      <label>วันที่ส่ง / Transfer Date<input id="transferDate" type="date"></label>
+                      <label>เวลา / Time<input id="transferTime" type="time"></label>
+                      <label>ต้นทาง / Transfer From<input id="transferFrom" value="WH3"></label>
+                      <label>ปลายทาง / To TMO
+                        <select id="transferTo"><option>TG</option><option>TGINT</option><option>BFS</option></select>
+                      </label>
+                      <label>ชื่อคนขับ / Driver<input id="transferDriver" autocomplete="off"></label>
+                      <label>ทะเบียนรถ / Truck License<input id="transferPlate" autocomplete="off"></label>
+                      <label>ประเภทรถ / Vehicle Type<input id="transferVehicleType" autocomplete="off" placeholder="เช่น 4W / 6W"></label>
+                      <label>ผู้ปล่อยสินค้า / Release By<input id="transferReleaseBy" autocomplete="off"></label>
+                    </div>
+                    <label>เลข House ในใบนี้ (1 บรรทัดต่อ 1 House) / House Numbers</label>
+                    <textarea id="transferHouseList" rows="5" placeholder="4840779441&#10;4840779442"></textarea>
+                    <div class="form-actions transfer-actions">
+                      <button id="loadTransferHouseBtn" type="button" class="secondary">ดึง House ปัจจุบัน / Load current</button>
+                      <button id="previewTransferBtn" type="button" class="secondary">ดูตัวอย่าง / Preview</button>
+                      <button id="issueTransferBtn" type="button">ออกใบ Cargo Transfer / Issue</button>
+                      <button id="printTransferBtn" type="button">พิมพ์ / Print</button>
+                    </div>
+                    <div class="ei-scan-note">
+                      <span>EI Barcode</span>
+                      <input id="eiSystemScan" autocomplete="off" placeholder="ยิงบาร์โค้ดด้วยเครื่อง EI (เตรียมไว้สำหรับ API)">
+                      <small>ข้อมูลนี้ใช้บันทึกการยิงเข้าระบบ EI และพร้อมเชื่อม API ในอนาคต</small>
+                    </div>
+                    <div id="transferIssueResult" class="result compact-result"></div>
+                    <div id="cargoTransferPreview" class="transfer-preview"></div>
+                    <div class="document-return-box">
+                      <strong>รับ Cargo Transfer ตัวจริงคืน / Original document returned</strong>
+                      <input id="returnedTransferFile" type="file" accept="image/*,application/pdf">
+                      <button id="confirmTransferReturnBtn" type="button" class="secondary">ยืนยันรับเอกสารคืน / Confirm return</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="ops-section" data-ops-section="web-outbound-pick">
+                  <input id="outboundDocs" type="file" accept="image/*,application/pdf" multiple>
+                  <textarea id="cargoTransferNote" rows="3" placeholder="Cargo Transfer / Permit note"></textarea>
+                  <div class="form-actions">
+                    <button id="pickingBtn" type="button">เบิกสินค้า / Pick</button>
+                    <button id="eiApproveBtn" type="button" class="secondary">EI Approve</button>
+                  </div>
+                  <input id="eiProofImage" type="file" accept="image/*,application/pdf">
+                </div>
+                <div class="ops-section" data-ops-section="web-outbound-queue">
+                  <select id="terminalDestination">
+                    <option value="TG">TG</option>
+                    <option value="TGINT">TGINT</option>
+                    <option value="BFS">BFS</option>
+                  </select>
+                  <input id="aotVehiclePlate" autocomplete="off" placeholder="ทะเบียนรถ">
+                  <input id="aotDriverName" autocomplete="off" placeholder="ชื่อคนขับ">
+                  <input id="aotVehicleModel" autocomplete="off" placeholder="รุ่นรถ">
+                  <input id="aotVehicleType" autocomplete="off" placeholder="ชนิดรถ">
+                  <div class="form-actions">
+                    <button id="aotBookingBtn" type="button">จองคิวรถ</button>
+                    <button id="aotApproveBtn" type="button" class="secondary">อนุมัติคิว</button>
+                  </div>
+                  <input id="preLoadPhoto" type="file" accept="image/*">
+                  <div class="form-actions">
+                    <button id="loadBayBtn" type="button">โหลดขึ้นรถ</button>
+                    <button id="terminalArrivalBtn" type="button" class="secondary">ถึง Terminal</button>
+                  </div>
+                </div>
+                <div class="ops-section" data-ops-section="web-outbound-terminal">
+                  <label id="lithiumDocLabel">เอกสารลิเธียม / Permit</label>
+                  <input id="lithiumDoc" type="file" accept="image/*,application/pdf">
+                  <button id="validateDocBtn" type="button">ตรวจเอกสาร</button>
+                  <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+                    <button id="weighStartBtn" type="button" style="background:#f0fdf4;border:1.5px solid #86efac;color:#15803d;font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer">▶ เริ่มชั่ง</button>
+                    <span id="weighStartDisplay" style="font-size:11px;color:#64748b"></span>
+                  </div>
+                  <input id="terminalWeight" inputmode="decimal" placeholder="น้ำหนัก เช่น 25.5 kg">
+                  <input id="terminalDimension" autocomplete="off" placeholder="Dimension เช่น 120 x 120 x 80">
+                  <button id="weightDimensionBtn" type="button" class="measurement-save-button"><i data-lucide="save" aria-hidden="true"></i><span>บันทึกน้ำหนักและขนาด</span></button>
+                  <div class="xray-action-heading">
+                    <strong>ผลการตรวจ X-Ray</strong>
+                    <span>เลือกผลหลังจากบันทึกน้ำหนักและขนาดแล้ว</span>
+                  </div>
+                  <div class="form-actions">
+                    <button id="xrayPassedBtn" type="button">X-Ray ผ่าน</button>
+                    <button id="rescanBtn" type="button" class="danger">Re-X-Ray</button>
+                    <button id="xrayHoldBtn" type="button" class="danger">Hold</button>
+                  </div>
+                </div>
+                <div class="ops-section" data-ops-section="web-outbound-close">
+                  <input id="trayNumber" autocomplete="off" placeholder="Tray / Pallet / Lot">
+                  <input id="loadingImage" type="file" accept="image/*">
+                  <div class="form-actions">
+                    <button id="packingBtn" type="button" class="secondary">Packing / Consolidation</button>
+                    <button id="loadingBtn" type="button">อัปโหลด Loading Detail</button>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel" id="billingPanel" data-role-panel="Billing">
+                <div class="panel-title"><h2>Billing</h2><span>Invoice workflow</span></div>
+                <div class="billing-kpis">
+                  <article><span>พร้อมวางบิล</span><strong id="billingReadyMetric">0</strong></article>
+                  <article><span>วางบิลแล้ว</span><strong id="billingBilledMetric">0</strong></article>
+                  <article><span>ยอดวางบิล</span><strong id="billingBilledAmountMetric">0</strong></article>
+                  <article><span>ยอดค้างวางบิล</span><strong id="billingPendingAmountMetric">0</strong></article>
+                </div>
+                <section class="billing-batch-section">
+                  <div class="billing-batch-head">
+                    <div><span class="batch-eyebrow">BATCH BILLING</span><h2>รวมงานออกใบวางบิลเป็นชุด</h2><p>อ้างอิงรูปแบบ Excel เดิม: แบ่งรอบวันที่และประเภทค่ารถ โดยหนึ่งใบรวมหลาย House</p></div>
+                    <span id="billingBatchCount" class="filter-count">0 กลุ่ม</span>
+                  </div>
+                  <div class="billing-batch-steps">
+                    <span class="active">1 กำหนดรอบ</span><span>2 เลือกกลุ่ม</span><span>3 ตรวจเอกสาร</span><span>4 สร้าง Draft</span>
+                  </div>
+                  <div class="billing-batch-filters">
+                    <label>วันที่เริ่ม<input id="batchDateFrom" type="date"></label>
+                    <label>วันที่สิ้นสุด<input id="batchDateTo" type="date"></label>
+                    <label>รอบวางบิล<select id="batchPeriodFilter"><option value="All">แยกตามรอบทั้งหมด</option><option value="FullMonth">รวมทั้งเดือน</option><option value="1-10">วันที่ 1-10</option><option value="11-20">วันที่ 11-20</option><option value="21-End">วันที่ 21-สิ้นเดือน</option></select></label>
+                    <label>ประเภทค่าบริการ<select id="batchPlanFilter"><option value="All">ทั้งหมด</option><option value="General">งานทั่วไป</option><option value="Trailer">เหมาเทเลอร์</option><option value="Charter6">เหมา 6 ล้อ</option><option value="Fixed10000">เหมา 10,000</option></select></label>
+                    <button id="buildBillingGroupsBtn" type="button">จัดกลุ่มงาน</button>
+                  </div>
+                  <div class="billing-batch-layout">
+                    <div><h3>กลุ่มรอวางบิล</h3><div id="billingBatchGroupList" class="billing-batch-list"></div></div>
+                    <aside id="billingBatchPreview" class="billing-batch-preview"><div class="empty-state">เลือกกลุ่มเพื่อ Preview</div></aside>
+                  </div>
+                  <div class="billing-batch-actions">
+                    <button id="reviewBillingBatchBtn" type="button" class="secondary" disabled>ตรวจเอกสารทั้งชุด</button>
+                    <button id="generateBillingBatchBtn" type="button" disabled>สร้าง Draft แบบรวม</button>
+                    <button id="exportBillingBatchBtn" type="button" class="ghost-button" disabled>ส่งออก Excel</button>
+                  </div>
+                </section>
+                <div class="individual-billing-title"><h2>ตรวจสอบราย House</h2><span>ใช้สำหรับดูรายละเอียดหรือแก้ไขเฉพาะรายการ</span></div>
+                <div class="billing-workspace">
+                  <section class="billing-card">
+                    <h3>งานรอวางบิล / Ready Jobs</h3>
+                    <div id="billingReadyList" class="invoice-list"></div>
+                    <label>House Number</label>
+                    <input id="billingHouse" autocomplete="off" value="H-1001">
+                    <label>ตรวจเอกสาร / Document review</label>
+                    <textarea id="billingReviewNote" rows="3" placeholder="ใบชั่งน้ำหนัก / Cargo Transfer / Loading Detail / เอกสารหน้างาน"></textarea>
+                    <div class="form-actions">
+                      <button id="reviewBillingBtn" type="button">เอกสารพร้อม / Reviewed</button>
+                      <button id="holdBillingBtn" type="button" class="danger">พักรายการ / Hold</button>
+                    </div>
+                  </section>
+                  <section class="billing-card">
+                    <h3>Customer Master</h3>
+                    <label>ชื่อลูกค้า / Customer</label>
+                    <input id="billingCustomerName" autocomplete="off" placeholder="Customer name">
+                    <label>Billing Email</label>
+                    <input id="billingCustomerEmail" autocomplete="off" placeholder="billing@example.com">
+                    <label>เบอร์โทร / Phone</label>
+                    <input id="billingCustomerPhone" autocomplete="off" placeholder="02-000-0000">
+                    <label>Tax ID</label>
+                    <input id="billingCustomerTaxId" autocomplete="off" placeholder="0105559000001">
+                    <label>Credit Term</label>
+                    <input id="billingCustomerCreditTerm" type="number" inputmode="numeric" placeholder="30">
+                    <label>ที่อยู่ / Address</label>
+                    <textarea id="billingCustomerAddress" rows="3" placeholder="Customer address"></textarea>
+                    <button id="saveBillingCustomerBtn" type="button" class="secondary">บันทึก / สร้างลูกค้า</button>
+                  </section>
+                  <section class="billing-card">
+                    <h3>Invoice Preview</h3>
+                    <div id="billingPreview" class="billing-preview"></div>
+                    <button id="generateBillBtn" type="button">สร้าง Draft Invoice</button>
+                    <label>Invoice ID</label>
+                    <input id="invoiceId" autocomplete="off" placeholder="INV-2026-0001">
+                    <div class="form-actions">
+                      <button id="previewInvoiceBtn" type="button" class="secondary">Preview Invoice</button>
+                      <button id="printInvoiceBtn" type="button" class="secondary">พิมพ์ / Print</button>
+                    </div>
+                    <label>เอกสารแนบอีเมล / Email attachments</label>
+                    <input id="billingEmailFiles" type="file" accept="image/*,application/pdf" multiple>
+                    <div class="form-actions">
+                      <button id="sendInvoiceBtn" type="button" class="secondary">ส่งอีเมลวางบิล</button>
+                      <button id="markBilledBtn" type="button">ปิดเป็น Billed</button>
+                    </div>
+                    <div id="billingResult" class="result"></div>
+                  </section>
+                  <section class="billing-card">
+                    <h3>เอกสารแนบ / Attachments</h3>
+                    <div id="billingAttachmentList" class="attachment-list"></div>
+                  </section>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="page" id="view-admin" data-page="admin">
+            <div class="admin-mode-chooser" role="group" aria-label="เลือกโหมดการทำงาน">
+              <button class="admin-mode-card active" id="adminModeImport" type="button" data-admin-mode="import">
+                <i data-lucide="upload-cloud" aria-hidden="true"></i>
+                <div>
+                  <strong>นำเข้าไฟล์ CSV</strong>
+                  <span>ดึงเลข House จากไฟล์ SCD / Email Feed แล้วเปิดใบงานอัตโนมัติ</span>
+                </div>
+                <em class="mode-badge">แนะนำ</em>
+              </button>
+              <button class="admin-mode-card" id="adminModeCreate" type="button" data-admin-mode="create">
+                <i data-lucide="file-plus" aria-hidden="true"></i>
+                <div>
+                  <strong>เปิดใบงานเอง</strong>
+                  <span>กรอกข้อมูลด้วยตัวเอง — เหมาะสำหรับงานนอกระบบหรือแก้ไขเพิ่มเติม</span>
+                </div>
+              </button>
+            </div>
+            <div class="admin-layout">
+              <section class="panel admin-support" id="adminImportPanel">
+                <div class="panel-title"><h2>นำเข้าไฟล์งาน / Import</h2></div>
+
+                <!-- Drop zone (primary) -->
+                <div class="csv-drop-zone" id="csvDropZone">
+                  <i data-lucide="upload-cloud" aria-hidden="true"></i>
+                  <strong>ลากไฟล์ CSV / Excel มาวางที่นี่</strong>
+                  <span>หรือ</span>
+                  <label class="csv-pick-btn" for="scdCsvFile">เลือกไฟล์</label>
+                  <input id="scdCsvFile" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
+                  <p class="csv-drop-hint">รองรับ SCD CSV · Consol Planning / Pickup Report (.xlsx)</p>
+                </div>
+
+                <!-- Preview after file selected -->
+                <div id="scdFilePreview" class="file-preview-box" hidden>
+                  <span>เลือกไฟล์ CSV เพื่อดูตัวอย่างก่อน Import</span>
+                </div>
+                <button id="importScdBtn" type="button" hidden>
+                  <i data-lucide="check-circle" aria-hidden="true"></i>
+                  ยืนยัน Import
+                </button>
+
+                <!-- Secondary: paste from email (collapsible) -->
+                <details class="email-csv-section">
+                  <summary>
+                    <i data-lucide="mail" aria-hidden="true"></i>
+                    วางข้อมูลจาก Email / Flight Feed
+                  </summary>
+                  <textarea id="flightCsv" rows="6" spellcheck="false" placeholder="วาง CSV จากอีเมล SCD...">house_number,customer_id,flight_no,flight_time,product_type,route_type,amount,dest,booking,invoice_no,contact,tel
+H-3001,c_wd,TG640,2026-06-15T18:00:00,Lithium,WH3,12000,AMS,BK-001,INV-001,Khun A,02-000-0000
+H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV-002,Khun B,02-000-0001</textarea>
+                  <button id="importFlightBtn" type="button" class="secondary">Preview จาก Email CSV</button>
+                </details>
+
+                <!-- Results -->
+                <div class="import-results-head" id="importResultsHead" hidden>
+                  <h3>Flight Update Feed</h3>
+                </div>
+                <div id="adminImportChangeList" class="change-list"></div>
+                <div class="import-history-head">
+                  <div>
+                    <h3>ประวัติการอัปโหลด</h3>
+                    <p>แสดงไฟล์ล่าสุด 5 รายการ</p>
+                  </div>
+                </div>
+                <div id="importHistoryList" class="import-history-list"></div>
+                <h3>Invoices</h3>
+                <div id="invoiceList" class="invoice-list"></div>
+              </section>
+
+              <section class="panel admin-editor" id="adminEditorPanel" hidden>
+                <div class="panel-title"><h2>เปิดใบงาน / Create Job</h2><span>Admin control</span></div>
+
+                <!-- ① ข้อมูลใบงาน -->
+                <div class="form-section-head"><i data-lucide="file-text" aria-hidden="true"></i><span>ข้อมูลใบงาน / Job Info</span></div>
+                <label>House Number</label>
+                <input id="adminHouse" autocomplete="off" value="H-2001">
+                <label>Customer</label>
+                <select id="adminCustomer">
+                  <option value="c_wd">WD Export Co., Ltd.</option>
+                  <option value="c_general">General Air Cargo</option>
+                </select>
+                <label>ประเภทใบงาน / Pickup Case</label>
+                <select id="adminPickupCase">
+                  <option value="SpecialMD">กรณีที่ 1: งานพิเศษ/MD - รับฟอร์มจาก WH3 / Case 1: Special/MD</option>
+                  <option value="GeneralManual">กรณีที่ 2: งานทั่วไป - คนขับเขียนเอง / Case 2: General</option>
+                </select>
+                <label>ประเภทสินค้า / Product Type</label>
+                <select id="adminProductType">
+                  <option value="General">General</option>
+                  <option value="Lithium">Lithium</option>
+                  <option value="WD">WD Special</option>
+                </select>
+                <label>ปลายทาง / Destination Routing</label>
+                <select id="adminDestination">
+                  <option value="WH3">เข้าคลัง WH3</option>
+                  <option value="TG">ส่งออก TG</option>
+                  <option value="TGINT">ส่งออก TGINT</option>
+                  <option value="BFS">ส่งออก BFS</option>
+                </select>
+
+                <!-- ② ข้อมูลสินค้า -->
+                <div class="form-section-head"><i data-lucide="package" aria-hidden="true"></i><span>ข้อมูลสินค้า / Cargo Details</span></div>
+                <label>จำนวนสินค้า / Piece Count</label>
+                <input id="adminPieceCount" type="number" inputmode="numeric" placeholder="จำนวนกล่อง/ชิ้น">
+                <div class="field-head">
+                  <label>รายการ House หลายงาน / Multiple House rows</label>
+                  <button id="addAdminPickupItem" type="button" class="mini-add">+ เพิ่มงาน</button>
+                </div>
+                <div id="adminPickupItemRows" class="admin-job-rows"></div>
+                <textarea id="adminPickupItems" rows="5" hidden></textarea>
+                <label>ประเภทการแพ็ค / Package Type</label>
+                <select id="adminPackageType">
+                  <option value="Carton">กล่อง / Carton</option>
+                  <option value="Bundle">มัด / Bundle</option>
+                  <option value="Pallet">พาเลท / Pallet</option>
+                  <option value="Mixed">ผสม / Mixed</option>
+                </select>
+                <label>สี Sticker (ถ้ามี) / Sticker Color</label>
+                <input id="adminStickerColor" autocomplete="off" placeholder="เช่น แดง/เหลือง/เขียว">
+
+                <!-- ③ การรับสินค้า -->
+                <div class="form-section-head"><i data-lucide="truck" aria-hidden="true"></i><span>การรับสินค้า / Pickup & Transport</span></div>
+                <label>วันที่รับสินค้า / Pickup Date</label>
+                <input id="adminPickupDate" type="date">
+                <label>สถานที่รับสินค้า / Pickup Location</label>
+                <input id="adminPickupLocation" autocomplete="off" placeholder="คลังลูกค้า / Customer warehouse">
+                <label>ชื่อคนขับ / Driver Name</label>
+                <select id="adminDriverSelect"></select>
+                <input id="adminDriverName" autocomplete="off" value="คนขับ A">
+                <label>ทะเบียนรถ / Vehicle Plate</label>
+                <input id="adminVehiclePlate" autocomplete="off" placeholder="เช่น 70-1234">
+                <div id="adminBatchSummary" class="assignment-summary"></div>
+
+                <!-- ④ เที่ยวบิน -->
+                <div class="form-section-head"><i data-lucide="send" aria-hidden="true"></i><span>ข้อมูลเที่ยวบิน / Flight Info</span></div>
+                <label>Flight No.</label>
+                <input id="adminFlightNo" autocomplete="off" value="TG642">
+                <label>Flight Date & Time</label>
+                <input id="adminFlightTime" type="datetime-local">
+                <label>Route</label>
+                <select id="adminRouteType">
+                  <option value="WH3">WH3</option>
+                  <option value="CrossDock">Cross-Dock</option>
+                  <option value="TG">TG</option>
+                  <option value="BFS">BFS</option>
+                </select>
+
+                <!-- ⑤ ค่าบริการ -->
+                <div class="form-section-head"><i data-lucide="dollar-sign" aria-hidden="true"></i><span>ค่าบริการ / Billing</span></div>
+                <label>Amount (THB)</label>
+                <input id="adminAmount" type="number" inputmode="decimal" value="9500">
+
+                <div class="button-row two">
+                  <button id="previewCargoBtn" type="button" class="secondary">Preview ใบงาน</button>
+                  <button id="createJobBtn" type="button">เปิดใบงาน / Create Job</button>
+                </div>
+                <div id="adminCreateResult" class="admin-create-result" aria-live="polite"></div>
+              </section>
+
+              <section class="panel preview-panel">
+                <div class="panel-title">
+                  <h2>Preview Cargo Pickup Form</h2>
+                  <div class="cargo-zoom-bar">
+                    <button id="cargoZoomOutBtn" type="button" class="cargo-zoom-btn" title="ย่อ">−</button>
+                    <span id="cargoZoomLabel" class="cargo-zoom-label">—</span>
+                    <button id="cargoZoomInBtn" type="button" class="cargo-zoom-btn" title="ขยาย">+</button>
+                    <button id="cargoZoomFitBtn" type="button" class="cargo-zoom-btn cargo-zoom-fit" title="พอดีหน้าจอ">Fit</button>
+                  </div>
+                  <button id="printCargoPreviewBtn" type="button" class="secondary">พิมพ์ / Print</button>
+                </div>
+                <div id="cargoPreview" class="cargo-preview"></div>
+              </section>
+
+            </div>
+          </section>
+
+          <section class="page" id="view-warehouse" data-page="warehouse">
+            <div class="wh-map-layout">
+
+              <!-- Left: Zone Builder -->
+              <!-- Left: Compact element list -->
+              <aside class="panel wh-builder-panel">
+                <div class="panel-title"><h2>รายการ</h2><span id="whMapStats" style="font-size:12px;color:var(--muted)">...</span></div>
+
+                <div class="form-section-head"><i data-lucide="layers" aria-hidden="true"></i><span>โซน</span></div>
+                <div id="whZoneList" class="wh-zone-list"></div>
+
+                <div class="form-section-head" style="margin-top:16px"><i data-lucide="layout-template" aria-hidden="true"></i><span>องค์ประกอบ</span></div>
+                <div id="whOverlayList" class="wh-zone-list"></div>
+
+                <div class="form-section-head" style="margin-top:16px">
+                  <i data-lucide="clock" aria-hidden="true"></i><span>Log</span>
+                  <button id="whRefreshLog" type="button" class="ghost-button" style="margin-left:auto;font-size:11px">รีเฟรช</button>
+                </div>
+                <div id="whLogList" class="wh-log-list"></div>
+              </aside>
+
+              <!-- Right: Map Canvas with Toolbar -->
+              <div class="wh-map-area">
+                <!-- Toolbar -->
+                <div class="wh-toolbar" id="whToolbar">
+                  <span class="wh-toolbar-label">เครื่องมือ</span>
+                  <button class="wh-tool-btn active" data-tool="select" title="เลือก/ย้าย">
+                    <i data-lucide="mouse-pointer-2"></i><span>เลือก</span>
+                  </button>
+                  <div class="wh-toolbar-sep"></div>
+                  <button class="wh-tool-btn" data-tool="zone" title="เพิ่มโซนใหม่">
+                    <i data-lucide="grid-2x2-plus"></i><span>+ โซน</span>
+                  </button>
+                  <div class="wh-toolbar-sep"></div>
+                  <button class="wh-tool-btn" data-tool="aisle" title="ทางเดิน" data-ov-color="#f1f5f9">
+                    <i data-lucide="footprints"></i><span>ทางเดิน</span>
+                  </button>
+                  <button class="wh-tool-btn" data-tool="door" title="ประตู" data-ov-color="#fef9c3">
+                    <i data-lucide="log-in"></i><span>ประตู</span>
+                  </button>
+                  <button class="wh-tool-btn" data-tool="office" title="ออฟฟิศ" data-ov-color="#e0f2fe">
+                    <i data-lucide="building-2"></i><span>ออฟฟิศ</span>
+                  </button>
+                  <button class="wh-tool-btn" data-tool="pillar" title="เสา" data-ov-color="#e5e7eb">
+                    <i data-lucide="square"></i><span>เสา</span>
+                  </button>
+                  <button class="wh-tool-btn" data-tool="wall" title="กำแพง" data-ov-color="#e5e7eb">
+                    <i data-lucide="minus"></i><span>กำแพง</span>
+                  </button>
+                  <button class="wh-tool-btn" data-tool="label" title="ป้าย" data-ov-color="#fef9c3">
+                    <i data-lucide="tag"></i><span>ป้าย</span>
+                  </button>
+                  <div class="wh-toolbar-sep"></div>
+                  <div class="wh-map-legend">
+                    <span class="wh-legend-dot" style="background:#22c55e"></span>ว่าง
+                    <span class="wh-legend-dot" style="background:#f59e0b"></span>บางส่วน
+                    <span class="wh-legend-dot" style="background:#ef4444"></span>เต็ม
+                  </div>
+                  <div class="wh-toolbar-sep"></div>
+                  <span id="whSaveStatus" class="wh-save-status"></span>
+                  <button class="wh-tool-btn" id="whPreviewBtn" title="ดูแผนที่แบบเต็ม">
+                    <i data-lucide="eye"></i><span>Preview</span>
+                  </button>
+                  <div class="wh-toolbar-sep"></div>
+                  <button class="wh-tool-btn" id="whSaveMapBtn" title="บันทึกแผนที่" style="color:#16a34a">
+                    <i data-lucide="save"></i><span>บันทึก</span>
+                  </button>
+                  <button class="wh-tool-btn" id="whNewMapBtn" title="เริ่มแผนที่ใหม่" style="color:#dc2626">
+                    <i data-lucide="file-plus-2"></i><span>แผนที่ใหม่</span>
+                  </button>
+                </div>
+
+                <!-- Zone Quick-Create: placeholder (form moved to modal below) -->
+                <div id="whZoneQuickCreate" hidden></div>
+
+                <div id="whMapCanvas" class="wh-map-canvas">
+                  <div id="whZoneGrid" class="wh-zone-grid"></div>
+                </div>
+                <!-- Catalog view (shown after save, hidden during editing) -->
+                <div id="whCatalogContainer" hidden style="padding:32px;display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start"></div>
+              </div>
+
+            </div>
+          </section>
+
+
+          <!-- ── Warehouse Status Dashboard ─────────────────────── -->
+          <section class="page" id="view-wh-status" data-page="wh-status">
+            <div class="wh-status-layout">
+              <div class="wh-status-header">
+                <div class="wh-stat-card"><i data-lucide="boxes"></i><div><span id="whStatTotal" class="wh-stat-num">-</span><small>ช่องทั้งหมด</small></div></div>
+                <div class="wh-stat-card free"><i data-lucide="package-open"></i><div><span id="whStatFree" class="wh-stat-num">-</span><small>ว่าง</small></div></div>
+                <div class="wh-stat-card partial"><i data-lucide="package-2"></i><div><span id="whStatPartial" class="wh-stat-num">-</span><small>บางส่วน</small></div></div>
+                <div class="wh-stat-card full"><i data-lucide="package-check"></i><div><span id="whStatFull" class="wh-stat-num">-</span><small>เต็ม</small></div></div>
+                <div class="wh-stat-card" style="flex:2;min-width:180px">
+                  <div style="width:100%">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+                      <span style="font-weight:600">การใช้งาน</span><span id="whStatPct" style="font-weight:700">0%</span>
+                    </div>
+                    <div class="wh-list-bar" style="height:10px;border-radius:6px"><div id="whStatBar" class="wh-list-bar-fill" style="width:0%;background:#22c55e;border-radius:6px"></div></div>
+                  </div>
+                </div>
+              </div>
+              <!-- Pipeline summary -->
+              <div id="whPipelineStats" class="wh-pipeline-stats"></div>
+
+              <div class="wh-status-search">
+                <div class="wh-search-box">
+                  <i data-lucide="search"></i>
+                  <input id="whStatusSearch" type="search" placeholder="ค้นหา Location (A-01) หรือ House number...">
+                </div>
+                <select id="whStatusZoneFilter" class="wh-zone-filter"><option value="">ทุกโซน</option></select>
+                <select id="whStatusFilter" class="wh-zone-filter">
+                  <option value="">ทุกสถานะ</option>
+                  <option value="free">ว่าง</option>
+                  <option value="partial">บางส่วน</option>
+                  <option value="full">เต็ม</option>
+                </select>
+              </div>
+              <div class="wh-status-body">
+                <div class="wh-status-map-wrap">
+                  <div class="wh-status-map-title"><i data-lucide="map-pin"></i> แผนที่ภาพรวม</div>
+                  <div id="whStatusMiniMap" class="wh-status-mini-map"></div>
+                </div>
+                <div class="wh-status-table-wrap">
+                  <div class="wh-status-table-title">รายการช่องจัดเก็บ <span id="whStatusCount" style="font-size:12px;color:var(--muted);font-weight:400"></span></div>
+                  <div id="whStatusTable" class="wh-status-table"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="page" id="view-grouping" data-page="grouping">
+            <div class="split-workspace grouping-workspace">
+              <section class="panel">
+                <div class="panel-title" style="flex-direction:column;align-items:flex-start;gap:12px">
+                  <div>
+                    <h2>จัดกลุ่มงาน / Cargo Grouping</h2>
+                    <p>จัดกลุ่มงานขาเข้า (ออกใบ Cargo Pickup) หรือขาออก (ออกใบ Cargo Transfer)</p>
+                  </div>
+                  <!-- Tabs -->
+                  <div style="display:flex;gap:0;border-radius:10px;overflow:hidden;border:1.5px solid #e2e8f0;width:100%">
+                    <button id="tabGroupInbound" onclick="setGroupingTab('inbound')" type="button"
+                      style="flex:1;padding:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#2563eb;color:#fff;border-radius:0;transition:all .2s">
+                      📥 ขาเข้า / Inbound
+                    </button>
+                    <button id="tabGroupOutbound" onclick="setGroupingTab('outbound')" type="button"
+                      style="flex:1;padding:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#f1f5f9;color:#64748b;border-radius:0;transition:all .2s">
+                      ✈ ขาออก / Outbound
+                    </button>
+                  </div>
+                </div>
+                <section class="admin-work-queue auto-group-panel">
+                  <div class="queue-head">
+                    <div>
+                      <h3>กลุ่มงานอัตโนมัติ / Auto Groups</h3>
+                      <p>ระบบรวมกลุ่มตามวันที่ ลูกค้า สถานที่รับ และ Flight / Grouped by date, customer, pickup location & flight</p>
+                    </div>
+                    <strong id="adminUnopenedCount">0</strong>
+                  </div>
+                  <label class="group-search-box">
+                    <span>ค้นหาบริษัท & ชื่อกลุ่ม & House / Search by company, group or house</span>
+                    <input id="autoGroupSearch" autocomplete="off" placeholder="พิมพ์ชื่อลูกค้า Flight สถานที่ หรือ House">
+                  </label>
+                  <div id="adminWorkQueue" class="queue-list"></div>
+                </section>
+
+                <!-- OUTBOUND GROUP PANEL -->
+                <section id="outboundGroupPanel" class="admin-work-queue auto-group-panel" style="display:none">
+                  <div class="queue-head">
+                    <div>
+                      <h3>✈ กลุ่มงานขาออก (Load Plan)</h3>
+                      <p>จัดกลุ่มตาม Flight — คลิกเพื่อดู Preview และออกใบ Cargo Transfer Form</p>
+                    </div>
+                    <strong id="outboundGroupCount" style="background:#0f766e;color:#fff;border-radius:8px;padding:4px 10px;font-size:13px">0 งาน</strong>
+                  </div>
+                  <!-- Driver + Crew row -->
+                  <div id="obDriverRow" style="display:flex;gap:8px;align-items:flex-end;padding:8px 0 6px;flex-wrap:wrap">
+                    <div style="flex:1;min-width:150px">
+                      <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:3px">คนขับ / Driver</label>
+                      <select id="obDriver" onchange="onObDriverChange()" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 8px;font-size:12px;background:#fff"></select>
+                    </div>
+                    <div style="width:88px">
+                      <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:3px">จำนวนคน</label>
+                      <input id="obCrewCount" type="number" min="1" max="10" value="1" oninput="state.outboundCrewCount=+this.value" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 8px;font-size:12px">
+                    </div>
+                    <div style="width:90px">
+                      <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:3px">ประเภทรถ</label>
+                      <select id="obVelType" onchange="refreshGroupCtfPreview()" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 8px;font-size:12px;background:#fff">
+                        <option>6 ล้อ</option><option>10 ล้อ</option><option>รถตู้</option><option>รถเก๋ง</option>
+                      </select>
+                    </div>
+                    <div style="width:80px">
+                      <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:3px">TMO</label>
+                      <select id="obTmo" onchange="refreshGroupCtfPreview()" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 8px;font-size:12px;background:#fff">
+                        <option>INTER</option><option>DOME</option><option>OTHER</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div id="outboundGroupEmpty" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">
+                    ยังไม่มีข้อมูล Load Plan — ไปที่หน้า <b>ขาออก</b> แล้ว Import CSV ก่อน
+                  </div>
+                  <div id="outboundGroupList" style="display:flex;flex-direction:column;gap:8px;padding:4px 0"></div>
+                </section>
+                <section id="manualGroupSection" class="manual-group-panel">
+                  <div class="queue-head">
+                    <div>
+                      <h3>จัดกลุ่มเอง / Manual Grouping</h3>
+                      <p>เลือกเฉพาะ House ที่ยังไม่ได้ออกใบ Cargo / Select unissued houses manually</p>
+                    </div>
+                    <strong id="manualGroupCount">0</strong>
+                  </div>
+                  <div class="manual-group-controls hidden-legacy">
+                    <input id="manualGroupSearch" autocomplete="off" placeholder="ค้นหา House / ลูกค้า / Flight">
+                    <select id="manualGroupDriver"></select>
+                  </div>
+                  <div id="manualGroupList" class="manual-group-list hidden-legacy"></div>
+                  <div class="button-row two hidden-legacy">
+                    <button id="buildManualGroupBtn" type="button" class="secondary">สร้างกลุ่มงาน / Build Group</button>
+                    <button id="issueManualGroupBtn" type="button">ออกใบ Cargo / Issue</button>
+                  </div>
+                  <div class="manual-group-intro">
+                    <div>
+                      <strong>เลือก House เองเมื่อกลุ่มอัตโนมัติไม่ตรงงานจริง</strong>
+                      <span>ระบบจะแสดงเฉพาะงานที่ยังไม่ออกใบ Cargo ให้เลือกหลาย House ได้ใน popup</span>
+                    </div>
+                    <button id="openManualGroupBtn" type="button">+ จัดกลุ่มเอง</button>
+                  </div>
+                </section>
+              </section>
+              <section class="panel preview-panel" id="groupPreviewPanel">
+                <div class="panel-title">
+                  <h2 id="groupPreviewTitle">Preview กลุ่มงาน</h2>
+                  <button id="printGroupPreviewBtn" type="button" class="secondary">🖨 พิมพ์</button>
+                </div>
+                <!-- Driver / truck quick inputs (ขาออกเท่านั้น) -->
+                <div id="groupCtfInputs" style="display:none" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div>
+                    <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:3px">ชื่อคนขับ</label>
+                    <input id="groupCtfDriver" type="text" placeholder="นครินทร์" oninput="refreshGroupCtfPreview()"
+                      style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:3px">ทะเบียนรถ</label>
+                    <input id="groupCtfPlate" type="text" placeholder="735891" oninput="refreshGroupCtfPreview()"
+                      style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:3px">ประเภทรถ</label>
+                    <select id="groupCtfVelType" onchange="refreshGroupCtfPreview()"
+                      style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;box-sizing:border-box;background:#fff">
+                      <option value="6 ล้อ">6 ล้อ</option><option value="4 ล้อ">4 ล้อ</option>
+                      <option value="10 ล้อ">10 ล้อ</option><option value="Pickup">Pickup</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:3px">To TMO</label>
+                    <select id="groupCtfTmo" onchange="refreshGroupCtfPreview()"
+                      style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;box-sizing:border-box;background:#fff">
+                      <option value="INTER">INTER</option><option value="TG">TG</option>
+                      <option value="BFS">BFS</option><option value="TGINT">TGINT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:3px">Release by</label>
+                    <input id="groupCtfReleaseBy" type="text" placeholder="ชื่อผู้ปล่อย" oninput="refreshGroupCtfPreview()"
+                      style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:3px">Unload by</label>
+                    <input id="groupCtfUnloadBy" type="text" placeholder="Panthai" oninput="refreshGroupCtfPreview()"
+                      style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;box-sizing:border-box">
+                  </div>
+                </div>
+                <p id="groupContextLabel" class="group-context-label">ยังไม่ได้เลือกกลุ่มงาน / No group selected</p>
+                <div class="cargo-zoom-bar" id="groupZoomBar" style="display:none">
+                  <button id="groupZoomOutBtn" type="button" class="cargo-zoom-btn" title="ย่อ">−</button>
+                  <span id="groupZoomLabel" class="cargo-zoom-label">—</span>
+                  <button id="groupZoomInBtn" type="button" class="cargo-zoom-btn" title="ขยาย">+</button>
+                  <button id="groupZoomFitBtn" type="button" class="cargo-zoom-btn cargo-zoom-fit" title="พอดีหน้าจอ">Fit</button>
+                </div>
+                <div id="groupCargoPreview" class="cargo-preview" style="background:#e2e8f0;border-radius:10px;padding:12px"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="page" id="view-cargo-history" data-page="cargo-history">
+            <div class="split-workspace history-workspace">
+              <section class="panel">
+                <div class="panel-title">
+                  <div>
+                    <h2>ประวัติใบ Cargo</h2>
+                    <p>ค้นหา ดูใบงาน และพิมพ์ซ้ำจากงานที่ออกใบแล้ว</p>
+                  </div>
+                  <strong id="adminIssuedCount" class="count-badge">0</strong>
+                </div>
+                <div class="history-filters">
+                  <input id="cargoHistorySearch" autocomplete="off" placeholder="ค้นหา House / ลูกค้า / คนขับ">
+                  <input id="cargoHistoryFrom" type="date">
+                  <input id="cargoHistoryTo" type="date">
+                </div>
+                <div id="adminIssuedQueue" class="queue-list compact-history"></div>
+              </section>
+              <section class="panel preview-panel">
+                <div class="panel-title">
+                  <h2>Preview Cargo Pickup Form</h2>
+                  <button id="printHistoryCargoBtn" type="button" class="secondary">พิมพ์ซ้ำ / Reprint</button>
+                </div>
+                <div id="historyCargoPreview" class="cargo-preview"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="page" id="view-alerts" data-page="alerts">
+            <div class="alerts-page-layout">
+              <div class="alerts-page-header">
+                <div>
+                  <h2>ศูนย์แจ้งเตือน</h2>
+                  <p>รายการเปลี่ยนแปลงเที่ยวบิน งานใหม่ และเหตุการณ์สำคัญของระบบ</p>
+                </div>
+                <label class="alert-search-inline">
+                  <input id="alertSearch" autocomplete="off" placeholder="ค้นหา House, บริษัท, ประเภท...">
+                </label>
+              </div>
+              <div id="alertList" class="alerts-kanban"></div>
+            </div>
+          </section>
+
+          <section class="page" id="view-settings" data-page="settings">
+            <div class="settings-grid">
+              <article class="card settings-card">
+                <div class="card-head">
+                  <div>
+                    <h2>ตั้งค่าระบบ / System Settings</h2>
+                    <p>กำหนดค่าการแสดงผลและข้อมูลพื้นฐานของระบบ</p>
+                  </div>
+                </div>
+                <div class="settings-form">
+                  <label>
+                    <span>ชื่อระบบ / System name</span>
+                    <input id="settingSystemName" value="S.C.D.TRANSPORT">
+                  </label>
+                  <label>
+                    <span>ภาษาเริ่มต้น / Default language</span>
+                    <select id="settingDefaultLanguage">
+                      <option value="th">ไทย</option>
+                      <option value="en">English</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>ช่วงวันรายงานเริ่มต้น / Default report range</span>
+                    <select id="settingDefaultRange">
+                      <option value="10">ย้อนหลัง 10 วัน</option>
+                      <option value="7">ย้อนหลัง 7 วัน</option>
+                      <option value="30">ย้อนหลัง 30 วัน</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>เวลามาตรฐาน / Timezone</span>
+                    <input id="settingTimezone" value="Asia/Bangkok" readonly>
+                  </label>
+                </div>
+                <div class="form-actions">
+                  <button id="saveSettingsBtn" type="button">บันทึกตั้งค่า / Save Settings</button>
+                  <button id="resetSettingsBtn" class="secondary" type="button">คืนค่าเริ่มต้น / Reset</button>
+                </div>
+              </article>
+
+              <article class="card settings-card">
+                <div class="card-head">
+                  <div>
+                    <h2>การเชื่อมต่อ / Integrations</h2>
+                    <p>สถานะ API, Email, Storage และ LINE alert</p>
+                  </div>
+                </div>
+                <div class="settings-status-list">
+                  <article><span>API Server</span><strong>localhost:3000</strong><b class="pill completed">Active</b></article>
+                  <article><span>Database</span><strong>data/db.json</strong><b class="pill inbound">Mock DB</b></article>
+                  <article><span>Storage</span><strong>storage/</strong><b class="pill inbound">Local</b></article>
+                  <article><span>LINE Alert</span><strong>Webhook mock</strong><b class="pill pending">Pending setup</b></article>
+                </div>
+              </article>
+
+              <article class="card settings-card full">
+                <div class="card-head">
+                  <div>
+                    <h2>สิทธิ์ผู้ใช้งาน / Role Levels</h2>
+                    <p>ภาพรวมสิทธิ์แต่ละระดับในระบบ</p>
+                  </div>
+                </div>
+                <div class="role-matrix">
+                  <article><strong>Driver</strong><span>เห็นเฉพาะงานรับสินค้าและส่ง Terminal ของตัวเอง</span></article>
+                  <article><strong>WH Staff</strong><span>สแกนรับเข้า, ย้าย Location, ปิดงานรับเข้า</span></article>
+                  <article><strong>Billing</strong><span>ตรวจเอกสาร, ออกใบวางบิล, ส่งอีเมล</span></article>
+                  <article><strong>Admin</strong><span>เปิดงาน, จัดคนขับ, Import CSV, ดูภาพรวมทั้งหมด</span></article>
+                </div>
+              </article>
+            </div>
+          </section>
+        
+          <!-- ═══════════════════════════════════════════════════════════ -->
+          <!-- LOAD PLAN VIEW -->
+          <section class="page" id="view-load-plan" data-page="load-plan">
+            <div style="padding:20px 28px 32px;overflow-y:auto;height:100%;background:var(--bg)">
+
+              <!-- ── Header ── -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+                <div>
+                  <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px">ขาออก / Outbound</div>
+                  <h1 style="font-size:24px;font-weight:900;color:var(--ink);margin:0;letter-spacing:-.3px">
+                    แผนการจัดโหลดสินค้า
+                    <span style="font-size:16px;font-weight:400;color:var(--muted);margin-left:4px">Load Plan</span>
+                  </h1>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <select id="lpRoundSelect" title="Load plan round"
+                    style="height:36px;border:1.5px solid #dbe3ef;border-radius:10px;padding:0 10px;background:#fff;font-size:13px;font-weight:700;color:#0f172a">
+                    <option value="08:00">Plan 08:00</option>
+                    <option value="12:00">Plan 12:00</option>
+                    <option value="16:00">Plan 16:00</option>
+                  </select>
+                  <button id="lpRefreshBtn" type="button" class="ghost-button" style="gap:6px;font-size:13px">
+                    <i data-lucide="refresh-cw" style="width:14px;height:14px"></i> รีเฟรช
+                  </button>
+                  <label style="display:flex;align-items:center;gap:7px;padding:9px 16px;background:#2563eb;color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+                    <i data-lucide="upload" style="width:14px;height:14px"></i> Import CSV
+                    <input id="lpFileInput" type="file" accept=".csv,.xlsx" style="display:none">
+                  </label>
+                  <button onclick="setView('outbound-open')" type="button"
+                    style="display:flex;align-items:center;gap:7px;padding:9px 16px;background:#0f766e;color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;white-space:nowrap">
+                    <i data-lucide="file-output" style="width:14px;height:14px"></i> เปิดใบขาออก →
+                  </button>
+                </div>
+              </div>
+
+              <!-- ── KPI Cards ── -->
+              <div style="background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+                <div id="lpKpiRow" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+                <!-- Rendered by renderLpKpi() -->
+                <div class="lp-kpi-card" style="--kpi-accent:#94a3b8"><div class="lp-kpi-icon"><i data-lucide="list-checks"></i></div><div class="lp-kpi-label">รายการทั้งหมดใน Plan</div><div class="lp-kpi-val">—</div></div>
+                <div class="lp-kpi-card" style="--kpi-accent:#94a3b8"><div class="lp-kpi-icon"><i data-lucide="database-zap"></i></div><div class="lp-kpi-label">พบใน System</div><div class="lp-kpi-val">—</div></div>
+                <div class="lp-kpi-card" style="--kpi-accent:#94a3b8"><div class="lp-kpi-icon"><i data-lucide="plane-takeoff"></i></div><div class="lp-kpi-label">ส่งออกวันนี้</div><div class="lp-kpi-val">—</div></div>
+                <div class="lp-kpi-card" style="--kpi-accent:#94a3b8"><div class="lp-kpi-icon"><i data-lucide="circle-check-big"></i></div><div class="lp-kpi-label">ทันเวลา / ไม่ทันเวลา</div><div class="lp-kpi-val">—</div></div>
+                <div class="lp-kpi-card" style="--kpi-accent:#94a3b8"><div class="lp-kpi-icon"><i data-lucide="bell"></i></div><div class="lp-kpi-label">การเปลี่ยนแปลง</div><div class="lp-kpi-val">—</div></div>
+                </div>
+              </div>
+
+              <!-- ── Change Alert Banner ── -->
+              <div id="lpChangeBanner" style="display:none;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:14px;padding:14px 20px;margin-bottom:22px;align-items:center;gap:12px">
+                <i data-lucide="alert-triangle" style="width:20px;height:20px;color:#d97706;flex-shrink:0"></i>
+                <div>
+                  <div style="font-weight:700;color:#92400e" id="lpChangeBannerTitle"></div>
+                  <div style="font-size:12px;color:#b45309;margin-top:2px" id="lpChangeBannerDetail"></div>
+                </div>
+              </div>
+
+              <!-- ── Flight Summary ── -->
+              <div style="margin-bottom:28px">
+                <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.6px">
+                  <i data-lucide="layout-dashboard" style="width:14px;height:14px;color:#0f766e"></i>
+                  สรุปตาม Flight
+                  <span style="font-size:11px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(คลิกเพื่อกรอง)</span>
+                </div>
+                <div id="lpFlightSummaryCards" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+              </div>
+
+              <!-- ── Import History ── -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">ประวัติการ Import</div>
+                <div id="lpLastImport" style="font-size:11px;color:var(--muted)"></div>
+              </div>
+              <div id="lpHistoryList" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px"></div>
+
+              <!-- ── Table Header ── -->
+              <div style="background:var(--surface);border:1.5px solid var(--line);border-radius:14px 14px 0 0;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:0">
+                <!-- Left: title + active filter chip -->
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <i data-lucide="table-2" style="width:15px;height:15px;color:#64748b"></i>
+                    <span style="font-size:14px;font-weight:800;color:var(--ink)">Pick List</span>
+                    <span style="font-size:13px;font-weight:400;color:var(--muted)">รายการที่ต้องเตรียมส่งออก</span>
+                  </div>
+                  <div id="lpActiveFilter" style="display:none"></div>
+                </div>
+                <!-- Right: filter + search -->
+                <div style="display:flex;gap:8px;align-items:center">
+                  <select id="lpStatusFilter" onchange="renderLpTable(lpCurrentPlan)"
+                    style="border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:12px;background:var(--bg);color:var(--ink);cursor:pointer;font-weight:600;height:34px">
+                    <option value="">ทุกสถานะ</option>
+                    <option value="matched">พบใน System</option>
+                    <option value="unmatched">ไม่พบใน System</option>
+                    <option value="ready">พร้อมส่งแล้ว</option>
+                    <option value="pending">ยังไม่พร้อม</option>
+                  </select>
+                  <div style="position:relative">
+                    <i data-lucide="search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#94a3b8;pointer-events:none"></i>
+                    <input id="lpTableSearch" type="text" placeholder="ค้นหา House / Flight / ลูกค้า..." oninput="renderLpTable(lpCurrentPlan)"
+                      style="border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px 6px 30px;font-size:12px;width:220px;background:var(--bg);height:34px">
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── Table ── -->
+              <div style="background:var(--surface);border:1.5px solid var(--line);border-radius:0 0 14px 14px;overflow:hidden;margin-bottom:32px;box-shadow:0 2px 8px rgba(0,0,0,.05);border-top:0">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                  <thead>
+                    <tr style="background:#f8fafc;border-bottom:2px solid var(--line)">
+                      <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;width:36px">#</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase">House Number</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase">Flight</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase">ลูกค้า</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase">ปลายทาง</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase">WH Location</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase">สถานะ</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase">System</th>
+                    </tr>
+                  </thead>
+                  <tbody id="lpTableBody">
+                    <tr><td colspan="8" style="padding:60px;text-align:center;color:var(--muted)">
+                      <div style="font-size:36px;margin-bottom:10px">📋</div>
+                      <div style="font-weight:600;margin-bottom:4px">ยังไม่มีข้อมูล Load Plan</div>
+                      <div style="font-size:12px">กด <b>Import CSV</b> หรือ <b>รีเฟรช</b> เพื่อโหลดข้อมูล</div>
+                    </td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </section>
+
+          <!-- ══ เปิดใบขาออก ══ -->
+          <section class="page" id="view-outbound-open" data-page="outbound-open">
+            <div class="admin-mode-chooser" role="group" aria-label="เลือกโหมดการทำงาน">
+              <button class="admin-mode-card active" id="obOpenModeImport" type="button" data-obopen-mode="import">
+                <i data-lucide="upload-cloud" aria-hidden="true"></i>
+                <div>
+                  <strong>นำเข้าไฟล์ Load Plan</strong>
+                  <span>Import CSV แล้วเลือก Flight สำหรับออกใบ Cargo Transfer Form</span>
+                </div>
+                <em class="mode-badge">แนะนำ</em>
+              </button>
+              <button class="admin-mode-card" id="obOpenModeCreate" type="button" data-obopen-mode="create">
+                <i data-lucide="file-plus" aria-hidden="true"></i>
+                <div>
+                  <strong>สร้าง CTF เอง</strong>
+                  <span>กรอกข้อมูลเองทีละใบ — สำหรับงานนอก Load Plan</span>
+                </div>
+              </button>
+            </div>
+            <div class="admin-layout">
+              <!-- LEFT: Import + Flight groups -->
+              <section class="panel admin-support" id="obOpenImportPanel">
+                <div class="panel-title"><h2>นำเข้า Load Plan / Import</h2></div>
+
+                <!-- Drop zone -->
+                <div class="csv-drop-zone" id="obOpenCsvDrop">
+                  <i data-lucide="upload-cloud" aria-hidden="true"></i>
+                  <strong>ลาก Load Plan CSV / Excel มาวางที่นี่</strong>
+                  <span>หรือ</span>
+                  <label class="csv-pick-btn" for="obOpenCsvFile">เลือกไฟล์</label>
+                  <input id="obOpenCsvFile" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
+                  <p class="csv-drop-hint">รองรับ Load Plan CSV / Excel — รวมถึงไฟล์ Consol Planning (.xlsx)</p>
+                </div>
+
+                <!-- Flight group list (shown after import) -->
+                <div id="obOpenFlightSection" hidden>
+                  <div class="import-results-head" style="display:block">
+                    <h3>เลือก Flight สำหรับออกใบ CTF</h3>
+                  </div>
+                  <div id="obOpenGroupList" class="change-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+
+                  <!-- Driver inputs -->
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px">
+                    <div style="font-size:11px;font-weight:800;color:#475569;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">ข้อมูลผู้ขนส่ง</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                      <label style="font-size:11px;font-weight:700;color:#64748b">คนขับ
+                        <input id="obOpenDriver" type="text" placeholder="ชื่อคนขับ" oninput="obOpenUpdatePreview()"
+                          style="display:block;width:100%;margin-top:3px;border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 9px;font-size:12px;box-sizing:border-box">
+                      </label>
+                      <label style="font-size:11px;font-weight:700;color:#64748b">ทะเบียนรถ
+                        <input id="obOpenPlate" type="text" placeholder="ทะเบียน" oninput="obOpenUpdatePreview()"
+                          style="display:block;width:100%;margin-top:3px;border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 9px;font-size:12px;box-sizing:border-box">
+                      </label>
+                      <label style="font-size:11px;font-weight:700;color:#64748b">ประเภทรถ
+                        <select id="obOpenVelType" onchange="obOpenUpdatePreview()"
+                          style="display:block;width:100%;margin-top:3px;border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 9px;font-size:12px;background:#fff">
+                          <option>6 ล้อ</option><option>10 ล้อ</option><option>รถตู้</option><option>รถเก๋ง</option>
+                        </select>
+                      </label>
+                      <label style="font-size:11px;font-weight:700;color:#64748b">TMO
+                        <select id="obOpenTmo" onchange="obOpenUpdatePreview()"
+                          style="display:block;width:100%;margin-top:3px;border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 9px;font-size:12px;background:#fff">
+                          <option>INTER</option><option>DOME</option><option>OTHER</option>
+                        </select>
+                      </label>
+                      <label style="font-size:11px;font-weight:700;color:#64748b">ผู้ปล่อย (WH)
+                        <input id="obOpenRelBy" type="text" placeholder="ชื่อผู้ปล่อยสินค้า" oninput="obOpenUpdatePreview()"
+                          style="display:block;width:100%;margin-top:3px;border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 9px;font-size:12px;box-sizing:border-box">
+                      </label>
+                      <label style="font-size:11px;font-weight:700;color:#64748b">ผู้รับ (Unload)
+                        <input id="obOpenUnloadBy" type="text" placeholder="ชื่อผู้รับสินค้า" oninput="obOpenUpdatePreview()"
+                          style="display:block;width:100%;margin-top:3px;border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 9px;font-size:12px;box-sizing:border-box">
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Import history -->
+                <div class="import-history-head">
+                  <div>
+                    <h3>ประวัติการ Import</h3>
+                    <p>Load Plan ล่าสุด 5 รายการ</p>
+                  </div>
+                </div>
+                <div id="obOpenHistory" class="import-history-list"></div>
+              </section>
+
+              <!-- LEFT (create mode, hidden by default) -->
+              <section class="panel admin-support" id="obOpenCreatePanel" hidden>
+                <div class="panel-title"><h2>สร้าง CTF เอง / Manual CTF</h2></div>
+                <p style="color:var(--muted);font-size:13px;padding:8px 0">กรอกข้อมูลสำหรับออกใบ Cargo Transfer Form แบบ manual</p>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <label style="font-size:12px;font-weight:700">คนขับ<input id="obCreateDriver" type="text" placeholder="ชื่อคนขับ" oninput="obOpenUpdatePreview()" class="form-input" style="display:block;width:100%;margin-top:4px"></label>
+                  <label style="font-size:12px;font-weight:700">ทะเบียนรถ<input id="obCreatePlate" type="text" placeholder="ทะเบียน" oninput="obOpenUpdatePreview()" class="form-input" style="display:block;width:100%;margin-top:4px"></label>
+                  <label style="font-size:12px;font-weight:700">Flight<input id="obCreateFlight" type="text" placeholder="TG660" oninput="obOpenUpdatePreview()" class="form-input" style="display:block;width:100%;margin-top:4px"></label>
+                  <label style="font-size:12px;font-weight:700">ปลายทาง<input id="obCreateDest" type="text" placeholder="NRT" oninput="obOpenUpdatePreview()" class="form-input" style="display:block;width:100%;margin-top:4px"></label>
+                  <label style="font-size:12px;font-weight:700">House Numbers (1 บรรทัดต่อ 1 ใบ)
+                    <textarea id="obCreateHouses" rows="6" oninput="obOpenUpdatePreview()"
+                      style="display:block;width:100%;margin-top:4px;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px;font-size:12px;font-family:monospace;resize:vertical"
+                      placeholder="WH00001&#10;WH00002&#10;WH00003"></textarea>
+                  </label>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <label style="font-size:12px;font-weight:700">ประเภทรถ<select id="obCreateVelType" onchange="obOpenUpdatePreview()" style="display:block;width:100%;margin-top:4px;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px;font-size:12px;background:#fff"><option>6 ล้อ</option><option>10 ล้อ</option><option>รถตู้</option></select></label>
+                    <label style="font-size:12px;font-weight:700">TMO<select id="obCreateTmo" onchange="obOpenUpdatePreview()" style="display:block;width:100%;margin-top:4px;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px;font-size:12px;background:#fff"><option>INTER</option><option>DOME</option><option>OTHER</option></select></label>
+                  </div>
+                </div>
+              </section>
+
+              <!-- RIGHT: CTF Preview panel -->
+              <section class="panel preview-panel" id="obOpenPreviewPanel">
+                <div class="panel-title">
+                  <h2>Preview ใบ Cargo Transfer Form</h2>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <button type="button" onclick="obOpenZoom('out')"
+                      style="width:28px;height:28px;border:1.5px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center">−</button>
+                    <span id="obOpenZoomPct" style="font-size:12px;font-weight:700;color:#64748b;min-width:36px;text-align:center">78%</span>
+                    <button type="button" onclick="obOpenZoom('in')"
+                      style="width:28px;height:28px;border:1.5px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center">+</button>
+                    <button type="button" onclick="obOpenZoom('fit')"
+                      style="padding:5px 10px;border:1.5px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;color:#64748b">Fit</button>
+                  </div>
+                  <button type="button" onclick="obOpenPrint()"
+                    style="padding:7px 16px;background:#0f766e;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">🖨 พิมพ์</button>
+                </div>
+                <div id="obOpenCtfArea" class="cargo-preview" style="background:#d1d5db;overflow-y:auto;display:flex;justify-content:center;align-items:flex-start;padding:20px">
+                  <div class="empty-state">เลือก Flight Group เพื่อดู Preview ใบ CTF</div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="page" id="view-attendance" data-page="attendance">
+            <div id="attWebContent" style="padding:0"></div>
+          </section>
+
+          <section class="page" id="view-cs-queue" data-page="cs-queue">
+          </section>
+
+
+</main>
+      </div>
+    </div>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="chartTooltip" class="chart-tooltip" role="status" aria-live="polite"></div>
+    <div id="autoGroupModal" class="modal-backdrop" aria-hidden="true">
+      <section class="export-modal auto-group-modal" role="dialog" aria-modal="true" aria-labelledby="autoGroupTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="autoGroupTitle">จัดกลุ่มงาน / Cargo Grouping</h2>
+            <p id="autoGroupSummary">เลือกว่าจะแก้รายละเอียดก่อน หรือออกใบ Cargo ทันที / Review details or issue now</p>
+          </div>
+          <button id="closeAutoGroupModal" class="icon-button" type="button" aria-label="Close">×</button>
+        </div>
+        <div id="autoGroupSteps" class="wizard-steps"></div>
+        <div id="autoGroupDetails" class="auto-group-details group-wizard-body"></div>
+        <div class="modal-actions">
+          <button id="cancelAutoGroupModal" class="ghost-button" type="button">ยกเลิก / Cancel</button>
+          <button id="editAutoGroupBtn" class="secondary" type="button">ย้อนกลับ / Back</button>
+          <button id="printAutoGroupBtn" class="primary-button" type="button">ถัดไป / Next</button>
+        </div>
+      </section>
+    </div>
+    <div id="alertDetailModal" class="modal-backdrop" aria-hidden="true">
+      <section class="export-modal alert-detail-modal" role="dialog" aria-modal="true" aria-labelledby="alertDetailTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="alertDetailTitle">รายละเอียดแจ้งเตือน / Alert Detail</h2>
+            <p id="alertDetailSubtitle">ตรวจสอบข้อมูลก่อนทำงานต่อ / Review before continuing</p>
+          </div>
+          <button id="closeAlertDetailModal" class="icon-button" type="button" aria-label="Close">×</button>
+        </div>
+        <div id="alertDetailBody" class="alert-detail-body"></div>
+        <div class="modal-actions">
+          <button id="cancelAlertDetailModal" class="ghost-button" type="button">ปิด / Close</button>
+          <button id="secondaryAlertActionBtn" class="secondary" type="button">ดูใบเดิม / View Existing</button>
+          <button id="primaryAlertActionBtn" class="primary-button" type="button">ดำเนินการต่อ / Proceed</button>
+        </div>
+      </section>
+    </div>
+    <div id="jobQuickModal" class="modal-backdrop" aria-hidden="true">
+      <section class="export-modal job-quick-modal" role="dialog" aria-modal="true" aria-labelledby="jqvTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="jqvTitle">-</h2>
+            <p id="jqvSubtitle">-</p>
+          </div>
+          <button id="closeJobQuickModal" class="icon-button" type="button" aria-label="Close">×</button>
+        </div>
+        <div id="jqvStatus" class="jqv-status"></div>
+        <div id="jqvPipeline" class="jqv-pipeline"></div>
+        <div id="jqvBody" class="jqv-body"></div>
+        <div class="modal-actions">
+          <button id="jqvClose" class="ghost-button" type="button">ปิด / Close</button>
+          <button id="jqvGoGroup" class="secondary" type="button">ไปจัดกลุ่ม / Group</button>
+          <button id="jqvGoDetail" class="primary-button" type="button">ดูรายละเอียด / Detail</button>
+        </div>
+      </section>
+    </div>
+    <div id="adminRowModal" class="modal-backdrop" aria-hidden="true">
+      <section class="export-modal row-editor-modal" role="dialog" aria-modal="true" aria-labelledby="adminRowModalTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="adminRowModalTitle">เพิ่มรายการ House / Add House</h2>
+            <p>กรอกทีละ House แล้วดูตัวอย่างบนใบ Cargo Pickup Form / Fill each house and preview on the form</p>
+          </div>
+          <button id="closeAdminRowModal" class="icon-button" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="row-editor-grid">
+          <form id="adminRowModalForm" class="row-editor-form">
+            <label>House Number</label>
+            <input id="rowModalHouse" autocomplete="off" placeholder="เช่น 4840779189">
+            <label>ปลายทางของ House</label>
+            <select id="rowModalDestination">
+              <option value="WH3">WH3 เข้าคลัง</option>
+              <option value="TG">TG ส่งออก</option>
+              <option value="TGINT">TGINT ส่งออก</option>
+              <option value="BFS">BFS ส่งออก</option>
+            </select>
+            <label>จำนวนกล่อง / Carton</label>
+            <input id="rowModalCarton" inputmode="numeric" autocomplete="off" placeholder="จำนวน">
+            <label>วันที่รับสินค้า</label>
+            <input id="rowModalPickupDate" type="date">
+            <div class="modal-actions row-modal-actions">
+              <button id="cancelAdminRowModal" class="ghost-button" type="button">ยกเลิก</button>
+              <button id="saveAdminRowModal" class="primary-button" type="button">บันทึกรายการ</button>
+            </div>
+          </form>
+          <div class="row-editor-preview">
+            <h3>Preview บนใบจริง</h3>
+            <div id="rowModalPreview" class="cargo-preview mini-paper"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div id="exportConfirmModal" class="modal-backdrop" aria-hidden="true">
+      <section class="export-modal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="exportModalTitle">ยืนยันการส่งออก / Confirm Export</h2>
+            <p>ตรวจช่วงวันที่และสถานะก่อนส่งออก / Review filters before export</p>
+          </div>
+          <button id="closeExportModal" class="icon-button" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="export-review-grid">
+          <article>
+            <span>ประเภทไฟล์ / Export type</span>
+            <strong id="exportConfirmType">PDF</strong>
+          </article>
+          <article>
+            <span>วันที่เริ่ม / From</span>
+            <strong id="exportConfirmFrom">-</strong>
+          </article>
+          <article>
+            <span>วันที่สิ้นสุด / To</span>
+            <strong id="exportConfirmTo">-</strong>
+          </article>
+          <article>
+            <span>สถานะ / Status</span>
+            <strong id="exportConfirmStatus">-</strong>
+          </article>
+          <article>
+            <span>จำนวนงาน / Jobs</span>
+            <strong id="exportConfirmCount">0</strong>
+          </article>
+        </div>
+        <div class="modal-actions">
+          <button id="cancelExportConfirm" class="ghost-button" type="button">ยกเลิก / Cancel</button>
+          <button id="confirmExportAction" class="primary-button" type="button">ยืนยันส่งออก / Confirm Export</button>
+        </div>
+      </section>
+    </div>
+    <div id="importSummaryModal" class="modal-backdrop" aria-hidden="true">
+      <section class="export-modal import-summary-modal" role="dialog" aria-modal="true" aria-labelledby="importSummaryTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="importSummaryTitle">สรุปผลการ Import</h2>
+            <p id="importSummaryFile">-</p>
+          </div>
+        </div>
+        <div id="importSummaryGrid" class="import-summary-grid"></div>
+        <p class="import-summary-note">ระบบใช้เลข House ตรวจสอบข้อมูลซ้ำ งานเดิมจะไม่ถูกสร้างซ้ำ</p>
+        <div class="modal-actions">
+          <button id="confirmImportSummary" class="primary-button" type="button">ตกลง รับทราบ</button>
+        </div>
+      </section>
+    </div>
+    <div id="importPreviewModal" class="modal-backdrop" aria-hidden="true">
+      <section class="export-modal import-preview-modal" role="dialog" aria-modal="true" aria-labelledby="importPreviewTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="importPreviewTitle">ตรวจสอบก่อน Import / Preview Import</h2>
+            <p id="importPreviewFileName">-</p>
+          </div>
+          <button id="closeImportPreview" class="icon-button" type="button" aria-label="Close">✕</button>
+          </div>
+          <div class="import-preview-body">
+            <p><b id="importPreviewRowCount">0</b> รายการ / rows</p>
+            <div id="importPreviewTable" class="import-preview-table-wrap"></div>
+          </div>
+          <div class="modal-actions">
+            <button id="cancelImportPreview" class="ghost-button" type="button">ยกเลิก / Cancel</button>
+            <button id="confirmImportPreview" class="primary-button" type="button">นำเข้าข้อมูล / Import</button>
+          </div>
+        </section>
+      </div>
+    </div>
+    <!-- Calendar Day Detail Modal -->
+    <div id="calendarDayModal" class="modal-backdrop" aria-hidden="true" style="display:none">
+      <section class="calendar-day-modal" role="dialog" aria-modal="true" aria-labelledby="calendarDayTitle">
+        <div class="modal-head">
+          <div class="modal-head-text">
+            <p>งานประจำวัน / Daily Jobs</p>
+            <h2 id="calendarDayTitle">-</h2>
+          </div>
+          <button id="closeCalendarDayModal" class="modal-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <div id="calendarDayJobList" class="calendar-day-job-list"></div>
+      </section>
+    </div>
+    <!-- Cargo Transfer Form Modal — Full Screen Preview -->
+    <div id="cargoTransferModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.75);z-index:9000;flex-direction:column">
+      <!-- Top bar -->
+      <div style="background:linear-gradient(135deg,#0f766e,#0d9488);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="background:rgba(255,255,255,.2);border-radius:8px;padding:6px 10px;font-size:18px">🖨</div>
+          <div>
+            <div style="color:#fff;font-size:16px;font-weight:800">Cargo Transfer Form</div>
+            <div style="color:rgba(255,255,255,.75);font-size:11px">กรอกข้อมูลด้านซ้าย — Preview อัปเดตอัตโนมัติ</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button id="ctfPrintBtn" style="padding:10px 22px;background:#fff;color:#0f766e;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px">
+            🖨 พิมพ์
+          </button>
+          <button onclick="document.getElementById('cargoTransferModal').style.display='none'" style="padding:10px 18px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer">✕ ปิด</button>
+        </div>
+      </div>
+      <!-- Body: left inputs + right preview -->
+      <div style="display:flex;flex:1;overflow:hidden">
+        <!-- Left panel -->
+        <div style="width:300px;flex-shrink:0;background:#f8fafc;border-right:1px solid #e2e8f0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-size:11px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase">ข้อมูลรถ</div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px">ชื่อคนขับ *</label>
+            <input id="ctfDriver" type="text" placeholder="เช่น นครินทร์" oninput="updateCtfPreview()"
+              style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box;background:#fff">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px">ทะเบียนรถ *</label>
+            <input id="ctfPlate" type="text" placeholder="เช่น 735891" oninput="updateCtfPreview()"
+              style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box;background:#fff">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px">ประเภทรถ</label>
+            <select id="ctfVelType" onchange="updateCtfPreview()"
+              style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box;background:#fff">
+              <option value="6 ล้อ">6 ล้อ</option>
+              <option value="4 ล้อ">4 ล้อ</option>
+              <option value="10 ล้อ">10 ล้อ</option>
+              <option value="Pickup">Pickup</option>
+            </select>
+          </div>
+          <div style="border-top:1px solid #e2e8f0;padding-top:16px;font-size:11px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase">ปลายทาง</div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px">To TMO</label>
+            <select id="ctfTmo" onchange="updateCtfPreview()"
+              style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box;background:#fff">
+              <option value="INTER">INTER (นานาชาติ)</option>
+              <option value="TG">TG (การบินไทย)</option>
+              <option value="BFS">BFS</option>
+              <option value="TGINT">TGINT</option>
+            </select>
+          </div>
+          <div style="border-top:1px solid #e2e8f0;padding-top:16px;font-size:11px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase">ลายเซ็น</div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px">Release Shipment by</label>
+            <input id="ctfReleasedBy" type="text" placeholder="ชื่อผู้ปล่อยสินค้า" oninput="updateCtfPreview()"
+              style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box;background:#fff">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px">Unload by</label>
+            <input id="ctfUnloadBy" type="text" placeholder="เช่น Panthai" oninput="updateCtfPreview()"
+              style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box;background:#fff">
+          </div>
+          <div style="background:#f0fdf4;border-radius:10px;padding:12px;font-size:12px;color:#166534;border:1px solid #bbf7d0">
+            <b>📋 รายการใน Plan:</b><br>
+            <span id="ctfJobCount" style="font-size:20px;font-weight:800">0</span> งาน
+          </div>
+        </div>
+        <!-- Right preview -->
+        <div style="flex:1;overflow-y:auto;background:#94a3b8;padding:24px;display:flex;justify-content:center">
+          <div id="ctfPreviewArea" style="width:780px;min-height:900px"></div>
+        </div>
+      </div>
+    </div>
+
+  
+    <!-- Warehouse Location Detail Modal -->
+    <div id="whLocDetailModal" class="modal-backdrop" aria-hidden="true">
+      <section class="modal-box" role="dialog" aria-modal="true" style="max-width:420px">
+        <div class="modal-head">
+          <div class="modal-head-text">
+            <h2 id="whLocDetailTitle">Location</h2>
+            <p>ระดับและสินค้าที่จัดเก็บ</p>
+          </div>
+          <button id="closeWhLocDetail" class="modal-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <div id="whLocDetailBody" class="wh-loc-detail-body"></div>
+      </section>
+    </div>
+
+    <!-- Staff Location Picker Modal -->
+    <div id="whPickerModal" class="modal-backdrop" aria-hidden="true">
+      <section class="modal-box wh-picker-box" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <div class="modal-head-text">
+            <h2>เลือก Location / Select Location</h2>
+            <p id="whPickerHouseLabel">House: —</p>
+          </div>
+          <button id="closeWhPicker" class="modal-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <div class="wh-picker-legend">
+          <span class="wh-legend-dot" style="background:#22c55e"></span>ว่าง
+          <span class="wh-legend-dot" style="background:#f59e0b"></span>บางส่วน
+          <span class="wh-legend-dot" style="background:#ef4444"></span>เต็ม
+        </div>
+        <div id="whPickerCanvas" class="wh-picker-canvas"></div>
+        <div id="whPickerLevelRow" class="wh-picker-level-row" hidden>
+          <strong id="whPickerLocLabel">—</strong>
+          <div id="whPickerLevelBtns" class="wh-level-btns"></div>
+        </div>
+      </section>
+    </div>
+
+          <!-- Overlay Edit Modal -->
+        <div id="whOvEditModal" class="modal-backdrop" aria-hidden="true" role="dialog">
+          <div class="modal-panel" style="max-width:420px;width:92%">
+            <div class="modal-head">
+              <span class="modal-head-text">แก้ไข Overlay</span>
+              <button id="closeWhOvEdit" class="modal-close" aria-label="ปิด"><i data-lucide="x"></i></button>
+            </div>
+            <div style="padding:16px 20px 20px">
+              <input type="hidden" id="whOvEditId">
+              <label style="font-size:12px;font-weight:600;color:var(--muted)">ประเภท</label>
+              <div class="wh-ov-type-row" style="margin:6px 0 12px">
+                <button class="wh-ov-type-btn wh-ov-edit-type-btn active" data-ov-type="aisle"><i data-lucide="footprints"></i><span>ทางเดิน</span></button>
+                <button class="wh-ov-type-btn wh-ov-edit-type-btn" data-ov-type="door"><i data-lucide="log-in"></i><span>ประตู</span></button>
+                <button class="wh-ov-type-btn wh-ov-edit-type-btn" data-ov-type="office"><i data-lucide="building-2"></i><span>ออฟฟิศ</span></button>
+                <button class="wh-ov-type-btn wh-ov-edit-type-btn" data-ov-type="pillar"><i data-lucide="square"></i><span>เสา</span></button>
+                <button class="wh-ov-type-btn wh-ov-edit-type-btn" data-ov-type="wall"><i data-lucide="minus"></i><span>กำแพง</span></button>
+                <button class="wh-ov-type-btn wh-ov-edit-type-btn" data-ov-type="label"><i data-lucide="tag"></i><span>ป้าย</span></button>
+              </div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted)">ชื่อ</label>
+              <input id="whOvEditLabel" placeholder="ชื่อ Overlay" style="width:100%;margin:4px 0 10px">
+              <label style="font-size:12px;font-weight:600;color:var(--muted)">คำบรรยาย (ไม่บังคับ)</label>
+              <input id="whOvEditSublabel" placeholder="เช่น Main Aisle" style="width:100%;margin:4px 0 10px">
+              <label style="font-size:12px;font-weight:600;color:var(--muted)">สี</label>
+              <input id="whOvEditColor" type="color" value="#f1f5f9" style="width:100%;height:36px;padding:2px;border-radius:6px;border:1px solid var(--border);cursor:pointer;margin-top:4px">
+              <div style="display:flex;gap:8px;margin-top:16px">
+                <button id="whOvEditSaveBtn" type="button" class="primary-button" style="flex:1">บันทึก</button>
+                <button id="closeWhOvEdit2" type="button" class="ghost-button">ยกเลิก</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Warehouse Confirm Modal -->
+        <div id="whConfirmModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,15,30,0.65);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+          <div style="background:var(--surface,#fff);border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.3);width:min(420px,92vw);overflow:hidden;border:1px solid var(--line,#e2e8f0)">
+            <div style="padding:20px 24px 12px;border-bottom:1px solid var(--line,#e2e8f0)">
+              <span style="font-weight:700;font-size:16px;color:var(--text,#0f172a)">ยืนยัน / Confirm</span>
+            </div>
+            <div style="padding:20px 24px 16px">
+              <p id="whConfirmMsg" style="margin:0;font-size:14px;line-height:1.6;color:var(--text,#0f172a)"></p>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;padding:12px 24px 20px">
+              <button id="whConfirmCancel" style="padding:0 20px;height:40px;border-radius:8px;border:1.5px solid #2563eb;background:#fff;color:#2563eb;font-size:14px;font-weight:600;cursor:pointer">ยกเลิก</button>
+              <button id="whConfirmOk" style="padding:0 20px;height:40px;border-radius:8px;border:1.5px solid #dc2626;background:#dc2626;color:#fff;font-size:14px;font-weight:600;cursor:pointer">ยืนยัน / ตกลง</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone Create Modal -->
+        <div id="whZoneCreateModal" class="modal-backdrop" aria-hidden="true" role="dialog">
+          <div class="modal-panel" style="max-width:520px;width:94%;overflow:hidden">
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%)">
+              <div style="display:flex;align-items:center;gap:10px;color:#fff">
+                <i data-lucide="grid-2x2-plus" style="width:20px;height:20px;flex-shrink:0"></i>
+                <span style="font-size:15px;font-weight:700;letter-spacing:.01em">สร้างโซนใหม่</span>
+              </div>
+              <button id="whZoneModalClose" aria-label="ปิด"
+                style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:none;background:rgba(255,255,255,.18);color:#fff;cursor:pointer;transition:background .15s"
+                onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.18)'">
+                <i data-lucide="x" style="width:16px;height:16px"></i>
+              </button>
+            </div>
+            <!-- Body -->
+            <div style="padding:20px 22px 22px;display:flex;flex-direction:column;gap:14px;background:var(--surface)">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">ชื่อโซน</label>
+                  <input id="whZoneName" placeholder="เช่น Zone C" style="width:100%;box-sizing:border-box">
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Prefix (A, B, C...)</label>
+                  <input id="whZonePrefix" placeholder="C" maxlength="3" style="width:100%;box-sizing:border-box;text-transform:uppercase">
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">แถว</label>
+                  <input id="whZoneRows" type="number" min="1" max="20" value="5" style="width:100%;box-sizing:border-box" oninput="updateWhZonePreview()">
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">คอลัมน์</label>
+                  <input id="whZoneCols" type="number" min="1" max="20" value="10" style="width:100%;box-sizing:border-box" oninput="updateWhZonePreview()">
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">ระดับ/ชั้น</label>
+                  <input id="whZoneLevels" type="number" min="1" max="5" value="2" style="width:100%;box-sizing:border-box" oninput="updateWhZonePreview()">
+                </div>
+              </div>
+              <!-- Preview badge -->
+              <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px">
+                <i data-lucide="package" style="width:15px;height:15px;color:#2563eb;flex-shrink:0"></i>
+                <span id="whZonePreviewText" style="font-size:13px;color:#1e40af">จะสร้าง <b>100</b> ช่องเก็บสินค้า (5 แถว × 10 คอลัมน์ × 2 ชั้น)</span>
+              </div>
+              <div>
+                <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">สีโซน</label>
+                <div class="wh-color-row" id="whColorPicker" style="gap:8px;flex-wrap:wrap">
+                  <button class="wh-color-btn active" data-color="#dbeafe" style="background:#dbeafe;width:34px;height:34px;border-radius:8px" title="ฟ้า"></button>
+                  <button class="wh-color-btn" data-color="#dcfce7" style="background:#dcfce7;width:34px;height:34px;border-radius:8px" title="เขียว"></button>
+                  <button class="wh-color-btn" data-color="#fef9c3" style="background:#fef9c3;width:34px;height:34px;border-radius:8px" title="เหลือง"></button>
+                  <button class="wh-color-btn" data-color="#fee2e2" style="background:#fee2e2;width:34px;height:34px;border-radius:8px" title="แดง"></button>
+                  <button class="wh-color-btn" data-color="#f3e8ff" style="background:#f3e8ff;width:34px;height:34px;border-radius:8px" title="ม่วง"></button>
+                  <button class="wh-color-btn" data-color="#e5e7eb" style="background:#e5e7eb;width:34px;height:34px;border-radius:8px" title="เทา"></button>
+                  <button class="wh-color-btn" data-color="#fde68a" style="background:#fde68a;width:34px;height:34px;border-radius:8px" title="ส้ม"></button>
+                  <button class="wh-color-btn" data-color="#bfdbfe" style="background:#bfdbfe;width:34px;height:34px;border-radius:8px" title="น้ำเงิน"></button>
+                </div>
+              </div>
+              <p id="whCreateResult" style="font-size:12px;color:var(--muted);margin:0;min-height:16px"></p>
+              <div style="display:flex;gap:8px">
+                <button id="whCreateZoneBtn" type="button" class="primary-button" style="flex:1">
+                  <i data-lucide="plus" aria-hidden="true"></i> สร้างโซน
+                </button>
+                <button id="whZoneModalCancel" type="button" class="ghost-button">ยกเลิก</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone Edit Modal -->
+        <div id="whZoneEditModal" class="modal-backdrop" aria-hidden="true">
+          <div class="modal-panel" style="max-width:420px;width:92%;overflow:hidden">
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%)">
+              <div style="display:flex;align-items:center;gap:10px;color:#fff">
+                <i data-lucide="pencil" style="width:18px;height:18px;flex-shrink:0"></i>
+                <span style="font-size:15px;font-weight:700">แก้ไขโซน</span>
+              </div>
+              <button id="whZoneEditClose"
+                style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:none;background:rgba(255,255,255,.18);color:#fff;cursor:pointer"
+                onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.18)'">
+                <i data-lucide="x" style="width:16px;height:16px"></i>
+              </button>
+            </div>
+            <!-- Body -->
+            <div style="padding:20px 22px 22px;display:flex;flex-direction:column;gap:14px;background:var(--surface)">
+              <input type="hidden" id="whZoneEditId">
+              <div>
+                <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">ชื่อโซน</label>
+                <input id="whZoneEditName" style="width:100%;box-sizing:border-box" placeholder="ชื่อโซน">
+              </div>
+              <div>
+                <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">ระดับต่อช่อง (Levels)</label>
+                <input id="whZoneEditLevels" type="number" min="1" max="5" value="2" style="width:100%;box-sizing:border-box">
+              </div>
+              <div>
+                <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">สีโซน</label>
+                <div class="wh-color-row" style="gap:8px;margin-top:2px">
+                  <button class="wh-color-btn wh-color-edit-btn active" data-color="#dbeafe" style="background:#dbeafe;width:34px;height:34px;border-radius:8px"></button>
+                  <button class="wh-color-btn wh-color-edit-btn" data-color="#dcfce7" style="background:#dcfce7;width:34px;height:34px;border-radius:8px"></button>
+                  <button class="wh-color-btn wh-color-edit-btn" data-color="#fef9c3" style="background:#fef9c3;width:34px;height:34px;border-radius:8px"></button>
+                  <button class="wh-color-btn wh-color-edit-btn" data-color="#fee2e2" style="background:#fee2e2;width:34px;height:34px;border-radius:8px"></button>
+                  <button class="wh-color-btn wh-color-edit-btn" data-color="#f3e8ff" style="background:#f3e8ff;width:34px;height:34px;border-radius:8px"></button>
+                  <button class="wh-color-btn wh-color-edit-btn" data-color="#e5e7eb" style="background:#e5e7eb;width:34px;height:34px;border-radius:8px"></button>
+                  <button class="wh-color-btn wh-color-edit-btn" data-color="#fde68a" style="background:#fde68a;width:34px;height:34px;border-radius:8px"></button>
+                  <button class="wh-color-btn wh-color-edit-btn" data-color="#bfdbfe" style="background:#bfdbfe;width:34px;height:34px;border-radius:8px"></button>
+                </div>
+              </div>
+              <div style="border-top:1px solid var(--line);margin-top:4px;padding-top:14px">
+                <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">ความจุโซน (0 = ไม่จำกัด)</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                  <label style="font-size:12px;font-weight:600;color:var(--text)">พาเลทสูงสุด
+                    <input id="whZoneEditMaxPallets" type="number" min="0" value="0"
+                      style="width:100%;box-sizing:border-box;margin-top:4px" placeholder="0 = ไม่จำกัด">
+                  </label>
+                  <label style="font-size:12px;font-weight:600;color:var(--text)">กล่องสูงสุด
+                    <input id="whZoneEditMaxBoxes" type="number" min="0" value="0"
+                      style="width:100%;box-sizing:border-box;margin-top:4px" placeholder="0 = ไม่จำกัด">
+                  </label>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:14px">
+                <button id="whZoneEditSave" type="button" class="primary-button" style="flex:1">
+                  <i data-lucide="save"></i> บันทึก
+                </button>
+                <button id="whZoneEditClose2" type="button" class="ghost-button" onclick="closeWhModal('whZoneEditModal')">ยกเลิก</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        </div><!-- end modals -->
+
+  <!-- Outbound Move Job Modal -->
+  <div id="obMoveModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9800;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:14px;padding:20px 22px;width:320px;max-height:75vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <h3 style="margin:0 0 14px;font-size:15px;font-wei      <h3 id="obMoveJobLabel" style="margin:0 0 14px;font-size:15px;font-weight:700;color:#1e293b">ย้ายงาน</h3>
+      <div id="obMoveOptions" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;padding:4px 0"></div>
+      <button type="button" onclick="document.getElementById('obMoveModal').style.display='none'"
+        style="margin-top:12px;width:100%;padding:9px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;cursor:pointer;font-size:13px">
+        ยกเลิก
+      </button>
+    </div>
+  </div>
+
+  <!-- Load Plan Preview/Diff Modal -->
+  <div id="lpPreviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9900;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:14px;width:min(680px,96vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.22)">
+      <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">
+        <strong style="font-size:15px">📋 ตรวจสอบก่อน Import Load Plan</strong>
+        <button onclick="document.getElementById('lpPreviewModal').style.display='none'" style="border:none;background:none;font-size:20px;cursor:pointer;color:#64748b">×</button>
+      </div>
+      <div id="lpPreviewModalBody" style="padding:18px 20px;overflow-y:auto;flex:1"></div>
+      <div style="padding:14px 20px;border-top:1px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="document.getElementById('lpPreviewModal').style.display='none'"
+          style="padding:9px 20px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;cursor:pointer;font-size:13px">ยกเลิก</button>
+        <button onclick="doLpImport()"
+          style="padding:9px 24px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-weight:600;font-size:13px;cursor:pointer">✅ ยืนยัน Import</button>
+      </div>
+    </div>
+  </div>
+
+        <script src="config.js"></script>
+    <script src="demo-data.js"></script>
+    <script src="app.js?v=23"></script>
+  </body>
+</html>
