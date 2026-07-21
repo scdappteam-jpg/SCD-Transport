@@ -21181,3 +21181,108 @@ small, .eyebrow, .panel-title span, .metric-card span, .chart-legend, .table-sub
 /* ══ Alert cards คลิกได้ทั้งใบ ══ */
 .ak-card.clickable { cursor: pointer; transition: transform .1s, box-shadow .12s; }
 .ak-card.clickable:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15,23,42,.1); }
+
+/* Render login viewport fit override */
+.login-screen {
+  align-items: center !important;
+  justify-items: center !important;
+  padding: 18px !important;
+  min-height: 100vh !important;
+  overflow: auto !important;
+}
+
+.login-shell {
+  width: min(1120px, calc(100vw - 36px)) !important;
+  max-height: calc(100vh - 36px) !important;
+  min-height: 0 !important;
+  grid-template-columns: minmax(360px, .95fr) minmax(360px, .85fr) !important;
+  overflow: hidden !important;
+}
+
+.login-brand,
+.login-panel {
+  min-height: 0 !important;
+  padding: clamp(22px, 3vw, 36px) !important;
+}
+
+.login-brand {
+  justify-content: center !important;
+  gap: 22px !important;
+}
+
+.login-panel {
+  justify-content: center !important;
+  overflow-y: auto !important;
+}
+
+.login-panel h1 {
+  font-size: clamp(24px, 3vw, 32px) !important;
+  margin-bottom: 8px !important;
+}
+
+.login-panel select,
+.login-panel input {
+  min-height: 46px !important;
+}
+
+.login-panel button#webLoginBtn {
+  min-height: 48px !important;
+}
+
+.quick-start-wrap {
+  margin-top: 10px !important;
+}
+
+.quick-start-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.qs-btn {
+  min-height: 38px !important;
+  white-space: nowrap;
+}
+
+@media (max-height: 760px) and (min-width: 821px) {
+  .login-shell {
+    max-height: calc(100vh - 24px) !important;
+  }
+
+  .login-brand {
+    gap: 14px !important;
+  }
+
+  .lb-hero h2 {
+    font-size: 26px !important;
+  }
+
+  .lb-hero p {
+    font-size: 12.5px !important;
+    line-height: 1.45 !important;
+  }
+
+  .login-panel {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+  }
+
+  .login-panel form {
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .login-shell {
+    grid-template-columns: 1fr !important;
+    width: min(560px, calc(100vw - 24px)) !important;
+    max-height: none !important;
+  }
+
+  .login-brand {
+    padding: 20px !important;
+  }
+
+  .lb-hero,
+  .lb-steps {
+    display: none !important;
+  }
+}
