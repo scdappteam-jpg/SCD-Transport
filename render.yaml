@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: smart-logistics-tracking
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DATA_DIR
+        value: /var/data/data
+      - key: STORAGE_DIR
+        value: /var/data/storage
+      - key: LINE_WEBHOOK_URL
+        sync: false
