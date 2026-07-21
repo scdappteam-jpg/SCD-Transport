@@ -189,6 +189,26 @@ function writeDb(db) {
   }
 }
 
+ensureRuntimeFiles();
+
+function summarizeDb(db = {}) {
+  return {
+    users: Array.isArray(db.users) ? db.users.length : 0,
+    customers: Array.isArray(db.customers) ? db.customers.length : 0,
+    jobs: Array.isArray(db.jobs) ? db.jobs.length : 0,
+    attachments: Array.isArray(db.attachments) ? db.attachments.length : 0,
+    billing: Array.isArray(db.billing) ? db.billing.length : 0,
+    loadPlans: Array.isArray(db.loadPlans) ? db.loadPlans.length : 0,
+    activityLogs: Array.isArray(db.activityLogs) ? db.activityLogs.length : 0
+  };
+}
+
+function readBundledDb() {
+  const bundledDb = path.join(ROOT, "data", "db.json");
+  if (!fs.existsSync(bundledDb)) return null;
+  return JSON.parse(fs.readFileSync(bundledDb, "utf8"));
+}
+
 function ensureCoreUsers(db) {
   db.users ||= [];
   const defaults = [
@@ -2033,6 +2053,45 @@ async function handleApi(req, res, pathname) {
   }
 
   // ── Warehouse Maps API ──
+  if (req.method === "GET" && pathname === "/api/admin/db-info") {
+    const bundled = readBundledDb();
+    return sendJson(res, 200, {
+      ok: true,
+      seedBundleEnabled: String(process.env.SEED_BUNDLE_DB || "").toLowerCase() === "true",
+      runtime: summarizeDb(db),
+      bundled: bundled ? summarizeDb(bundled) : null,
+      dataDir: DATA_DIR,
+      storageDir: STORAGE_DIR,
+      dbFile: DB_FILE
+    });
+  }
+
+  if ((req.method === "GET" || req.method === "POST") && pathname === "/api/admin/seed-bundle-db") {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const payload = req.method === "POST" ? await parseBody(req) : {};
+    const confirmed = url.searchParams.get("confirm") === "LOCAL" || payload.confirm === "LOCAL";
+    const seedEnabled = String(process.env.SEED_BUNDLE_DB || "").toLowerCase() === "true";
+    if (!seedEnabled || !confirmed) {
+      return sendJson(res, 403, {
+        ok: false,
+        error: "Set SEED_BUNDLE_DB=true and call with confirm=LOCAL to seed bundled local data."
+      });
+    }
+    const bundled = readBundledDb();
+    if (!bundled) return sendJson(res, 404, { ok: false, error: "Bundled data/db.json not found in deployment." });
+    const backupFile = DB_FILE + ".before-manual-seed";
+    if (fs.existsSync(DB_FILE)) fs.copyFileSync(DB_FILE, backupFile);
+    fs.copyFileSync(path.join(ROOT, "data", "db.json"), DB_FILE);
+    const seeded = readDb();
+    return sendJson(res, 200, {
+      ok: true,
+      message: "Bundled local data copied to runtime database.",
+      backupFile,
+      runtime: summarizeDb(seeded),
+      dashboard: buildDashboard(seeded)
+    });
+  }
+
   if (req.method === "GET" && pathname === "/api/warehouse/maps") {
     const jobs = db.jobs || [];
     const maps = (db.warehouseMaps || []).map(map => ({
