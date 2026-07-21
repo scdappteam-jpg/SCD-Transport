@@ -33,6 +33,11 @@ function ensureRuntimeFiles() {
   fs.mkdirSync(INVOICE_DIR, { recursive: true });
   fs.mkdirSync(IMPORT_FEED_DIR, { recursive: true });
   if (!fs.existsSync(DB_FILE)) {
+    const bundledDb = path.join(ROOT, "data", "db.json");
+    if (path.resolve(bundledDb) !== path.resolve(DB_FILE) && fs.existsSync(bundledDb)) {
+      fs.copyFileSync(bundledDb, DB_FILE);
+      return;
+    }
     const now = new Date().toISOString();
     const seed = {
       users: [
