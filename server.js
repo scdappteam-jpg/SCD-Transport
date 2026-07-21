@@ -32,8 +32,16 @@ function ensureRuntimeFiles() {
   fs.mkdirSync(STORAGE_DIR, { recursive: true });
   fs.mkdirSync(INVOICE_DIR, { recursive: true });
   fs.mkdirSync(IMPORT_FEED_DIR, { recursive: true });
+  const bundledDb = path.join(ROOT, "data", "db.json");
+  const shouldSeedFromBundle = String(process.env.SEED_BUNDLE_DB || "").toLowerCase() === "true";
+  if (shouldSeedFromBundle && fs.existsSync(bundledDb)) {
+    if (fs.existsSync(DB_FILE)) {
+      fs.copyFileSync(DB_FILE, DB_FILE + ".before-bundle-seed");
+    }
+    fs.copyFileSync(bundledDb, DB_FILE);
+    return;
+  }
   if (!fs.existsSync(DB_FILE)) {
-    const bundledDb = path.join(ROOT, "data", "db.json");
     if (path.resolve(bundledDb) !== path.resolve(DB_FILE) && fs.existsSync(bundledDb)) {
       fs.copyFileSync(bundledDb, DB_FILE);
       return;
