@@ -8,11 +8,11 @@ const PORT = Number(process.env.PORT || 3000);
 const TZ = "Asia/Bangkok";
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, "public");
-const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, "data");
-const STORAGE_DIR = process.env.STORAGE_DIR ? path.resolve(process.env.STORAGE_DIR) : path.join(ROOT, "storage");
-const INVOICE_DIR = path.join(STORAGE_DIR, "invoices");
-const DB_FILE = path.join(DATA_DIR, "db.json");
-const IMPORT_FEED_DIR = process.env.IMPORT_FEED_DIR || path.join(DATA_DIR, "import-feed");
+let DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, "data");
+let STORAGE_DIR = process.env.STORAGE_DIR ? path.resolve(process.env.STORAGE_DIR) : path.join(ROOT, "storage");
+let INVOICE_DIR = path.join(STORAGE_DIR, "invoices");
+let DB_FILE = path.join(DATA_DIR, "db.json");
+let IMPORT_FEED_DIR = process.env.IMPORT_FEED_DIR || path.join(DATA_DIR, "import-feed");
 const IMPORT_INTERVAL_MS = Number(process.env.IMPORT_INTERVAL_MS || 2 * 60 * 60 * 1000);
 
 const MIME = {
@@ -28,10 +28,23 @@ const MIME = {
 };
 
 function ensureRuntimeFiles() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.mkdirSync(STORAGE_DIR, { recursive: true });
-  fs.mkdirSync(INVOICE_DIR, { recursive: true });
-  fs.mkdirSync(IMPORT_FEED_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(STORAGE_DIR, { recursive: true });
+    fs.mkdirSync(INVOICE_DIR, { recursive: true });
+    fs.mkdirSync(IMPORT_FEED_DIR, { recursive: true });
+  } catch (err) {
+    console.warn(`[runtime] Cannot write DATA_DIR/STORAGE_DIR (${err.code || err.message}). Falling back to project-local data folders.`);
+    DATA_DIR = path.join(ROOT, "data");
+    STORAGE_DIR = path.join(ROOT, "storage");
+    INVOICE_DIR = path.join(STORAGE_DIR, "invoices");
+    DB_FILE = path.join(DATA_DIR, "db.json");
+    IMPORT_FEED_DIR = process.env.IMPORT_FEED_DIR || path.join(DATA_DIR, "import-feed");
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(STORAGE_DIR, { recursive: true });
+    fs.mkdirSync(INVOICE_DIR, { recursive: true });
+    fs.mkdirSync(IMPORT_FEED_DIR, { recursive: true });
+  }
   const bundledDb = path.join(ROOT, "data", "db.json");
   const shouldSeedFromBundle = String(process.env.SEED_BUNDLE_DB || "").toLowerCase() === "true";
   if (shouldSeedFromBundle && fs.existsSync(bundledDb)) {
