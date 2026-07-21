@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b4ea2">
+    <title>S.C.D.TRANSPORT Mobile</title>
+    <link rel="icon" href="icon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="mobile.css?v=20260720a">
+  </head>
+  <body class="mobile-locked">
+    <header class="mobile-header">
+      <div>
+        <strong>S.C.D.TRANSPORT</strong>
+        <span>Field Operation · งานภาคสนาม</span>
+      </div>
+      <div class="mobile-header-actions">
+        <button id="mobileLanguageToggle" type="button">TH</button>
+        <a href="index.html">Web</a>
+        <button id="mobileHeaderLogoutBtn" class="mobile-header-logout" type="button" hidden>Logout</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="login-card">
+        <div class="login-shell">
+          <div class="login-brand">
+            <div class="login-logo">SCD</div>
+            <div>
+              <strong>S.C.D.TRANSPORT Co., LTD</strong>
+              <span>งานพนักงานภาคสนาม / Mobile Staff Operations</span>
+            </div>
+          </div>
+          <div class="login-panel">
+            <p>เข้าสู่ระบบ / Sign In</p>
+            <h1>ระบบติดตามงานขนส่ง / Logistics System</h1>
+            <label>ผู้ใช้งาน / User</label>
+            <select id="mobileUserSelect"></select>
+            <label>รหัสผ่าน / Password</label>
+            <input id="mobileLoginPassword" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอกรหัสผ่าน / Enter password">
+            <button id="mobileLoginBtn" type="button">เข้าสู่ระบบ / Sign In</button>
+            <button id="mobileLogoutBtn" type="button" class="logout-inline" hidden>ออกจากระบบ / Logout</button>
+            <div id="mobileLoginStatus" class="login-status" role="status"></div>
+            <div class="quick-start-wrap">
+              <div class="quick-start-label">⚡ เข้าด่วน (Demo)</div>
+              <div class="quick-start-grid">
+                <button class="qs-btn qs-driver" type="button" onclick="quickMobileLogin('u_driver_01')">🚛 Driver A</button>
+                <button class="qs-btn qs-wh" type="button" onclick="quickMobileLogin('u_wh_01')">📦 WH Staff</button>
+                <button class="qs-btn qs-whl" type="button" onclick="quickMobileLogin('u_wh_leader_01')">🏭 WH Leader</button>
+                <button class="qs-btn qs-transport" type="button" onclick="quickMobileLogin('u_transport_01')">🔄 Transport</button>
+                <button class="qs-btn" type="button" onclick="quickMobileLogin('u_driver_02')">🚛 Driver B</button>
+                <button class="qs-btn qs-exec" type="button" onclick="quickMobileLogin('u_admin_01')">🛡️ Admin</button>
+                <button class="qs-btn qs-cs" type="button" onclick="quickMobileLogin('u_cs_01')">📋 CS</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="hero-card">
+        <p>เลือกงานที่ต้องการทำ / Choose operation</p>
+        <h1>งานของฉันวันนี้</h1>
+        <div class="status-strip">
+          <span><b id="mobileOpenJobs">0</b> งานเปิด / Open</span>
+          <span><b id="mobileBillingJobs">0</b> รอวางบิล / Billing</span>
+        </div>
+      </section>
+
+      <nav class="action-grid" aria-label="Mobile actions">
+        <button class="action-card active" type="button" data-mobile-tab="pickup">
+          <span>📦</span>
+          <b>Pickup</b>
+          <small>รับสินค้า / Driver</small>
+        </button>
+        <button class="action-card" type="button" data-mobile-tab="inbound">
+          <span>⌗</span>
+          <b>Inbound</b>
+          <small>สแกนเข้าคลัง / WH3</small>
+        </button>
+        <button class="action-card" type="button" data-mobile-tab="outbound">
+          <span>✈</span>
+          <b>Outbound</b>
+          <small>Terminal / X-Ray</small>
+        </button>
+        <button class="action-card" type="button" data-mobile-tab="billing">
+          <span>฿</span>
+          <b>Billing</b>
+          <small>วางบิล / Invoice</small>
+        </button>
+        <button class="action-card" type="button" data-mobile-tab="attendance">
+          <span>🪪</span>
+          <b>เข้างาน</b>
+          <small>Check-in / Check-out</small>
+        </button>
+      </nav>
+
+      <section class="mobile-panel active" id="tab-pickup">
+        <div class="bot-row">
+          <div class="bot-avatar">SCD</div>
+          <div class="bubble">กรอก House แล้วกดเช็คอิน ระบบจะเก็บเวลาและ GPS / Enter House and check in.</div>
+        </div>
+        <div class="guided-module-head"><h2>ขั้นตอน Pickup</h2><div class="guided-mini-flow"><span>1 เลือกงาน</span><span>2 Check-in</span><span>3 ตรวจและโหลด</span><span>4 จบงาน</span></div></div>
+        <label>วันที่ / Pickup Date</label>
+        <input id="driverPickupDate" type="date">
+        <label>ใบงาน / Assigned Job</label>
+        <select id="driverJobSelect"></select>
+        <div id="driverGroupSummary" class="group-summary" hidden></div>
+        <div id="driverFlowNotice" class="flow-notice">
+          <strong>เลือกงานเพื่อเริ่ม Flow / Select a job</strong>
+          <span>ระบบจะแจ้งว่าต้องไปรับฟอร์ม WH3 หรือกรอก Cargo Pickup Form เอง</span>
+        </div>
+        <button id="openPickupWorkflowBtn" type="button">เปิดใบงานนี้ / Open Job</button>
+        <div id="pickupWorkflowDetails" class="guided-workflow-details" hidden>
+        <input id="driverHouse" type="hidden" value="H-1001">
+        <div class="mwf-stepper" id="mwfStepper"></div>
+        <div class="mwf-step" data-mstep="1">
+        <label>ประเภทงาน / Pickup Case</label>
+        <select id="driverPickupCase">
+          <option value="GeneralManual">งานทั่วไป - คนขับกรอก/เขียน Cargo Pickup Form เอง</option>
+          <option value="SpecialMD">งานพิเศษ/MD - ต้องรับ Cargo Pickup Form จาก WH3</option>
+        </select>
+        <label>ลูกค้า / Customer</label>
+        <input id="driverCustomerName" autocomplete="off" placeholder="ชื่อลูกค้า / Customer name">
+        <label>ทะเบียนรถ / Truck License</label>
+        <input id="driverVehiclePlate" autocomplete="off" placeholder="เช่น 70-3472">
+        <label>สถานที่เริ่มต้น / Start Place</label>
+        <input id="driverStartPlace" autocomplete="off" placeholder="คลังลูกค้า / Customer warehouse">
+        <p class="step-note">1) กดเช็คอินก่อนเริ่มงาน / Check in before filling the form.</p>
+        <button id="checkInBtn" type="button" class="checkin-button">เช็คอิน / Check-in</button>
+        <div class="pause-card">
+          <label>Pause reason / เหตุผลหยุดเวลา KPI</label>
+          <select id="pickupPauseReason">
+            <option value="WarehouseDelay">Warehouse delay</option>
+            <option value="CutoffWaiting">Waiting cut-off</option>
+            <option value="ShippingDelay">Shipping delay</option>
+            <option value="CustomerDelay">Customer delay</option>
+            <option value="VehicleIssue">Vehicle issue</option>
+          </select>
+          <textarea id="pickupPauseNote" rows="2" placeholder="หมายเหตุ เช่น ถึงคลังแล้วรอปล่อยสินค้า"></textarea>
+          <div class="button-row two">
+            <button id="pausePickupBtn" type="button" class="soft">Pause KPI</button>
+            <button id="resumePickupBtn" type="button" class="soft">Resume</button>
+          </div>
+        </div>
+        </div>
+        <div class="mwf-step" data-mstep="2" hidden>
+        <label>จำนวนสินค้า / Piece Count</label>
+        <input id="driverPieceCount" type="number" inputmode="numeric" placeholder="จำนวนกล่อง/ชิ้น">
+        <div class="field-head">
+          <label>รายการงาน / Jobs</label>
+          <button id="addDriverPickupItem" type="button" class="mini-add">+ เพิ่มงาน</button>
+        </div>
+        <div id="driverPickupItemRows" class="job-row-list"></div>
+        <textarea id="driverPickupItems" hidden></textarea>
+        <label>ประเภทการแพ็ค / Package Type</label>
+        <select id="driverPackageType">
+          <option value="Carton">กล่อง / Carton</option>
+          <option value="Bundle">มัด / Bundle</option>
+          <option value="Pallet">พาเลท / Pallet</option>
+          <option value="Mixed">ผสม / Mixed</option>
+        </select>
+        </div>
+        <div class="mwf-step" data-mstep="3" hidden>
+        <section class="checklist-card">
+          <h3>ตรวจสินค้า 10 รายการ / 10-point check</h3>
+          <label><input class="pickup-check" type="checkbox" value="date"> 1. วันที่รับสินค้า / Pickup date</label>
+          <label><input class="pickup-check" type="checkbox" value="customer"> 2. ชื่อลูกค้า / Customer</label>
+          <label><input class="pickup-check" type="checkbox" value="place"> 3. สถานที่รับสินค้า / Pickup place</label>
+          <label><input class="pickup-check" type="checkbox" value="driver"> 4. คนขับและทะเบียนรถ / Driver and plate</label>
+          <label><input class="pickup-check" type="checkbox" value="house"> 5. House และจำนวนสินค้า / House and pieces</label>
+          <label><input class="pickup-check" type="checkbox" value="package"> 6. ประเภทแพ็ค / Package type</label>
+          <label><input class="pickup-check" type="checkbox" value="inspector"> 7. ผู้ตรวจสอบพร้อมวันเวลา / Inspector sign date-time</label>
+          <label><input class="pickup-check" type="checkbox" value="receiver"> 8. ผู้รับของพร้อมวันเวลา / Receiver sign date-time</label>
+          <label><input class="pickup-check" type="checkbox" value="route-log"> 9. บันทึกสถานที่เริ่ม-สิ้นสุด / Route time log</label>
+          <label><input class="pickup-check" type="checkbox" value="destination"> 10. ปลายทางแต่ละ House / Destination routing</label>
+        </section>
+        <label>สี Sticker (เฉพาะงาน WD/พิเศษ) / Sticker Color</label>
+        <input id="driverStickerColor" autocomplete="off" placeholder="เช่น เหลือง / Yellow">
+        <div id="stickerNotice" class="flow-notice soft-note">
+          <strong>Sticker rule</strong>
+          <span>งานพิเศษ/MD หรือ WD ต้องแปะ Sticker สีเพื่อแยกประเภทสินค้าก่อนโหลดขึ้นรถ</span>
+        </div>
+        <div class="route-note">
+          <strong>ปลายทางเลือกตามเลข House</strong>
+          <span>เลือก WH3/TG/TGINT/BFS ในแต่ละแถว House ด้านบน ไม่ใช้ปลายทางรวมทั้งงาน</span>
+        </div>
+        <label>ผู้ตรวจสอบ / Inspector</label>
+        <input id="driverInspectorName" autocomplete="off" placeholder="ชื่อผู้ตรวจสอบ">
+        <label>เจ้าหน้าที่รับของ / Receiver</label>
+        <input id="driverReceiverName" autocomplete="off" placeholder="ชื่อผู้รับของ">
+        <label>สถานที่สิ้นสุด / End Place</label>
+        <input id="driverEndPlace" readonly value="คำนวณจากปลายทางของแต่ละ House">
+        <label>รูปสินค้า / Product Photos (แนบได้หลายรูป)</label>
+        <input id="productImages" type="file" accept="image/*" capture="environment" multiple>
+        <label>รูปใบ Cargo / Cargo Form Photos (แนบได้หลายรูป)</label>
+        <input id="cargoImages" type="file" accept="image/*" capture="environment" multiple>
+        <label>รูปปิดประตูตู้/ท้ายรถ / Closed Door Audit Photo</label>
+        <input id="doorClosedImages" type="file" accept="image/*" capture="environment" multiple>
+        </div>
+        <div class="mwf-step" data-mstep="4" hidden>
+        <label>ลายเซ็น / Signature</label>
+        <canvas id="signaturePad" width="680" height="220"></canvas>
+        <button id="loadCargoBtn" type="button" class="load-button">โหลดสินค้าขึ้นรถ / Load Cargo</button>
+        <div class="button-row">
+          <button id="clearSignature" type="button" class="soft">ล้าง / Clear</button>
+          <button id="completePickupBtn" type="button">จบงาน / Complete</button>
+        </div>
+        </div>
+        <div class="mwf-nav">
+          <button type="button" id="mwfPrev" class="mwf-prev">← ก่อนหน้า</button>
+          <button type="button" id="mwfNext" class="mwf-next">ถัดไป →</button>
+        </div>
+        </div>
+      </section>
+
+      <section class="mobile-panel" id="tab-inbound">
+        <div class="bot-row">
+          <div class="bot-avatar">SCD</div>
+          <div class="bubble">เริ่มจากตรวจเอกสาร ถ้าไม่พบให้รอ EI จากนั้น Scan House และแยก Track คู่/เดี่ยว / Check document, scan, then route.</div>
+        </div>
+        <div class="guided-module-head"><h2>ขั้นตอนรับเข้า WH3</h2><div id="inboundFlowSummary" class="guided-mini-flow"><span>1 สแกน House</span><span>2 ตรวจเอกสาร</span><span>3 Routing</span><span>4 จัดเก็บ</span><span>5 ปิดงาน</span></div></div>
+        <label>House Number</label>
+        <div class="scan-input-row">
+          <input id="scanHouse" inputmode="text" autocomplete="off" placeholder="ยิงบาร์โค้ด House เช่น 4840778797">
+          <button id="cameraScanBtn" type="button" class="soft">กล้อง / Camera</button>
+        </div>
+        <div id="cameraScanner" class="camera-scanner" hidden>
+          <video id="barcodeVideo" playsinline muted></video>
+          <button id="stopCameraScanBtn" type="button" class="danger">หยุดกล้อง / Stop</button>
+        </div>
+        <button id="confirmInboundHouseBtn" type="button">ตรวจสอบและเปิดงานรับเข้า</button>
+        <div id="inboundWorkflowDetails" class="guided-workflow-details" hidden>
+        <div id="inboundJobInfo" class="soft-note"></div>
+        <div id="currentLocationInfo" class="soft-note"></div>
+
+        <nav class="operation-menu" aria-label="Inbound functions">
+          <button class="operation-tab active" type="button" data-operation-target="inbound-doc">เอกสาร</button>
+          <button class="operation-tab" type="button" data-operation-target="inbound-scan">Scan</button>
+          <button class="operation-tab" type="button" data-operation-target="inbound-putaway">จัดเก็บ</button>
+          <button class="operation-tab" type="button" data-operation-target="inbound-move">ย้าย Location</button>
+          <button class="operation-tab" type="button" data-operation-target="inbound-close">ปิดงาน</button>
+        </nav>
+
+        <section class="inbound-step operation-section active" data-operation-section="inbound-doc">
+          <h3>1. Document Check</h3>
+          <label>สถานะเอกสาร / Document status</label>
+          <select id="inboundDocStatus">
+            <option value="Found">พบ Invoice/PO / Found</option>
+            <option value="Missing">ไม่พบเอกสาร / Missing</option>
+            <option value="EIConfirmed">EI Confirm แล้ว / EI confirmed</option>
+          </select>
+          <label>หมายเหตุเอกสาร / Document note</label>
+          <textarea id="inboundDocNote" rows="3" placeholder="เช่น รอ EI confirm invoice / PO"></textarea>
+          <input id="inboundDocFiles" type="file" accept="image/*,application/pdf" capture="environment" multiple>
+          <div class="button-row two">
+            <button id="docCheckBtn" type="button">บันทึกเอกสาร / Save</button>
+            <button id="openInboundBtn" type="button" class="soft">เปิดงานรับเข้า / Open</button>
+          </div>
+        </section>
+
+        <section class="inbound-step operation-section" data-operation-section="inbound-scan">
+          <h3>2. Scan & Routing</h3>
+          <label>Track Type</label>
+          <select id="trackType">
+            <option value="Single">Track เดี่ยว - เก็บเข้า WH3</option>
+            <option value="Pair">Track คู่ - Cross-Dock ส่ง Terminal</option>
+          </select>
+          <label>Flight เปลี่ยนกะทันหันหรือไม่ / Flight changed?</label>
+          <select id="flightChanged">
+            <option value="No">ไม่เปลี่ยน / No</option>
+            <option value="Yes">เปลี่ยน ต้องพิมพ์ Track ใหม่ / Yes</option>
+          </select>
+          <input id="updatedFlightNo" autocomplete="off" placeholder="Flight ใหม่ ถ้ามี / New flight no.">
+          <button id="houseScanBtn" type="button">Scan House / ตรวจข้อมูล</button>
+        </section>
+
+        <section class="inbound-step operation-section" id="wdInboundCard" data-operation-section="inbound-scan">
+          <h3>3. WD / สินค้าพิเศษ Checklist</h3>
+          <p class="step-note" style="color:#d97706;font-weight:600">⚠ กรอก Scan สินค้า WD/พิเศษ — ต้องตรวจครบก่อนรับเข้าคลัง</p>
+          <label><input class="inbound-wd-check" type="checkbox" value="house_tag"> House Tag ตรงกับเอกสาร / House Tag matched</label>
+          <label><input class="inbound-wd-check" type="checkbox" value="sticker"> Sticker สีตรงตามประเภทสินค้า / Sticker color matched</label>
+          <label><input class="inbound-wd-check" type="checkbox" value="piece_count"> จำนวนสินค้าตรง / Piece count verified</label>
+          <label><input class="inbound-wd-check" type="checkbox" value="packing_type"> ประเภท Packing ถูกต้อง / Packing type OK</label>
+          <label><input class="inbound-wd-check" type="checkbox" value="condition"> สภาพสินค้าสมบูรณ์ / Cargo condition OK</label>
+          <label><input class="inbound-wd-check" type="checkbox" value="docs"> เอกสารประกอบครบ / Accompanying documents OK</label>
+          <label><input class="inbound-wd-check" type="checkbox" value="corner"> ตรวจครบทุกมุม / All corners checked</label>
+          <label><input class="inbound-wd-check" type="checkbox" value="seal"> Seal/กล่องสมบูรณ์ / Seal and carton OK</label>
+          <label>Sticker Color</label>
+          <input id="inboundStickerColor" autocomplete="off" placeholder="เช่น แดง / เขียว / เหลือง">
+        </section>
+
+        <section class="inbound-step operation-section" data-operation-section="inbound-putaway">
+          <h3>4. Putaway</h3>
+          <label>Dimension</label>
+          <input id="dimensionText" autocomplete="off" placeholder="เช่น 120 x 120 x 80 cm">
+        <label>Location ID</label>
+        <input id="scanLocation" inputmode="text" autocomplete="off" value="A-01">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+          <label style="font-size:12px;font-weight:600">จำนวนพาเลท
+            <input id="inboundPallets" type="number" min="0" value="0" inputmode="numeric" style="margin-top:4px;width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:15px">
+          </label>
+          <label style="font-size:12px;font-weight:600">จำนวนกล่อง
+            <input id="inboundBoxes" type="number" min="0" value="0" inputmode="numeric" style="margin-top:4px;width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:15px">
+          </label>
+        </div>
+        <button id="twinScanBtn" type="button">ล็อกตำแหน่ง / Lock Location</button>
+        </section>
+
+        <section class="inbound-step operation-section" data-operation-section="inbound-move">
+          <h3>ย้าย Location / Move Location</h3>
+          <p class="step-note">สแกน House ด้านบนก่อน ถ้าระบบพบข้อมูลแล้ว กรอกหรือยิง Location ใหม่แล้วกดย้ายได้เลย</p>
+          <label>Location ใหม่ / New Location</label>
+          <input id="moveLocationId" inputmode="text" autocomplete="off" placeholder="เช่น B-02">
+          <button id="moveLocationBtn" type="button">ย้าย Location / Move</button>
+        </section>
+
+        <section class="inbound-step operation-section" data-operation-section="inbound-close">
+          <h3>ปิดงานรับเข้า / Close Inbound</h3>
+          <label>รูปเอกสาร/สินค้า / Evidence photos</label>
+          <input id="inboundEvidenceFiles" type="file" accept="image/*,application/pdf" capture="environment" multiple>
+          <button id="closeInboundBtn" type="button" class="soft">ปิดงานรับเข้า / Close Inbound</button>
+        </section>
+        <div id="locationList" class="mini-list"></div>
+        </div>
+      </section>
+
+      <section class="mobile-panel" id="tab-outbound">
+        <div class="bot-row">
+          <div class="bot-avatar">SCD</div>
+          <div class="bubble">เบิกสินค้าจาก WH3 ส่ง Terminal ตรวจเอกสาร ชั่ง/วัด X-Ray และปิด Loading Detail / WH3 picking to terminal close.</div>
+        </div>
+        <section class="outbound-flow-overview">
+          <div class="flow-overview-head"><div><h2>ขั้นตอนงาน Outbound</h2><p>สแกน House ก่อน ระบบจะแสดงงานที่ต้องทำตามลำดับ</p></div><button id="openReturnProcessBtn" type="button" class="warning-action">สินค้าตีกลับ</button></div>
+          <div id="outboundFlowSummary" class="flow-summary-list"></div>
+        </section>
+        <section id="outboundScanGate" class="outbound-scan-gate">
+          <span class="scan-gate-icon">▦</span>
+          <div><h2>เริ่มด้วยการสแกน House</h2><p>ใช้กล้องหรือเครื่องยิงบาร์โค้ด เมื่อพบงานแล้วระบบจึงเปิดรายละเอียด</p></div>
+          <label>House Number</label>
+          <div class="scan-input-row">
+            <input id="terminalHouse" autocomplete="off" placeholder="สแกนเลข House เช่น 4840778797">
+            <button id="outboundCameraScanBtn" type="button" class="primary-command">เปิดกล้อง</button>
+          </div>
+          <button id="confirmOutboundHouseBtn" type="button">ตรวจสอบและเริ่มงาน</button>
+          <div id="outboundCameraScanner" class="camera-scanner" hidden>
+            <video id="outboundBarcodeVideo" playsinline muted></video>
+            <button id="stopOutboundCameraBtn" type="button" class="danger">หยุดกล้อง</button>
+          </div>
+        </section>
+        <div id="terminalJobInfo" class="soft-note outbound-workflow-detail" hidden></div>
+        <button id="changeOutboundHouseBtn" type="button" class="soft outbound-workflow-detail" hidden>สแกน House งานอื่น</button>
+
+        <section class="inbound-step outbound-workflow-detail" hidden>
+          <h3>1. Location & Find Goods</h3>
+          <div class="step-tracker" data-step-key="outbound_locate" data-step-name="Location & Find Goods"></div>
+          <div id="outboundLocationInfo" class="soft-note"></div>
+          <label>Scan ป้ายสินค้า / Scan House label</label>
+          <input id="outboundFoundScan" autocomplete="off" placeholder="ยิงบาร์โค้ด House ที่ตัวสินค้า">
+          <button id="locateGoodsBtn" type="button">เจอสินค้าแล้ว / Confirm found</button>
+        </section>
+
+        <section class="inbound-step outbound-workflow-detail" hidden>
+          <h3>2. Picking & EI Approval</h3>
+          <div class="step-tracker" data-step-key="outbound_picking" data-step-name="Picking & EI Approval"></div>
+          <label>Outbound documents</label>
+          <input id="outboundDocs" type="file" accept="image/*,application/pdf" capture="environment" multiple>
+          <label>Cargo Transfer / Permit note</label>
+          <textarea id="cargoTransferNote" rows="3" placeholder="Cargo Transfer, Permit, Lithium document"></textarea>
+          <div class="button-row two">
+            <button id="pickingBtn" type="button">เบิกสินค้า / Pick</button>
+            <button id="eiApproveBtn" type="button" class="soft">EI Approve</button>
+          </div>
+          <label>รูปเอกสาร EI เซ็น / EI signed proof</label>
+          <input id="eiProofImage" type="file" accept="image/*,application/pdf" capture="environment">
+        </section>
+
+        <section class="inbound-step outbound-workflow-detail" hidden>
+          <h3>3. AOT Queue & Delivery</h3>
+          <div class="step-tracker" data-step-key="outbound_delivery" data-step-name="AOT Queue & Delivery"></div>
+          <label>ปลายทาง Terminal / Terminal Destination</label>
+          <select id="terminalDestination">
+            <option value="TG">TG (Thai Airways Terminal)</option>
+            <option value="TGINT">TG Inter (TG International Terminal)</option>
+            <option value="BFS">BFS (Bangkok Flight Services)</option>
+          </select>
+          <label>ทะเบียนรถ / คนขับ / รุ่นรถ / ชนิดรถ</label>
+          <input id="aotVehiclePlate" autocomplete="off" placeholder="ทะเบียนรถ">
+          <input id="aotDriverName" autocomplete="off" placeholder="ชื่อคนขับ">
+          <input id="aotVehicleModel" autocomplete="off" placeholder="รุ่นรถ">
+          <input id="aotVehicleType" autocomplete="off" placeholder="ชนิดรถ">
+          <div class="terminal-profile-note" id="terminalProfileNote"></div>
+          <div class="wh3-dispatch-card">
+            <strong>WH3 original document checklist</strong>
+            <label><input class="wh3-dispatch-check" type="checkbox" value="outbound_weighing_slip"> Outbound weighing slip issued by WH3</label>
+            <label><input class="wh3-dispatch-check" type="checkbox" value="security_original"> Security original</label>
+            <label><input class="wh3-dispatch-check" type="checkbox" value="airline_specific"> Airline document matches airline / destination branch</label>
+            <label><input class="wh3-dispatch-check" type="checkbox" value="permit"> Permit checked before leaving WH3</label>
+            <label class="bfs-only-check"><input class="wh3-dispatch-check" type="checkbox" value="bfs_grouping_checked"> BFS grouping checked for same product / multiple vehicles</label>
+            <textarea id="wh3DispatchNote" rows="2" placeholder="Document note / Line or email reference"></textarea>
+            <input id="wh3DispatchEvidence" type="file" accept="image/*,application/pdf" capture="environment" multiple>
+            <button id="wh3DispatchCheckBtn" type="button" class="soft">Confirm WH3 documents</button>
+          </div>
+          <div class="button-row two">
+            <button id="aotBookingBtn" type="button">จองคิวรถ / Book</button>
+            <button id="aotApproveBtn" type="button" class="soft">อนุมัติคิว / Approve</button>
+          </div>
+          <label>รูปก่อนปิดท้ายรถ / Pre-load photo</label>
+          <input id="preLoadPhoto" type="file" accept="image/*" capture="environment">
+          <button id="loadBayBtn" type="button">รวมของที่ Loading Bay / Load Bay</button>
+          <button id="terminalArrivalBtn" type="button" class="soft">ส่งถึง Terminal / Arrived</button>
+          <div class="button-row two terminal-workflow-actions">
+            <button id="terminalUnloadStartBtn" type="button" class="soft">Unloading start</button>
+            <button id="terminalUnloadDoneBtn" type="button" class="soft">Unloading done</button>
+          </div>
+        </section>
+
+        <section class="inbound-step outbound-workflow-detail" hidden>
+          <h3>4. Terminal Check, Weight & X-Ray</h3>
+          <div class="step-tracker" data-step-key="outbound_terminal" data-step-name="Terminal Check, Weight & X-Ray"></div>
+          <p class="step-note" style="font-weight:600">📋 Checklist เอกสาร Check House (Module 3 Step 8)</p>
+          <label><input class="terminal-doc-check" type="checkbox" value="permit"> Permit / ใบกำกับ</label>
+          <label><input class="terminal-doc-check" type="checkbox" value="cargo_transfer"> Cargo Transfer Form</label>
+          <label><input class="terminal-doc-check" type="checkbox" value="weigh_slip"> ใบขอชั่งน้ำหนัก</label>
+          <label><input class="terminal-doc-check" type="checkbox" value="airline"> ใบ Airline</label>
+          <label><input class="terminal-doc-check" type="checkbox" value="security"> ใบ Security</label>
+          <label><input class="terminal-doc-check" type="checkbox" value="lithium_doc"> เอกสาร Lithium (ถ้ามี / if applicable)</label>
+          <label id="lithiumDocLabel">อัปโหลดเอกสาร Terminal / Permit / Lithium</label>
+          <input id="lithiumDoc" type="file" accept="image/*,application/pdf" capture="environment">
+          <button id="validateDocBtn" type="button">ตรวจเอกสาร Terminal</button>
+          <label>Weight / Dimension</label>
+          <input id="terminalWeight" inputmode="decimal" placeholder="น้ำหนัก เช่น 25.5 kg">
+          <input id="terminalDimension" autocomplete="off" placeholder="Dimension เช่น 120 x 120 x 80">
+          <button id="weightDimensionBtn" type="button" class="primary-command">บันทึกน้ำหนักและขนาด</button>
+          <div class="mobile-substep-title"><strong>ผลการตรวจ X-Ray</strong><span>เลือกผลหลังบันทึกน้ำหนักและขนาด</span></div>
+          <div class="button-row">
+            <button id="xrayPassedBtn" type="button">X-Ray ผ่าน</button>
+            <button id="rescanBtn" type="button" class="danger">Re-X-Ray</button>
+            <button id="xrayHoldBtn" type="button" class="danger">Hold</button>
+          </div>
+        </section>
+
+        <section class="inbound-step outbound-workflow-detail" hidden>
+          <h3>5. Loading Detail & Close</h3>
+          <div class="step-tracker" data-step-key="outbound_close" data-step-name="Loading Detail & Close"></div>
+          <p class="step-note">📋 จัดทำ Loading Detail <strong>2 ใบ</strong> · ถ่ายรูป Pallet/Tray/Lot ก่อนอัปโหลด</p>
+          <label>Tray / Pallet / Lot Number</label>
+          <input id="trayNumber" autocomplete="off" placeholder="Tray / Pallet / Lot number">
+          <label>รูปถ่าย Pallet / Tray / Lot (ใช้ยืนยัน Confirm)</label>
+          <input id="palletPhoto" type="file" accept="image/*" capture="environment" multiple>
+          <label>Loading Detail ใบที่ 1 (สำเนาเก็บ)</label>
+          <input id="loadingImage" type="file" accept="image/*,application/pdf" capture="environment">
+          <label>Loading Detail ใบที่ 2 (ส่งลูกค้า / EI)</label>
+          <input id="loadingImage2" type="file" accept="image/*,application/pdf" capture="environment">
+          <button id="packingBtn" type="button" class="soft">Packing / Consolidation</button>
+          <button id="loadingBtn" type="button">อัปโหลด Loading Detail / Close</button>
+        </section>
+
+        <section class="inbound-step return-process outbound-workflow-detail" hidden>
+          <div class="return-process-head"><h3>สินค้าตีกลับ / Returned Goods</h3><button id="backToOutboundFlowBtn" type="button" class="soft">กลับ Flow ปกติ</button></div>
+          <div class="step-tracker" data-step-key="return_goods" data-step-name="Returned Goods" data-manual="true"></div>
+          <label>สาเหตุการตีกลับ / Return reason</label>
+          <select id="returnReason">
+            <option value="DocumentIssue">เอกสารไม่ครบ / Document issue</option>
+            <option value="XRayFailed">X-Ray ไม่ผ่าน / X-Ray failed</option>
+            <option value="Damaged">สินค้าเสียหาย / Damaged goods</option>
+            <option value="CustomerRequest">ลูกค้าขอรับคืน / Customer request</option>
+            <option value="Other">อื่น ๆ / Other</option>
+          </select>
+          <label>ปลายทางรับคืน / Return destination</label>
+          <select id="returnDestination">
+            <option value="WH3">WH3</option>
+            <option value="Customer">คลังลูกค้า / Customer warehouse</option>
+            <option value="HoldArea">พื้นที่พักสินค้า / Hold area</option>
+          </select>
+          <label>รูปและเอกสารหลักฐาน / Evidence</label>
+          <input id="returnEvidenceFiles" type="file" accept="image/*,application/pdf" capture="environment" multiple>
+          <div class="button-row two return-actions">
+            <button id="startReturnBtn" type="button" class="warning-action">เริ่มนำสินค้ากลับ</button>
+            <button id="completeReturnBtn" type="button">ยืนยันรับคืนแล้ว</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="mobile-panel" id="tab-billing">
+        <div class="bot-row">
+          <div class="bot-avatar">SCD</div>
+          <div class="bubble">ตรวจเอกสาร สร้าง Draft ส่งอีเมล และปิดสถานะ Billed / Review, invoice, email, billed.</div>
+        </div>
+        <div class="guided-module-head"><h2>ขั้นตอนวางบิล</h2><div id="billingFlowSummary" class="guided-mini-flow"><span>1 เลือกงาน</span><span>2 ตรวจเอกสาร</span><span>3 สร้าง Draft</span><span>4 ส่งและปิด</span></div></div>
+        <div id="billingReadyList" class="mini-list"></div>
+        <div id="billingWorkflowDetails" class="guided-workflow-details" hidden>
+        <section class="billing-step">
+          <h3>1. Review</h3>
+          <label>House Number</label>
+          <input id="billingHouse" autocomplete="off" value="H-1001">
+          <label>ตรวจเอกสาร / Document review</label>
+          <textarea id="billingReviewNote" rows="3" placeholder="ใบชั่งน้ำหนัก / Cargo Transfer / Loading Detail / เอกสารหน้างาน"></textarea>
+          <div class="button-row two">
+            <button id="reviewBillingBtn" type="button">เอกสารพร้อม / Reviewed</button>
+            <button id="holdBillingBtn" type="button" class="danger">พักรายการ / Hold</button>
+          </div>
+        </section>
+        <section class="billing-step">
+          <h3>2. Invoice</h3>
+          <button id="generateBillBtn" type="button">สร้าง Draft Invoice / Generate Draft</button>
+          <label>Invoice ID</label>
+          <input id="invoiceId" autocomplete="off" placeholder="INV-2026-0001">
+        </section>
+        <section class="billing-step">
+          <h3>3. Send & Close</h3>
+          <div class="button-row two">
+            <button id="sendInvoiceBtn" type="button" class="soft">ส่งอีเมล / Send</button>
+            <button id="markBilledBtn" type="button">Billed</button>
+          </div>
+        </section>
+        <div id="billingResult" class="result"></div>
+        </div>
+      </section>
+
+      <!-- ─── ATTENDANCE TAB ──────────────────────────────────────── -->
+      <section class="mobile-panel" id="tab-attendance">
+        <div class="bot-row">
+          <div class="bot-avatar">SCD</div>
+          <div class="bubble">ถ่ายรูปเพื่อยืนยันตัวตน ระบบบันทึก GPS + เวลาอัตโนมัติ</div>
+        </div>
+        <div class="guided-module-head">
+          <h2>เช็คอิน / เช็คเอาต์</h2>
+          <div id="attStatusBadge" class="att-status-badge att-status-out">ยังไม่ได้เช็คอิน</div>
+        </div>
+
+        <!-- Current status card -->
+        <!-- Current status card -->
+        <div id="attCurrentCard" class="att-current-card" hidden>
+          <div class="att-card-row">
+            <img id="attCheckinThumb" class="att-thumb" src="" alt="selfie" hidden>
+            <div class="att-card-info">
+              <div id="attCardName" class="att-card-name">—</div>
+              <div id="attCardTime" class="att-card-time">—</div>
+              <div id="attCardZone" class="att-card-zone">—</div>
+              <div id="attCardGps" class="att-card-gps">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone + Job selection -->
+        <div id="attSelectors" class="att-selectors">
+          <label>โซนคลัง / Zone</label>
+          <select id="attZoneSelect">
+            <option value="">— เลือกโซน —</option>
+          </select>
+          <label>ประเภทงาน / Job Type</label>
+          <select id="attJobTypeSelect">
+            <option value="">— เลือกประเภทงาน —</option>
+            <option value="Inbound">📦 Inbound — สแกนเข้าคลัง</option>
+            <option value="Pickup">🚛 Pickup — รับสินค้า</option>
+            <option value="XRay">🔍 X-Ray — ตรวจเอกสาร</option>
+            <option value="Loading">✈ Loading — โหลดสินค้า</option>
+            <option value="Transport">🚗 Transport — ขนส่ง</option>
+            <option value="Other">⚙ Other — อื่นๆ</option>
+          </select>
+        </div>
+
+        <!-- Camera preview -->
+        <div class="att-camera-area">
+          <video id="attCameraPreview" class="att-camera-preview" autoplay playsinline muted hidden></video>
+          <canvas id="attCameraCanvas" hidden></canvas>
+          <img id="attPhotoPreview" class="att-photo-preview" src="" alt="ภาพถ่าย" hidden>
+          <div class="att-camera-controls">
+            <button id="attStartCameraBtn" type="button" class="att-btn-cam">📷 เปิดกล้อง</button>
+            <button id="attCaptureBtn" type="button" class="att-btn-cam" hidden>✔ ถ่ายภาพ</button>
+            <button id="attRetakeBtn" type="button" class="att-btn-cam secondary" hidden>↺ ถ่ายใหม่</button>
+          </div>
+        </div>
+
+        <!-- GPS status -->
+        <div id="attGpsStatus" class="att-gps-status">
+          <span id="attGpsIcon">📍</span>
+          <span id="attGpsText">กำลังระบุตำแหน่ง...</span>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="button-row two att-action-row">
+          <button id="attCheckinBtn" type="button" class="att-btn-main">✅ เช็คอิน</button>
+          <button id="attCheckoutBtn" type="button" class="att-btn-main danger" hidden>🚪 เช็คเอาต์</button>
+        </div>
+        <div id="attResult" class="result"></div>
+
+        <!-- My assigned tasks -->
+        <div style="margin-top:16px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-primary,#1e293b)">📋 งานที่ได้รับมอบหมาย</div>
+          <div id="attMyTasks"></div>
+        </div>
+
+      </section>
+
+      <section class="mobile-panel active list-panel" data-mwork="1">
+        <h2>งานล่าสุด / Recent Jobs</h2>
+        <div id="mobileJobList" class="job-list"></div>
+      </section>
+
+      <!-- ══ Field Ops: หน้าแรก ══ -->
+      <section class="mnav-panel" id="mnav-home" hidden>
+        <div class="fo-header">
+          <div>
+            <small>สวัสดี</small>
+            <h1 id="foUserName">-</h1>
+          </div>
+          <span class="fo-status-chip" id="foDayStatus">-</span>
+        </div>
+        <div class="fo-card fo-checkin-card" id="foCheckinCard">
+          <div class="fo-loading">กำลังโหลด...</div>
+        </div>
+        <div class="fo-card" id="foNextJobCard"></div>
+        <div class="fo-card">
+          <div class="fo-card-head"><strong>Timeline วันนี้</strong><span id="foTimelineSub"></span></div>
+          <div class="fo-timeline" id="foTimeline"></div>
+        </div>
+      </section>
+
+      <!-- ══ Field Ops: แผนที่ ══ -->
+      <section class="mnav-panel" id="mnav-map" hidden>
+        <div class="fo-header"><div><small>ตำแหน่งวันนี้</small><h1>แผนที่</h1></div>
+          <button type="button" class="fo-mini-btn" onclick="renderMMap(true)">🔄 รีเฟรช</button>
+        </div>
+        <div class="fo-card">
+          <div id="foMap" class="fo-map"><div class="fo-loading">กำลังโหลดตำแหน่ง...</div></div>
+          <div class="fo-map-legend">
+            <span><i class="att-legend-dot start"></i> เริ่มงาน</span>
+            <span><i class="att-legend-dot end"></i> สิ้นสุด</span>
+            <span><i class="att-legend-dot untagged"></i> ยังไม่ผูกกับงาน</span>
+          </div>
+        </div>
+        <div class="fo-card">
+          <div class="fo-card-head"><strong>จุดทั้งหมดวันนี้</strong><span id="foMapListSub"></span></div>
+          <div id="foMapList" class="fo-point-list"></div>
+        </div>
+      </section>
+
+      <!-- ══ Field Ops: เอกสาร ══ -->
+      <section class="mnav-panel" id="mnav-docs" hidden>
+        <div class="fo-header"><div><small>หลักฐานหน้างาน</small><h1>เอกสาร</h1></div></div>
+        <div class="fo-card">
+          <label class="fo-label">เลือกงาน</label>
+          <select id="foDocJobSelect" class="fo-select"></select>
+          <label class="fo-label">ประเภทเอกสาร</label>
+          <select id="foDocType" class="fo-select">
+            <option value="FieldPhoto">รูปหน้างาน</option>
+            <option value="DeliveryNote">ใบส่งของ</option>
+            <option value="Receipt">ใบเสร็จ</option>
+            <option value="CargoForm">ใบ Cargo</option>
+            <option value="Other">อื่นๆ</option>
+          </select>
+          <input id="foDocFile" type="file" accept="image/*" capture="environment" multiple class="fo-file">
+          <button type="button" id="foDocUploadBtn" class="fo-primary-btn">📤 อัปโหลดเอกสาร</button>
+          <div id="foDocResult" class="fo-doc-result"></div>
+        </div>
+      </section>
+
+      <!-- ══ Field Ops: โปรไฟล์ ══ -->
+      <section class="mnav-panel" id="mnav-profile" hidden>
+        <div class="fo-header"><div><small>บัญชีของฉัน</small><h1>โปรไฟล์</h1></div></div>
+        <div class="fo-card fo-profile-card" id="foProfileCard"></div>
+        <div class="fo-card">
+          <div class="fo-card-head"><strong>ประวัติเช็คอิน 7 วันล่าสุด</strong></div>
+          <div id="foAttHistory" class="fo-att-history"><div class="fo-loading">กำลังโหลด...</div></div>
+        </div>
+        <button type="button" class="fo-logout-btn" id="foLogoutBtn">ออกจากระบบ</button>
+      </section>
+    </main>
+
+    <!-- ══ Bottom Navigation ══ -->
+    <nav class="fo-bottomnav" id="foBottomNav" aria-label="เมนูหลัก">
+      <button type="button" data-mnav="home" class="active"><i data-lucide="home"></i><small>หน้าแรก</small></button>
+      <button type="button" data-mnav="work"><i data-lucide="clipboard-list"></i><small>งานของฉัน</small></button>
+      <button type="button" data-mnav="map"><i data-lucide="map-pin"></i><small>แผนที่</small></button>
+      <button type="button" data-mnav="docs"><i data-lucide="file-text"></i><small>เอกสาร</small></button>
+      <button type="button" data-mnav="profile"><i data-lucide="user"></i><small>โปรไฟล์</small></button>
+    </nav>
+
+    <!-- Bottom sheet รายละเอียดจุดบนแผนที่ -->
+    <div id="mapSheet" class="confirm-sheet" hidden>
+      <div class="confirm-sheet-panel" id="mapSheetBody"></div>
+    </div>
+
+    <div id="mobileActionModal" class="mobile-modal-backdrop" aria-hidden="true">
+      <section class="mobile-action-modal" role="dialog" aria-modal="true" aria-labelledby="mobileActionTitle">
+        <div class="mobile-action-icon">✓</div>
+        <h2 id="mobileActionTitle">บันทึกสำเร็จ</h2>
+        <p id="mobileActionMessage">ระบบบันทึกขั้นตอนเรียบร้อยแล้ว</p>
+        <button id="closeMobileActionModal" type="button">ตกลง</button>
+      </section>
+    </div>
+
+    <div id="confirmSheet" class="confirm-sheet" hidden>
+      <div class="confirm-sheet-panel">
+        <strong id="confirmSheetTitle"></strong>
+        <p id="confirmSheetDesc"></p>
+        <div class="confirm-sheet-actions">
+          <button type="button" id="confirmSheetCancel">ยกเลิก</button>
+          <button type="button" id="confirmSheetOk">✓ ยืนยัน</button>
+        </div>
+      </div>
+    </div>
+    <script src="lucide.min.js"></script>
+    <script src="config.js"></script>
+    <script src="mobile.js?v=6"></script>
+  </body>
+</html>
