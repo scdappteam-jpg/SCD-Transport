@@ -344,6 +344,17 @@ function localizeText(text) {
   return !leftHasThai || rightHasThai ? left : right;
 }
 
+function labelPair(th, en) {
+  return state.lang === "en"
+    ? { main: en, sub: th }
+    : { main: th, sub: en };
+}
+
+function labelPairHtml(th, en, cls = "") {
+  const label = labelPair(th, en);
+  return `<span class="${cls}"><b>${safeHtml(label.main)}</b><em>${safeHtml(label.sub)}</em></span>`;
+}
+
 function applyLanguage(root = document.body) {
   if (!root) return;
   document.documentElement.lang = state.lang === "en" ? "en" : "th";
@@ -1763,18 +1774,18 @@ function renderCtKpis() {
   const noDriver = jobs.filter(j => !j.driverId && !doneStatuses.includes(j.status)).length;
   const inProgress = Math.max(0, total - done - jobs.filter(j => j.status === "Pending").length);
   const kpis = [
-    { n: total, t: "งานทั้งหมด", c: "st-blue", icon: "📦", v: "orders" },
-    { n: inProgress, t: "กำลังดำเนินการ", c: "st-blue", icon: "🚚", v: "orders" },
-    { n: done, t: "เสร็จแล้ว", c: "st-green", icon: "✅", v: "orders" },
-    { n: risk, t: "งานเสี่ยง", c: "st-red", icon: "🚩", v: "alerts" },
-    { n: awaitBill, t: "รอวางบิล", c: "st-amber", icon: "🧾", v: "cargo-history" },
-    { n: noDriver, t: "ยังไม่มีคนขับ", c: "st-gray", icon: "🪪", v: "grouping" }
+    { n: total, th: "งานทั้งหมด", en: "All jobs", c: "st-blue", icon: "📦", v: "orders" },
+    { n: inProgress, th: "กำลังดำเนินการ", en: "In progress", c: "st-blue", icon: "🚚", v: "orders" },
+    { n: done, th: "เสร็จแล้ว", en: "Completed", c: "st-green", icon: "✅", v: "orders" },
+    { n: risk, th: "งานเสี่ยง", en: "Risk jobs", c: "st-red", icon: "🚩", v: "alerts" },
+    { n: awaitBill, th: "รอวางบิล", en: "Awaiting billing", c: "st-amber", icon: "🧾", v: "cargo-history" },
+    { n: noDriver, th: "ยังไม่มีคนขับ", en: "No driver assigned", c: "st-gray", icon: "🪪", v: "grouping" }
   ];
   box.innerHTML = kpis.map(k => `
     <button type="button" class="ct-kpi ${k.c}" onclick="setView('${k.v}')">
       <span class="ct-kpi-ic">${k.icon}</span>
       <strong>${k.n}</strong>
-      <span class="ct-kpi-t">${k.t}</span>
+      ${labelPairHtml(k.th, k.en, "ct-kpi-t")}
     </button>`).join("");
 }
 
@@ -2123,7 +2134,9 @@ function renderExecutiveSummary() {
   $("#execTotalJobs").textContent = total;
   $("#execRiskJobs").textContent = riskJobs.length;
   $("#execFlightCount").textContent = flightCount;
-  $("#execTopCustomer").textContent = topCustomer ? topCustomer[0] : "-";
+  const topCustomerEl = $("#execTopCustomer");
+  topCustomerEl.textContent = topCustomer ? topCustomer[0] : "-";
+  topCustomerEl.title = topCustomer ? `${topCustomer[0]} (${topCustomer[1]} jobs)` : "";
   $("#execSummarySubtitle").textContent = `${state.filters.dateFrom} ถึง ${state.filters.dateTo} · ${total} งาน · อัปเดต ${new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }).format(new Date())}`;
   const ring = $("#execHealthRing");
   if (ring) ring.style.setProperty("--score", readiness);
@@ -2226,31 +2239,33 @@ function renderProcessControlStrip() {
   const s = state.dashboard?.metrics?.approvalSummary || {};
   const terminals = state.dashboard?.metrics?.terminalSummary || [];
   const cards = [
-    { label: "Plan confirmed", value: s.inPlan || 0, icon: "clipboard-check", tone: "ok", view: "load-plan", hint: `${s.latestPlanRound || "-"} / ${s.latestPlanRows || 0} rows` },
-    { label: "Manual extra", value: s.manualExtra || 0, icon: "message-square-plus", tone: "warn", view: "cs-queue", hint: "Line / Email source" },
-    { label: "Pending CS", value: s.pendingCs || 0, icon: "user-check", tone: "risk", view: "cs-queue", hint: "Need approval" },
-    { label: "Need evidence", value: s.evidenceRequired || 0, icon: "paperclip", tone: "warn", view: "cs-queue", hint: "Attach Line/Email" },
-    { label: "After 16:00", value: s.afterFinalRound || 0, icon: "clock-4", tone: "info", view: "cs-queue", hint: "No next plan" },
-    { label: "WH3 docs ready", value: s.documentReady || 0, icon: "file-check-2", tone: "ok", view: "orders", hint: "Weight/Security/Airline/Permit" },
-    { label: "WH3 docs pending", value: s.documentPending || 0, icon: "file-warning", tone: "warn", view: "orders", hint: "Before terminal booking" },
-    { label: "Booking requested", value: s.bookingRequested || 0, icon: "calendar-clock", tone: "info", view: "orders", hint: "Waiting terminal" },
-    { label: "Terminal confirmed", value: s.terminalConfirmed || 0, icon: "badge-check", tone: "ok", view: "orders", hint: "Plate / loading bay" },
-    { label: "Loading detail", value: s.loadingDetailCompleted || 0, icon: "clipboard-list", tone: "ok", view: "cargo-history", hint: "Ready for billing audit" },
-    { label: "Door photo missing", value: s.missingDoorPhoto || 0, icon: "camera", tone: "risk", view: "orders", hint: "Audit required" },
-    { label: "KPI paused", value: s.paused || 0, icon: "pause-circle", tone: "info", view: "orders", hint: "Warehouse delay" },
+    { th: "ยืนยันตามแปลน", en: "Plan confirmed", value: s.inPlan || 0, icon: "clipboard-check", tone: "ok", view: "load-plan", hintTh: `รอบ ${s.latestPlanRound || "-"} / ${s.latestPlanRows || 0} แถว`, hintEn: `${s.latestPlanRound || "-"} / ${s.latestPlanRows || 0} rows` },
+    { th: "งานเสริมกรอกเอง", en: "Manual extra", value: s.manualExtra || 0, icon: "message-square-plus", tone: "warn", view: "cs-queue", hintTh: "มาจาก Line / Email", hintEn: "Line / Email source" },
+    { th: "รอ CS อนุมัติ", en: "Pending CS", value: s.pendingCs || 0, icon: "user-check", tone: "risk", view: "cs-queue", hintTh: "ต้องตรวจและอนุมัติ", hintEn: "Need approval" },
+    { th: "รอแนบหลักฐาน", en: "Need evidence", value: s.evidenceRequired || 0, icon: "paperclip", tone: "warn", view: "cs-queue", hintTh: "แนบ Line / Email", hintEn: "Attach Line / Email" },
+    { th: "หลังรอบสุดท้าย", en: "After final round", value: s.afterFinalRound || 0, icon: "clock-4", tone: "info", view: "cs-queue", hintTh: "ไม่มีแปลนรอบถัดไป", hintEn: "No next plan" },
+    { th: "เอกสาร WH3 พร้อม", en: "WH3 docs ready", value: s.documentReady || 0, icon: "file-check-2", tone: "ok", view: "orders", hintTh: "ใบชั่ง / Security / Airline / Permit", hintEn: "Weight / Security / Airline / Permit" },
+    { th: "เอกสาร WH3 ค้าง", en: "WH3 docs pending", value: s.documentPending || 0, icon: "file-warning", tone: "warn", view: "orders", hintTh: "ก่อนจอง Terminal", hintEn: "Before terminal booking" },
+    { th: "ส่งคำขอจองแล้ว", en: "Booking requested", value: s.bookingRequested || 0, icon: "calendar-clock", tone: "info", view: "orders", hintTh: "รอ Terminal ตอบกลับ", hintEn: "Waiting terminal" },
+    { th: "Terminal ยืนยันแล้ว", en: "Terminal confirmed", value: s.terminalConfirmed || 0, icon: "badge-check", tone: "ok", view: "orders", hintTh: "ทะเบียนรถ / ช่องโหลด", hintEn: "Plate / loading bay" },
+    { th: "Loading detail ครบ", en: "Loading detail", value: s.loadingDetailCompleted || 0, icon: "clipboard-list", tone: "ok", view: "cargo-history", hintTh: "พร้อมตรวจวางบิล", hintEn: "Ready for billing audit" },
+    { th: "ขาดรูปเปิดตู้", en: "Door photo missing", value: s.missingDoorPhoto || 0, icon: "camera", tone: "risk", view: "orders", hintTh: "ต้องตรวจหลักฐาน", hintEn: "Audit required" },
+    { th: "พักเวลา KPI", en: "KPI paused", value: s.paused || 0, icon: "pause-circle", tone: "info", view: "orders", hintTh: "Delay จากคลัง", hintEn: "Warehouse delay" },
     ...terminals.map(item => ({
-      label: item.label,
+      th: item.label,
+      en: item.key,
       value: item.total || 0,
       icon: item.key === "BFS" ? "route" : "truck",
       tone: item.risks ? "risk" : "ok",
       view: "orders",
-      hint: `${item.completed || 0} closed / ${item.risks || 0} risk / SLA ${item.slaMinutes}m`
+      hintTh: `ปิดแล้ว ${item.completed || 0} / เสี่ยง ${item.risks || 0} / SLA ${item.slaMinutes} นาที`,
+      hintEn: `${item.completed || 0} closed / ${item.risks || 0} risk / SLA ${item.slaMinutes}m`
     }))
   ];
   box.innerHTML = cards.map(card => `
     <button type="button" class="process-control-card ${card.tone}" onclick="setView('${card.view}')">
       <i data-lucide="${card.icon}" aria-hidden="true"></i>
-      <span><b>${safeHtml(card.label)}</b><em>${safeHtml(card.hint)}</em></span>
+      <span>${labelPairHtml(card.th, card.en)}<em>${safeHtml(labelPair(card.hintTh, card.hintEn).main)}</em></span>
       <strong>${card.value}</strong>
     </button>
   `).join("");

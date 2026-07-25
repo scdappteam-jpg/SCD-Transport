@@ -974,7 +974,8 @@ button {
   color: var(--ink);
   font-size: 12px;
   font-weight: 900;
-  white-space: nowrap;
+  line-height: 1.18;
+  white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -984,9 +985,21 @@ button {
   color: var(--muted);
   font-size: 10px;
   font-style: normal;
-  white-space: nowrap;
+  line-height: 1.18;
+  white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.process-control-card span > span > em {
+  color: #64748b;
+  font-size: 9.5px;
+}
+
+.process-control-card span > em {
+  margin-top: 5px;
+  color: #475569;
+  font-weight: 600;
 }
 
 .process-control-card strong {
@@ -21108,6 +21121,22 @@ small, .eyebrow, .panel-title span, .metric-card span, .chart-legend, .table-sub
 .ct-kpi:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15, 23, 42, .08); }
 .ct-kpi strong { font-size: 26px; font-weight: 800; color: #0f172a; line-height: 1.1; }
 .ct-kpi .ct-kpi-t { font-size: 12px; font-weight: 600; color: var(--muted); }
+.ct-kpi .ct-kpi-t b,
+.ct-kpi .ct-kpi-t em {
+  display: block;
+  font-style: normal;
+  line-height: 1.18;
+}
+.ct-kpi .ct-kpi-t b {
+  color: #0f172a;
+  font-weight: 800;
+}
+.ct-kpi .ct-kpi-t em {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
 .ct-kpi .ct-kpi-ic { font-size: 15px; }
 .ct-kpi.st-red strong { color: var(--st-red-fg); }
 .ct-kpi.st-green strong { color: var(--st-green-fg); }
@@ -21362,5 +21391,125 @@ small, .eyebrow, .panel-title span, .metric-card span, .chart-legend, .table-sub
 
   .login-brand .lb-name span {
     font-size: 11px !important;
+  }
+}
+
+/* Compact executive summary: make the control tower header easier to scan. */
+.exec-summary {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, .42fr) !important;
+  align-items: stretch;
+}
+
+.exec-summary-main {
+  min-height: 0 !important;
+  padding: 18px 20px 20px !important;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%) !important;
+}
+
+.exec-summary-main::after {
+  right: -44px !important;
+  top: -66px !important;
+  width: 170px !important;
+  height: 170px !important;
+  border-width: 28px !important;
+  opacity: .72;
+}
+
+.exec-eyebrow {
+  padding: 5px 9px !important;
+  background: #e0edff !important;
+  color: #0b4ea2 !important;
+  font-size: 10px !important;
+  letter-spacing: .04em !important;
+}
+
+.exec-summary h2 {
+  margin-top: 12px !important;
+  font-size: 21px !important;
+}
+
+.exec-summary-main p {
+  font-size: 12px !important;
+  color: #53657f !important;
+}
+
+.exec-summary-kpis {
+  grid-template-columns: 1fr 1fr .9fr minmax(230px, 1.35fr) !important;
+  gap: 12px !important;
+  margin-top: 18px !important;
+}
+
+.exec-summary-kpis article {
+  position: relative;
+  min-height: 78px;
+  padding: 14px 15px 13px 48px !important;
+  border-color: #d7e3f2 !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, .86) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .72);
+}
+
+.exec-summary-kpis article::before {
+  position: absolute;
+  left: 14px;
+  top: 17px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 8px;
+  background: #eaf2ff;
+  color: #0b4ea2;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.exec-kpi-total::before { content: "#"; }
+.exec-kpi-risk::before { content: "!"; background: #fff1f2 !important; color: #dc2626 !important; }
+.exec-kpi-flight::before { content: "FL"; font-size: 10px !important; }
+.exec-kpi-customer::before { content: "CU"; font-size: 10px !important; background: #ecfdf5 !important; color: #047857 !important; }
+
+.exec-summary-kpis span {
+  margin-bottom: 5px;
+  color: #64748b !important;
+  font-size: 11px !important;
+  line-height: 1.25;
+}
+
+.exec-summary-kpis strong {
+  margin-top: 0 !important;
+  font-size: 25px !important;
+  line-height: 1.1 !important;
+}
+
+.exec-kpi-customer strong {
+  display: -webkit-box !important;
+  max-height: 44px;
+  overflow: hidden;
+  white-space: normal !important;
+  text-overflow: clip !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 20px !important;
+  line-height: 1.12 !important;
+}
+
+@media (max-width: 1200px) {
+  .exec-summary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .exec-summary-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .exec-summary-main {
+    padding: 16px !important;
+  }
+
+  .exec-summary-kpis {
+    grid-template-columns: 1fr !important;
   }
 }
