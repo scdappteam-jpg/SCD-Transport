@@ -120,6 +120,35 @@ https://scd-transport.onrender.com
 5. เปิด `/api/admin/db-info` แล้ว `sharedDatabase.loaded` เป็น `true` หรือไม่
 6. คนอื่นอาจต้องกด Refresh หน้าเว็บหนึ่งครั้ง
 
+## ถ้าเปิดเว็บแล้วข้อมูลหาย / หน้าเว็บว่าง
+
+กรณีนี้มักเกิดจาก Supabase มี row แล้ว แต่ข้อมูลใน `app_state.data` ยังว่างอยู่ ระบบจึงอ่านข้อมูลว่างจากฐานกลาง
+
+ถ้าใน repo ยังมีไฟล์ `data/db.json` ที่เป็นข้อมูลเดิม ให้กู้ข้อมูลเดิมขึ้น Supabase ได้ด้วยลิงก์นี้ หลังจาก deploy โค้ดล่าสุดแล้ว:
+
+```text
+https://scd-transport.onrender.com/api/admin/seed-bundle-db?confirm=RESTORE_SUPABASE
+```
+
+ถ้าสำเร็จ จะเห็นข้อความประมาณนี้:
+
+```json
+{
+  "ok": true,
+  "message": "Bundled local data copied to Supabase shared database.",
+  "runtime": {
+    "jobs": 200,
+    "customers": 59
+  }
+}
+```
+
+จากนั้นกลับไปหน้าเว็บหลัก แล้วกด Refresh:
+
+```text
+https://scd-transport.onrender.com
+```
+
 ## หมายเหตุเรื่องไฟล์แนบ
 
 การตั้งค่านี้ทำให้ข้อมูลในระบบแชร์ร่วมกันได้ก่อน เช่น ใบงานและสถานะงาน

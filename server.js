@@ -2181,11 +2181,12 @@ async function handleApi(req, res, pathname) {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const payload = req.method === "POST" ? await parseBody(req) : {};
     const confirmed = url.searchParams.get("confirm") === "LOCAL" || payload.confirm === "LOCAL";
+    const restoreSupabase = url.searchParams.get("confirm") === "RESTORE_SUPABASE" || payload.confirm === "RESTORE_SUPABASE";
     const seedEnabled = String(process.env.SEED_BUNDLE_DB || "").toLowerCase() === "true";
-    if (!seedEnabled || !confirmed) {
+    if ((!seedEnabled || !confirmed) && !(supabaseEnabled() && restoreSupabase)) {
       return sendJson(res, 403, {
         ok: false,
-        error: "Set SEED_BUNDLE_DB=true and call with confirm=LOCAL to seed bundled local data."
+        error: "Set SEED_BUNDLE_DB=true and call with confirm=LOCAL, or call confirm=RESTORE_SUPABASE when Supabase is enabled."
       });
     }
     const bundled = readBundledDb();
@@ -2193,6 +2194,10 @@ async function handleApi(req, res, pathname) {
     const backupFile = DB_FILE + ".before-manual-seed";
     if (fs.existsSync(DB_FILE)) fs.copyFileSync(DB_FILE, backupFile);
     if (supabaseEnabled()) {
+      ensureCoreUsers(bundled);
+      ensureDbShape(bundled);
+      dbCache = bundled;
+      await persistDbToSupabase(bundled);
       writeDb(bundled);
     } else {
       fs.copyFileSync(path.join(ROOT, "data", "db.json"), DB_FILE);
