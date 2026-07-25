@@ -968,6 +968,7 @@ function updateTerminalRequirements() {
   };
   if ($("#terminalProfileNote")) $("#terminalProfileNote").textContent = terminalNotes[terminal] || terminalNotes.TG;
   $$(".bfs-only-check").forEach(item => { item.style.display = terminal === "BFS" ? "" : "none"; });
+  $$(".tgint-only-check").forEach(item => { item.style.display = terminal === "TGINT" ? "" : "none"; });
   $("#lithiumDocLabel").textContent = job?.requiresLithiumDocs
     ? "เอกสารลิเธียม / Permit (Required)"
     : "เอกสารเพิ่มเติม / Optional document";

@@ -398,29 +398,43 @@ function bangkokDate(iso = nowIso()) {
   return new Date(d.getTime() + 7 * 3600000).toISOString().slice(0, 10);
 }
 
-const LOAD_PLAN_ROUNDS = ["08:00", "12:00", "16:00"];
+const LOAD_PLAN_ROUNDS = String(process.env.LOAD_PLAN_ROUNDS || "08:00,12:00,16:00")
+  .split(",")
+  .map(value => value.trim())
+  .filter(Boolean);
 const TERMINAL_PROFILES = {
   TG: {
     label: "TG",
     note: "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
-    statuses: ["BookingRequested", "TerminalConfirmed", "VehicleQueued", "Arrived", "UnloadingStarted", "UnloadingCompleted"],
+    statuses: ["BookingRequested", "TerminalConfirmed", "LoadedFromWH3", "ArrivedAtTerminal", "WeighingCompleted", "DimensionCompleted", "XRayPassed", "LoadingCompleted", "LoadingDetailCompleted"],
     checklist: ["outbound_weighing_slip", "security_original", "airline_specific", "permit"],
     slaMinutes: 180
   },
   TGINT: {
     label: "TG Inter",
     note: "TG Inter requires tighter document tracking and frequent Re-X-Ray monitoring.",
-    statuses: ["BookingRequested", "TerminalConfirmed", "VehicleQueued", "Arrived", "UnloadingStarted", "UnloadingCompleted"],
-    checklist: ["outbound_weighing_slip", "security_original", "airline_specific", "permit"],
+    statuses: ["BookingRequested", "TerminalConfirmed", "LoadedFromWH3", "ArrivedAtTerminal", "WeighingCompleted", "DimensionCompleted", "XRayPassed", "ReXRayRequired", "LoadingCompleted", "LoadingDetailCompleted"],
+    checklist: ["outbound_weighing_slip", "security_original", "airline_specific", "permit", "tginter_document_tracking"],
     slaMinutes: 180
   },
   BFS: {
     label: "BFS",
     note: "BFS focus: queue risk, narrow trailer parking, short unloading target, and grouping same-product multi-vehicle jobs.",
-    statuses: ["BookingRequested", "TerminalConfirmed", "VehicleQueued", "Arrived", "UnloadingStarted", "UnloadingCompleted"],
+    statuses: ["BookingRequested", "TerminalConfirmed", "LoadedFromWH3", "ArrivedAtTerminal", "WeighingCompleted", "DimensionCompleted", "XRayPassed", "LoadingCompleted", "LoadingDetailCompleted"],
     checklist: ["outbound_weighing_slip", "security_original", "airline_specific", "permit", "bfs_grouping_checked"],
     slaMinutes: 30
   }
+};
+
+const WH3_DOCUMENT_LABELS = {
+  outbound_weighing_slip: "ใบชั่งสินค้าขาออกจาก WH3",
+  security_original: "ใบ Security ตัวจริง",
+  airline_specific: "ใบ Airline ตรงสายการบิน/สาขาปลายทาง",
+  permit: "ใบ Permit",
+  manifest_review: "Manifest / ตรวจยอดก่อนโหลด",
+  lithium_document: "Lithium / เอกสารสินค้าพิเศษ",
+  tginter_document_tracking: "TG Inter document tracking",
+  bfs_grouping_checked: "BFS queue / same-product vehicle grouping"
 };
 
 function normalizeTerminal(value) {
@@ -428,6 +442,46 @@ function normalizeTerminal(value) {
   if (text === "TGINTER" || text === "TGINTERNATIONAL") return "TGINT";
   if (text === "BFS") return "BFS";
   return "TG";
+}
+
+function requiredWh3Checklist(job = {}, terminalValue) {
+  const terminal = normalizeTerminal(terminalValue || job.terminalDestination || job.destination || job.routeType || "TG");
+  const base = new Set([...(TERMINAL_PROFILES[terminal]?.checklist || TERMINAL_PROFILES.TG.checklist), "manifest_review"]);
+  if (job.requiresLithiumDocs || /lithium|battery|wd|special/i.test(String(job.productType || job.pickupCase || ""))) {
+    base.add("lithium_document");
+  }
+  return [...base];
+}
+
+function checklistStatus(checked = [], required = []) {
+  const checkedSet = new Set(Array.isArray(checked) ? checked : []);
+  const missing = required.filter(item => !checkedSet.has(item));
+  return {
+    required,
+    checked: [...checkedSet],
+    missing,
+    ready: missing.length === 0,
+    labels: required.map(key => ({ key, label: WH3_DOCUMENT_LABELS[key] || key, checked: checkedSet.has(key) }))
+  };
+}
+
+function wh3DispatchStatus(job = {}) {
+  const required = requiredWh3Checklist(job);
+  return checklistStatus(job.wh3PreDispatchChecklist, required);
+}
+
+function processTrackingStatus(job = {}) {
+  const terminal = normalizeTerminal(job.terminalDestination || job.destination || job.routeType || "TG");
+  const xrayState = job.status === "ReXRayRequired" || job.requiresRescan ? "ReXRayRequired" : (job.xrayStatus === "Passed" ? "XRayPassed" : "");
+  return {
+    planning: job.planMatched ? "ConfirmedByPlan" : (job.manualExtra ? "ManualExtraEntered" : "Pending"),
+    approval: job.approvalStatus || (job.csConfirmed ? "CSApproved" : "PendingCSApproval"),
+    wh3Documents: job.wh3PreDispatchReady ? "DocumentReady" : "DocumentPending",
+    transport: job.terminalWorkflowStatus || (job.aotApprovedAt ? "TerminalConfirmed" : (job.aotBookedAt ? "BookingRequested" : "")),
+    terminal,
+    terminalStatus: xrayState || job.status || "",
+    billing: job.billingStatus || (job.readyForBilling ? "ReadyForBilling" : "")
+  };
 }
 
 function planVersionLabel(plan = {}) {
@@ -531,8 +585,13 @@ function normalizeJob(job) {
   const flightMs = new Date(job.flightTime).getTime();
   const hoursToFlight = isNaN(flightMs) ? null : Math.round(((flightMs - Date.now()) / 36e5) * 10) / 10;
   const loadingDone = Boolean(job.loadingDetailUploaded);
+  const terminal = normalizeTerminal(job.terminalDestination || job.destination || job.routeType || "TG");
+  const wh3Documents = wh3DispatchStatus({ ...job, terminalDestination: terminal });
   return {
     ...job,
+    terminalProfile: TERMINAL_PROFILES[terminal],
+    wh3Documents,
+    processTracking: processTrackingStatus(job),
     flightTimeLabel: formatBangkok(job.flightTime),
     hoursToFlight,
     redFlag: hoursToFlight !== null && hoursToFlight < 4 && !loadingDone,
@@ -580,6 +639,11 @@ function buildDashboard(db) {
     mustReturnWh3: jobs.filter(job => job.mustReturnWh3).length,
     missingDoorPhoto: jobs.filter(job => job.doorClosedPhotoRequired && !job.doorClosedPhotoAt && ["CargoLoaded", "Delivered"].includes(job.status)).length,
     paused: jobs.filter(job => job.kpiPaused).length,
+    documentReady: jobs.filter(job => job.wh3Documents?.ready || job.wh3PreDispatchReady).length,
+    documentPending: jobs.filter(job => job.terminalDestination && !(job.wh3Documents?.ready || job.wh3PreDispatchReady)).length,
+    bookingRequested: jobs.filter(job => job.terminalWorkflowStatus === "BookingRequested" || job.aotBookedAt).length,
+    terminalConfirmed: jobs.filter(job => job.terminalWorkflowStatus === "TerminalConfirmed" || job.aotApprovedAt).length,
+    loadingDetailCompleted: jobs.filter(job => job.loadingDetailUploaded).length,
     latestPlanRound: currentPlan?.planRound || "",
     latestPlanRows: currentPlan?.totalRows || 0
   };
@@ -2107,6 +2171,19 @@ function billingDocumentStatus(db, job) {
   const hasPlanApproval = Boolean(job.planMatched || job.approvalStatus === "ConfirmedByPlan" || job.approvalStatus === "CSApproved" || job.csConfirmed);
   const hasWh3Dispatch = Boolean(job.wh3PreDispatchReady);
   const hasCsEvidence = !job.manualExtra || Boolean(job.csEvidenceAttachedAt || job.evidenceNote || files.some(file => /CSApprovalEvidence/i.test(file.fileType)));
+  const hasWorkDate = Boolean(job.workDate || job.planDate || job.pickupDate);
+  const hasPlanVersion = Boolean(job.planRound || job.confirmedByPlanId || job.approvalStatus === "CSApproved");
+  const blockers = [
+    !hasWeight && "missing_weight_record",
+    !hasTransfer && "missing_cargo_transfer",
+    !hasLoading && "missing_loading_detail",
+    !hasFieldEvidence && "missing_field_evidence",
+    !hasPlanApproval && "missing_plan_or_cs_approval",
+    !hasWh3Dispatch && "missing_wh3_document_ready",
+    !hasCsEvidence && "missing_cs_evidence",
+    !hasWorkDate && "missing_work_date",
+    !hasPlanVersion && "missing_plan_version"
+  ].filter(Boolean);
   return {
     hasWeight,
     hasTransfer,
@@ -2115,7 +2192,10 @@ function billingDocumentStatus(db, job) {
     hasPlanApproval,
     hasWh3Dispatch,
     hasCsEvidence,
-    ready: hasWeight && hasTransfer && hasLoading && hasFieldEvidence && hasPlanApproval && hasWh3Dispatch && hasCsEvidence,
+    hasWorkDate,
+    hasPlanVersion,
+    blockers,
+    ready: blockers.length === 0,
     files
   };
 }
@@ -2174,6 +2254,35 @@ async function handleApi(req, res, pathname) {
       dataDir: DATA_DIR,
       storageDir: STORAGE_DIR,
       dbFile: DB_FILE
+    });
+  }
+
+  if (req.method === "GET" && pathname === "/api/process/config") {
+    return sendJson(res, 200, {
+      ok: true,
+      loadPlanRounds: LOAD_PLAN_ROUNDS,
+      terminalProfiles: TERMINAL_PROFILES,
+      wh3DocumentLabels: WH3_DOCUMENT_LABELS,
+      statuses: [
+        "PlanReceived",
+        "ManualExtraEntered",
+        "PendingCSApproval",
+        "ConfirmedByPlan",
+        "ManualExtraApproved",
+        "DocumentReady",
+        "BookingRequested",
+        "TerminalConfirmed",
+        "LoadedFromWH3",
+        "ArrivedAtTerminal",
+        "WeighingCompleted",
+        "DimensionCompleted",
+        "XRayPassed",
+        "ReXRayRequired",
+        "LoadingCompleted",
+        "LoadingDetailCompleted",
+        "ReadyForBilling",
+        "Invoiced"
+      ]
     });
   }
 
@@ -2967,11 +3076,15 @@ async function handleApi(req, res, pathname) {
     const job = findJob(db, payload.houseNumber);
     if (!job) return sendJson(res, 404, { error: "Job not found" });
     const terminal = normalizeTerminal(payload.terminalDestination || job.terminalDestination || job.destination || "TG");
-    const required = TERMINAL_PROFILES[terminal]?.checklist || TERMINAL_PROFILES.TG.checklist;
+    const required = requiredWh3Checklist(job, terminal);
     const checked = Array.isArray(payload.checklist) ? payload.checklist : [];
     const missing = required.filter(item => !checked.includes(item));
     if (missing.length) {
-      return sendJson(res, 422, { error: `WH3 pre-dispatch documents incomplete: ${missing.join(", ")}` });
+      return sendJson(res, 422, {
+        error: `WH3 pre-dispatch documents incomplete: ${missing.map(item => WH3_DOCUMENT_LABELS[item] || item).join(", ")}`,
+        missing,
+        required: required.map(key => ({ key, label: WH3_DOCUMENT_LABELS[key] || key }))
+      });
     }
     const now = nowIso();
     saveBase64Files(db, { houseNumber: job.houseNumber, fileType: "WH3PreDispatchEvidence", files: payload.evidenceFiles });
@@ -2982,6 +3095,9 @@ async function handleApi(req, res, pathname) {
       wh3PreDispatchAt: now,
       wh3PreDispatchBy: payload.userId || "",
       wh3PreDispatchNote: payload.note || "",
+      documentReadyAt: now,
+      documentReadyBy: payload.userId || "",
+      status: job.status === "ReadyForTerminal" ? "ReadyForTerminal" : job.status,
       terminalProfileNote: TERMINAL_PROFILES[terminal]?.note || "",
       updatedAt: now
     });
@@ -4145,6 +4261,9 @@ async function handleApi(req, res, pathname) {
     const db = readDb();
     const plans = (db.loadPlans || []).map(p => ({
       id: p.id, importedAt: p.importedAt, importedBy: p.importedBy,
+      flightDate: p.flightDate || p.workDate || "",
+      planRound: p.planRound || "",
+      versionLabel: planVersionLabel(p),
       totalRows: p.totalRows, matchedCount: p.matchedCount,
       hasChanges: p.changes?.hasChanges || false,
       added: p.changes?.added?.length || 0,

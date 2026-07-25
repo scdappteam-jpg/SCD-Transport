@@ -1677,6 +1677,16 @@ const STATUS_META = {
   Inbound:                { cls: "st-blue",  th: "รับเข้าคลัง" },
   Stored:                 { cls: "st-blue",  th: "เก็บเข้าคลังแล้ว" },
   ReadyForTerminal:       { cls: "st-amber", th: "พร้อมส่ง Terminal" },
+  PlanReceived:           { cls: "st-blue",  th: "รับ Plan Load แล้ว" },
+  ManualExtraEntered:     { cls: "st-amber", th: "บันทึกงานเสริม" },
+  PendingCSApproval:      { cls: "st-amber", th: "รอ CS อนุมัติ" },
+  ConfirmedByPlan:        { cls: "st-green", th: "ยืนยันโดย Plan" },
+  ManualExtraApproved:    { cls: "st-green", th: "งานเสริมอนุมัติแล้ว" },
+  DocumentReady:          { cls: "st-green", th: "เอกสาร WH3 พร้อม" },
+  BookingRequested:       { cls: "st-amber", th: "ส่งคำขอจองรถ" },
+  TerminalConfirmed:      { cls: "st-green", th: "Terminal ยืนยันแล้ว" },
+  LoadedFromWH3:          { cls: "st-blue",  th: "ออกจาก WH3 แล้ว" },
+  ArrivedAtTerminal:      { cls: "st-blue",  th: "ถึง Terminal" },
   OutboundLocated:        { cls: "st-blue",  th: "กำลังจัดออก" },
   OutboundPicking:        { cls: "st-blue",  th: "กำลังหยิบสินค้า" },
   EIApproved:             { cls: "st-green", th: "EI อนุมัติแล้ว" },
@@ -1684,11 +1694,15 @@ const STATUS_META = {
   AOTQueueApproved:       { cls: "st-green", th: "AOT อนุมัติแล้ว" },
   GoodsLoaded:            { cls: "st-blue",  th: "โหลดสินค้าแล้ว" },
   TerminalArrived:        { cls: "st-blue",  th: "ถึง Terminal" },
+  WeighingCompleted:      { cls: "st-blue",  th: "ชั่งน้ำหนักแล้ว" },
+  DimensionCompleted:     { cls: "st-blue",  th: "วัด Dimension แล้ว" },
   WeightDimensionRecorded:{ cls: "st-blue",  th: "ชั่ง/วัดแล้ว" },
   XRayPassed:             { cls: "st-green", th: "ผ่าน X-Ray" },
   XRayHold:               { cls: "st-red",   th: "X-Ray กักตรวจ" },
   ReXRayRequired:         { cls: "st-red",   th: "ต้อง X-Ray ซ้ำ" },
   PackingConsolidation:   { cls: "st-blue",  th: "รวมสินค้า" },
+  LoadingCompleted:       { cls: "st-green", th: "Loading เสร็จ" },
+  LoadingDetailCompleted: { cls: "st-green", th: "Loading Detail ครบ" },
   LoadingReady:           { cls: "st-green", th: "พร้อมโหลดขึ้นเครื่อง" },
   Completed:              { cls: "st-green", th: "เสร็จสิ้น" },
   PendingBillingReview:   { cls: "st-amber", th: "รอตรวจเอกสารบิล" },
@@ -2217,6 +2231,11 @@ function renderProcessControlStrip() {
     { label: "Pending CS", value: s.pendingCs || 0, icon: "user-check", tone: "risk", view: "cs-queue", hint: "Need approval" },
     { label: "Need evidence", value: s.evidenceRequired || 0, icon: "paperclip", tone: "warn", view: "cs-queue", hint: "Attach Line/Email" },
     { label: "After 16:00", value: s.afterFinalRound || 0, icon: "clock-4", tone: "info", view: "cs-queue", hint: "No next plan" },
+    { label: "WH3 docs ready", value: s.documentReady || 0, icon: "file-check-2", tone: "ok", view: "orders", hint: "Weight/Security/Airline/Permit" },
+    { label: "WH3 docs pending", value: s.documentPending || 0, icon: "file-warning", tone: "warn", view: "orders", hint: "Before terminal booking" },
+    { label: "Booking requested", value: s.bookingRequested || 0, icon: "calendar-clock", tone: "info", view: "orders", hint: "Waiting terminal" },
+    { label: "Terminal confirmed", value: s.terminalConfirmed || 0, icon: "badge-check", tone: "ok", view: "orders", hint: "Plate / loading bay" },
+    { label: "Loading detail", value: s.loadingDetailCompleted || 0, icon: "clipboard-list", tone: "ok", view: "cargo-history", hint: "Ready for billing audit" },
     { label: "Door photo missing", value: s.missingDoorPhoto || 0, icon: "camera", tone: "risk", view: "orders", hint: "Audit required" },
     { label: "KPI paused", value: s.paused || 0, icon: "pause-circle", tone: "info", view: "orders", hint: "Warehouse delay" },
     ...terminals.map(item => ({
@@ -7688,6 +7707,18 @@ function renderTimeline() {
     🚛 AOT: ${aotStatuses[job.status]}${job.aotBookedAt ? " · จองเมื่อ "+formatBangkok(job.aotBookedAt) : ""}
   </div>` : "";
 
+  const wh3Missing = job.wh3Documents?.missing || [];
+  const wh3DocHtml = job.wh3Documents ? `<div style="margin-bottom:10px;padding:10px 12px;background:${job.wh3Documents.ready ? "#f0fdf4" : "#fffbeb"};border:1px solid ${job.wh3Documents.ready ? "#86efac" : "#facc15"};border-radius:10px;font-size:12px;color:#334155">
+    <strong>${job.wh3Documents.ready ? "เอกสาร WH3 พร้อม / Document Ready" : "เอกสาร WH3 ยังไม่ครบ"}</strong>
+    <div style="margin-top:4px">${job.wh3Documents.labels?.map(item => `${item.checked ? "✓" : "•"} ${safeHtml(item.label)}`).join(" · ") || "-"}</div>
+    ${wh3Missing.length ? `<div style="margin-top:4px;color:#b45309">ขาด: ${safeHtml(wh3Missing.join(", "))}</div>` : ""}
+  </div>` : "";
+
+  const terminalProfileHtml = job.terminalProfile ? `<div style="margin-bottom:10px;padding:8px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:12px;color:#1e3a8a">
+    <strong>${safeHtml(job.terminalProfile.label)}</strong> · SLA ${safeHtml(String(job.terminalProfile.slaMinutes || "-"))} นาที
+    <div>${safeHtml(job.terminalProfile.note || "")}</div>
+  </div>` : "";
+
   // ── Track type badge ──
   const trackBadge = job.trackType ? `<div style="margin-bottom:10px;padding:6px 12px;background:${job.trackType==="Pair"?"#eff6ff":"#f0fdf4"};border-radius:8px;font-size:12px;font-weight:700;color:${job.trackType==="Pair"?"#1d4ed8":"#15803d"}">
     ${job.trackType === "Pair" ? "✈ Track คู่ — ส่งออก Terminal ทันที" : "📦 Track เดี่ยว — พักคลัง WH3"}
@@ -7713,7 +7744,7 @@ function renderTimeline() {
       detail: job.dueDate ? `Due: ${new Date(job.dueDate).toLocaleDateString("th-TH")}` : "" }
   ];
 
-  $("#timelineList").innerHTML = alertBanner + trackBadge + aotHtml + steps.map((step, i) => `
+  $("#timelineList").innerHTML = alertBanner + trackBadge + wh3DocHtml + terminalProfileHtml + aotHtml + steps.map((step, i) => `
     <div class="timeline-item ${step.done ? "done" : ""}" ${step.danger ? 'style="border-left:3px solid #ef4444;background:#fff5f5"' : ""}>
       <span style="${step.danger ? "background:#ef4444;color:#fff" : ""}">${step.done ? "✓" : i + 1}</span>
       <div>
