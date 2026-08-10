@@ -1697,7 +1697,10 @@ const STATUS_META = {
   BookingRequested:       { cls: "st-amber", th: "ส่งคำขอจองรถ" },
   TerminalConfirmed:      { cls: "st-green", th: "Terminal ยืนยันแล้ว" },
   LoadedFromWH3:          { cls: "st-blue",  th: "ออกจาก WH3 แล้ว" },
+  VehicleQueued:          { cls: "st-amber", th: "รถเข้าคิว Terminal" },
   ArrivedAtTerminal:      { cls: "st-blue",  th: "ถึง Terminal" },
+  UnloadingStarted:       { cls: "st-blue",  th: "เริ่มลงสินค้า" },
+  UnloadingCompleted:     { cls: "st-green", th: "ลงสินค้าเสร็จ" },
   OutboundLocated:        { cls: "st-blue",  th: "กำลังจัดออก" },
   OutboundPicking:        { cls: "st-blue",  th: "กำลังหยิบสินค้า" },
   EIApproved:             { cls: "st-green", th: "EI อนุมัติแล้ว" },
@@ -2056,6 +2059,7 @@ function renderAll() {
   renderExecutiveSummary();
   renderMetrics();
   renderProcessControlStrip();
+  renderDocumentMatrix();
   renderCtKpis();
   renderCtDonut();
   renderCtRisk();
@@ -2270,6 +2274,55 @@ function renderProcessControlStrip() {
     </button>
   `).join("");
   if (window.lucide?.createIcons) window.lucide.createIcons();
+}
+
+function openOrderFromMatrix(houseNumber) {
+  state.selectedHouse = houseNumber;
+  setView("orders");
+  renderOrderCards();
+  renderTimeline();
+}
+
+function renderDocumentMatrix() {
+  const box = $("#documentMatrix");
+  if (!box) return;
+  const rows = state.dashboard?.metrics?.documentMatrix || [];
+  if (!rows.length) {
+    box.innerHTML = `<div class="empty-state">${localizeText("ยังไม่มีรายการเอกสารที่ต้องตรวจ / No document checklist items yet")}</div>`;
+    return;
+  }
+  const items = rows.slice(0, 12).map(row => {
+    const missingLabels = (row.labels || [])
+      .filter(item => !item.checked)
+      .map(item => item.label || item.key)
+      .slice(0, 3);
+    const readyText = row.ready ? labelPair("พร้อมส่ง Terminal", "Ready for terminal") : labelPair("เอกสารยังไม่ครบ", "Documents pending");
+    const missingText = missingLabels.length
+      ? `${labelPair("ขาด", "Missing").main}: ${missingLabels.map(safeHtml).join(", ")}`
+      : labelPair("ตรวจครบแล้ว", "All checked").main;
+    return `
+      <button type="button" class="document-matrix-row ${row.ready ? "ready" : "pending"}" onclick="openOrderFromMatrix('${safeHtml(row.houseNumber)}')">
+        <span>
+          <b>${safeHtml(row.houseNumber)}</b>
+          <em>${safeHtml(row.customerName || "-")} · ${safeHtml(row.flightNo || "-")}</em>
+        </span>
+        <span>
+          <b>${safeHtml(row.terminal || "-")}</b>
+          <em>${safeHtml(row.workDate || "-")} · ${safeHtml(row.approvalStatus || "-")}</em>
+        </span>
+        <span class="doc-matrix-status">
+          <b>${safeHtml(readyText.main)}</b>
+          <em>${safeHtml(missingText)}</em>
+        </span>
+      </button>`;
+  }).join("");
+  const pending = rows.filter(row => !row.ready).length;
+  box.innerHTML = `
+    <div class="document-matrix-summary">
+      <strong>${rows.length}</strong><span>${localizeText("งานที่อยู่ในเอกสารส่งออก / export document jobs")}</span>
+      <strong>${pending}</strong><span>${localizeText("ยังต้องตรวจเอกสาร / pending document check")}</span>
+    </div>
+    <div class="document-matrix-list">${items}</div>`;
 }
 
 function renderDailyChart() {
@@ -7759,16 +7812,29 @@ function renderTimeline() {
       detail: job.dueDate ? `Due: ${new Date(job.dueDate).toLocaleDateString("th-TH")}` : "" }
   ];
 
-  $("#timelineList").innerHTML = alertBanner + trackBadge + wh3DocHtml + terminalProfileHtml + aotHtml + steps.map((step, i) => `
-    <div class="timeline-item ${step.done ? "done" : ""}" ${step.danger ? 'style="border-left:3px solid #ef4444;background:#fff5f5"' : ""}>
-      <span style="${step.danger ? "background:#ef4444;color:#fff" : ""}">${step.done ? "✓" : i + 1}</span>
-      <div>
-        <strong>${step.label}</strong>
-        <p>${step.desc}</p>
-        ${step.detail ? `<small style="color:${step.danger?"#dc2626":step.done?"#22c55e":"#64748b"}">${step.detail}</small>` : ""}
-      </div>
+  const firstOpen = steps.findIndex(step => !step.done);
+  const activeIndex = firstOpen === -1 ? steps.length - 1 : firstOpen;
+  const terminalEvents = (job.terminalWorkflowEvents || []).slice(-5).map(event => `
+    <span class="operation-event-chip ${event.status === "ReXRayRequired" || event.status === "XRayHold" ? "risk" : ""}">
+      <b>${safeHtml(event.status || "-")}</b>
+      <em>${safeHtml(formatBangkok(event.at) || "-")}${event.reason ? " - " + safeHtml(event.reason) : ""}</em>
+    </span>`).join("");
+  const horizontalTimeline = `
+    <div class="operation-timeline-horizontal" aria-label="Horizontal operation timeline">
+      ${steps.map((step, i) => `
+        <article class="operation-step ${step.done ? "done" : ""} ${i === activeIndex ? "active" : ""} ${step.danger ? "risk" : ""}">
+          <span class="operation-step-index">${step.done ? "OK" : i + 1}</span>
+          <div>
+            <strong>${step.label}</strong>
+            <p>${step.desc}</p>
+            ${step.detail ? `<small>${step.detail}</small>` : ""}
+          </div>
+        </article>
+      `).join("")}
     </div>
-  `).join("");
+    ${terminalEvents ? `<div class="operation-events"><strong>Terminal events</strong><div>${terminalEvents}</div></div>` : ""}`;
+
+  $("#timelineList").innerHTML = alertBanner + trackBadge + wh3DocHtml + terminalProfileHtml + aotHtml + horizontalTimeline;
 }
 
 function getGps() {

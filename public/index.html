@@ -270,6 +270,16 @@
             <div class="ct-sec-head"><span>1</span><div><h3>ภาพรวมปฏิบัติการ</h3><small>Operations Overview</small></div></div>
             <div class="ct-kpi-row" id="ctKpiRow"></div>
             <section class="process-control-strip" id="processControlStrip" aria-label="Process control summary"></section>
+            <section class="card document-matrix-card">
+              <div class="card-head">
+                <div>
+                  <h2>Document Matrix / Permit Checklist</h2>
+                  <p>WH3 original documents before terminal dispatch</p>
+                </div>
+                <button type="button" class="ghost-button" onclick="renderDocumentMatrix()">Refresh</button>
+              </div>
+              <div id="documentMatrix" class="document-matrix"></div>
+            </section>
             <div hidden aria-hidden="true">
               <span id="metricInbound"></span><em id="trendInbound"></em>
               <span id="metricOutbound"></span><em id="trendOutbound"></em>
@@ -1626,6 +1636,21 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
               </div>
 
               <!-- ── KPI Cards ── -->
+              <div class="lp-process-note">
+                <article>
+                  <strong>Plan rounds / รอบแปลน</strong>
+                  <span>Default: 08:00, 12:00, 16:00. If Process Owner confirms 09:00, 15:00, 20:00, update LOAD_PLAN_ROUNDS on Render.</span>
+                </article>
+                <article>
+                  <strong>Matching key / คีย์จับคู่</strong>
+                  <span>Current matching uses House Number first. Keep Master / Flight as reference until the final matching key is confirmed.</span>
+                </article>
+                <article>
+                  <strong>Audit trail / ประวัติอนุมัติ</strong>
+                  <span>Manual Extra keeps Line/Email evidence, CS approver, approval time, and plan version when later confirmed by plan.</span>
+                </article>
+              </div>
+
               <div style="background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
                 <div id="lpKpiRow" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
                 <!-- Rendered by renderLpKpi() -->

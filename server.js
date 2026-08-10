@@ -473,13 +473,15 @@ function wh3DispatchStatus(job = {}) {
 function processTrackingStatus(job = {}) {
   const terminal = normalizeTerminal(job.terminalDestination || job.destination || job.routeType || "TG");
   const xrayState = job.status === "ReXRayRequired" || job.requiresRescan ? "ReXRayRequired" : (job.xrayStatus === "Passed" ? "XRayPassed" : "");
+  const approval = job.approvalStatus || (job.csConfirmed ? (job.manualExtra ? "ManualExtraApproved" : "CSApproved") : "PendingCSApproval");
   return {
     planning: job.planMatched ? "ConfirmedByPlan" : (job.manualExtra ? "ManualExtraEntered" : "Pending"),
-    approval: job.approvalStatus || (job.csConfirmed ? "CSApproved" : "PendingCSApproval"),
+    approval,
     wh3Documents: job.wh3PreDispatchReady ? "DocumentReady" : "DocumentPending",
     transport: job.terminalWorkflowStatus || (job.aotApprovedAt ? "TerminalConfirmed" : (job.aotBookedAt ? "BookingRequested" : "")),
     terminal,
     terminalStatus: xrayState || job.status || "",
+    closing: job.closingStatus || (job.loadingDetailUploaded ? "LoadingDetailCompleted" : ""),
     billing: job.billingStatus || (job.readyForBilling ? "ReadyForBilling" : "")
   };
 }
@@ -535,7 +537,7 @@ function deriveApprovalFields(db, job, payload = {}) {
     manualExtra: isManualExtra,
     afterFinalRound,
     csConfirmed,
-    approvalStatus: inPlan ? "ConfirmedByPlan" : (csConfirmed ? "CSApproved" : "PendingCSApproval"),
+    approvalStatus: inPlan ? "ConfirmedByPlan" : (csConfirmed ? "ManualExtraApproved" : "PendingCSApproval"),
     csApprovalRequired: !inPlan && !csConfirmed,
     evidenceRequired: !inPlan && !csConfirmed,
     evidenceChannel: payload.evidenceChannel || job.evidenceChannel || (isManualExtra ? "Line/Email" : ""),
@@ -634,7 +636,7 @@ function buildDashboard(db) {
     manualExtra: jobs.filter(job => job.manualExtra).length,
     pendingCs: jobs.filter(job => job.approvalStatus === "PendingCSApproval" || job.csApprovalRequired).length,
     evidenceRequired: jobs.filter(job => job.evidenceRequired).length,
-    csApproved: jobs.filter(job => job.approvalStatus === "CSApproved").length,
+    csApproved: jobs.filter(job => ["CSApproved", "ManualExtraApproved"].includes(job.approvalStatus)).length,
     afterFinalRound: jobs.filter(job => job.afterFinalRound).length,
     mustReturnWh3: jobs.filter(job => job.mustReturnWh3).length,
     missingDoorPhoto: jobs.filter(job => job.doorClosedPhotoRequired && !job.doorClosedPhotoAt && ["CargoLoaded", "Delivered"].includes(job.status)).length,
@@ -657,13 +659,30 @@ function buildDashboard(db) {
       bookingRequested: rows.filter(job => job.terminalWorkflowStatus === "BookingRequested" || job.aotBookedAt).length,
       terminalConfirmed: rows.filter(job => job.terminalWorkflowStatus === "TerminalConfirmed" || job.aotApprovedAt).length,
       queued: rows.filter(job => job.terminalWorkflowStatus === "VehicleQueued").length,
-      arrived: rows.filter(job => job.terminalWorkflowStatus === "Arrived" || job.terminalArrivedAt).length,
+      arrived: rows.filter(job => ["Arrived", "ArrivedAtTerminal"].includes(job.terminalWorkflowStatus) || job.terminalArrivedAt).length,
       unloading: rows.filter(job => job.terminalWorkflowStatus === "UnloadingStarted").length,
       completed: rows.filter(job => job.terminalWorkflowStatus === "UnloadingCompleted" || job.loadingDetailUploaded).length,
       slaMinutes: TERMINAL_PROFILES[key].slaMinutes,
       risks: rows.filter(job => job.terminalRiskFlag || (key === "BFS" && job.terminalWorkflowStatus === "VehicleQueued")).length
     };
   });
+  const documentMatrix = jobs
+    .filter(job => job.terminalDestination || job.destination || job.wh3PreDispatchReady || job.manualExtra || job.planMatched)
+    .slice(0, 80)
+    .map(job => {
+      const docs = job.wh3Documents || wh3DispatchStatus(job);
+      return {
+        houseNumber: job.houseNumber,
+        customerName: job.customerName || "",
+        flightNo: job.flightNo || "",
+        terminal: normalizeTerminal(job.terminalDestination || job.destination || job.routeType),
+        workDate: job.workDate || job.planDate || job.pickupDate || "",
+        approvalStatus: job.approvalStatus || "",
+        ready: Boolean(docs.ready),
+        missing: docs.missing || [],
+        labels: docs.labels || []
+      };
+    });
   return {
     jobs,
     locations: db.locations,
@@ -680,7 +699,8 @@ function buildDashboard(db) {
       pendingAmount,
       averageDurationMinutes,
       approvalSummary,
-      terminalSummary
+      terminalSummary,
+      documentMatrix
     }
   };
 }
@@ -2168,11 +2188,11 @@ function billingDocumentStatus(db, job) {
   const hasTransfer = files.some(file => /OutboundDocument|EISignProof|CargoTransfer/i.test(file.fileType));
   const hasLoading = Boolean(job.loadingDetailUploaded || files.some(file => /LoadingDetail/i.test(file.fileType)));
   const hasFieldEvidence = files.some(file => /Pickup|InboundEvidence|PreLoadPhoto|Product|Cargo/i.test(file.fileType));
-  const hasPlanApproval = Boolean(job.planMatched || job.approvalStatus === "ConfirmedByPlan" || job.approvalStatus === "CSApproved" || job.csConfirmed);
+  const hasPlanApproval = Boolean(job.planMatched || ["ConfirmedByPlan", "CSApproved", "ManualExtraApproved"].includes(job.approvalStatus) || job.csConfirmed);
   const hasWh3Dispatch = Boolean(job.wh3PreDispatchReady);
   const hasCsEvidence = !job.manualExtra || Boolean(job.csEvidenceAttachedAt || job.evidenceNote || files.some(file => /CSApprovalEvidence/i.test(file.fileType)));
   const hasWorkDate = Boolean(job.workDate || job.planDate || job.pickupDate);
-  const hasPlanVersion = Boolean(job.planRound || job.confirmedByPlanId || job.approvalStatus === "CSApproved");
+  const hasPlanVersion = Boolean(job.planRound || job.confirmedByPlanId || ["CSApproved", "ManualExtraApproved"].includes(job.approvalStatus));
   const blockers = [
     !hasWeight && "missing_weight_record",
     !hasTransfer && "missing_cargo_transfer",
@@ -2272,8 +2292,11 @@ async function handleApi(req, res, pathname) {
         "DocumentReady",
         "BookingRequested",
         "TerminalConfirmed",
+        "VehicleQueued",
         "LoadedFromWH3",
         "ArrivedAtTerminal",
+        "UnloadingStarted",
+        "UnloadingCompleted",
         "WeighingCompleted",
         "DimensionCompleted",
         "XRayPassed",
@@ -3255,7 +3278,7 @@ async function handleApi(req, res, pathname) {
     if (!payload.arrived && !payload.imageBase64) return sendJson(res, 422, { error: "Pre-load vehicle photo is required" });
     saveBase64File(db, { houseNumber: job.houseNumber, fileType: "PreLoadPhoto", base64: payload.imageBase64, mimeType: payload.mimeType || "image/jpeg" });
     const terminal = normalizeTerminal(job.terminalDestination || payload.terminalDestination || job.destination || "TG");
-    const workflowStatus = payload.arrived ? "Arrived" : "VehicleQueued";
+    const workflowStatus = payload.arrived ? "ArrivedAtTerminal" : "VehicleQueued";
     job.status = payload.arrived ? "TerminalArrived" : "GoodsLoaded";
     job.goodsLoadedAt = job.goodsLoadedAt || nowIso();
     job.terminalArrivedAt = payload.arrived ? nowIso() : job.terminalArrivedAt;
@@ -3326,6 +3349,19 @@ async function handleApi(req, res, pathname) {
     job.xrayStatus = payload.hold ? "Hold" : (payload.passed ? "Passed" : "Failed");
     job.requiresRescan = Boolean(payload.requiresRescan);
     job.status = job.xrayStatus === "Passed" ? "XRayPassed" : (payload.hold ? "XRayHold" : "ReXRayRequired");
+    if (job.status === "ReXRayRequired" || job.status === "XRayHold") {
+      job.reXrayReason = payload.reason || payload.reXrayReason || job.reXrayReason || "";
+      job.reXrayCount = Number(job.reXrayCount || 0) + 1;
+      job.reXrayAt = nowIso();
+      job.terminalWorkflowEvents ||= [];
+      job.terminalWorkflowEvents.push({
+        at: job.reXrayAt,
+        status: job.status,
+        terminal: normalizeTerminal(job.terminalDestination || job.destination || "TG"),
+        reason: job.reXrayReason,
+        userId: payload.userId || ""
+      });
+    }
     job.updatedAt = nowIso();
     logActivity(db, {
       ...payload,
@@ -3382,6 +3418,14 @@ async function handleApi(req, res, pathname) {
     for (const item of flightJobs) {
       item.loadingDetailUploaded = true;
       item.readyForBilling = true;
+      item.closingStatus = "LoadingDetailCompleted";
+      item.terminalWorkflowEvents ||= [];
+      item.terminalWorkflowEvents.push({
+        at: nowIso(),
+        status: "LoadingDetailCompleted",
+        terminal: normalizeTerminal(item.terminalDestination || item.destination || "TG"),
+        userId: payload.userId || ""
+      });
       item.status = "ReadyForBilling";
       item.terminalClosedAt = nowIso();
       item.updatedAt = nowIso();
@@ -4383,7 +4427,8 @@ async function handleApi(req, res, pathname) {
         job.csConfirmedAt = now;
         job.csContactName = contactName || "";
         if (invoiceNo) job.csInvoiceNo = invoiceNo;
-        job.approvalStatus = "CSApproved";
+        const approvalStatus = job.manualExtra || job.afterFinalRound ? "ManualExtraApproved" : "CSApproved";
+        job.approvalStatus = approvalStatus;
         job.csApprovalRequired = false;
         job.evidenceRequired = false;
         job.evidenceChannel = evidenceChannel || job.evidenceChannel || "";
@@ -4395,10 +4440,10 @@ async function handleApi(req, res, pathname) {
         job.approvalTrail ||= [];
         job.approvalTrail.push({
           at: now,
-          type: "CSApproved",
+          type: approvalStatus,
           by: job.csConfirmedBy,
           from: "PendingCSApproval",
-          to: "CSApproved",
+          to: approvalStatus,
           channel: job.evidenceChannel,
           note: job.evidenceNote,
           invoiceNo: job.csInvoiceNo || ""
