@@ -21904,9 +21904,21 @@ small, .eyebrow, .panel-title span, .metric-card span, .chart-legend, .table-sub
   }
 }
 
+@media (max-width: 840px) {
+  .sidebar-collapse-button {
+    display: none !important;
+  }
+
+  body.sidebar-collapsed .app-shell,
+  .app-shell.sidebar-collapsed {
+    display: block;
+  }
+}
+
 /* Layout audit fixes: keep pages inside the available viewport width. */
 .app-shell,
 .main-area,
+.workspace,
 .content,
 .page.active,
 .orders-layout,
@@ -21915,6 +21927,74 @@ small, .eyebrow, .panel-title span, .metric-card span, .chart-legend, .table-sub
 .preview-panel {
   min-width: 0;
   max-width: 100%;
+}
+
+.sidebar-collapse-button {
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: #40516b;
+  background: #fff;
+}
+
+.sidebar-collapse-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.app-shell,
+.sidebar {
+  transition: grid-template-columns .18s ease, width .18s ease;
+}
+
+body.sidebar-collapsed .app-shell,
+.app-shell.sidebar-collapsed {
+  grid-template-columns: 88px minmax(0, 1fr) !important;
+}
+
+body.sidebar-collapsed .sidebar {
+  align-items: center;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+body.sidebar-collapsed .brand {
+  justify-content: center;
+  width: 100%;
+}
+
+body.sidebar-collapsed .brand div:last-child,
+body.sidebar-collapsed .nav-group-label,
+body.sidebar-collapsed .nav-item b,
+body.sidebar-collapsed .nav-item > span:not(.nav-badge),
+body.sidebar-collapsed .side-link,
+body.sidebar-collapsed .user-card div:last-child {
+  display: none !important;
+}
+
+body.sidebar-collapsed .side-nav,
+body.sidebar-collapsed .side-footer {
+  width: 100%;
+}
+
+body.sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding: 9px 0 !important;
+}
+
+body.sidebar-collapsed .nav-badge {
+  position: absolute;
+  right: 8px;
+}
+
+body.sidebar-collapsed .side-footer .user-card {
+  justify-content: center;
+  padding: 10px 0;
 }
 
 .side-footer .user-card {
@@ -21933,6 +22013,55 @@ small, .eyebrow, .panel-title span, .metric-card span, .chart-legend, .table-sub
 
 .tracking-detail .timeline-card:has(.operation-timeline-card) > .card-head {
   display: none;
+}
+
+.timeline-list,
+.timeline-list > *,
+.timeline-list > div,
+.timeline-list > section {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.timeline-list > div {
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.timeline-list > div * {
+  min-width: 0;
+}
+
+.order-approval-banner {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.order-approval-banner span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operation-timeline-card {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.operation-timeline-horizontal {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.operation-timeline-horizontal::before {
+  right: 42px;
+}
+
+.operation-step {
+  flex: 0 0 clamp(152px, 14%, 210px);
+  min-width: 0;
 }
 
 @media (min-width: 841px) {

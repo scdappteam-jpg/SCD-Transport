@@ -303,6 +303,22 @@ function setMobileMenu(open) {
   document.body.classList.toggle("menu-open", open);
 }
 
+const SIDEBAR_COLLAPSED_KEY = "scd_sidebar_collapsed";
+
+function setSidebarCollapsed(collapsed) {
+  document.body.classList.toggle("sidebar-collapsed", collapsed);
+  $(".app-shell")?.classList.toggle("sidebar-collapsed", collapsed);
+  $("#sidebarCollapseBtn")?.setAttribute("aria-expanded", String(!collapsed));
+  $("#sidebarCollapseBtn")?.setAttribute("aria-label", collapsed ? "Expand menu" : "Collapse menu");
+  $("#sidebarCollapseBtn i")?.setAttribute("data-lucide", collapsed ? "panel-left-open" : "panel-left-close");
+  localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function initSidebarCollapsed() {
+  setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+}
+
 function apiUrl(path) {
   return `${API_BASE}${path}`;
 }
@@ -8225,6 +8241,9 @@ function bindEvents() {
     setView("dashboard");
   });
   $("#mobileMenuBtn").addEventListener("click", () => setMobileMenu(!$(".sidebar").classList.contains("mobile-open")));
+  $("#sidebarCollapseBtn")?.addEventListener("click", () => {
+    setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
+  });
   $("#sidebarBackdrop").addEventListener("click", () => setMobileMenu(false));
   $("#closeCalendarDayModal")?.addEventListener("click", closeCalendarDayModal);
   $("#calendarDayModal")?.addEventListener("click", e => { if (e.target.id === "calendarDayModal") closeCalendarDayModal(); });
@@ -8236,6 +8255,7 @@ function bindEvents() {
   });
   window.addEventListener("resize", () => {
     if (window.innerWidth > 840) setMobileMenu(false);
+    if (window.innerWidth <= 840) setSidebarCollapsed(false);
   });
   $("#openStaffFormBtn").addEventListener("click", () => openStaffEditor());
   $("#closeStaffFormBtn").addEventListener("click", closeStaffEditor);
@@ -9824,6 +9844,7 @@ function renderAlerts() {
 
 // ===== STARTUP =====
 document.addEventListener("DOMContentLoaded", async () => {
+  initSidebarCollapsed();
   bindEvents();
   if (isWebAuthenticated()) {
     await refresh();
