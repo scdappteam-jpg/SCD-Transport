@@ -7820,19 +7820,28 @@ function renderTimeline() {
       <em>${safeHtml(formatBangkok(event.at) || "-")}${event.reason ? " - " + safeHtml(event.reason) : ""}</em>
     </span>`).join("");
   const horizontalTimeline = `
-    <div class="operation-timeline-horizontal" aria-label="Horizontal operation timeline">
-      ${steps.map((step, i) => `
-        <article class="operation-step ${step.done ? "done" : ""} ${i === activeIndex ? "active" : ""} ${step.danger ? "risk" : ""}">
-          <span class="operation-step-index">${step.done ? "OK" : i + 1}</span>
-          <div>
-            <strong>${step.label}</strong>
-            <p>${step.desc}</p>
-            ${step.detail ? `<small>${step.detail}</small>` : ""}
-          </div>
-        </article>
-      `).join("")}
-    </div>
-    ${terminalEvents ? `<div class="operation-events"><strong>Terminal events</strong><div>${terminalEvents}</div></div>` : ""}`;
+    <section class="operation-timeline-card">
+      <div class="operation-timeline-head">
+        <div>
+          <h3>${localizeText("ไทม์ไลน์ปฏิบัติการ")}</h3>
+          <p>${localizeText("ติดตามสถานะงานตั้งแต่ Pickup ถึง Billing แบบเรียลไทม์")}</p>
+        </div>
+        <span class="operation-live-pill">LIVE UPDATE</span>
+      </div>
+      <div class="operation-timeline-horizontal" aria-label="Horizontal operation timeline">
+        ${steps.map((step, i) => `
+          <article class="operation-step ${step.done ? "done" : ""} ${i === activeIndex ? "active" : ""} ${step.danger ? "risk" : ""}">
+            <span class="operation-step-node">${step.done ? "OK" : String(i + 1).padStart(2, "0")}</span>
+            <div class="operation-step-copy">
+              <strong>${step.label}</strong>
+              <p>${step.desc}</p>
+              ${step.detail ? `<small>${step.detail}</small>` : ""}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+      ${terminalEvents ? `<div class="operation-events"><strong>${localizeText("เหตุการณ์ล่าสุด / Latest events")}</strong><div>${terminalEvents}</div></div>` : ""}
+    </section>`;
 
   $("#timelineList").innerHTML = alertBanner + trackBadge + wh3DocHtml + terminalProfileHtml + aotHtml + horizontalTimeline;
 }
