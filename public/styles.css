@@ -21903,3 +21903,82 @@ small, .eyebrow, .panel-title span, .metric-card span, .chart-legend, .table-sub
     grid-template-columns: 1fr;
   }
 }
+
+/* Layout audit fixes: keep pages inside the available viewport width. */
+.app-shell,
+.main-area,
+.content,
+.page.active,
+.orders-layout,
+.tracking-detail,
+.admin-layout,
+.preview-panel {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.side-footer .user-card {
+  margin: 12px 0 0;
+  padding: 16px 12px;
+  border-radius: 14px;
+}
+
+.tracking-detail .detail-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tracking-detail .timeline-card {
+  min-height: 0;
+}
+
+.tracking-detail .timeline-card:has(.operation-timeline-card) > .card-head {
+  display: none;
+}
+
+@media (min-width: 841px) {
+  .orders-layout {
+    grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .shipment-hero {
+    grid-template-columns: 64px minmax(120px, 1fr) minmax(210px, auto);
+    gap: 14px;
+  }
+
+  .route-box {
+    min-width: 0;
+    gap: 14px;
+    padding: 14px 16px;
+  }
+
+  .route-box b {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (min-width: 841px) and (max-width: 1360px) {
+  .admin-layout,
+  .operations-grid,
+  .admin-layout[data-flow="import"],
+  .admin-layout[data-flow="open"] {
+    grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr) !important;
+    gap: 20px;
+  }
+
+  .admin-layout .preview-panel,
+  .admin-layout[data-flow="import"] .preview-panel,
+  .admin-layout[data-flow="open"] .preview-panel {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .preview-panel .panel-title {
+    flex-wrap: wrap;
+  }
+
+  .preview-panel .button-pair {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
