@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: scd-transport-next
+    runtime: node
+    plan: free
+    rootDir: nextjs-app
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: SCAN_SERVICE_URL
+        sync: false
