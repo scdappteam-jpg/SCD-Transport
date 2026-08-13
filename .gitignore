@@ -17,3 +17,11 @@ Thumbs.db
 
 # Dependencies if added later
 node_modules/
+.next/
+*.tsbuildinfo
+.venv/
+venv/
+.git-archive/
+__pycache__/
+*.pyc
+**/certs/*.pem

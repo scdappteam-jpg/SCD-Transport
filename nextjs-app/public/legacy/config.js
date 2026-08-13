@@ -1,0 +1,1 @@
+window.SMART_LOGISTICS_API_BASE = "";

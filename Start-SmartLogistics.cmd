@@ -1,11 +1,18 @@
 @echo off
+setlocal
 cd /d "%~dp0"
-echo SmartLogistics will run at:
-echo   Web app:    http://localhost:3000/web
-echo   Mobile app: http://localhost:3000/mobile
+echo Starting S.C.D. Transport services
+echo Next.js: http://localhost:3000
+echo Field app: http://localhost:3000/field
+echo Python API: http://localhost:5000/docs
 echo.
-echo Keep this window open while using the system.
-echo If port 3000 is already in use, close the old server window first.
-echo.
-node server.js
-pause
+if exist "%~dp0python-server\.venv\Scripts\python.exe" (
+  start "SCD Image Processor" /min cmd /k "cd /d %~dp0python-server && .venv\Scripts\python.exe app.py"
+) else if exist "%~dp0python-server\venv\Scripts\python.exe" (
+  start "SCD Image Processor" /min cmd /k "cd /d %~dp0python-server && venv\Scripts\python.exe app.py"
+) else (
+  start "SCD Image Processor" /min cmd /k "cd /d %~dp0python-server && python app.py"
+)
+cd /d "%~dp0nextjs-app"
+if not exist "node_modules" call pnpm install --frozen-lockfile
+call pnpm dev
