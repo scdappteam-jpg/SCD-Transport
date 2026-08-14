@@ -5,6 +5,7 @@ import { ArrowLeft, Camera, CheckCircle2, FileImage, FlaskConical, LoaderCircle,
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LiveScanner } from "@/components/field/live-scanner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getBootstrap, scanBarcode, toScanDisplayResult } from "@/services/api.service";
 
@@ -21,10 +22,12 @@ export function FieldOperations() {
     onSuccess: response => setScanResult(toScanDisplayResult(response))
   });
   const selectedHouse = manualHouse.trim() || scanResult?.codes[0] || "";
-  const selectedJob = useMemo(
-    () => query.data?.dashboard.jobs.find(job => job.houseNumber.toLowerCase() === selectedHouse.toLowerCase()),
-    [query.data, selectedHouse]
-  );
+  const selectedJob = useMemo(() => {
+    const normalize = (value: string) => value.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    const target = normalize(selectedHouse);
+    if (!target) return undefined;
+    return query.data?.dashboard.jobs.find(job => normalize(job.houseNumber) === target);
+  }, [query.data, selectedHouse]);
 
   useEffect(() => {
     const previewUrl = selectedImage?.url;
@@ -66,6 +69,14 @@ export function FieldOperations() {
       </header>
 
       <div className="mx-auto max-w-2xl space-y-4 p-4">
+        <LiveScanner
+          onDetected={code => {
+            setManualHouse(code);
+            setScanResult(null);
+            scan.reset();
+          }}
+        />
+
         <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 to-blue-950 p-6 text-white shadow-xl shadow-blue-950/20">
           <FileImage className="size-8 text-blue-200" />
           <h2 className="mt-5 text-2xl font-black">เลือกภาพ Barcode หรือ QR Code</h2>
