@@ -1007,7 +1007,17 @@ function bindEvents() {
     $("#confirmInboundHouseBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         unlockInboundWorkflow($("#scanHouse").value, "manual");
     }));
-    $("#cameraScanBtn").addEventListener("click", () => $("#scanHouseFile")?.click());
+    $("#cameraScanBtn").addEventListener("click", () => {
+        if (typeof openLiveScan === "function") {
+            openLiveScan(house => {
+                const el = $("#scanHouse");
+                if (el) el.value = house;
+                unlockInboundWorkflow(house, "camera");
+            });
+        } else {
+            $("#scanHouseFile")?.click();
+        }
+    });
     $("#scanHouseFile")?.addEventListener("change", event => {
         const file = event.target.files?.[0];
         event.target.value = "";
@@ -1054,7 +1064,17 @@ function bindEvents() {
     $("#confirmOutboundHouseBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         unlockOutboundWorkflow($("#terminalHouse").value, "manual");
     }));
-    $("#outboundCameraScanBtn").addEventListener("click", () => $("#outboundScanFile")?.click());
+    $("#outboundCameraScanBtn").addEventListener("click", () => {
+        if (typeof openLiveScan === "function") {
+            openLiveScan(house => {
+                const el = $("#terminalHouse");
+                if (el) el.value = house;
+                unlockOutboundWorkflow(house, "camera");
+            });
+        } else {
+            $("#outboundScanFile")?.click();
+        }
+    });
     $("#outboundScanFile")?.addEventListener("change", event => {
         const file = event.target.files?.[0];
         event.target.value = "";

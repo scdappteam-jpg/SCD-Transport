@@ -7142,6 +7142,26 @@ function bindEvents() {
         renderRecentOrders();
         renderOrderCards();
     });
+    $("#globalScanBtn")?.addEventListener("click", () => {
+        if (typeof openLiveScan !== "function") return toast("ตัวสแกนยังไม่พร้อม");
+        openLiveScan(house => {
+            const searchEl = $("#globalSearch");
+            if (searchEl) searchEl.value = house;
+            renderRecentOrders();
+            renderOrderCards();
+            const norm = v => String(v || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+            const job = (state.dashboard?.jobs || []).find(j => norm(j.houseNumber) === norm(house));
+            if (job) {
+                openJobQuickView(job.houseNumber);
+                toast(`สแกนพบงาน ${job.houseNumber}`);
+            } else {
+                setView("orders");
+                const orderEl = $("#orderSearch");
+                if (orderEl) { orderEl.value = house; renderOrderCards(); }
+                toast(`สแกนได้ ${house} — ไม่พบในระบบ ลองดูรายการใกล้เคียง`);
+            }
+        });
+    });
     $("#dimTabs")?.addEventListener("click", event => {
         const btn = event.target.closest("[data-dim]");
         if (!btn) return;
