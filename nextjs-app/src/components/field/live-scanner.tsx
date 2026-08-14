@@ -97,6 +97,7 @@ export function LiveScanner({ onDetected }: { onDetected: (code: string) => void
     setError(null);
     setLastCode(null);
     setStarting(true);
+    await new Promise(resolve => setTimeout(resolve, 80));
     try {
       const Html5Qrcode = await loadScannerLibrary();
       const scanner = new Html5Qrcode("live-scanner-view");
@@ -156,7 +157,7 @@ export function LiveScanner({ onDetected }: { onDetected: (code: string) => void
       <div className="p-4">
         <div
           id="live-scanner-view"
-          className={`overflow-hidden rounded-2xl bg-slate-950 ${active ? "min-h-64" : "hidden"}`}
+          className={`overflow-hidden rounded-2xl bg-slate-950 [&_video]:!w-full [&_video]:!rounded-2xl ${active || starting ? "min-h-64" : "hidden"}`}
         />
 
         {!active && (
