@@ -72,6 +72,8 @@ export function LiveScanner({ onDetected }: { onDetected: (code: string) => void
   const [lastCode, setLastCode] = useState<string | null>(null);
   const scannerRef = useRef<Html5QrcodeInstance | null>(null);
   const detectionLockRef = useRef(false);
+  const candidateRef = useRef<string | null>(null);
+  const candidateHitsRef = useRef(0);
 
   const stop = useCallback(async () => {
     const scanner = scannerRef.current;
@@ -103,13 +105,23 @@ export function LiveScanner({ onDetected }: { onDetected: (code: string) => void
       const scanner = new Html5Qrcode("live-scanner-view");
       scannerRef.current = scanner;
       detectionLockRef.current = false;
+      candidateRef.current = null;
+      candidateHitsRef.current = 0;
       await scanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 270, height: 170 } },
+        { fps: 12, qrbox: { width: 300, height: 150 } },
         decodedText => {
           if (detectionLockRef.current) return;
-          detectionLockRef.current = true;
           const code = decodedText.trim();
+          if (code.length < 5) return;
+          if (code === candidateRef.current) {
+            candidateHitsRef.current += 1;
+          } else {
+            candidateRef.current = code;
+            candidateHitsRef.current = 1;
+          }
+          if (candidateHitsRef.current < 2) return;
+          detectionLockRef.current = true;
           setLastCode(code);
           playBeep();
           if (typeof navigator.vibrate === "function") navigator.vibrate(150);

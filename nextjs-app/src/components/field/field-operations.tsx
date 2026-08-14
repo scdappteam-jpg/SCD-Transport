@@ -71,7 +71,7 @@ export function FieldOperations() {
       <div className="mx-auto max-w-2xl space-y-4 p-4">
         <LiveScanner
           onDetected={code => {
-            setManualHouse(code);
+            setManualHouse(code.split("+")[0].trim());
             setScanResult(null);
             scan.reset();
           }}
