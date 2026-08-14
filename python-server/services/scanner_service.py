@@ -1,7 +1,12 @@
 import re
 
 import cv2
-import easyocr
+
+try:
+    import easyocr
+except Exception:  # easyocr is optional (heavy); barcode scanning works without it
+    easyocr = None
+
 from pyzbar.pyzbar import decode
 
 reader = None
@@ -10,6 +15,8 @@ reader = None
 def get_reader():
     global reader
     if reader is None:
+        if easyocr is None:
+            raise RuntimeError("easyocr not installed (lite mode)")
         reader = easyocr.Reader(["en"], gpu=False)
     return reader
 
