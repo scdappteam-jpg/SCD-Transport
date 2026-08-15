@@ -78,7 +78,10 @@
       '<div style="width:min(560px,96vw);background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4)">' +
       '  <div style="display:flex;align-items:center;justify-content:space-between;background:#0b4ea2;color:#fff;padding:13px 18px">' +
       '    <strong style="font-size:15px">📷 สแกนบาร์โค้ด (เดี่ยว/คู่)</strong>' +
-      '    <button id="liveScanClose" type="button" style="min-height:36px;padding:6px 14px;border:none;border-radius:9px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;cursor:pointer">ยกเลิก</button>' +
+      '    <div style="display:flex;gap:8px">' +
+      '      <button id="liveScanTorch" type="button" style="display:none;min-height:36px;padding:6px 14px;border:none;border-radius:9px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;cursor:pointer">🔦 เปิดไฟ</button>' +
+      '      <button id="liveScanClose" type="button" style="min-height:36px;padding:6px 14px;border:none;border-radius:9px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;cursor:pointer">ยกเลิก</button>' +
+      '    </div>' +
       '  </div>' +
       '  <div id="liveScanView" style="background:#020617;min-height:260px"></div>' +
       '  <div style="display:flex;gap:8px;padding:12px 16px 4px">' +
@@ -135,6 +138,28 @@
       try { onResult(detail.house || detail.master, detail); } catch (e) { /* ignore */ }
     }
 
+    var torchOn = false;
+    function setupTorch() {
+      var btn = document.getElementById("liveScanTorch");
+      if (!btn || !overlay) return;
+      var video = overlay.querySelector("#liveScanView video");
+      var stream = video && video.srcObject;
+      var track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+      var caps = track && track.getCapabilities ? track.getCapabilities() : null;
+      if (!caps || !caps.torch) { btn.style.display = "none"; return; }
+      btn.style.display = "";
+      btn.onclick = function () {
+        torchOn = !torchOn;
+        track.applyConstraints({ advanced: [{ torch: torchOn }] }).then(function () {
+          btn.textContent = torchOn ? "🔦 ปิดไฟ" : "🔦 เปิดไฟ";
+          btn.style.background = torchOn ? "#f59e0b" : "rgba(255,255,255,.15)";
+        }).catch(function () {
+          torchOn = false;
+          btn.style.display = "none";
+        });
+      };
+    }
+
     overlay.addEventListener("click", function (e) { if (e.target === overlay) closeLiveScan(); });
     overlay.querySelector("#liveScanClose").addEventListener("click", closeLiveScan);
     overlay.querySelector("#liveScanDone").addEventListener("click", finish);
@@ -184,6 +209,7 @@
       ).then(function () {
         var hint = document.getElementById("liveScanHint");
         if (hint) hint.textContent = "เล็งทีละบาร์ — บาร์เดี่ยว (484...) = เข้าโกดัง · บาร์คู่ Master+House = ส่งออก";
+        setTimeout(setupTorch, 400); /* รอ video ต่อ stream ก่อน */
       });
     }).catch(function (err) {
       var hint = document.getElementById("liveScanHint");
