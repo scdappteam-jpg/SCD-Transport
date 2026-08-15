@@ -7145,9 +7145,10 @@ function bindEvents() {
     $("#globalScanBtn")?.addEventListener("click", () => {
         if (typeof openLiveScan !== "function") return toast("ตัวสแกนยังไม่พร้อม");
         openLiveScan((house, detail) => {
-            const modeLabel = detail?.mode === "dual"
+            const pieceLabel = detail?.pieceCount ? ` · ${detail.pieceCount} ชิ้น` : "";
+            const modeLabel = (detail?.mode === "dual"
                 ? `บาร์คู่ Master ${detail.master} → งานส่งออก`
-                : "บาร์เดี่ยว → เข้าโกดัง WH3";
+                : "บาร์เดี่ยว → เข้าโกดัง WH3") + pieceLabel;
             const searchEl = $("#globalSearch");
             if (searchEl) searchEl.value = house;
             renderRecentOrders();

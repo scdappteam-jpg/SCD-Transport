@@ -49,13 +49,14 @@
    * - House: อย่างอื่น เช่น 4840791806, F842037622 (ตัดส่วน +XXXX ลำดับชิ้นออก)
    */
   function classify(raw) {
-    var noSuffix = String(raw || "").split("+")[0].trim();
-    var clean = noSuffix.replace(/[^0-9A-Za-z]/g, "");
+    var parts = String(raw || "").trim().split("+");
+    var clean = parts[0].replace(/[^0-9A-Za-z]/g, "");
+    var piece = parts.length > 1 ? String(parts[1]).replace(/[^0-9]/g, "") : "";
     if (!clean) return null;
     if (/^\d{11,}$/.test(clean)) {
       return { type: "master", value: clean.slice(0, 11) };
     }
-    return { type: "house", value: clean };
+    return { type: "house", value: clean, piece: piece };
   }
 
   function fmtMaster(m) {
@@ -64,7 +65,7 @@
 
   window.openLiveScan = function (onResult) {
     closeLiveScan();
-    var found = { house: null, master: null };
+    var found = { house: null, master: null, pieces: [] };
     var candidate = null;
     var hits = 0;
     var finished = false;
@@ -96,7 +97,7 @@
       var m = document.getElementById("lsMasterChip");
       var done = document.getElementById("liveScanDone");
       if (h && found.house) {
-        h.textContent = "House: " + found.house;
+        h.textContent = "House: " + found.house + (found.pieces.length ? " · " + found.pieces.length + " ชิ้น (" + found.pieces.map(function (x) { return "+" + x; }).join(",") + ")" : "");
         h.setAttribute("style", h.getAttribute("style").replace("#f1f5f9", "#dcfce7").replace("dashed #cbd5e1", "solid #86efac").replace("#94a3b8", "#15803d"));
       }
       if (m && found.master) {
@@ -107,10 +108,14 @@
         done.disabled = false;
         done.setAttribute("style", done.getAttribute("style").replace("#e2e8f0", "#0b4ea2").replace("color:#94a3b8", "color:#fff"));
       }
+      if (done && (found.house || found.master)) {
+        done.textContent = "เสร็จสิ้น" + (found.pieces.length ? " (" + found.pieces.length + " ชิ้น)" : " — ใช้เลขที่สแกนได้");
+      }
       var hint = document.getElementById("liveScanHint");
       if (hint) {
-        if (found.house && !found.master) hint.textContent = "ได้ House แล้ว — บาร์เดี่ยว = เข้าโกดัง กดปุ่มด้านล่าง หรือสแกน Master ต่อถ้าเป็นงานส่งออก";
-        else if (!found.house && found.master) hint.textContent = "ได้ Master แล้ว — สแกนบาร์ House (484...) ต่อ";
+        if (found.house && found.master) hint.textContent = "ครบคู่ Master+House (ส่งออก) — ยิงชิ้นถัดไปต่อได้ หรือกดเสร็จสิ้น";
+        else if (found.house) hint.textContent = "ได้ House แล้ว — ยิงชิ้นถัดไป (+xxxx) ต่อเพื่อตรวจยอด หรือกดเสร็จสิ้น (บาร์เดี่ยว = เข้าโกดัง)";
+        else if (found.master) hint.textContent = "ได้ Master แล้ว — สแกนบาร์ House (484...) ต่อ";
       }
     }
 
@@ -120,7 +125,9 @@
       var detail = {
         house: found.house || "",
         master: found.master ? fmtMaster(found.master) : "",
-        mode: found.house && found.master ? "dual" : "single"
+        mode: found.house && found.master ? "dual" : "single",
+        pieces: found.pieces.slice(),
+        pieceCount: found.pieces.length
       };
       beep(1800, 0.18);
       if (typeof navigator.vibrate === "function") navigator.vibrate([120, 60, 120]);
@@ -148,12 +155,30 @@
           candidate = null; hits = 0;
           var item = classify(code);
           if (!item) return;
-          if (found[item.type] === item.value) return; /* ซ้ำตัวเดิม ข้าม */
-          found[item.type] = item.value;
-          beep(item.type === "house" ? 1400 : 1000);
+          var hint = document.getElementById("liveScanHint");
+          if (item.type === "house") {
+            if (found.house && found.house !== item.value) {
+              beep(500, 0.2); /* เสียงต่ำ = คนละ House */
+              if (hint) { hint.textContent = "⚠ " + item.value + " เป็นคนละ House กับที่สแกนอยู่ (" + found.house + ") — ข้ามให้แล้ว"; }
+              return;
+            }
+            found.house = item.value;
+            if (item.piece) {
+              if (found.pieces.indexOf(item.piece) >= 0) {
+                beep(500, 0.2);
+                if (hint) { hint.textContent = "⚠ ชิ้น +" + item.piece + " สแกนซ้ำ — ข้ามให้แล้ว"; }
+                return;
+              }
+              found.pieces.push(item.piece);
+            }
+            beep(1400);
+          } else {
+            if (found.master === item.value) return;
+            found.master = item.value;
+            beep(1000);
+          }
           if (typeof navigator.vibrate === "function") navigator.vibrate(100);
           updateChips();
-          if (found.house && found.master) setTimeout(finish, 350); /* ครบคู่ = ส่งออก ปิดเอง */
         },
         function () { /* เฟรมที่ยังไม่เจอ */ }
       ).then(function () {

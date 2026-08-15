@@ -1014,7 +1014,10 @@ function bindEvents() {
                 if (el) el.value = house;
                 if (detail?.mode === "dual") {
                     toast("⚠ สแกนได้บาร์คู่ (มี Master) — งานนี้เป็น Track คู่สำหรับส่งออก ตรวจสอบก่อนรับเข้าโกดัง");
+                } else if (detail?.pieceCount) {
+                    toast(`สแกนแล้ว ${detail.pieceCount} ชิ้น (+${detail.pieces.join(", +")})`);
                 }
+                state.scannedPieces = detail?.pieces || [];
                 unlockInboundWorkflow(house, "camera");
             });
         } else {
@@ -1074,7 +1077,8 @@ function bindEvents() {
                 if (el) el.value = house;
                 if (detail?.mode === "dual" && detail.master) {
                     state.scannedMasterAwb = detail.master;
-                    toast(`บาร์คู่ ✓ Master ${detail.master} + House ${house}`);
+                    state.scannedPieces = detail?.pieces || [];
+                    toast(`บาร์คู่ ✓ Master ${detail.master} + House ${house}${detail.pieceCount ? ` · ${detail.pieceCount} ชิ้น` : ""}`);
                 } else {
                     toast("⚠ ได้บาร์เดี่ยว — งานส่งออกควรมี Master ด้วย ลองสแกนบาร์บนของป้าย");
                 }
