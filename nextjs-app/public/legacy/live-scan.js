@@ -1,8 +1,10 @@
 /* ══ Live Barcode Scanner กลางของระบบ — ใช้ร่วมทุกหน้า ══
- * เรียกใช้: openLiveScan(function (code) { ... })
- * - อ่านสดจากกล้อง (html5-qrcode ผ่าน CDN) เหมือนเครื่องยิงบาร์โค้ด
- * - ต้องอ่านค่าเดิมซ้ำ 2 เฟรมติดถึงยอมรับ (กันอ่านเพี้ยน)
- * - ตัดส่วนท้าย +XXXX (ลำดับชิ้น) ออกให้อัตโนมัติ code ที่ส่งกลับคือเลข House
+ * เรียกใช้: openLiveScan(function (house, detail) { ... })
+ *   detail = { house, master, mode }  โดย mode = "dual" (Master+House → ส่งออก) หรือ "single" (House เดียว → เข้าโกดัง)
+ * พฤติกรรม: สแกนต่อเนื่องในรอบเดียว
+ *   - เจอ House (เช่น 484xxxxxxx) และ Master (MAWB 11 หลัก เช่น 724-88587763) → ครบคู่ ปิดอัตโนมัติ
+ *   - มีบาร์เดียวก็กด "ใช้เลขนี้" จบได้
+ * ความแม่น: ต้องอ่านค่าเดิมซ้ำ 2 เฟรมติด + คัดทิ้งค่าที่มีอักขระแปลกปลอม
  */
 (function () {
   var CDN_SRC = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
@@ -22,14 +24,14 @@
     });
   }
 
-  function beep() {
+  function beep(freq, dur) {
     try {
       var ctx = new (window.AudioContext || window.webkitAudioContext)();
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = 1400; gain.gain.value = 0.2;
-      osc.start(); osc.stop(ctx.currentTime + 0.12);
+      osc.frequency.value = freq || 1400; gain.gain.value = 0.2;
+      osc.start(); osc.stop(ctx.currentTime + (dur || 0.12));
     } catch (e) { /* เสียงเป็นของเสริม */ }
   }
 
@@ -42,7 +44,31 @@
     if (overlay) { overlay.remove(); overlay = null; }
   }
 
-  function buildOverlay() {
+  /* แยกประเภทบาร์โค้ดตามกฎงานจริง:
+   * - Master (MAWB): ตัวเลขล้วน >= 11 หลัก (เช่น 72488587763 + เลขเสริมท้าย) → เก็บ 11 หลักแรก
+   * - House: อย่างอื่น เช่น 4840791806, F842037622 (ตัดส่วน +XXXX ลำดับชิ้นออก)
+   */
+  function classify(raw) {
+    var noSuffix = String(raw || "").split("+")[0].trim();
+    var clean = noSuffix.replace(/[^0-9A-Za-z]/g, "");
+    if (!clean) return null;
+    if (/^\d{11,}$/.test(clean)) {
+      return { type: "master", value: clean.slice(0, 11) };
+    }
+    return { type: "house", value: clean };
+  }
+
+  function fmtMaster(m) {
+    return m ? m.slice(0, 3) + "-" + m.slice(3) : "";
+  }
+
+  window.openLiveScan = function (onResult) {
+    closeLiveScan();
+    var found = { house: null, master: null };
+    var candidate = null;
+    var hits = 0;
+    var finished = false;
+
     overlay = document.createElement("div");
     overlay.id = "liveScanOverlay";
     overlay.setAttribute("style",
@@ -50,23 +76,62 @@
     overlay.innerHTML =
       '<div style="width:min(560px,96vw);background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4)">' +
       '  <div style="display:flex;align-items:center;justify-content:space-between;background:#0b4ea2;color:#fff;padding:13px 18px">' +
-      '    <strong style="font-size:15px">📷 สแกนบาร์โค้ด / QR</strong>' +
-      '    <button id="liveScanClose" type="button" style="min-height:36px;padding:6px 14px;border:none;border-radius:9px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;cursor:pointer">ปิด</button>' +
+      '    <strong style="font-size:15px">📷 สแกนบาร์โค้ด (เดี่ยว/คู่)</strong>' +
+      '    <button id="liveScanClose" type="button" style="min-height:36px;padding:6px 14px;border:none;border-radius:9px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;cursor:pointer">ยกเลิก</button>' +
       '  </div>' +
-      '  <div id="liveScanView" style="background:#020617;min-height:280px"></div>' +
-      '  <p id="liveScanHint" style="margin:0;padding:12px 16px;text-align:center;font-size:13px;color:#475569">กำลังเปิดกล้อง...</p>' +
+      '  <div id="liveScanView" style="background:#020617;min-height:260px"></div>' +
+      '  <div style="display:flex;gap:8px;padding:12px 16px 4px">' +
+      '    <div id="lsHouseChip" style="flex:1;padding:9px 12px;border-radius:11px;background:#f1f5f9;border:1.5px dashed #cbd5e1;font-size:12.5px;font-weight:700;color:#94a3b8;text-align:center">House: รอสแกน...</div>' +
+      '    <div id="lsMasterChip" style="flex:1;padding:9px 12px;border-radius:11px;background:#f1f5f9;border:1.5px dashed #cbd5e1;font-size:12.5px;font-weight:700;color:#94a3b8;text-align:center">Master: รอสแกน...</div>' +
+      '  </div>' +
+      '  <p id="liveScanHint" style="margin:0;padding:8px 16px;text-align:center;font-size:12.5px;color:#475569">กำลังเปิดกล้อง...</p>' +
+      '  <div style="padding:0 16px 16px">' +
+      '    <button id="liveScanDone" type="button" disabled style="width:100%;min-height:48px;border:none;border-radius:13px;background:#e2e8f0;color:#94a3b8;font-size:15px;font-weight:800;cursor:pointer">ใช้เลขที่สแกนได้</button>' +
+      "  </div>" +
       "</div>";
     document.body.appendChild(overlay);
+
+    function updateChips() {
+      var h = document.getElementById("lsHouseChip");
+      var m = document.getElementById("lsMasterChip");
+      var done = document.getElementById("liveScanDone");
+      if (h && found.house) {
+        h.textContent = "House: " + found.house;
+        h.setAttribute("style", h.getAttribute("style").replace("#f1f5f9", "#dcfce7").replace("dashed #cbd5e1", "solid #86efac").replace("#94a3b8", "#15803d"));
+      }
+      if (m && found.master) {
+        m.textContent = "Master: " + fmtMaster(found.master);
+        m.setAttribute("style", m.getAttribute("style").replace("#f1f5f9", "#dbeafe").replace("dashed #cbd5e1", "solid #93c5fd").replace("#94a3b8", "#1d4ed8"));
+      }
+      if (done && (found.house || found.master)) {
+        done.disabled = false;
+        done.setAttribute("style", done.getAttribute("style").replace("#e2e8f0", "#0b4ea2").replace("color:#94a3b8", "color:#fff"));
+      }
+      var hint = document.getElementById("liveScanHint");
+      if (hint) {
+        if (found.house && !found.master) hint.textContent = "ได้ House แล้ว — บาร์เดี่ยว = เข้าโกดัง กดปุ่มด้านล่าง หรือสแกน Master ต่อถ้าเป็นงานส่งออก";
+        else if (!found.house && found.master) hint.textContent = "ได้ Master แล้ว — สแกนบาร์ House (484...) ต่อ";
+      }
+    }
+
+    function finish() {
+      if (finished) return;
+      finished = true;
+      var detail = {
+        house: found.house || "",
+        master: found.master ? fmtMaster(found.master) : "",
+        mode: found.house && found.master ? "dual" : "single"
+      };
+      beep(1800, 0.18);
+      if (typeof navigator.vibrate === "function") navigator.vibrate([120, 60, 120]);
+      closeLiveScan();
+      try { onResult(detail.house || detail.master, detail); } catch (e) { /* ignore */ }
+    }
+
     overlay.addEventListener("click", function (e) { if (e.target === overlay) closeLiveScan(); });
     overlay.querySelector("#liveScanClose").addEventListener("click", closeLiveScan);
-  }
+    overlay.querySelector("#liveScanDone").addEventListener("click", finish);
 
-  window.openLiveScan = function (onResult) {
-    closeLiveScan();
-    buildOverlay();
-    var candidate = null;
-    var hits = 0;
-    var locked = false;
     loadLib().then(function (Html5Qrcode) {
       if (!overlay) return;
       scanner = new Html5Qrcode("liveScanView");
@@ -74,22 +139,26 @@
         { facingMode: "environment" },
         { fps: 12, qrbox: { width: 300, height: 150 } },
         function (decodedText) {
-          if (locked) return;
+          if (finished) return;
           var code = String(decodedText || "").trim();
           if (code.length < 5) return;
+          if (!/^[0-9A-Za-z+\-\s]+$/.test(code)) return; /* คัดทิ้งค่าเพี้ยนที่มีอักขระแปลก */
           if (code === candidate) { hits += 1; } else { candidate = code; hits = 1; }
           if (hits < 2) return;
-          locked = true;
-          beep();
-          if (typeof navigator.vibrate === "function") navigator.vibrate(150);
-          var house = code.split("+")[0].trim();
-          closeLiveScan();
-          try { onResult(house, code); } catch (e) { /* ignore */ }
+          candidate = null; hits = 0;
+          var item = classify(code);
+          if (!item) return;
+          if (found[item.type] === item.value) return; /* ซ้ำตัวเดิม ข้าม */
+          found[item.type] = item.value;
+          beep(item.type === "house" ? 1400 : 1000);
+          if (typeof navigator.vibrate === "function") navigator.vibrate(100);
+          updateChips();
+          if (found.house && found.master) setTimeout(finish, 350); /* ครบคู่ = ส่งออก ปิดเอง */
         },
         function () { /* เฟรมที่ยังไม่เจอ */ }
       ).then(function () {
         var hint = document.getElementById("liveScanHint");
-        if (hint) hint.textContent = "เล็งให้บาร์โค้ดอยู่ในกรอบ ระบบจะอ่านและปิดให้อัตโนมัติ";
+        if (hint) hint.textContent = "เล็งทีละบาร์ — บาร์เดี่ยว (484...) = เข้าโกดัง · บาร์คู่ Master+House = ส่งออก";
       });
     }).catch(function (err) {
       var hint = document.getElementById("liveScanHint");

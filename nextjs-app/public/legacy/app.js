@@ -7144,7 +7144,10 @@ function bindEvents() {
     });
     $("#globalScanBtn")?.addEventListener("click", () => {
         if (typeof openLiveScan !== "function") return toast("ตัวสแกนยังไม่พร้อม");
-        openLiveScan(house => {
+        openLiveScan((house, detail) => {
+            const modeLabel = detail?.mode === "dual"
+                ? `บาร์คู่ Master ${detail.master} → งานส่งออก`
+                : "บาร์เดี่ยว → เข้าโกดัง WH3";
             const searchEl = $("#globalSearch");
             if (searchEl) searchEl.value = house;
             renderRecentOrders();
@@ -7153,12 +7156,12 @@ function bindEvents() {
             const job = (state.dashboard?.jobs || []).find(j => norm(j.houseNumber) === norm(house));
             if (job) {
                 openJobQuickView(job.houseNumber);
-                toast(`สแกนพบงาน ${job.houseNumber}`);
+                toast(`พบงาน ${job.houseNumber} · ${modeLabel}`);
             } else {
                 setView("orders");
                 const orderEl = $("#orderSearch");
                 if (orderEl) { orderEl.value = house; renderOrderCards(); }
-                toast(`สแกนได้ ${house} — ไม่พบในระบบ ลองดูรายการใกล้เคียง`);
+                toast(`สแกนได้ ${house} (${modeLabel}) — ไม่พบในระบบ`);
             }
         });
     });

@@ -1009,9 +1009,12 @@ function bindEvents() {
     }));
     $("#cameraScanBtn").addEventListener("click", () => {
         if (typeof openLiveScan === "function") {
-            openLiveScan(house => {
+            openLiveScan((house, detail) => {
                 const el = $("#scanHouse");
                 if (el) el.value = house;
+                if (detail?.mode === "dual") {
+                    toast("⚠ สแกนได้บาร์คู่ (มี Master) — งานนี้เป็น Track คู่สำหรับส่งออก ตรวจสอบก่อนรับเข้าโกดัง");
+                }
                 unlockInboundWorkflow(house, "camera");
             });
         } else {
@@ -1066,9 +1069,15 @@ function bindEvents() {
     }));
     $("#outboundCameraScanBtn").addEventListener("click", () => {
         if (typeof openLiveScan === "function") {
-            openLiveScan(house => {
+            openLiveScan((house, detail) => {
                 const el = $("#terminalHouse");
                 if (el) el.value = house;
+                if (detail?.mode === "dual" && detail.master) {
+                    state.scannedMasterAwb = detail.master;
+                    toast(`บาร์คู่ ✓ Master ${detail.master} + House ${house}`);
+                } else {
+                    toast("⚠ ได้บาร์เดี่ยว — งานส่งออกควรมี Master ด้วย ลองสแกนบาร์บนของป้าย");
+                }
                 unlockOutboundWorkflow(house, "camera");
             });
         } else {
