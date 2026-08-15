@@ -3482,6 +3482,13 @@ async function handleApi(req, res, pathname) {
                 location.status = "Available";
                 location.currentHouseId = "";
             }
+            const wmLocsPick = (db.warehouseMap && db.warehouseMap.locations) || [];
+            const wmLocPick = wmLocsPick.find(l => (l.code || l.id) === job.locationId || l.id === job.locationId);
+            if (wmLocPick) {
+                wmLocPick.occupiedBy = (wmLocPick.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
+            }
+            job.releasedLocationId = job.locationId;
+            job.locationReleasedAt = nowIso();
         }
         job.updatedAt = nowIso();
         logActivity(db, {

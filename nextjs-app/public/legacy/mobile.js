@@ -396,6 +396,25 @@ function applyScannedHouse(value, source = "scanner") {
     unlockInboundWorkflow(house, source);
 }
 
+async function ensureJobForScan(house, detail) {
+    const existing = findAnyJob(house);
+    if (existing) return existing.houseNumber;
+    const ok = window.confirm(
+        `ไม่พบ House ${house} ในระบบ\n\nต้องการ "เพิ่มงานใหม่จากการสแกน" เพื่อทดลองกระบวนการเลยหรือไม่?\n(ข้อมูลลูกค้า/รายละเอียดเติมภายหลังได้ และงานจะเข้าคิวรอ CS ตามปกติ)`
+    );
+    if (!ok) return null;
+    const data = await api("/api/admin/job", {
+        houseNumber: house,
+        customerName: "รอข้อมูล (เพิ่มจากการสแกน)",
+        sourceChannel: "ScanQuickAdd",
+        pieceCount: detail?.pieceCount || "",
+        pickupDate: new Date().toISOString().slice(0, 10)
+    });
+    if (data.dashboard) state.dashboard = data.dashboard;
+    toast(`เพิ่มงาน ${house} เข้าระบบแล้ว — ทดลอง flow ต่อได้เลย`);
+    return house;
+}
+
 function unlockInboundWorkflow(value, source = "scanner") {
     const house = normalizeHouseBarcode(value);
     const job = findAnyJob(house);
@@ -1005,21 +1024,28 @@ function bindEvents() {
         }
     });
     $("#confirmInboundHouseBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
-        unlockInboundWorkflow($("#scanHouse").value, "manual");
+        const typed = normalizeHouseBarcode($("#scanHouse").value);
+        const ready = await ensureJobForScan(typed, null);
+        if (ready) unlockInboundWorkflow(ready, "manual");
     }));
     $("#cameraScanBtn").addEventListener("click", () => {
         if (typeof openLiveScan === "function") {
-            openLiveScan((house, detail) => {
-                const el = $("#scanHouse");
-                if (el) el.value = house;
-                if (detail?.mode === "dual") {
-                    toast("⚠ สแกนได้บาร์คู่ (มี Master) — งานนี้เป็น Track คู่สำหรับส่งออก ตรวจสอบก่อนรับเข้าโกดัง");
-                } else if (detail?.pieceCount) {
-                    toast(`สแกนแล้ว ${detail.pieceCount} ชิ้น (+${detail.pieces.join(", +")})`);
+            openLiveScan(async (house, detail) => {
+                try {
+                    const el = $("#scanHouse");
+                    if (el) el.value = house;
+                    if (detail?.mode === "dual") {
+                        toast("⚠ สแกนได้บาร์คู่ (มี Master) — งานนี้เป็น Track คู่สำหรับส่งออก ตรวจสอบก่อนรับเข้าโกดัง");
+                    } else if (detail?.pieceCount) {
+                        toast(`สแกนแล้ว ${detail.pieceCount} ชิ้น (+${detail.pieces.join(", +")})`);
+                    }
+                    state.scannedPieces = detail?.pieces || [];
+                    state.scannedMode = detail?.mode || "";
+                    const ready = await ensureJobForScan(house, detail);
+                    if (ready) unlockInboundWorkflow(ready, "camera");
+                } catch (err) {
+                    toast("เพิ่มงานไม่สำเร็จ: " + (err?.message || "ลองใหม่"));
                 }
-                state.scannedPieces = detail?.pieces || [];
-                state.scannedMode = detail?.mode || "";
-                unlockInboundWorkflow(house, "camera");
             });
         } else {
             $("#scanHouseFile")?.click();
