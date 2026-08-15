@@ -84,6 +84,11 @@
       '    </div>' +
       '  </div>' +
       '  <div id="liveScanView" style="background:#020617;min-height:260px"></div>' +
+      '  <div id="lsZoomRow" style="display:none;justify-content:center;gap:8px;padding:10px 16px 0">' +
+      '    <button type="button" data-zoom="1" style="min-height:38px;padding:6px 18px;border:1.5px solid #cbd5e1;border-radius:999px;background:#fff;font-weight:800;font-size:13px;cursor:pointer">1x</button>' +
+      '    <button type="button" data-zoom="2" style="min-height:38px;padding:6px 18px;border:1.5px solid #cbd5e1;border-radius:999px;background:#fff;font-weight:800;font-size:13px;cursor:pointer">2x</button>' +
+      '    <button type="button" data-zoom="3" style="min-height:38px;padding:6px 18px;border:1.5px solid #cbd5e1;border-radius:999px;background:#fff;font-weight:800;font-size:13px;cursor:pointer">3x</button>' +
+      '  </div>' +
       '  <div style="display:flex;gap:8px;padding:12px 16px 4px">' +
       '    <div id="lsHouseChip" style="flex:1;padding:9px 12px;border-radius:11px;background:#f1f5f9;border:1.5px dashed #cbd5e1;font-size:12.5px;font-weight:700;color:#94a3b8;text-align:center">House: รอสแกน...</div>' +
       '    <div id="lsMasterChip" style="flex:1;padding:9px 12px;border-radius:11px;background:#f1f5f9;border:1.5px dashed #cbd5e1;font-size:12.5px;font-weight:700;color:#94a3b8;text-align:center">Master: รอสแกน...</div>' +
@@ -146,6 +151,35 @@
       var stream = video && video.srcObject;
       var track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
       var caps = track && track.getCapabilities ? track.getCapabilities() : null;
+
+      /* ── ซูม: แก้อาการ iPhone โฟกัสวืดเข้า-ออก (ถือห่างขึ้นแล้วซูมแทน) ── */
+      var zoomRow = document.getElementById("lsZoomRow");
+      if (zoomRow && caps && caps.zoom && track) {
+        var minZ = caps.zoom.min || 1;
+        var maxZ = caps.zoom.max || 3;
+        var applyZoom = function (z, activeBtn) {
+          var target = Math.max(minZ, Math.min(maxZ, z));
+          track.applyConstraints({ advanced: [{ zoom: target }] }).then(function () {
+            zoomRow.querySelectorAll("button").forEach(function (b) {
+              b.style.background = "#fff"; b.style.borderColor = "#cbd5e1"; b.style.color = "#0f172a";
+            });
+            if (activeBtn) {
+              activeBtn.style.background = "#0b4ea2"; activeBtn.style.borderColor = "#0b4ea2"; activeBtn.style.color = "#fff";
+            }
+          }).catch(function () { /* บางเครื่องไม่ให้ซูมผ่านเว็บ */ });
+        };
+        zoomRow.style.display = "flex";
+        zoomRow.querySelectorAll("button").forEach(function (b) {
+          b.onclick = function () { applyZoom(Number(b.dataset.zoom), b); };
+        });
+        /* เริ่มต้น 2x อัตโนมัติ — ระยะถือ ~20-30 ซม. โฟกัสนิ่งพอดี */
+        var defaultBtn = zoomRow.querySelector('[data-zoom="2"]');
+        applyZoom(2, defaultBtn);
+        var hintEl = document.getElementById("liveScanHint");
+        if (hintEl) hintEl.textContent = "ถือห่างบาร์โค้ด ~20-30 ซม. (ซูม 2x ให้แล้ว) — ภาพเบลอให้ถอยออก อย่าจ่อใกล้";
+      }
+
+      /* ── ไฟฉาย ── */
       if (!caps || !caps.torch) { btn.style.display = "none"; return; }
       btn.style.display = "";
       btn.onclick = function () {
@@ -169,7 +203,7 @@
       scanner = new Html5Qrcode("liveScanView");
       return scanner.start(
         { facingMode: "environment" },
-        { fps: 12, qrbox: { width: 300, height: 150 } },
+        { fps: 12, qrbox: { width: 300, height: 150 }, videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } },
         function (decodedText) {
           if (finished) return;
           var code = String(decodedText || "").trim();
