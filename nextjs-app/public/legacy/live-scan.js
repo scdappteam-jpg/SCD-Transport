@@ -75,7 +75,13 @@
     overlay.setAttribute("style",
       "position:fixed;inset:0;z-index:99999;background:rgba(10,18,32,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;");
     overlay.innerHTML =
-      '<div style="width:min(560px,96vw);background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4)">' +
+      '<style>' +
+      '  #liveScanView { position:relative; height:min(40dvh,320px); min-height:200px; overflow:hidden; }' +
+      '  #liveScanView video { width:100% !important; height:100% !important; object-fit:cover !important; display:block; }' +
+      '  #liveScanView canvas { display:none !important; }' +
+      '  @media (max-height:700px) { #liveScanView { height:34dvh; min-height:170px; } }' +
+      '</style>' +
+      '<div style="width:min(560px,96vw);max-height:96dvh;display:flex;flex-direction:column;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4)">' +
       '  <div style="display:flex;align-items:center;justify-content:space-between;background:#0b4ea2;color:#fff;padding:13px 18px">' +
       '    <strong style="font-size:15px">📷 สแกนบาร์โค้ด (เดี่ยว/คู่)</strong>' +
       '    <div style="display:flex;gap:8px">' +
@@ -83,7 +89,8 @@
       '      <button id="liveScanClose" type="button" style="min-height:36px;padding:6px 14px;border:none;border-radius:9px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;cursor:pointer">ยกเลิก</button>' +
       '    </div>' +
       '  </div>' +
-      '  <div id="liveScanView" style="background:#020617;min-height:260px"></div>' +
+      '  <div id="liveScanView" style="background:#020617"></div>' +
+      '  <div style="flex:1;overflow-y:auto;min-height:0">' +
       '  <div id="lsZoomRow" style="display:none;justify-content:center;gap:8px;padding:10px 16px 0">' +
       '    <button type="button" data-zoom="1" style="min-height:38px;padding:6px 18px;border:1.5px solid #cbd5e1;border-radius:999px;background:#fff;font-weight:800;font-size:13px;cursor:pointer">1x</button>' +
       '    <button type="button" data-zoom="2" style="min-height:38px;padding:6px 18px;border:1.5px solid #cbd5e1;border-radius:999px;background:#fff;font-weight:800;font-size:13px;cursor:pointer">2x</button>' +
@@ -96,6 +103,7 @@
       '  <p id="liveScanHint" style="margin:0;padding:8px 16px;text-align:center;font-size:12.5px;color:#475569">กำลังเปิดกล้อง...</p>' +
       '  <div style="padding:0 16px 16px">' +
       '    <button id="liveScanDone" type="button" disabled style="width:100%;min-height:48px;border:none;border-radius:13px;background:#e2e8f0;color:#94a3b8;font-size:15px;font-weight:800;cursor:pointer">ใช้เลขที่สแกนได้</button>' +
+      "  </div>" +
       "  </div>" +
       "</div>";
     document.body.appendChild(overlay);
