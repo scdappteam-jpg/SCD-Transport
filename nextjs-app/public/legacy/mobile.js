@@ -1018,6 +1018,7 @@ function bindEvents() {
                     toast(`สแกนแล้ว ${detail.pieceCount} ชิ้น (+${detail.pieces.join(", +")})`);
                 }
                 state.scannedPieces = detail?.pieces || [];
+                state.scannedMode = detail?.mode || "";
                 unlockInboundWorkflow(house, "camera");
             });
         } else {
@@ -1243,6 +1244,8 @@ function bindEvents() {
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
             locationId: $("#scanLocation").value.trim(),
             userId: state.currentUserId,
+            pieces: state.scannedPieces || [],
+            scanMode: state.scannedMode || "",
             trackType: $("#trackType").value,
             dimensionText: $("#dimensionText").value.trim(),
             wdChecklist: inboundWdChecklist(),

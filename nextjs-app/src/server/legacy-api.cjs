@@ -3055,17 +3055,29 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/inbound/twin-scan") {
         const payload = await parseBody(req);
         const job = findJob(db, payload.houseNumber);
-        const location = db.locations.find(item => item.id === payload.locationId);
+        const locKey = String(payload.locationId || "").trim();
+        const location = db.locations.find(item => item.id === locKey);
+        const wmLocs = (db.warehouseMap && db.warehouseMap.locations) || [];
+        const wmLocation = location ? null : wmLocs.find(l =>
+            String(l.code || "").toLowerCase() === locKey.toLowerCase() || String(l.id) === locKey);
         if (!job) return sendJson(res, 404, {
             error: "House number not found"
         });
-        if (!location) return sendJson(res, 404, {
-            error: "Location not found"
+        if (!location && !wmLocation) return sendJson(res, 404, {
+            error: `ไม่พบ Location "${locKey}" — ใช้รหัสช่องจากแผนที่คลัง เช่น A-01, B-03, 1-05`
         });
-        if (location.status === "Occupied" && location.currentHouseId !== job.houseNumber) {
+        if (location && location.status === "Occupied" && location.currentHouseId !== job.houseNumber) {
             return sendJson(res, 409, {
                 error: `Location ${location.id} is already occupied`
             });
+        }
+        if (wmLocation) {
+            const occupiedByOther = (wmLocation.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
+            if (occupiedByOther.length) {
+                return sendJson(res, 409, {
+                    error: `ช่อง ${wmLocation.code || wmLocation.id} ถูกล็อคโดย House ${occupiedByOther[0].houseNumber} อยู่แล้ว — เลือกช่องอื่นหรือย้ายของเดิมก่อน`
+                });
+            }
         }
         const isWd = /wd|western digital/i.test(job.customerName || "");
         if (isWd && (!Array.isArray(payload.wdChecklist) || payload.wdChecklist.length < 4)) {
@@ -3078,19 +3090,41 @@ async function handleApi(req, res, pathname) {
                 error: "Sticker color is required for WD cargo"
             });
         }
-        if (job.locationId && job.locationId !== location.id) {
+        const finalLocId = location ? location.id : (wmLocation.code || wmLocation.id);
+        if (job.locationId && job.locationId !== finalLocId) {
             const previousLocation = db.locations.find(item => item.id === job.locationId);
             if (previousLocation && previousLocation.currentHouseId === job.houseNumber) {
                 previousLocation.status = "Available";
                 previousLocation.currentHouseId = "";
             }
+            const previousWm = wmLocs.find(l => (l.code || l.id) === job.locationId || l.id === job.locationId);
+            if (previousWm) {
+                previousWm.occupiedBy = (previousWm.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
+            }
             job.previousLocationId = job.locationId;
             job.locationMovedAt = nowIso();
         }
-        location.status = "Occupied";
-        location.currentHouseId = job.houseNumber;
+        if (location) {
+            location.status = "Occupied";
+            location.currentHouseId = job.houseNumber;
+        }
+        if (wmLocation) {
+            wmLocation.occupiedBy = (wmLocation.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
+            wmLocation.occupiedBy.push({
+                houseNumber: job.houseNumber,
+                pieces: Array.isArray(payload.pieces) && payload.pieces.length ? payload.pieces.length : undefined,
+                at: nowIso()
+            });
+        }
+        const scanMode = String(payload.scanMode || "");
+        const resolvedTrack = payload.trackType || (scanMode === "dual" ? "Pair" : scanMode === "single" ? "Single" : job.trackType || "Single");
+        payload.trackType = resolvedTrack;
+        if (Array.isArray(payload.pieces) && payload.pieces.length) {
+            job.scannedPieces = payload.pieces.slice();
+            job.scannedPieceCount = payload.pieces.length;
+        }
         job.status = payload.trackType === "Pair" ? "ReadyForTerminal" : "Stored";
-        job.locationId = location.id;
+        job.locationId = finalLocId;
         job.dimensionText = payload.dimensionText || job.dimensionText || "";
         job.trackType = payload.trackType || job.trackType || "Single";
         job.wdChecklist = Array.isArray(payload.wdChecklist) ? payload.wdChecklist : job.wdChecklist || [];
@@ -3106,23 +3140,35 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, {
             ok: true,
             job: normalizeJob(job),
-            location: location
+            location: location || wmLocation
         });
     }
     if (req.method === "POST" && pathname === "/api/inbound/move-location") {
         const payload = await parseBody(req);
         const job = findJob(db, payload.houseNumber);
-        const newLocation = db.locations.find(item => item.id === payload.newLocationId);
+        const moveKey = String(payload.newLocationId || "").trim();
+        const newLocation = db.locations.find(item => item.id === moveKey);
+        const wmLocsMove = (db.warehouseMap && db.warehouseMap.locations) || [];
+        const newWmLocation = newLocation ? null : wmLocsMove.find(l =>
+            String(l.code || "").toLowerCase() === moveKey.toLowerCase() || String(l.id) === moveKey);
         if (!job) return sendJson(res, 404, {
             error: "House number not found"
         });
-        if (!newLocation) return sendJson(res, 404, {
-            error: "New location not found"
+        if (!newLocation && !newWmLocation) return sendJson(res, 404, {
+            error: `ไม่พบ Location "${moveKey}" — ใช้รหัสช่องจากแผนที่คลัง เช่น A-01`
         });
-        if (newLocation.status === "Occupied" && newLocation.currentHouseId !== job.houseNumber) {
+        if (newLocation && newLocation.status === "Occupied" && newLocation.currentHouseId !== job.houseNumber) {
             return sendJson(res, 409, {
                 error: `Location ${newLocation.id} is already occupied`
             });
+        }
+        if (newWmLocation) {
+            const occupiedByOtherMove = (newWmLocation.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
+            if (occupiedByOtherMove.length) {
+                return sendJson(res, 409, {
+                    error: `ช่อง ${newWmLocation.code || newWmLocation.id} ถูกล็อคโดย House ${occupiedByOtherMove[0].houseNumber} อยู่แล้ว`
+                });
+            }
         }
         const previousLocationId = job.locationId || "";
         const previousLocation = db.locations.find(item => item.id === previousLocationId);
@@ -3130,10 +3176,21 @@ async function handleApi(req, res, pathname) {
             previousLocation.status = "Available";
             previousLocation.currentHouseId = "";
         }
-        newLocation.status = "Occupied";
-        newLocation.currentHouseId = job.houseNumber;
+        const previousWmMove = wmLocsMove.find(l => (l.code || l.id) === previousLocationId || l.id === previousLocationId);
+        if (previousWmMove) {
+            previousWmMove.occupiedBy = (previousWmMove.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
+        }
+        const finalMoveId = newLocation ? newLocation.id : (newWmLocation.code || newWmLocation.id);
+        if (newLocation) {
+            newLocation.status = "Occupied";
+            newLocation.currentHouseId = job.houseNumber;
+        }
+        if (newWmLocation) {
+            newWmLocation.occupiedBy = (newWmLocation.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
+            newWmLocation.occupiedBy.push({ houseNumber: job.houseNumber, at: nowIso() });
+        }
         job.previousLocationId = previousLocationId;
-        job.locationId = newLocation.id;
+        job.locationId = finalMoveId;
         job.locationMovedAt = nowIso();
         job.locationMoveNote = payload.note || "";
         job.status = job.status === "ReadyForTerminal" ? job.status : "Stored";
@@ -3141,14 +3198,14 @@ async function handleApi(req, res, pathname) {
         logActivity(db, {
             ...payload,
             activityType: "LocationMove",
-            locationId: newLocation.id,
+            locationId: finalMoveId,
             previousLocationId: previousLocationId
         });
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
             job: normalizeJob(job),
-            location: newLocation,
+            location: newLocation || newWmLocation,
             previousLocationId: previousLocationId
         });
     }
