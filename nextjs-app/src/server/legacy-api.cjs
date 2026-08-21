@@ -2432,6 +2432,11 @@ async function handleApi(req, res, pathname) {
                 intervalMinutes: Math.round(IMPORT_INTERVAL_MS / 6e4),
                 lastRun: db.integrations?.lastFeedRun || null
             },
+            n8n: {
+                configured: Boolean(process.env.N8N_WEBHOOK_KEY),
+                webhookPath: "/api/integrations/n8n-email",
+                last: db.integrations?.n8nEmail || null
+            },
             line: {
                 configured: Boolean(process.env.LINE_WEBHOOK_URL)
             },
@@ -2439,6 +2444,123 @@ async function handleApi(req, res, pathname) {
                 configured: Boolean(process.env.EMAIL_WEBHOOK_URL),
                 cc: process.env.BILLING_CC_EMAIL || ""
             }
+        });
+    }
+    if (req.method === "POST" && pathname === "/api/integrations/n8n-email") {
+        const payload = await parseBody(req);
+        const configuredKey = process.env.N8N_WEBHOOK_KEY || "";
+        const receivedKey = String(req.headers["x-webhook-key"] || payload.webhookKey || "");
+        if (!configuredKey) return sendJson(res, 503, {
+            error: "N8N_WEBHOOK_KEY is not set on the server"
+        });
+        if (receivedKey !== configuredKey) return sendJson(res, 401, {
+            error: "Invalid webhook key"
+        });
+        const attachments = Array.isArray(payload.attachments) ? payload.attachments : [];
+        db.integrations ||= {};
+        db.integrations.n8nEmailHashes ||= {};
+        const summary = {
+            files: [],
+            imported: 0,
+            newJobs: 0,
+            changedJobs: 0,
+            skipped: 0,
+            errors: 0
+        };
+        for (const att of attachments) {
+            const name = String(att.fileName || att.filename || att.name || "attachment").slice(0, 180);
+            const raw = String(att.base64 || att.data || att.content || "");
+            if (!raw) {
+                summary.files.push({ file: name, status: "empty" });
+                summary.errors += 1;
+                continue;
+            }
+            const clean = raw.includes(",") ? raw.split(",").pop() : raw;
+            let buf = null;
+            try {
+                buf = Buffer.from(clean, "base64");
+            } catch (err) {
+                buf = null;
+            }
+            if (!buf || !buf.length) {
+                summary.files.push({ file: name, status: "bad_base64" });
+                summary.errors += 1;
+                continue;
+            }
+            const hash = crypto.createHash("sha256").update(buf).digest("hex");
+            if (db.integrations.n8nEmailHashes[hash]) {
+                summary.files.push({ file: name, status: "duplicate_skipped" });
+                summary.skipped += 1;
+                continue;
+            }
+            let result = null;
+            let kind = "";
+            try {
+                const isXlsx = /\.xlsx$/i.test(name) || (buf[0] === 80 && buf[1] === 75);
+                if (isXlsx) {
+                    const rows = parseXlsxRows(buf);
+                    kind = detectXlsxKind(rows);
+                    if (kind === "consol") result = importGlobalConsolRows(db, consolXlsxToCsv(rows));
+                    else if (kind === "pickup") result = importPickupXlsxRows(db, rows);
+                } else {
+                    const csvText = buf.toString("utf8");
+                    kind = isGlobalConsolFormat(csvText) ? "consol-csv" : "scd-csv";
+                    result = kind === "consol-csv" ? importGlobalConsolRows(db, csvText) : importScdRows(db, csvText);
+                }
+            } catch (err) {
+                summary.files.push({ file: name, status: "parse_failed", error: err.message });
+                summary.errors += 1;
+                continue;
+            }
+            if (!result) {
+                summary.files.push({ file: name, status: "unknown_format", kind: kind });
+                summary.errors += 1;
+                continue;
+            }
+            recordImportHistory(db, result, name, "n8n-email");
+            db.integrations.n8nEmailHashes[hash] = nowIso();
+            summary.imported += result.imported.length;
+            summary.newJobs += result.newJobs || 0;
+            summary.changedJobs += result.changedJobs || 0;
+            summary.files.push({
+                file: name,
+                status: "imported",
+                kind: kind,
+                newJobs: result.newJobs || 0,
+                changedJobs: result.changedJobs || 0
+            });
+        }
+        const hashKeys = Object.keys(db.integrations.n8nEmailHashes);
+        if (hashKeys.length > 200) {
+            for (const key of hashKeys.slice(0, hashKeys.length - 200)) delete db.integrations.n8nEmailHashes[key];
+        }
+        db.integrations.n8nEmail = {
+            lastReceivedAt: nowIso(),
+            lastSubject: String(payload.subject || "").slice(0, 200),
+            lastFrom: String(payload.from || "").slice(0, 120),
+            totalReceived: Number(db.integrations.n8nEmail?.totalReceived || 0) + 1,
+            lastSummary: {
+                imported: summary.imported,
+                newJobs: summary.newJobs,
+                changedJobs: summary.changedJobs,
+                skipped: summary.skipped,
+                errors: summary.errors
+            }
+        };
+        if (summary.imported || summary.newJobs) {
+            await createAlert(db, `อีเมลอัตโนมัติ (n8n): เปิดงานใหม่ ${summary.newJobs} งาน อัปเดต ${summary.changedJobs} งาน จาก "${db.integrations.n8nEmail.lastSubject || "อีเมล"}"`, "info");
+        } else if (summary.errors) {
+            await createAlert(db, `อีเมลอัตโนมัติ (n8n): อ่านไฟล์แนบไม่สำเร็จ ${summary.errors} ไฟล์ — ตรวจสอบรูปแบบไฟล์`, "warning");
+        }
+        writeDb(db);
+        return sendJson(res, 200, {
+            ok: true,
+            imported: summary.imported,
+            newJobs: summary.newJobs,
+            changedJobs: summary.changedJobs,
+            skipped: summary.skipped,
+            errors: summary.errors,
+            files: summary.files
         });
     }
     if (req.method === "POST" && pathname === "/api/integrations/run-import") {

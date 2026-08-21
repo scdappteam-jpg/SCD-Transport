@@ -807,6 +807,8 @@ function showTab(tab) {
 function applyRoleVisibility() {
     const user = currentUser();
     const allowed = allowedMobileTabs(user?.role);
+    const scanCard = $("#smartScanCard");
+    if (scanCard) scanCard.hidden = ![ "pickup", "inbound", "outbound" ].some(tab => allowed.includes(tab));
     $$(".action-card").forEach(button => {
         button.hidden = !allowed.includes(button.dataset.mobileTab);
     });
@@ -2301,6 +2303,90 @@ async function renderMProfile() {
         }
     }
 }
+
+/* ══ Smart Scan — สแกนปุ่มเดียว ระบบพาไปขั้นตอนถัดไปให้เอง ══ */
+function smartScanShowResult(message) {
+    const el = $("#smartScanResult");
+    if (el) {
+        el.hidden = false;
+        el.textContent = message;
+    }
+}
+
+function smartScanGoTab(tab) {
+    if (typeof showMnav === "function" && document.body.dataset.mnav !== "work") showMnav("work");
+    showTab(tab);
+    setTimeout(() => $(`#tab-${tab}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+}
+
+async function smartScanRoute(house, detail) {
+    const allowed = allowedMobileTabs(currentUser()?.role);
+    state.scannedPieces = detail?.pieces || [];
+    state.scannedMode = detail?.mode || "";
+    if (detail?.mode === "dual" && detail.master) state.scannedMasterAwb = detail.master;
+    let job = findAnyJob(house);
+    if (!job) {
+        if (!allowed.includes("inbound")) return toast(`ไม่พบงาน ${house} ในระบบ`);
+        const ready = await ensureJobForScan(house, detail);
+        if (!ready) return;
+        smartScanGoTab("inbound");
+        try { unlockInboundWorkflow(ready, "camera"); } catch (error) { return toast(error.message); }
+        smartScanShowResult(`🆕 ${ready} — งานใหม่จากการสแกน → พาไปขั้นตอนเข้าโกดัง WH3${detail?.pieceCount ? ` · ${detail.pieceCount} ชิ้น` : ""}`);
+        return;
+    }
+    const st = job.status || "";
+    const outboundStatuses = [ "Stored", "ReadyForTerminal", "OutboundPicking", "OutboundLocated", "EIApproved",
+        "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded",
+        "PackingConsolidation", "XRayPassed", "XRayHold", "ReXRayRequired" ];
+    const pickupStatuses = [ "Pending", "Assigned", "PickupStarted", "CargoLoaded" ];
+    if ((detail?.mode === "dual" || outboundStatuses.includes(st)) && allowed.includes("outbound")) {
+        smartScanGoTab("outbound");
+        const el = $("#terminalHouse");
+        if (el) el.value = job.houseNumber;
+        try { unlockOutboundWorkflow(job.houseNumber, "camera"); } catch (error) { return toast(error.message); }
+        smartScanShowResult(`✈ ${job.houseNumber} → ขั้นตอนส่งออก Terminal (สถานะ: ${st || "-"})${detail?.mode === "dual" ? " · บาร์คู่ ✓" : ""}`);
+        return;
+    }
+    if (pickupStatuses.includes(st) && allowed.includes("pickup")) {
+        smartScanGoTab("pickup");
+        const sel = $("#driverJobSelect");
+        if (sel) {
+            const opt = Array.from(sel.options).find(o => `${o.value} ${o.textContent}`.includes(job.houseNumber));
+            if (opt) {
+                sel.value = opt.value;
+                sel.dispatchEvent(new Event("change"));
+            }
+        }
+        smartScanShowResult(`📦 ${job.houseNumber} → งานรับสินค้า (สถานะ: ${st || "-"})`);
+        return;
+    }
+    if (allowed.includes("inbound")) {
+        smartScanGoTab("inbound");
+        try { unlockInboundWorkflow(job.houseNumber, "camera"); } catch (error) { return toast(error.message); }
+        smartScanShowResult(`🏭 ${job.houseNumber} → ขั้นตอนเข้าโกดัง WH3 (สถานะ: ${st || "-"})`);
+        return;
+    }
+    if (allowed.includes("outbound")) {
+        smartScanGoTab("outbound");
+        const el = $("#terminalHouse");
+        if (el) el.value = job.houseNumber;
+        try { unlockOutboundWorkflow(job.houseNumber, "camera"); } catch (error) { return toast(error.message); }
+        smartScanShowResult(`✈ ${job.houseNumber} → ขั้นตอนส่งออก Terminal`);
+        return;
+    }
+    toast(`พบงาน ${job.houseNumber} (สถานะ: ${st || "-"})`);
+}
+
+(function bindSmartScan() {
+    const btn = document.getElementById("smartScanBtn");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+        if (typeof openLiveScan !== "function") return toast("ตัวสแกนยังไม่พร้อม — ต่ออินเทอร์เน็ตครั้งแรกก่อน");
+        openLiveScan((house, detail) => {
+            smartScanRoute(house, detail).catch(error => toast(error.message || "สแกนไม่สำเร็จ"));
+        });
+    });
+})();
 
 (function initFieldOpsNav() {
     const nav = document.getElementById("foBottomNav");
