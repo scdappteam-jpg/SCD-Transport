@@ -57,18 +57,19 @@ export function FieldOperations() {
     <main className="min-h-screen bg-slate-100 pb-10">
       <header className="sticky top-0 z-20 bg-[#102947] px-4 py-4 text-white shadow-lg">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Link href="/" aria-label="กลับหน้าหลัก" className="grid size-10 place-items-center rounded-xl bg-white/10 transition hover:bg-white/20">
+          <Link href="/" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-white/10 px-3 text-sm font-black transition hover:bg-white/20">
             <ArrowLeft className="size-5" />
+            กลับ
           </Link>
-          <div>
+          <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200">Field operations</p>
-            <h1 className="font-black">ทดสอบระบบสแกนภาพ</h1>
+            <h1 className="text-base font-black leading-tight sm:text-lg">ทดสอบระบบสแกนภาพ</h1>
           </div>
-          <span className="ml-auto size-2 rounded-full bg-emerald-400" />
+          <span className="ml-auto inline-flex min-h-8 shrink-0 items-center rounded-full bg-emerald-50 px-3 text-xs font-black text-emerald-700">Online</span>
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl space-y-4 p-4">
+      <div className="mx-auto max-w-2xl space-y-4 p-3 sm:p-4">
         <LiveScanner
           onDetected={code => {
             setManualHouse(code.split("+")[0].trim());
@@ -77,9 +78,9 @@ export function FieldOperations() {
           }}
         />
 
-        <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 to-blue-950 p-6 text-white shadow-xl shadow-blue-950/20">
+        <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 to-blue-950 p-5 text-white shadow-xl shadow-blue-950/20 sm:p-6">
           <FileImage className="size-8 text-blue-200" />
-          <h2 className="mt-5 text-2xl font-black">เลือกภาพ Barcode หรือ QR Code</h2>
+          <h2 className="mt-5 text-xl font-black leading-tight sm:text-2xl">เลือกภาพ Barcode หรือ QR Code</h2>
           <p className="mt-2 text-sm leading-6 text-blue-100">เลือกภาพจากเครื่องหรือถ่ายด้วยกล้อง จากนั้นกดทดสอบเพื่อส่งผ่าน Next.js proxy ไปยัง Python server</p>
           <input
             id="upload-scan-image"
@@ -98,12 +99,12 @@ export function FieldOperations() {
             onChange={event => selectImage(event.target.files?.[0])}
             className="hidden"
           />
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label htmlFor="upload-scan-image" role="button" tabIndex={scan.isPending ? -1 : 0} aria-disabled={scan.isPending} className={`flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3.5 text-sm font-black text-blue-900 shadow-lg transition hover:bg-blue-50 ${scan.isPending ? "pointer-events-none opacity-60" : ""}`}>
-              <Upload className="size-5" />เลือกไฟล์
+              <Upload className="size-5" />เลือกไฟล์จากเครื่อง
             </label>
             <label htmlFor="capture-scan-image" role="button" tabIndex={scan.isPending ? -1 : 0} aria-disabled={scan.isPending} className={`flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3.5 text-sm font-black text-white ring-1 ring-white/25 transition hover:bg-white/15 ${scan.isPending ? "pointer-events-none opacity-60" : ""}`}>
-              <Camera className="size-5" />เปิดกล้อง
+              <Camera className="size-5" />เปิดกล้องถ่ายภาพ
             </label>
           </div>
         </section>
@@ -113,11 +114,12 @@ export function FieldOperations() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Image preview</p>
-                <h2 className="mt-1 truncate font-black text-slate-900">{selectedImage.file.name}</h2>
+                <h2 className="mt-1 break-words font-black text-slate-900">{selectedImage.file.name}</h2>
                 <p className="mt-1 text-xs text-slate-500">{selectedImage.file.type} · {(selectedImage.file.size / 1024).toFixed(1)} KB</p>
               </div>
-              <button onClick={clearImage} disabled={scan.isPending} aria-label="ลบภาพที่เลือก" className="grid size-9 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50">
+              <button onClick={clearImage} disabled={scan.isPending} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-50">
                 <X className="size-4" />
+                ลบ
               </button>
             </div>
 
@@ -172,10 +174,11 @@ export function FieldOperations() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <label htmlFor="manual-house" className="text-xs font-bold uppercase tracking-wider text-slate-500">หรือกรอก House Number</label>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
             <input id="manual-house" value={manualHouse} onChange={event => setManualHouse(event.target.value)} placeholder="เช่น H-1001" className="h-12 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 font-bold uppercase" />
-            <button onClick={() => setManualHouse("")} aria-label="ล้าง House Number" className="grid size-12 place-items-center rounded-xl border border-slate-200 transition hover:bg-slate-50">
+            <button onClick={() => setManualHouse("")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50">
               <RotateCcw className="size-4" />
+              ล้างรหัส
             </button>
           </div>
         </section>
@@ -188,7 +191,7 @@ export function FieldOperations() {
                   <div><p className="text-xs font-bold uppercase tracking-widest text-blue-700">Shipment found</p><h2 className="mt-1 text-2xl font-black">{selectedJob.houseNumber}</h2></div>
                   <StatusBadge status={selectedJob.status} />
                 </div>
-                <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <dl className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                   <div className="rounded-xl bg-slate-50 p-3"><dt className="text-xs text-slate-500">ลูกค้า</dt><dd className="mt-1 font-bold">{selectedJob.customerName || "-"}</dd></div>
                   <div className="rounded-xl bg-slate-50 p-3"><dt className="text-xs text-slate-500">Flight</dt><dd className="mt-1 font-bold">{selectedJob.flightNo || "-"}</dd></div>
                   <div className="rounded-xl bg-slate-50 p-3"><dt className="text-xs text-slate-500">ตำแหน่ง</dt><dd className="mt-1 font-bold">{selectedJob.locationId || "ยังไม่จัดเก็บ"}</dd></div>

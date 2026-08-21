@@ -30,6 +30,33 @@ select {
   outline-color: #2563eb;
 }
 
+button,
+a {
+  touch-action: manipulation;
+}
+
+button,
+a[role="button"] {
+  min-height: 44px;
+}
+
+button {
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  button,
+  a[role="button"] {
+    min-height: 48px;
+  }
+
+  .truncate {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
 @media print {
   .print-hidden {
     display: none !important;

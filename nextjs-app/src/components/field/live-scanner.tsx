@@ -158,10 +158,10 @@ export function LiveScanner({ onDetected }: { onDetected: (code: string) => void
         {active && (
           <button
             onClick={() => void stop()}
-            aria-label="ปิดกล้อง"
-            className="grid size-9 place-items-center rounded-xl bg-white/15 transition hover:bg-white/25"
+            className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl bg-white/15 px-3 text-sm font-black transition hover:bg-white/25"
           >
             <X className="size-4" />
+            ปิดกล้อง
           </button>
         )}
       </div>

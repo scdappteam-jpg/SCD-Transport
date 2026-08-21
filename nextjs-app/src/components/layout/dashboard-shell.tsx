@@ -34,7 +34,7 @@ export function DashboardShell() {
         <div className="flex h-20 items-center gap-3 border-b border-white/10 px-5">
           <span className="grid size-11 place-items-center rounded-xl bg-blue-500 shadow-lg shadow-blue-950/40"><Building2 className="size-6" /></span>
           <div><strong className="block text-sm tracking-wide">S.C.D. TRANSPORT</strong><span className="text-[10px] uppercase tracking-[0.2em] text-blue-200">Operations Center</span></div>
-          <button aria-label="ปิดเมนู" onClick={() => setMenuOpen(false)} className="ml-auto rounded-lg p-2 hover:bg-white/10 lg:hidden"><X className="size-5" /></button>
+          <button onClick={() => setMenuOpen(false)} className="ml-auto inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-black hover:bg-white/10 lg:hidden"><X className="size-5" />ปิด</button>
         </div>
         <nav className="flex-1 space-y-1 p-4">
           <p className="px-3 pb-2 pt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Workspace</p>
@@ -48,11 +48,11 @@ export function DashboardShell() {
 
       <main className="min-w-0">
         <header className="sticky top-0 z-20 flex h-20 items-center border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-xl sm:px-6 xl:px-8">
-          <button aria-label="เปิดเมนู" onClick={() => setMenuOpen(true)} className="mr-3 rounded-xl border border-slate-200 p-2.5 lg:hidden"><Menu className="size-5" /></button>
+          <button onClick={() => setMenuOpen(true)} className="mr-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-black text-slate-700 lg:hidden"><Menu className="size-5" />เมนู</button>
           <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700">SCD control tower</p><h1 className="text-lg font-black tracking-tight sm:text-xl">{sections.find(item => item.id === section)?.label}</h1></div>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 sm:inline-flex">Live data</span>
-            <button onClick={() => query.refetch()} disabled={query.isFetching} className="grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50" aria-label="รีเฟรชข้อมูล"><RefreshCw className={`size-4 ${query.isFetching ? "animate-spin" : ""}`} /></button>
+            <button onClick={() => query.refetch()} disabled={query.isFetching} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50"><RefreshCw className={`size-4 ${query.isFetching ? "animate-spin" : ""}`} />รีเฟรช</button>
           </div>
         </header>
 
