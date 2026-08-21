@@ -8,14 +8,14 @@ export function MetricCard({ label, value, detail, icon: Icon, tone }: {
   tone: string;
 }) {
   return (
-    <article className="rounded-2xl border border-white/70 bg-white/90 p-5 shadow-sm shadow-slate-200/60 backdrop-blur">
+    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50 backdrop-blur sm:p-5">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
-          <p className="mt-2 text-3xl font-black tracking-tight text-slate-900">{value}</p>
-          <p className="mt-2 text-xs text-slate-500">{detail}</p>
+        <div className="min-w-0">
+          <p className="text-xs font-bold leading-snug text-slate-500">{label}</p>
+          <p className="mt-2 break-words text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">{value}</p>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{detail}</p>
         </div>
-        <span className={`grid size-11 place-items-center rounded-xl ${tone}`}><Icon className="size-5" /></span>
+        <span className={`grid size-10 shrink-0 place-items-center rounded-lg ${tone} sm:size-11`}><Icon className="size-5" /></span>
       </div>
     </article>
   );
