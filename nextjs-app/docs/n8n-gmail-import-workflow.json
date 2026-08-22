@@ -1,0 +1,304 @@
+{
+  "name": "SCD Gmail Auto Import - Consol/Pickup/Load Plan",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 30,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "filters": {
+          "q": "has:attachment (subject:(Consol Planning) OR subject:(Pickup Report) OR filename:xlsx OR filename:csv)"
+        },
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-trigger-new-planning-email",
+      "name": "Gmail Trigger - Planning Emails",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -820,
+        0
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\nconst items = $input.all();\nfor (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {\n  const item = items[itemIndex];\n  const json = item.json || {};\n  const binary = item.binary || {};\n  const attachments = [];\n\n  for (const [key, value] of Object.entries(binary)) {\n    const fileName = value.fileName || value.fileNameRaw || key;\n    if (!/\\.(xlsx|csv)$/i.test(fileName)) continue;\n    const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, key);\n    attachments.push({\n      fileName,\n      mimeType: value.mimeType || \"application/octet-stream\",\n      size: buffer.length,\n      base64: buffer.toString(\"base64\")\n    });\n  }\n\n  output.push({\n    json: {\n      subject: json.subject || json.headers?.subject || \"\",\n      from: json.from?.email || json.from || json.headers?.from || \"\",\n      date: json.date || json.internalDate || new Date().toISOString(),\n      messageId: json.id || json.messageId || \"\",\n      source: \"gmail-n8n\",\n      attachments\n    }\n  });\n}\nreturn output;"
+      },
+      "id": "prepare-scd-import-payload",
+      "name": "Prepare SCD Import Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-attachments",
+              "leftValue": "={{$json.attachments.length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-has-supported-files",
+      "name": "Has XLSX/CSV Attachments?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.SCD_APP_URL || \"https://scd-transport.onrender.com\") + \"/api/integrations/n8n-email\"}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-key",
+              "value": "={{$env.SCD_N8N_WEBHOOK_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{JSON.stringify($json)}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "post-to-scd",
+      "name": "Send to SCD Import API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -60,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-changes",
+              "leftValue": "={{Number($json.newJobs || 0) + Number($json.changedJobs || 0) + Number($json.errors || 0)}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-import-changed",
+      "name": "Imported or Changed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        200,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $json;\nconst files = (r.files || []).map(f => `- ${f.file}: ${f.status}${f.newJobs !== undefined ? ` / ใหม่ ${f.newJobs} / เปลี่ยน ${f.changedJobs || 0}` : \"\"}${f.error ? ` / ${f.error}` : \"\"}`).join(\"\\n\");\nreturn [{ json: {\n  subject: `SCD Auto Import: ใหม่ ${r.newJobs || 0}, เปลี่ยน ${r.changedJobs || 0}, ผิดพลาด ${r.errors || 0}`,\n  text: `ระบบ SCD นำเข้าไฟล์จากอีเมลแล้ว\\n\\nนำเข้า: ${r.imported || 0}\\nงานใหม่: ${r.newJobs || 0}\\nข้อมูลเปลี่ยน: ${r.changedJobs || 0}\\nข้ามไฟล์ซ้ำ: ${r.skipped || 0}\\nผิดพลาด: ${r.errors || 0}\\n\\nไฟล์:\\n${files || \"-\"}`,\n  html: `<h3>SCD Auto Import</h3><p><b>งานใหม่:</b> ${r.newJobs || 0}<br><b>ข้อมูลเปลี่ยน:</b> ${r.changedJobs || 0}<br><b>ข้ามไฟล์ซ้ำ:</b> ${r.skipped || 0}<br><b>ผิดพลาด:</b> ${r.errors || 0}</p><pre>${files || \"-\"}</pre>`\n}}];"
+      },
+      "id": "build-notification",
+      "name": "Build Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$env.SCD_NOTIFY_EMAIL}}",
+        "subject": "={{$json.subject}}",
+        "emailType": "html",
+        "message": "={{$json.html}}",
+        "options": {}
+      },
+      "id": "send-summary-email",
+      "name": "Send Summary Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        -160
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "no-supported-files",
+      "name": "No Supported Files",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        160
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "no-change",
+      "name": "No Change / Duplicate Only",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        460,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger - Planning Emails": {
+      "main": [
+        [
+          {
+            "node": "Prepare SCD Import Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare SCD Import Payload": {
+      "main": [
+        [
+          {
+            "node": "Has XLSX/CSV Attachments?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has XLSX/CSV Attachments?": {
+      "main": [
+        [
+          {
+            "node": "Send to SCD Import API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Supported Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to SCD Import API": {
+      "main": [
+        [
+          {
+            "node": "Imported or Changed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Imported or Changed?": {
+      "main": [
+        [
+          {
+            "node": "Build Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Change / Duplicate Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "SCD"
+    },
+    {
+      "name": "Gmail"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-08-22T00:00:00.000Z",
+  "versionId": "scd-gmail-auto-import-v1"
+}
