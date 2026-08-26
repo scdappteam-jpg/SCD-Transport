@@ -3,6 +3,7 @@ export const legacyViewRoutes = {
   orders: "orders",
   calendar: "calendar",
   staff: "staff",
+  hr: "hr",
   admin: "admin",
   grouping: "grouping",
   "cargo-history": "cargo-history",

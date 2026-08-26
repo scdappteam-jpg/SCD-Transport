@@ -145,6 +145,10 @@
             <i data-lucide="users" aria-hidden="true"></i>
             <b>พนักงาน</b>
           </button>
+          <button class="nav-item" type="button" data-view="hr">
+            <i data-lucide="calendar-heart" aria-hidden="true"></i>
+            <b>HR ลา/โอที</b>
+          </button>
 
           <div class="nav-group-label">ระบบ · System</div>
           <button class="nav-item" type="button" data-view="mobile">
@@ -643,6 +647,96 @@
                 <article class="metric-card"><i data-lucide="check-circle" class="icon green" aria-hidden="true"></i><p>งานสำเร็จ / Completed</p><strong id="staffCompletedMetric">0</strong></article>
                 <article class="metric-card"><i data-lucide="x-circle" class="icon red" aria-hidden="true"></i><p>งานผิดพลาด / Errors</p><strong id="staffErrorMetric">0</strong></article>
               </aside>
+            </div>
+          </section>
+
+          <section class="page" id="view-hr" data-page="hr">
+            <section class="hr-hero card">
+              <div>
+                <span class="hr-eyebrow">HR Control</span>
+                <h2>ลาและโอที / Leave & OT</h2>
+                <p>จัดการคำขอลา, อนุมัติ 2 ขั้น, คำนวณโอทีตามเวลาจริง และสรุปกำลังคนประจำวัน</p>
+              </div>
+              <div class="hr-hero-actions">
+                <button class="ghost-button" type="button" onclick="setView('attendance')">ดูการเข้างาน</button>
+                <button class="primary-button" type="button" onclick="exportHrMonthlyCsv()">Export สรุปเดือน</button>
+              </div>
+            </section>
+            <div id="hrKpiGrid" class="hr-kpi-grid"></div>
+            <div class="hr-layout">
+              <section class="card hr-request-card">
+                <div class="card-head">
+                  <div>
+                    <h2>ยื่นคำขอ / New Request</h2>
+                    <p>พนักงานใช้บนมือถือได้: เลือกประเภท กรอกเหตุผล แล้วส่งเข้าคิวหัวหน้าทีม</p>
+                  </div>
+                </div>
+                <div class="hr-form-tabs" role="tablist">
+                  <button class="active" type="button" data-hr-form-tab="leave" onclick="switchHrForm('leave')">ขอลา</button>
+                  <button type="button" data-hr-form-tab="ot" onclick="switchHrForm('ot')">ขอโอที</button>
+                </div>
+                <form id="hrLeaveForm" class="hr-form" onsubmit="submitHrLeave(event)">
+                  <label>พนักงาน / Employee<select id="hrLeaveEmployee"></select></label>
+                  <div class="hr-form-grid">
+                    <label>ประเภทลา / Leave type<select id="hrLeaveType">
+                      <option value="sick">ลาป่วย / Sick</option>
+                      <option value="personal">ลากิจ / Personal</option>
+                      <option value="vacation">ลาพักร้อน / Vacation</option>
+                      <option value="other">อื่นๆ / Other</option>
+                    </select></label>
+                    <label>ช่วงวัน / Day part<select id="hrLeavePart">
+                      <option value="full">เต็มวัน / Full day</option>
+                      <option value="am">ครึ่งเช้า / Morning</option>
+                      <option value="pm">ครึ่งบ่าย / Afternoon</option>
+                    </select></label>
+                    <label>วันที่เริ่ม / Start<input id="hrLeaveStart" type="date" required></label>
+                    <label>วันที่สิ้นสุด / End<input id="hrLeaveEnd" type="date" required></label>
+                  </div>
+                  <label>เหตุผล / Reason<textarea id="hrLeaveReason" rows="3" placeholder="เช่น ป่วย มีนัดธุระ หรือพักร้อน"></textarea></label>
+                  <button class="primary-button" type="submit">ส่งคำขอลา / Submit Leave</button>
+                </form>
+                <form id="hrOtForm" class="hr-form" hidden onsubmit="submitHrOt(event)">
+                  <label>พนักงาน / Employee<select id="hrOtEmployee"></select></label>
+                  <div class="hr-form-grid">
+                    <label>วันที่ทำ OT / OT date<input id="hrOtDate" type="date" required></label>
+                    <label>งาน/กลุ่มงาน / Work ref<input id="hrOtWorkRef" placeholder="เช่น TG Load Plan"></label>
+                    <label>เวลาเริ่ม / Start<input id="hrOtStart" type="time" required></label>
+                    <label>เวลาสิ้นสุด / End<input id="hrOtEnd" type="time" required></label>
+                  </div>
+                  <label>เหตุผล / Reason<textarea id="hrOtReason" rows="3" placeholder="เช่น โหลดสินค้าต่อเนื่องหลังเวลางาน"></textarea></label>
+                  <button class="primary-button" type="submit">ส่งคำขอโอที / Submit OT</button>
+                </form>
+              </section>
+              <section class="card hr-queue-card">
+                <div class="card-head">
+                  <div>
+                    <h2>คิวอนุมัติ / Approval Queue</h2>
+                    <p>Step 1 หัวหน้าทีม → Step 2 ผู้บริหาร พร้อมบันทึกเหตุผลการปฏิเสธ</p>
+                  </div>
+                </div>
+                <div id="hrApprovalQueue" class="hr-approval-list"></div>
+              </section>
+            </div>
+            <div class="hr-layout lower">
+              <section class="card">
+                <div class="card-head">
+                  <div>
+                    <h2>ปฏิทินกำลังคน / Staffing Calendar</h2>
+                    <p>วันที่มีคนลา ระบบจะแสดงเป็นสถานะ Leave และไม่คิดเป็นขาดงาน</p>
+                  </div>
+                </div>
+                <div id="hrCalendarList" class="hr-calendar-list"></div>
+              </section>
+              <section class="card">
+                <div class="card-head">
+                  <div>
+                    <h2>ตั้งค่าโควตาและเรท / HR Settings</h2>
+                    <p>อิงตามข้อกำหนด HR: ลาป่วย 30, ลากิจ 6, พักร้อน 6-10 วัน และ OT ตามจริงไม่เกินอนุมัติ</p>
+                  </div>
+                  <button class="ghost-button" type="button" onclick="closeHrMonth()">ปิดรอบเดือน</button>
+                </div>
+                <div id="hrSettingsPanel" class="hr-settings-panel"></div>
+              </section>
             </div>
           </section>
 
