@@ -766,7 +766,10 @@ function flightNumberDigits(flightNo) {
 }
 
 function isNoMissFlight(flightNo) {
-    return /^[CK]/.test(String(flightNo || "").trim().toUpperCase());
+    // Destination values such as KUL must never be treated as C/K flights.
+    // Accept C123, K1234, CK123, etc. only when a real 3-4 digit flight
+    // number follows the C/K airline prefix.
+    return /^[CK][A-Z]{0,2}[-\s]*[0-9]{3,4}(?![0-9])/.test(String(flightNo || "").trim().toUpperCase());
 }
 
 function deriveFlightSla(job, referenceTime = Date.now()) {
