@@ -4102,6 +4102,12 @@ async function handleApi(req, res, pathname) {
         }
         const docs = billingDocumentStatus(db, job);
         const approved = payload.status === "Reviewed";
+        if (approved && !docs.ready) {
+            return sendJson(res, 422, {
+                error: `Billing documents incomplete: ${docs.blockers.join(", ")}`,
+                docs: docs
+            });
+        }
         job.billingReviewStatus = approved ? "Reviewed" : "PendingBillingReview";
         job.billingReviewNote = payload.note || "";
         job.billingDocuments = docs;
