@@ -50,6 +50,10 @@ let dbCache = null;
 
 let dbPersistPromise = Promise.resolve();
 
+const TERMINAL_REACHED_STATUSES = new Set([ "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ]);
+
+const FLIGHT_RISK_ALERT_STATUSES = new Set([ "DueToday", "Warning", "Urgent", "Critical", "Breached" ]);
+
 const MIME = {
     ".html": "text/html; charset=utf-8",
     ".css": "text/css; charset=utf-8",
@@ -391,6 +395,7 @@ function readDb() {
 }
 
 function writeDb(db) {
+    refreshFlightSla(db);
     if (supabaseEnabled()) {
         ensureCoreUsers(db);
         ensureDbShape(db);
@@ -753,7 +758,109 @@ function applyPlanConfirmation(db, plan, importedBy = "LoadPlan") {
     return confirmed;
 }
 
+function flightNumberDigits(flightNo) {
+    // Use the first airline flight-number block, not a date suffix in values
+    // such as YP602/28. Only explicit 3- or 4-digit numbers drive the SLA.
+    const match = String(flightNo || "").toUpperCase().match(/^[A-Z]{1,3}[-\s]*([0-9]{3,4})(?![0-9])/);
+    return match ? match[1].length : 0;
+}
+
+function isNoMissFlight(flightNo) {
+    return /^[CK]/.test(String(flightNo || "").trim().toUpperCase());
+}
+
+function deriveFlightSla(job, referenceTime = Date.now()) {
+    const flightNo = String(job.flightNo || "").trim().toUpperCase();
+    const digits = flightNumberDigits(flightNo);
+    const etdMs = new Date(job.flightTime).getTime();
+    const mustNotMissFlight = isNoMissFlight(flightNo);
+    const slaHoursBeforeFlight = digits === 3 ? 12 : digits === 4 ? 14 : null;
+    const slaProfile = digits === 3 ? "SLA_6_6" : digits === 4 ? "SLA_6_8" : "Unclassified";
+    if (!slaHoursBeforeFlight || isNaN(etdMs)) {
+        return {
+            flightNumberDigits: digits || null,
+            slaProfile,
+            slaHoursBeforeFlight,
+            mustNotMissFlight,
+            airportDueAt: "",
+            effectiveAirportDueAt: "",
+            minutesToAirportDue: null,
+            flightRiskStatus: "Unclassified",
+            flightRiskReason: "Flight number or ETD is not usable for SLA calculation"
+        };
+    }
+    const slaDueMs = etdMs - slaHoursBeforeFlight * 36e5;
+    const cargoCutoffMs = new Date(job.cargoCutoffAt || "").getTime();
+    // Legacy closeTime is not consistently an airline cutoff. Only the
+    // explicit cargoCutoffAt field can make the deadline earlier.
+    const cutoffDueMs = isNaN(cargoCutoffMs) ? null : cargoCutoffMs - 36e5;
+    const dueMs = cutoffDueMs === null ? slaDueMs : Math.min(slaDueMs, cutoffDueMs);
+    const minutesToAirportDue = Math.round((dueMs - referenceTime) / 6e4);
+    const reachedTerminal = TERMINAL_REACHED_STATUSES.has(job.status) || Boolean(job.terminalArrivedAt);
+    const dueToday = bangkokDate(new Date(dueMs).toISOString()) === bangkokDate(new Date(referenceTime).toISOString());
+    let flightRiskStatus = "OnTrack";
+    let flightRiskReason = "Within flight SLA";
+    if (reachedTerminal) {
+        flightRiskStatus = "TerminalReached";
+        flightRiskReason = "Cargo reached terminal";
+    } else if (minutesToAirportDue < 0) {
+        flightRiskStatus = "Breached";
+        flightRiskReason = "Airport deadline has passed";
+    } else if (mustNotMissFlight && minutesToAirportDue <= 240) {
+        flightRiskStatus = "Critical";
+        flightRiskReason = "C/K no-miss flight is within 4 hours of airport deadline";
+    } else if (minutesToAirportDue <= 120) {
+        flightRiskStatus = "Critical";
+        flightRiskReason = "Less than 2 hours to airport deadline";
+    } else if (minutesToAirportDue <= 240) {
+        flightRiskStatus = "Urgent";
+        flightRiskReason = "Less than 4 hours to airport deadline";
+    } else if (dueToday) {
+        flightRiskStatus = "DueToday";
+        flightRiskReason = "Cargo must reach airport today";
+    } else if (minutesToAirportDue <= 360) {
+        flightRiskStatus = "Warning";
+        flightRiskReason = "Less than 6 hours to airport deadline";
+    }
+    return {
+        flightNumberDigits: digits,
+        slaProfile,
+        slaHoursBeforeFlight,
+        mustNotMissFlight,
+        airportDueAt: new Date(slaDueMs).toISOString(),
+        effectiveAirportDueAt: new Date(dueMs).toISOString(),
+        minutesToAirportDue,
+        flightRiskStatus,
+        flightRiskReason
+    };
+}
+
+function refreshFlightSla(db) {
+    db.alerts ||= [];
+    const now = Date.now();
+    const today = bangkokDate(new Date(now).toISOString());
+    for (const job of db.jobs || []) {
+        const risk = deriveFlightSla(job, now);
+        const previousAlertKey = job.flightRiskAlertKey || "";
+        Object.assign(job, risk);
+        const dueToday = risk.effectiveAirportDueAt && bangkokDate(risk.effectiveAirportDueAt) === today;
+        const alertKey = `${risk.flightRiskStatus}|${risk.effectiveAirportDueAt}`;
+        if (!TERMINAL_REACHED_STATUSES.has(job.status) && dueToday && FLIGHT_RISK_ALERT_STATUSES.has(risk.flightRiskStatus) && previousAlertKey !== alertKey) {
+            db.alerts.push({
+                id: `FLIGHT-RISK-${job.houseNumber}-${Date.now()}-${db.alerts.length}`,
+                message: `[Flight Risk] ${job.houseNumber} · ${job.flightNo || "TBC"} · ${risk.flightRiskStatus}: ${risk.flightRiskReason}. Must reach airport by ${formatBangkok(risk.effectiveAirportDueAt)}${risk.mustNotMissFlight ? " · C/K NO-MISS" : ""}`,
+                severity: [ "Critical", "Breached" ].includes(risk.flightRiskStatus) ? "danger" : "warning",
+                createdAt: nowIso(),
+                houseNumber: job.houseNumber,
+                flightRiskStatus: risk.flightRiskStatus
+            });
+            job.flightRiskAlertKey = alertKey;
+        }
+    }
+}
+
 function normalizeJob(job) {
+    const flightRisk = deriveFlightSla(job);
     const flightMs = new Date(job.flightTime).getTime();
     const hoursToFlight = isNaN(flightMs) ? null : Math.round((flightMs - Date.now()) / 36e5 * 10) / 10;
     const loadingDone = Boolean(job.loadingDetailUploaded);
@@ -770,6 +877,7 @@ function normalizeJob(job) {
         flightTimeLabel: formatBangkok(job.flightTime),
         hoursToFlight: hoursToFlight,
         redFlag: hoursToFlight !== null && hoursToFlight < 4 && !loadingDone,
+        ...flightRisk,
         canUploadLoadingDetail: false
     };
 }
@@ -850,6 +958,14 @@ function buildDashboard(db) {
             labels: docs.labels || []
         };
     });
+    const flightRiskJobs = jobs.filter(job => FLIGHT_RISK_ALERT_STATUSES.has(job.flightRiskStatus) && job.effectiveAirportDueAt && !TERMINAL_REACHED_STATUSES.has(job.status)).sort((a, b) => new Date(a.effectiveAirportDueAt) - new Date(b.effectiveAirportDueAt)).slice(0, 60);
+    const flightRiskSummary = {
+        dueToday: jobs.filter(job => job.flightRiskStatus === "DueToday").length,
+        warning: jobs.filter(job => job.flightRiskStatus === "Warning").length,
+        urgent: jobs.filter(job => job.flightRiskStatus === "Urgent").length,
+        critical: jobs.filter(job => [ "Critical", "Breached" ].includes(job.flightRiskStatus)).length,
+        noMiss: jobs.filter(job => job.mustNotMissFlight && !TERMINAL_REACHED_STATUSES.has(job.status)).length
+    };
     return {
         jobs: jobs,
         locations: db.locations,
@@ -858,6 +974,7 @@ function buildDashboard(db) {
         importChanges: (db.importChanges || []).slice(-50).reverse(),
         importHistory: (db.importHistory || []).slice(-5).reverse(),
         alerts: (db.alerts || []).slice(-20).reverse(),
+        flightRiskJobs: flightRiskJobs,
         staffStats: buildStaffStats(db),
         metrics: {
             openJobs: openJobs,
@@ -867,6 +984,7 @@ function buildDashboard(db) {
             averageDurationMinutes: averageDurationMinutes,
             approvalSummary: approvalSummary,
             terminalSummary: terminalSummary,
+            flightRiskSummary: flightRiskSummary,
             documentMatrix: documentMatrix
         }
     };
@@ -2446,6 +2564,7 @@ async function handleApi(req, res, pathname) {
             n8n: {
                 configured: Boolean(process.env.N8N_WEBHOOK_KEY),
                 webhookPath: "/api/integrations/n8n-email",
+                flightRiskWebhookPath: "/api/integrations/flight-risk",
                 last: db.integrations?.n8nEmail || null
             },
             line: {
@@ -2455,6 +2574,37 @@ async function handleApi(req, res, pathname) {
                 configured: Boolean(process.env.EMAIL_WEBHOOK_URL),
                 cc: process.env.BILLING_CC_EMAIL || ""
             }
+        });
+    }
+    if (req.method === "GET" && pathname === "/api/flight-risks") {
+        const dashboard = buildDashboard(db);
+        return sendJson(res, 200, {
+            risks: dashboard.flightRiskJobs,
+            summary: dashboard.metrics.flightRiskSummary
+        });
+    }
+    if (req.method === "POST" && pathname === "/api/integrations/flight-risk") {
+        const payload = await parseBody(req);
+        const configuredKey = process.env.N8N_WEBHOOK_KEY || "";
+        const receivedKey = String(req.headers["x-webhook-key"] || payload.webhookKey || "");
+        if (!configuredKey) return sendJson(res, 503, {
+            error: "N8N_WEBHOOK_KEY is not set on the server"
+        });
+        if (receivedKey !== configuredKey) return sendJson(res, 401, {
+            error: "Invalid webhook key"
+        });
+        refreshFlightSla(db);
+        db.integrations ||= {};
+        db.integrations.flightRisk = {
+            lastEvaluatedAt: nowIso(),
+            requestedBy: payload.requestedBy || "n8n"
+        };
+        writeDb(db);
+        const dashboard = buildDashboard(db);
+        return sendJson(res, 200, {
+            ok: true,
+            summary: dashboard.metrics.flightRiskSummary,
+            risks: dashboard.flightRiskJobs
         });
     }
     if (req.method === "POST" && pathname === "/api/integrations/n8n-email") {
