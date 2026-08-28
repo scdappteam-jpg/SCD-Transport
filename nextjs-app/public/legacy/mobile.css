@@ -519,6 +519,27 @@ body:not(.mobile-locked) main {
   font-size: 14px !important;
 }
 
+.ez-flight-risk {
+  margin: 10px 14px 0;
+  padding: 10px 12px;
+  border: 1px solid #fbbf24;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.ez-flight-risk.danger {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.ez-flight-risk small {
+  font-weight: 700;
+}
+
 .ez-job-details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -2089,6 +2089,7 @@ function renderAll() {
     renderDriverJobSelect();
     renderRoleHome();
     renderExecutiveSummary();
+    renderFlightRiskPanel();
     renderMetrics();
     renderProcessControlStrip();
     renderDocumentMatrix();
@@ -2204,6 +2205,42 @@ function renderExecutiveSummary() {
         hint: "ควรตรวจ backlog"
     } ];
     $("#execInsightList").innerHTML = insights.map(item => `\n    <button type="button" class="exec-insight ${item.cls}" onclick="setView('${item.cls === "risk" ? "alerts" : "orders"}')">\n      <i data-lucide="${item.icon}" aria-hidden="true"></i>\n      <span><b>${item.label}</b><em>${safeHtml(item.hint)}</em></span>\n      <strong>${safeHtml(item.value)}</strong>\n    </button>\n  `).join("");
+}
+
+function renderFlightRiskPanel() {
+    const panel = $("#flightRiskPanel");
+    if (!panel) return;
+    const risks = state.dashboard?.flightRiskJobs || [];
+    const summary = state.dashboard?.metrics?.flightRiskSummary || {};
+    panel.hidden = !risks.length;
+    if (!risks.length) return;
+    const severity = risk => [ "Critical", "Breached" ].includes(risk.flightRiskStatus) ? "#b91c1c" : risk.flightRiskStatus === "Urgent" ? "#c2410c" : "#a16207";
+    panel.innerHTML = `
+      <div class="card-head">
+        <div>
+          <h2>🚨 Flight Risk วันนี้ / งานเสี่ยงตกไฟลท์</h2>
+          <p>Critical ${summary.critical || 0} · Urgent ${summary.urgent || 0} · C/K No-Miss ${summary.noMiss || 0}</p>
+        </div>
+        <button class="ghost-button" type="button" onclick="setView('alerts')">ดูแจ้งเตือนทั้งหมด</button>
+      </div>
+      <div style="display:grid;gap:8px">
+        ${risks.slice(0, 8).map(job => `
+          <button type="button" onclick="openFlightRiskJob('${safeHtml(job.houseNumber)}')" style="display:grid;grid-template-columns:minmax(130px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) auto;gap:12px;align-items:center;text-align:left;border:1px solid #fecaca;border-left:5px solid ${severity(job)};border-radius:10px;background:#fff;padding:11px 13px;cursor:pointer">
+            <strong>${safeHtml(job.houseNumber)}</strong>
+            <span>${safeHtml(job.flightNo || "TBC")} · ${safeHtml(job.slaProfile || "-")}${job.mustNotMissFlight ? " · C/K NO-MISS" : ""}</span>
+            <span>ต้องถึงสนามบินก่อน <b>${safeHtml(formatBangkok(job.effectiveAirportDueAt))}</b></span>
+            <b style="color:${severity(job)}">${safeHtml(job.flightRiskStatus)}</b>
+          </button>
+        `).join("")}
+      </div>`;
+}
+
+function openFlightRiskJob(houseNumber) {
+    setView("orders");
+    const search = $("#globalSearch");
+    if (search) search.value = houseNumber;
+    renderRecentOrders();
+    renderOrderCards();
 }
 
 function renderMetrics() {
