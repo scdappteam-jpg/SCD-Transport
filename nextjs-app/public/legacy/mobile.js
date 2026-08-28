@@ -1270,7 +1270,14 @@ function bindEvents() {
             receiverName: $("#driverReceiverName").value.trim(),
             endPlace: computedEndPlace()
         });
-        showMobileActionModal("จบงานสำเร็จ", "ระบบบันทึกเวลาเช็คเอาท์ รูปสินค้า รูปใบ Cargo และลายเซ็นแล้ว งานจะไปแสดงให้แอดมินตรวจในหลังบ้าน");
+        // The API has already set the job to Delivered (back at WH3). Close
+        // the active form so the driver is not left on a page that looks like
+        // the pickup is still in progress.
+        state.pickupUnlockedSelection = "";
+        state.pickupStartTime = null;
+        state.cargoLoaded = false;
+        $("#driverJobSelect").value = "";
+        showMobileActionModal("จบงานสำเร็จ", "ระบบบันทึกเวลาเช็คเอาท์ รูปสินค้า รูปใบ Cargo และลายเซ็นแล้ว สถานะงานเปลี่ยนเป็น Delivered (กลับ WH3) และส่งให้แอดมินตรวจแล้ว");
         toast("จบงานแล้ว / Completed");
     }));
     $("#twinScanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
