@@ -92,6 +92,19 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
   };
 
   await legacyApi.handleApi(input, output, pathname);
-  await legacyApi.flushSupabasePersistence();
+  // Only a write request needs to wait for the shared-state snapshot.  A
+  // previously failed write must not make status/read endpoints unavailable.
+  if (!["GET", "HEAD"].includes(request.method)) {
+    try {
+      await legacyApi.flushSupabasePersistence();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown Supabase persistence error";
+      return Response.json({
+        ok: false,
+        error: "Unable to save this update to the shared database.",
+        detail: message
+      }, { status: 503 });
+    }
+  }
   return new Response(Buffer.concat(chunks), { status, headers });
 }
