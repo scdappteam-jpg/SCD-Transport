@@ -635,6 +635,8 @@ function validatePickupFlow({requireLoaded: requireLoaded = false} = {}) {
     if (isSpecialOrWd() && !$("#driverStickerColor").value.trim()) missing.push("กรอกสี Sticker สำหรับงานพิเศษ/WD");
     if (!$("#driverPickupItems").value.trim()) missing.push("เพิ่ม House/Destination อย่างน้อย 1 งาน");
     if (requireLoaded && !state.cargoLoaded) missing.push("กดโหลดสินค้าขึ้นรถก่อนจบงาน");
+    if (requireLoaded && !$("#productImages")?.files?.length) missing.push("แนบรูปสินค้าก่อนจบงาน");
+    if (requireLoaded && !$("#cargoImages")?.files?.length) missing.push("แนบรูปใบ Cargo Pickup Form ที่เซ็นแล้วก่อนจบงาน");
     if (requireLoaded && !$("#doorClosedImages")?.files?.length) missing.push("แนบรูปปิดประตูตู้/ท้ายรถก่อนจบงาน (กฎ Audit)");
     const _dests = pickupRowsFromInputs().map(row => (row.destination || "").toUpperCase()).filter(Boolean);
     const _nonWh3 = _dests.filter(d => d !== "WH3");
@@ -941,7 +943,11 @@ async function runAction(button, task) {
         await task();
         await refresh();
     } catch (error) {
-        toast(error.message);
+        const message = error && error.message ? error.message : "เกิดข้อผิดพลาด กรุณาลองใหม่";
+        // The short-lived toast was easy to miss on the final pickup step.
+        // Keep it, but also present the actionable reason in a modal.
+        showMobileActionModal("ยังดำเนินการไม่สำเร็จ", message);
+        toast(message);
     } finally {
         button.disabled = false;
     }
