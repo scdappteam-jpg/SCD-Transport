@@ -270,6 +270,16 @@ function ensureDbShape(db) {
     }
 }
 
+// Warehouse maps created by the current admin UI store slots under
+// warehouseMaps[].zones[].slots, while an older warehouse editor used
+// warehouseMap.locations.  Inbound/outbound actions must recognise both so a
+// valid slot such as A-01 is never reported as missing.
+function warehouseMapLocations(db) {
+    const legacyLocations = db.warehouseMap?.locations || [];
+    const mappedSlots = (db.warehouseMaps || []).flatMap(map => (map.zones || []).flatMap(zone => zone.slots || []));
+    return [ ...legacyLocations, ...mappedSlots ];
+}
+
 function supabaseEnabled() {
     return Boolean(SUPABASE_URL && SUPABASE_KEY);
 }
@@ -3180,7 +3190,7 @@ async function handleApi(req, res, pathname) {
         const job = findJob(db, payload.houseNumber);
         const locKey = String(payload.locationId || "").trim();
         const location = db.locations.find(item => item.id === locKey);
-        const wmLocs = (db.warehouseMap && db.warehouseMap.locations) || [];
+        const wmLocs = warehouseMapLocations(db);
         const wmLocation = location ? null : wmLocs.find(l =>
             String(l.code || "").toLowerCase() === locKey.toLowerCase() || String(l.id) === locKey);
         if (!job) return sendJson(res, 404, {
@@ -3271,7 +3281,7 @@ async function handleApi(req, res, pathname) {
         const job = findJob(db, payload.houseNumber);
         const moveKey = String(payload.newLocationId || "").trim();
         const newLocation = db.locations.find(item => item.id === moveKey);
-        const wmLocsMove = (db.warehouseMap && db.warehouseMap.locations) || [];
+        const wmLocsMove = warehouseMapLocations(db);
         const newWmLocation = newLocation ? null : wmLocsMove.find(l =>
             String(l.code || "").toLowerCase() === moveKey.toLowerCase() || String(l.id) === moveKey);
         if (!job) return sendJson(res, 404, {
@@ -3605,7 +3615,7 @@ async function handleApi(req, res, pathname) {
                 location.status = "Available";
                 location.currentHouseId = "";
             }
-            const wmLocsPick = (db.warehouseMap && db.warehouseMap.locations) || [];
+            const wmLocsPick = warehouseMapLocations(db);
             const wmLocPick = wmLocsPick.find(l => (l.code || l.id) === job.locationId || l.id === job.locationId);
             if (wmLocPick) {
                 wmLocPick.occupiedBy = (wmLocPick.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
