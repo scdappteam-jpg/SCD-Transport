@@ -137,6 +137,23 @@ function assetUrl(path) {
     return path.startsWith("http") ? path : `${API_BASE}${path}`;
 }
 
+async function recoverCompletedRequest(path, payload) {
+    const expectedStatuses = {
+        "/api/pickup/complete": [ "Delivered" ],
+        "/api/inbound/close": [ "Stored", "ReadyForTerminal" ]
+    }[path];
+    if (!expectedStatuses || !payload?.houseNumber) return null;
+    const res = await fetch(apiUrl("/api/bootstrap"));
+    if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) return null;
+    const data = await res.json();
+    const house = normalizeHouseBarcode(payload.houseNumber);
+    const job = (data.dashboard?.jobs || []).find(item => item.houseNumber === house);
+    if (!job || !expectedStatuses.includes(job.status)) return null;
+    state.dashboard = data.dashboard;
+    state.users = data.users || state.users;
+    return job;
+}
+
 async function api(path, payload) {
     try {
         const res = await fetch(apiUrl(path), {
@@ -150,6 +167,18 @@ async function api(path, payload) {
         if (!res.ok) throw new Error(data.error || "Request failed");
         return data;
     } catch (error) {
+        // A mobile connection can drop after Render has finished the write but
+        // before its response reaches the phone. Verify the resulting status
+        // first, so a driver is not told to submit the same evidence twice.
+        try {
+            const job = await recoverCompletedRequest(path, payload);
+            if (job) {
+                toast(`บันทึกสำเร็จแล้ว: ${job.houseNumber} · ${job.status}`);
+                return { ok: true, recovered: true, job: job };
+            }
+        } catch (_) {
+            // Fall through to the normal offline/error handling below.
+        }
         if (!navigator.onLine) {
             state.offlineQueue.push({
                 path: path,
@@ -162,6 +191,9 @@ async function api(path, payload) {
                 ok: true,
                 queued: true
             };
+        }
+        if (error instanceof TypeError && /fetch/i.test(error.message || "")) {
+            throw new Error("เชื่อมต่อเซิร์ฟเวอร์ขาดตอน และยังยืนยันผลไม่ได้ กรุณารอ 10 วินาทีแล้วรีเฟรชเพื่อตรวจสถานะก่อนกดซ้ำ");
         }
         throw error;
     }
