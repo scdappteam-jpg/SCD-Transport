@@ -48,7 +48,7 @@ const SCAN_SERVICE_URL = process.env.SCAN_SERVICE_URL || "http://localhost:5000/
 
 let dbCache = null;
 
-let dbPersistTimer = null;
+let dbPersistPromise = Promise.resolve();
 
 const MIME = {
     ".html": "text/html; charset=utf-8",
@@ -330,13 +330,14 @@ async function persistDbToSupabase(db) {
 
 function scheduleSupabasePersist(db) {
     if (!supabaseEnabled()) return;
-    if (dbPersistTimer) clearTimeout(dbPersistTimer);
-    dbPersistTimer = setTimeout(() => {
-        dbPersistTimer = null;
-        persistDbToSupabase(db).catch(err => {
-            console.error(`[db] Supabase persist failed: ${err.message}`);
-        });
-    }, 250);
+    // Start the write immediately. A delayed timer can be discarded when a
+    // serverless instance is recycled just after an import response is sent.
+    const snapshot = sanitizedClone(db);
+    dbPersistPromise = dbPersistPromise.catch(() => {}).then(() => persistDbToSupabase(snapshot));
+}
+
+async function flushSupabasePersistence() {
+    await dbPersistPromise;
 }
 
 function readDbFromFile() {
@@ -5792,5 +5793,6 @@ if (require.main === module) {
 module.exports = {
     handleApi: handleApi,
     loadDbFromSupabase: loadDbFromSupabase,
+    flushSupabasePersistence: flushSupabasePersistence,
     serveStatic: serveStatic
 };

@@ -10,7 +10,7 @@ const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 3000);
 const application = next({ dev: development, hostname: host, port, dir: __dirname });
 const nextHandler = application.getRequestHandler();
-const { handleApi, loadDbFromSupabase, serveStatic } = require("./src/server/legacy-api.cjs");
+const { handleApi, loadDbFromSupabase, flushSupabasePersistence, serveStatic } = require("./src/server/legacy-api.cjs");
 
 application.prepare().then(async () => {
   await loadDbFromSupabase();
@@ -26,7 +26,11 @@ application.prepare().then(async () => {
         });
         return response.end();
       }
-      if (pathname.startsWith("/api/")) return await handleApi(request, response, pathname);
+      if (pathname.startsWith("/api/")) {
+        await handleApi(request, response, pathname);
+        await flushSupabasePersistence();
+        return;
+      }
       if (pathname.startsWith("/storage/")) return serveStatic(request, response, pathname);
       if (pathname === "/web") {
         response.writeHead(308, { Location: "/" });

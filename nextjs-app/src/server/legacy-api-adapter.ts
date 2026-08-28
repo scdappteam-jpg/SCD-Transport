@@ -17,6 +17,7 @@ type LegacyResponse = {
 type LegacyApiModule = {
   handleApi: (request: LegacyRequest, response: LegacyResponse, pathname: string) => Promise<void>;
   loadDbFromSupabase: () => Promise<void>;
+  flushSupabasePersistence: () => Promise<void>;
 };
 
 let initialization: Promise<void> | undefined;
@@ -91,5 +92,6 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
   };
 
   await legacyApi.handleApi(input, output, pathname);
+  await legacyApi.flushSupabasePersistence();
   return new Response(Buffer.concat(chunks), { status, headers });
 }
