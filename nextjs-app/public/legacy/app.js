@@ -118,6 +118,12 @@ const state = {
     selectedBillingBatchId: "",
     calendarDate: new Date,
     pendingImport: null,
+    fleetDemo: {
+        loaded: false,
+        loading: false,
+        vehicles: [],
+        fetchedAt: ""
+    },
     staff: [ {
         code: "EMP001",
         name: "Somchai Prasert",
@@ -272,7 +278,7 @@ function allowedWebViews(role) {
     if (role === "Billing") return [ "dashboard", "orders", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr" ];
     if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
     if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-status", "load-plan", "outbound-open", "attendance", "hr" ];
-    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "settings", "load-plan", "outbound-open", "attendance" ];
+    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "fleet-demo", "settings", "load-plan", "outbound-open", "attendance" ];
 }
 
 function applyWebRoleVisibility() {
@@ -437,6 +443,10 @@ const pageCopy = {
     "wh-status": {
         breadcrumb: "สถานะคลัง / Stock Status",
         title: "สถานะคลังสินค้า WH3 / Warehouse Status"
+    },
+    "fleet-demo": {
+        breadcrumb: "GPS รถ / Cartrack Demo",
+        title: "ตำแหน่งรถขนส่ง / Live GPS Demo"
     },
     "load-plan": {
         breadcrumb: "ขาออก / Outbound",
@@ -730,6 +740,7 @@ function setView(view) {
     applyLanguage();
     if (view === "warehouse") renderWarehouseMap();
     if (view === "wh-status") renderWarehouseStatus();
+    if (view === "fleet-demo") renderFleetDemo();
     if (view === "load-plan") renderLoadPlan();
     if (view === "outbound-open") renderObOpenPage();
     if (view === "grouping") renderGroupingTabs();
@@ -2125,6 +2136,77 @@ function renderAll() {
     initializeIcons();
     applyLanguage();
     if (state.currentView === "load-plan") renderLoadPlan();
+}
+
+function fleetDemoNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+}
+
+function fleetDemoMapUrl(vehicle) {
+    const lat = fleetDemoNumber(vehicle.latitude);
+    const lng = fleetDemoNumber(vehicle.longitude);
+    return lat === null || lng === null ? "" : `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
+function renderFleetDemoContent() {
+    const vehicles = state.fleetDemo.vehicles || [];
+    const located = vehicles.filter(vehicle => fleetDemoMapUrl(vehicle));
+    const moving = vehicles.filter(vehicle => (fleetDemoNumber(vehicle.speedKph) || 0) > 0);
+    $("#fleetDemoTotal").textContent = vehicles.length || "0";
+    $("#fleetDemoLocated").textContent = located.length || "0";
+    $("#fleetDemoMoving").textContent = moving.length || "0";
+    $("#fleetDemoFetchedAt").textContent = state.fleetDemo.fetchedAt ? `อัปเดต ${formatBangkok(state.fleetDemo.fetchedAt)}` : "ยังไม่ได้ดึงข้อมูล";
+    const list = $("#fleetDemoList");
+    const map = $("#fleetDemoMap");
+    if (!list || !map) return;
+    list.innerHTML = vehicles.length ? vehicles.map(vehicle => {
+        const speed = fleetDemoNumber(vehicle.speedKph);
+        const mapUrl = fleetDemoMapUrl(vehicle);
+        return `<article class="fleet-demo-vehicle"><i data-lucide="truck" aria-hidden="true"></i><div><strong>${safeHtml(vehicle.label)}</strong><span>${safeHtml(vehicle.driver || "ไม่พบข้อมูลคนขับ")} · ${safeHtml(vehicle.status || "ไม่ทราบสถานะ")}</span><small>${speed === null ? "ไม่พบความเร็ว" : `${speed.toFixed(0)} km/h`} · ${safeHtml(vehicle.updatedAt ? formatBangkok(vehicle.updatedAt) : "ไม่พบเวลา GPS")}</small></div>${mapUrl ? `<a href="${mapUrl}" target="_blank" rel="noopener">ดูแผนที่</a>` : ""}</article>`;
+    }).join("") : `<p class="fleet-demo-empty">ยังไม่มีข้อมูลรถ — ตรวจสอบการตั้งค่า Cartrack แล้วกดรีเฟรช</p>`;
+    const points = located.map(vehicle => ({ vehicle, lat: fleetDemoNumber(vehicle.latitude), lng: fleetDemoNumber(vehicle.longitude) }));
+    if (!points.length) {
+        map.innerHTML = `<p>${vehicles.length ? "Cartrack ส่งข้อมูลรถมาแล้ว แต่ไม่มีพิกัดที่ระบบอ่านได้" : "กด “รีเฟรชตำแหน่ง” เพื่ออ่าน Cartrack API"}</p>`;
+        return;
+    }
+    const latitudes = points.map(point => point.lat);
+    const longitudes = points.map(point => point.lng);
+    const minLat = Math.min(...latitudes);
+    const minLng = Math.min(...longitudes);
+    const latRange = Math.max(...latitudes) - minLat || .02;
+    const lngRange = Math.max(...longitudes) - minLng || .02;
+    map.innerHTML = `<div class="fleet-demo-map-label">พิกัดจริง · คลิกจุดเพื่อเปิด Google Maps</div>${points.map(point => {
+        const left = 12 + (point.lng - minLng) / lngRange * 76;
+        const top = 84 - (point.lat - minLat) / latRange * 68;
+        return `<a class="fleet-demo-pin" style="left:${left}%;top:${top}%" href="${fleetDemoMapUrl(point.vehicle)}" target="_blank" rel="noopener" title="${safeHtml(point.vehicle.label)}"><i data-lucide="truck"></i><span>${safeHtml(point.vehicle.label)}</span></a>`;
+    }).join("")}`;
+    initializeIcons();
+}
+
+async function renderFleetDemo(force = false) {
+    if (state.fleetDemo.loading || (state.fleetDemo.loaded && !force)) {
+        renderFleetDemoContent();
+        return;
+    }
+    state.fleetDemo.loading = true;
+    const button = $("#fleetDemoRefresh");
+    if (button) button.disabled = true;
+    try {
+        const result = await api("/api/integrations/cartrack/demo", null, "GET");
+        state.fleetDemo.vehicles = result.vehicles || [];
+        state.fleetDemo.fetchedAt = result.fetchedAt || new Date().toISOString();
+        state.fleetDemo.loaded = true;
+        renderFleetDemoContent();
+    } catch (error) {
+        state.fleetDemo.vehicles = [];
+        state.fleetDemo.fetchedAt = "";
+        renderFleetDemoContent();
+        toast(error.message);
+    } finally {
+        state.fleetDemo.loading = false;
+        if (button) button.disabled = false;
+    }
 }
 
 function renderAdminCustomerOptions() {
@@ -7632,6 +7714,7 @@ async function doLpImport() {
 
 function bindEvents() {
     $("#alertBell")?.addEventListener("click", () => setView("alerts"));
+    $("#fleetDemoRefresh")?.addEventListener("click", () => renderFleetDemo(true));
     $("#webLoginBtn")?.addEventListener("click", submitWebLogin);
     $("#webLoginPassword")?.addEventListener("keydown", event => {
         if (event.key === "Enter") {

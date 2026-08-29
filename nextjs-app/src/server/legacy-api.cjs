@@ -46,6 +46,14 @@ const SUPABASE_STATE_ID = process.env.SUPABASE_STATE_ID || "scd-transport";
 
 const SCAN_SERVICE_URL = process.env.SCAN_SERVICE_URL || "http://localhost:5000/scan";
 
+const CARTRACK_BASE_URL = (process.env.CARTRACK_BASE_URL || "").replace(/\/$/, "");
+
+const CARTRACK_USERNAME = process.env.CARTRACK_USERNAME || "";
+
+const CARTRACK_PASSWORD = process.env.CARTRACK_PASSWORD || "";
+
+const CARTRACK_DEMO_ENABLED = String(process.env.CARTRACK_DEMO_ENABLED || "false").toLowerCase() === "true";
+
 let dbCache = null;
 
 let dbPersistPromise = Promise.resolve();
@@ -506,6 +514,54 @@ function sendJson(res, status, payload) {
         "Access-Control-Allow-Headers": "Content-Type"
     });
     res.end(body);
+}
+
+function cartrackConfigured() {
+    return Boolean(CARTRACK_BASE_URL && CARTRACK_USERNAME && CARTRACK_PASSWORD);
+}
+
+function firstDefined(...values) {
+    return values.find(value => value !== undefined && value !== null && value !== "") ?? null;
+}
+
+function normalizeCartrackVehicles(payload) {
+    const source = Array.isArray(payload) ? payload : firstDefined(payload?.data, payload?.vehicles, payload?.result?.vehicles, payload?.result, payload?.items, []);
+    const rows = Array.isArray(source) ? source : [];
+    return rows.map((row, index) => {
+        const location = row.location || row.lastLocation || row.position || row.gps || {};
+        return {
+            id: String(firstDefined(row.id, row.vehicleId, row.unitId, row.deviceId, index + 1)),
+            label: String(firstDefined(row.registrationNumber, row.registration, row.vehicleName, row.name, row.vehicle, row.plateNumber, row.id, "Vehicle " + (index + 1))),
+            driver: firstDefined(row.driver?.name, row.driverName, row.driver, row.currentDriver?.name),
+            status: firstDefined(row.status, row.vehicleStatus, row.currentStatus, row.ignitionStatus, row.ignition),
+            latitude: firstDefined(location.latitude, location.lat, row.latitude, row.lat),
+            longitude: firstDefined(location.longitude, location.lng, row.longitude, row.lng),
+            speedKph: firstDefined(row.speedKph, row.speed, row.speedKMH, row.speedKmh),
+            updatedAt: firstDefined(location.updatedAt, location.timestamp, row.updatedAt, row.lastUpdated, row.gpsTime, row.timestamp),
+            address: firstDefined(location.address, location.description, row.address, row.locationName)
+        };
+    });
+}
+
+async function getCartrackDemoVehicles() {
+    if (!CARTRACK_DEMO_ENABLED) throw new Error("Cartrack demo is disabled. Set CARTRACK_DEMO_ENABLED=true to test live data.");
+    if (!cartrackConfigured()) throw new Error("Cartrack credentials are not configured on the server.");
+    const controller = new AbortController;
+    const timeout = setTimeout(() => controller.abort(), 15e3);
+    try {
+        const response = await fetch(`${CARTRACK_BASE_URL}/vehicles/status`, {
+            headers: {
+                Authorization: `Basic ${Buffer.from(`${CARTRACK_USERNAME}:${CARTRACK_PASSWORD}`).toString("base64")}`,
+                Accept: "application/json"
+            },
+            signal: controller.signal
+        });
+        const raw = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(`Cartrack returned ${response.status}`);
+        return normalizeCartrackVehicles(raw);
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
 function readRawBody(req, limit = 20 * 1024 * 1024) {
@@ -2578,6 +2634,22 @@ async function handleApi(req, res, pathname) {
                 cc: process.env.BILLING_CC_EMAIL || ""
             }
         });
+    }
+    if (req.method === "GET" && pathname === "/api/integrations/cartrack/demo") {
+        try {
+            const vehicles = await getCartrackDemoVehicles();
+            return sendJson(res, 200, {
+                ok: true,
+                mode: "read-only-demo",
+                fetchedAt: nowIso(),
+                vehicles: vehicles
+            });
+        } catch (err) {
+            return sendJson(res, CARTRACK_DEMO_ENABLED && cartrackConfigured() ? 502 : 503, {
+                ok: false,
+                error: err.name === "AbortError" ? "Cartrack request timed out" : err.message
+            });
+        }
     }
     if (req.method === "GET" && pathname === "/api/flight-risks") {
         const dashboard = buildDashboard(db);

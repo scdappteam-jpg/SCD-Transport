@@ -12,6 +12,7 @@ export const legacyViewRoutes = {
   alerts: "alerts",
   warehouse: "warehouse",
   "wh-status": "wh-status",
+  "fleet-demo": "fleet-demo",
   settings: "settings",
   "outbound-open": "outbound-open",
   attendance: "attendance",

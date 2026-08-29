@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css?v=20260822-mobile-layout">
+    <link rel="stylesheet" href="fleet-demo.css?v=20260829">
     <link rel="stylesheet" href="mobile-layout.css?v=20260822e">
     <script src="lucide.min.js"></script>
   </head>
@@ -120,6 +121,10 @@
           <button class="nav-item" type="button" data-view="wh-status">
             <i data-lucide="boxes" aria-hidden="true"></i>
             <b>สถานะคลัง</b>
+          </button>
+          <button class="nav-item" type="button" data-view="fleet-demo">
+            <i data-lucide="map-pinned" aria-hidden="true"></i>
+            <b>GPS รถ · Demo</b>
           </button>
           <button class="nav-item" type="button" data-view="load-plan">
             <i data-lucide="plane-takeoff" aria-hidden="true"></i>
@@ -1615,6 +1620,35 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
               </div>
               <div id="alertList" class="alerts-kanban"></div>
             </div>
+          </section>
+
+          <section class="page" id="view-fleet-demo" data-page="fleet-demo">
+            <section class="fleet-demo-hero card">
+              <div>
+                <span class="fleet-demo-eyebrow">CARTRACK · READ-ONLY DEMO</span>
+                <h2>ตำแหน่งรถขนส่งแบบ Live</h2>
+                <p>ดึงข้อมูลสถานะล่าสุดจาก Cartrack เท่านั้น — ไม่บันทึกหรือเปลี่ยนสถานะงานใน SCD</p>
+              </div>
+              <div class="fleet-demo-actions">
+                <span id="fleetDemoFetchedAt">ยังไม่ได้ดึงข้อมูล</span>
+                <button id="fleetDemoRefresh" class="primary-button" type="button">รีเฟรชตำแหน่ง</button>
+              </div>
+            </section>
+            <section class="fleet-demo-kpis" aria-label="Cartrack live summary">
+              <article><span>รถที่พบ</span><strong id="fleetDemoTotal">-</strong></article>
+              <article><span>มีพิกัด GPS</span><strong id="fleetDemoLocated">-</strong></article>
+              <article><span>กำลังเคลื่อนที่</span><strong id="fleetDemoMoving">-</strong></article>
+            </section>
+            <section class="fleet-demo-layout">
+              <article class="card fleet-demo-map-card">
+                <div class="card-head"><div><h2>แผนที่ตำแหน่งล่าสุด</h2><p>จุดตำแหน่งจริงจาก Cartrack</p></div></div>
+                <div id="fleetDemoMap" class="fleet-demo-map"><p>กด “รีเฟรชตำแหน่ง” เพื่ออ่าน Cartrack API</p></div>
+              </article>
+              <article class="card">
+                <div class="card-head"><div><h2>รายการรถ</h2><p>ข้อมูลแบบ read-only</p></div></div>
+                <div id="fleetDemoList" class="fleet-demo-list"></div>
+              </article>
+            </section>
           </section>
 
           <section class="page" id="view-settings" data-page="settings">
