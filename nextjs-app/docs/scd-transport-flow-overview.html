@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S.C.D. Transport - End-to-End Operations Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --ink: #172033;
+      --muted: #64748b;
+      --line: #dbe5f2;
+      --blue: #0b4ea2;
+      --green: #059669;
+      --amber: #d97706;
+      --red: #dc2626;
+      --purple: #7c3aed;
+      --shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Kanit", "Leelawadee UI", Tahoma, Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .page {
+      width: min(1280px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+      padding: 22px 24px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(135deg, #ffffff 0%, #eef5ff 100%);
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      color: var(--blue);
+      background: #eaf2ff;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 6px;
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1.12;
+      font-weight: 900;
+    }
+
+    .hero p {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .version {
+      flex: 0 0 auto;
+      padding: 10px 13px;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      background: #ffffff;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .flow {
+      display: grid;
+      gap: 14px;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .lane-title {
+      display: grid;
+      align-content: center;
+      min-height: 92px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .lane-title strong {
+      display: block;
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .lane-title span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .nodes {
+      position: relative;
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(170px, 1fr);
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .72);
+      box-shadow: var(--shadow);
+      overflow-x: auto;
+    }
+
+    .node {
+      position: relative;
+      display: grid;
+      align-content: start;
+      min-height: 118px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--tone, var(--blue));
+      border-radius: 14px;
+      background: var(--card);
+    }
+
+    .node::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      width: 13px;
+      height: 2px;
+      background: #b8c7dc;
+    }
+
+    .node::before {
+      content: "";
+      position: absolute;
+      top: calc(50% - 4px);
+      right: -14px;
+      border-left: 7px solid #b8c7dc;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+    }
+
+    .node:last-child::before,
+    .node:last-child::after {
+      display: none;
+    }
+
+    .node b {
+      display: block;
+      font-size: 14px;
+      line-height: 1.32;
+      font-weight: 900;
+    }
+
+    .node span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+
+    .blue { --tone: var(--blue); }
+    .green { --tone: var(--green); }
+    .amber { --tone: var(--amber); }
+    .red { --tone: var(--red); }
+    .purple { --tone: var(--purple); }
+
+    .connector {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      margin: -4px 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .connector .line {
+      height: 2px;
+      background: linear-gradient(90deg, #b8c7dc, transparent);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .scope-note {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border: 1px solid #bfdbfe;
+      border-radius: 16px;
+      background: #f8fbff;
+      box-shadow: var(--shadow);
+    }
+
+    .scope-note strong {
+      display: block;
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .scope-note p {
+      margin: 8px 0 0;
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.65;
+      font-weight: 600;
+    }
+
+    .summary article {
+      min-height: 112px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .summary strong {
+      display: block;
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .summary span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      font-weight: 600;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page { width: 100%; padding: 0; }
+      .hero, .lane-title, .nodes, .node, .summary article { box-shadow: none; }
+      .nodes { overflow: visible; }
+    }
+
+    @media (max-width: 860px) {
+      .page {
+        width: min(100% - 20px, 720px);
+        padding-top: 14px;
+      }
+
+      .hero {
+        display: grid;
+        padding: 18px;
+      }
+
+      .version {
+        width: fit-content;
+      }
+
+      .lane,
+      .connector {
+        grid-template-columns: 1fr;
+      }
+
+      .nodes {
+        grid-auto-columns: minmax(220px, 78vw);
+      }
+
+      .summary {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <span class="eyebrow">SCD Control Tower</span>
+        <h1>แผนภาพกระบวนการปฏิบัติงานภาพรวม</h1>
+        <p>เอกสารนี้แสดงภาพรวมการไหลของข้อมูลและงานปฏิบัติการ ตั้งแต่การรับข้อมูลจากไฟล์และอีเมล การเปิดใบงาน การติดตามรถและสถานะเอกสาร การปฏิบัติงานคลังและสนามบิน การเข้าถึงของลูกค้า ไปจนถึงรายงานผู้บริหารและงาน HR</p>
+      </div>
+      <div class="version">Latest flow · 29 Aug 2026</div>
+    </header>
+
+    <section class="scope-note" aria-label="Additional scope">
+      <strong>Additional Formal Scope</strong>
+      <p>สโคปเพิ่มเติมนี้ครอบคลุมการเพิ่มสถานะรถตั้งแต่การล็อกโลเคชัน การติดตามการมาถึงหน้าสนามบิน การตรวจความครบถ้วนของเอกสารก่อนเข้าพื้นที่ การทำงานร่วมกันระหว่าง CS และคนขับในขั้นตอนรับของ มุมมองสำหรับลูกค้าที่ต้องการติดตามงานในรูปแบบใกล้เคียง SCD และหน้าจอแสดงผลแจ้งเตือนบริเวณจุด WH</p>
+    </section>
+
+    <section class="flow" aria-label="SCD operations flow">
+      <div class="lane">
+        <div class="lane-title">
+          <strong>1. ข้อมูลเข้า</strong>
+          <span>Input channels</span>
+        </div>
+        <div class="nodes">
+          <article class="node blue"><b>Admin Upload</b><span>นำเข้าไฟล์ CSV/XLSX จากหน้าเปิดใบงาน</span></article>
+          <article class="node blue"><b>n8n Gmail</b><span>ตรวจอีเมลทุก 30 นาที ดาวน์โหลดไฟล์แนบ แล้วส่งเข้า API</span></article>
+          <article class="node blue"><b>Load Plan Import</b><span>รับ Consol/Flight plan สำหรับงานขาออก</span></article>
+        </div>
+      </div>
+
+      <div class="connector"><span></span><div class="line"></div></div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>2. ตรวจและเปิดงาน</strong>
+          <span>Validate & create jobs</span>
+        </div>
+        <div class="nodes">
+          <article class="node amber"><b>ตรวจชนิดไฟล์</b><span>SCD CSV, Pickup Report, Consol Planning, Load Plan</span></article>
+          <article class="node amber"><b>กันไฟล์ซ้ำ</b><span>ตรวจ hash ก่อน import หากซ้ำจะข้ามอัตโนมัติ</span></article>
+          <article class="node green"><b>สร้าง/อัปเดต Job</b><span>เปิด House ใหม่ หรืออัปเดตข้อมูลเดิมที่เปลี่ยน</span></article>
+          <article class="node red"><b>Error Alert</b><span>ไฟล์อ่านไม่ได้หรือ format ไม่ตรงจะสร้างแจ้งเตือน</span></article>
+        </div>
+      </div>
+
+      <div class="connector"><span></span><div class="line"></div></div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>3. ควบคุมงาน</strong>
+          <span>Operations control</span>
+        </div>
+        <div class="nodes">
+          <article class="node blue"><b>Dashboard</b><span>ภาพรวมจำนวนงาน สถานะ ความเสี่ยง และตัวชี้วัด</span></article>
+          <article class="node blue"><b>Order Tracking</b><span>ติดตาม House/AWB, flight, customer, เอกสาร, timeline</span></article>
+          <article class="node purple"><b>CS Queue</b><span>รอยืนยันลูกค้าและตรวจสอบรายการที่ต้องอนุมัติ</span></article>
+          <article class="node amber"><b>Alerts</b><span>รวมงานเสี่ยง ไฟล์เปลี่ยน เอกสารขาด และ error</span></article>
+        </div>
+      </div>
+
+      <div class="connector"><span></span><div class="line"></div></div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>4. ปฏิบัติการหน้างาน</strong>
+          <span>Vehicle tracking & pickup</span>
+        </div>
+        <div class="nodes">
+          <article class="node green"><b>ล็อกโลเคชันรถ</b><span>เริ่มติดตามรถจากตำแหน่งจริงของคนขับ เพื่อยืนยันจุดรับของและเส้นทาง</span></article>
+          <article class="node green"><b>เพิ่มสถานะรถ</b><span>รับงาน, ออกไปรับของ, รับของแล้ว, มุ่งหน้าสนามบิน, ถึงหน้าสนามบิน</span></article>
+          <article class="node purple"><b>CS & Driver Handoff</b><span>CS ยืนยันข้อมูลรับของกับลูกค้า และคนขับยืนยันรับสินค้า เวลา รูปภาพ และตำแหน่ง</span></article>
+          <article class="node amber"><b>Pickup Exception</b><span>แจ้งเตือนกรณีรถออกนอกเส้นทาง รับของล่าช้า หรือหลักฐานรับของไม่ครบ</span></article>
+        </div>
+      </div>
+
+      <div class="connector"><span></span><div class="line"></div></div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>5. จุดสนามบินและเอกสาร</strong>
+          <span>Airport readiness</span>
+        </div>
+        <div class="nodes">
+          <article class="node blue"><b>Airport Arrival</b><span>บันทึกเวลาที่รถมาถึงหน้าสนามบินและเตรียมเข้าสู่ขั้นตอนคลัง</span></article>
+          <article class="node amber"><b>Document Readiness</b><span>ตรวจ Cargo, Permit, Manifest, Security และ Airline document ให้ครบถ้วน</span></article>
+          <article class="node amber"><b>Preparation Tags</b><span>แท็กสถานะความพร้อมของแต่ละส่วน เช่น เอกสารครบ, รอ CS, รอคนขับ, รอคลัง</span></article>
+          <article class="node green"><b>Ready for WH</b><span>เมื่อข้อมูลและเอกสารพร้อม ระบบส่งต่อสถานะให้ WH ดำเนินการตามลำดับ</span></article>
+        </div>
+      </div>
+
+      <div class="connector"><span></span><div class="line"></div></div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>6. ปฏิบัติการคลังและสนามบิน</strong>
+          <span>WH & terminal operations</span>
+        </div>
+        <div class="nodes">
+          <article class="node green"><b>Inbound WH3</b><span>รับเข้าคลัง วาง Location และย้ายพื้นที่จัดเก็บ</span></article>
+          <article class="node purple"><b>Grouping</b><span>จัดกลุ่ม House เลือก driver และออก Cargo/CTF</span></article>
+          <article class="node red"><b>WH Display Alert</b><span>หน้าจอจุด WH แจ้งเตือนรถใกล้ถึง งานเร่ง เอกสารขาด และรายการที่ต้องตรวจสอบ</span></article>
+          <article class="node purple"><b>Terminal</b><span>ส่งออกไป TG, TG Inter, BFS และติดตาม SLA</span></article>
+        </div>
+      </div>
+
+      <div class="connector"><span></span><div class="line"></div></div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>7. ขาออกและเอกสาร</strong>
+          <span>Outbound & documents</span>
+        </div>
+        <div class="nodes">
+          <article class="node amber"><b>Load Plan Compare</b><span>เทียบแผนเก่ากับแผนใหม่ เห็นรายการเพิ่ม/ลบ/เปลี่ยน</span></article>
+          <article class="node amber"><b>Confirm Load Plan</b><span>ยืนยันแผนโหลดและผูกกับงานในระบบ</span></article>
+          <article class="node green"><b>Outbound Open</b><span>เปิดใบขาออกและส่งต่อ Terminal</span></article>
+          <article class="node green"><b>Billing</b><span>ตรวจเอกสาร สร้าง invoice และติดตาม due date</span></article>
+          <article class="node blue"><b>Cargo History</b><span>เก็บประวัติใบ Cargo และการวางบิล</span></article>
+        </div>
+      </div>
+
+      <div class="connector"><span></span><div class="line"></div></div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>8. มุมมองลูกค้า</strong>
+          <span>Customer access</span>
+        </div>
+        <div class="nodes">
+          <article class="node blue"><b>Customer Portal</b><span>ลูกค้าดูสถานะงานของตนเองในรูปแบบใกล้เคียง SCD แต่จำกัดสิทธิ์ตามบัญชีผู้ใช้</span></article>
+          <article class="node blue"><b>Pre-arrival View</b><span>ลูกค้าเห็นรายการที่กำลังเตรียมเข้ากระบวนการ เช่น งานรอรับของและงานใกล้ถึงสนามบิน</span></article>
+          <article class="node amber"><b>Required Actions</b><span>แจ้งรายการที่ลูกค้าต้องเตรียมหรือยืนยัน เช่น เอกสารประกอบและเวลารับของ</span></article>
+          <article class="node green"><b>Customer Notification</b><span>ส่งแจ้งเตือนเมื่อสถานะสำคัญเปลี่ยน เช่น รับของแล้ว ถึงสนามบิน หรือเอกสารครบ</span></article>
+        </div>
+      </div>
+
+      <div class="connector"><span></span><div class="line"></div></div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>9. กำลังคนและ HR</strong>
+          <span>People operations</span>
+        </div>
+        <div class="nodes">
+          <article class="node blue"><b>Attendance</b><span>เช็คอิน/เช็คเอาต์ GPS รูปภาพ และ timeline เริ่ม-จบ</span></article>
+          <article class="node blue"><b>Operations Map</b><span>ดูตำแหน่งพนักงานและคนที่ยังไม่ผูกกลุ่มงาน</span></article>
+          <article class="node purple"><b>Leave Request</b><span>ยื่นลา แสดงโควตา และอนุมัติ 2 ขั้น</span></article>
+          <article class="node purple"><b>OT Request</b><span>ขอโอทีล่วงหน้า จ่ายตามจริงแต่ไม่เกินอนุมัติ</span></article>
+          <article class="node green"><b>HR Export</b><span>ปิดรอบเดือนและ export สรุปวันลา/OT</span></article>
+        </div>
+      </div>
+
+      <div class="connector"><span></span><div class="line"></div></div>
+
+      <div class="lane">
+        <div class="lane-title">
+          <strong>10. รายงานผู้บริหาร</strong>
+          <span>Executive view</span>
+        </div>
+        <div class="nodes">
+          <article class="node green"><b>Executive Dashboard</b><span>รวมสถานะงาน งานเสี่ยง เอกสาร กำลังคน และ readiness</span></article>
+          <article class="node green"><b>Import History</b><span>ดูไฟล์ที่นำเข้า งานใหม่ งานเปลี่ยน และไฟล์ที่ถูกข้าม</span></article>
+          <article class="node green"><b>Monthly Summary</b><span>สรุปงาน Billing Attendance Leave และ OT สำหรับติดตามผล</span></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="summary" aria-label="Key notes">
+      <article>
+        <strong>แหล่งข้อมูลหลัก</strong>
+        <span>Admin upload, n8n Gmail, Load Plan import เป็นทางเข้าหลักของข้อมูลปฏิบัติการ</span>
+      </article>
+      <article>
+        <strong>จุดควบคุมกลาง</strong>
+        <span>Job/House เป็นข้อมูลกลางที่เชื่อม Tracking, รถ, เอกสาร, WH3, Grouping, Terminal และ Billing</span>
+      </article>
+      <article>
+        <strong>ระบบแจ้งเตือน</strong>
+        <span>Alert ถูกสร้างจากไฟล์เปลี่ยน, error, งานเสี่ยง, เอกสารขาด, รถใกล้ถึง WH และสถานะสำคัญ</span>
+      </article>
+      <article>
+        <strong>มุมมองลูกค้า</strong>
+        <span>ลูกค้าเข้าถึงข้อมูลเฉพาะงานของตนเอง เห็นสถานะเตรียมเข้า รับของ ถึงสนามบิน เอกสาร และแจ้งเตือนที่เกี่ยวข้อง</span>
+      </article>
+      <article>
+        <strong>ส่วนที่ต้องต่อจริง</strong>
+        <span>HR ตอนนี้เป็น flow หน้าจอ/localStorage หากใช้งานหลายคนควรย้ายเข้า backend/database</span>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
