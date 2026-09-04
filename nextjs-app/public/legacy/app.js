@@ -9654,16 +9654,13 @@ function _renderCsQueueList() {
 
 function renderTransportImportFallback(wrap) {
     if (!wrap || wrap.querySelector("#transportImportFallback")) return;
-    const panel = document.createElement("section");
-    panel.id = "transportImportFallback";
-    panel.className = "panel";
-    panel.style.cssText = "margin:0 0 14px;padding:14px 16px;border:1px dashed #60a5fa;background:#f8fbff";
-    panel.innerHTML = `
-      <div style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-        <div><strong>Import งานสำรองกรณี N8N ล่ม</strong><small style="display:block;margin-top:3px;color:var(--text-muted)">นำเข้า CSV หรือ Excel แล้วงานจะเข้าคิว Transport เพื่อรอ CS อนุมัติ</small></div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input id="transportCsvFile" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onchange="prepareTransportImportFile(this.files[0])"><button type="button" class="secondary" onclick="document.getElementById('transportCsvFile').click()">เลือกไฟล์ CSV / Excel</button><button type="button" onclick="openEmergencyJobForm()">+ เพิ่มงานด่วน</button></div>
-      </div>`;
-    wrap.querySelector(".cs-queue-toolbar")?.before(panel);
+    const actions = wrap.querySelector(".cs-queue-header > div:last-child");
+    if (!actions) return;
+    const controls = document.createElement("div");
+    controls.id = "transportImportFallback";
+    controls.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap";
+    controls.innerHTML = `<input id="transportCsvFile" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onchange="prepareTransportImportFile(this.files[0])"><button type="button" class="secondary" onclick="document.getElementById('transportCsvFile').click()">เลือกไฟล์ CSV / Excel</button><button type="button" onclick="openEmergencyJobForm()">+ เพิ่มงานด่วน</button>`;
+    actions.appendChild(controls);
 }
 
 async function prepareTransportImportFile(file) {
