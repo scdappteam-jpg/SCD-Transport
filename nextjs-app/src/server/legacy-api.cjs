@@ -51,6 +51,7 @@ let dbCache = null;
 let dbPersistPromise = Promise.resolve();
 
 const TERMINAL_REACHED_STATUSES = new Set([ "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ]);
+const WH3_RECEIVED_STATUSES = new Set([ "ReceivedAtWH3", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ]);
 
 const FLIGHT_RISK_ALERT_STATUSES = new Set([ "DueToday", "Warning", "Urgent", "Critical", "Breached" ]);
 
@@ -777,9 +778,9 @@ function deriveFlightSla(job, referenceTime = Date.now()) {
     const digits = flightNumberDigits(flightNo);
     const etdMs = new Date(job.flightTime).getTime();
     const mustNotMissFlight = isNoMissFlight(flightNo);
-    const slaHoursBeforeFlight = digits === 3 ? 12 : digits === 4 ? 14 : null;
-    const slaProfile = digits === 3 ? "SLA_6_6" : digits === 4 ? "SLA_6_8" : "Unclassified";
-    if (!slaHoursBeforeFlight || isNaN(etdMs)) {
+    const slaHoursBeforeFlight = 14;
+    const slaProfile = "WH3_14H";
+    if (isNaN(etdMs)) {
         return {
             flightNumberDigits: digits || null,
             slaProfile,
@@ -799,16 +800,16 @@ function deriveFlightSla(job, referenceTime = Date.now()) {
     const cutoffDueMs = isNaN(cargoCutoffMs) ? null : cargoCutoffMs - 36e5;
     const dueMs = cutoffDueMs === null ? slaDueMs : Math.min(slaDueMs, cutoffDueMs);
     const minutesToAirportDue = Math.round((dueMs - referenceTime) / 6e4);
-    const reachedTerminal = TERMINAL_REACHED_STATUSES.has(job.status) || Boolean(job.terminalArrivedAt);
+    const reachedWh3 = WH3_RECEIVED_STATUSES.has(job.status) || Boolean(job.wh3ReceivedAt);
     const dueToday = bangkokDate(new Date(dueMs).toISOString()) === bangkokDate(new Date(referenceTime).toISOString());
     let flightRiskStatus = "OnTrack";
     let flightRiskReason = "Within flight SLA";
-    if (reachedTerminal) {
-        flightRiskStatus = "TerminalReached";
-        flightRiskReason = "Cargo reached terminal";
+    if (reachedWh3) {
+        flightRiskStatus = "WH3Received";
+        flightRiskReason = "Cargo received at WH3";
     } else if (minutesToAirportDue < 0) {
         flightRiskStatus = "Breached";
-        flightRiskReason = "Airport deadline has passed";
+        flightRiskReason = "WH3 deadline has passed";
     } else if (mustNotMissFlight && minutesToAirportDue <= 240) {
         flightRiskStatus = "Critical";
         flightRiskReason = "C/K no-miss flight is within 4 hours of airport deadline";
@@ -832,6 +833,7 @@ function deriveFlightSla(job, referenceTime = Date.now()) {
         mustNotMissFlight,
         airportDueAt: new Date(slaDueMs).toISOString(),
         effectiveAirportDueAt: new Date(dueMs).toISOString(),
+        wh3DueAt: new Date(dueMs).toISOString(),
         minutesToAirportDue,
         flightRiskStatus,
         flightRiskReason
@@ -848,10 +850,10 @@ function refreshFlightSla(db) {
         Object.assign(job, risk);
         const dueToday = risk.effectiveAirportDueAt && bangkokDate(risk.effectiveAirportDueAt) === today;
         const alertKey = `${risk.flightRiskStatus}|${risk.effectiveAirportDueAt}`;
-        if (!TERMINAL_REACHED_STATUSES.has(job.status) && dueToday && FLIGHT_RISK_ALERT_STATUSES.has(risk.flightRiskStatus) && previousAlertKey !== alertKey) {
+        if (!WH3_RECEIVED_STATUSES.has(job.status) && dueToday && FLIGHT_RISK_ALERT_STATUSES.has(risk.flightRiskStatus) && previousAlertKey !== alertKey) {
             db.alerts.push({
                 id: `FLIGHT-RISK-${job.houseNumber}-${Date.now()}-${db.alerts.length}`,
-                message: `[Flight Risk] ${job.houseNumber} · ${job.flightNo || "TBC"} · ${risk.flightRiskStatus}: ${risk.flightRiskReason}. Must reach airport by ${formatBangkok(risk.effectiveAirportDueAt)}${risk.mustNotMissFlight ? " · C/K NO-MISS" : ""}`,
+                message: `[Flight Risk] ${job.houseNumber} · ${job.flightNo || "TBC"} · ${risk.flightRiskStatus}: ${risk.flightRiskReason}. Must be received at WH3 by ${formatBangkok(risk.effectiveAirportDueAt)}${risk.mustNotMissFlight ? " · C/K NO-MISS" : ""}`,
                 severity: [ "Critical", "Breached" ].includes(risk.flightRiskStatus) ? "danger" : "warning",
                 createdAt: nowIso(),
                 houseNumber: job.houseNumber,
@@ -3025,6 +3027,22 @@ async function handleApi(req, res, pathname) {
             dashboard: buildDashboard(db)
         });
     }
+    if (req.method === "POST" && pathname === "/api/pickup/route-start") {
+        const payload = await parseBody(req);
+        const jobs = findPayloadJobs(db, payload);
+        const job = jobs[0];
+        if (!job) return sendJson(res, 404, { error: "Job not found" });
+        const startedAt = nowIso();
+        for (const item of jobs) {
+            item.driverRouteStatus = "EnRouteToPickup";
+            item.routeStartedAt = item.routeStartedAt || startedAt;
+            item.routeStartGps = payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.routeStartGps;
+            item.updatedAt = startedAt;
+            logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "RouteStarted", startTime: startedAt });
+        }
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob) });
+    }
     if (req.method === "POST" && pathname === "/api/pickup/checkin") {
         const payload = await parseBody(req);
         const jobs = findPayloadJobs(db, payload);
@@ -3045,9 +3063,11 @@ async function handleApi(req, res, pathname) {
                 });
             }
             logs.push(log);
-            item.status = "PickupStarted";
+            item.status = "ArrivedAtPickup";
+            item.driverRouteStatus = "ArrivedAtPickup";
             item.startPlace = payload.startPlace || item.startPlace;
             item.checkInAt = item.checkInAt || checkInAt;
+            item.arrivedAtPickupAt = item.arrivedAtPickupAt || checkInAt;
             item.checkInGps = payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.checkInGps;
             item.updatedAt = nowIso();
         }
@@ -3139,13 +3159,14 @@ async function handleApi(req, res, pathname) {
                 routeComplianceStatus: "MustReturnWH3",
                 loadedAt: loadedAt,
                 loadedGps: payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.loadedGps,
-                status: "CargoLoaded",
+                status: "Loading",
+                driverRouteStatus: "Loading",
                 updatedAt: nowIso()
             });
             logActivity(db, {
                 ...payload,
                 houseNumber: item.houseNumber,
-                activityType: "CargoLoaded",
+                activityType: "Loading",
                 startTime: payload.startTime || loadedAt,
                 endTime: loadedAt
             });
@@ -3250,7 +3271,9 @@ async function handleApi(req, res, pathname) {
                 doorClosedPhotoAt: completedAt,
                 completedAt: completedAt,
                 completeGps: payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.completeGps,
-                status: "Delivered",
+                status: "PickedUp",
+                driverRouteStatus: "ReturningWH3",
+                returningWh3At: completedAt,
                 updatedAt: nowIso()
             });
         }
@@ -3261,6 +3284,51 @@ async function handleApi(req, res, pathname) {
             jobs: jobs.map(normalizeJob),
             image: image
         });
+    }
+    if (req.method === "POST" && pathname === "/api/pickup/arrive-wh3") {
+        const payload = await parseBody(req);
+        const jobs = findPayloadJobs(db, payload);
+        const job = jobs[0];
+        if (!job) return sendJson(res, 404, { error: "Job not found" });
+        if (jobs.some(item => ![ "PickedUp", "ReturningWH3" ].includes(item.status))) {
+            return sendJson(res, 409, { error: "รับสินค้าให้ครบก่อนยืนยันถึง WH3" });
+        }
+        const arrivedAt = nowIso();
+        for (const item of jobs) {
+            Object.assign(item, {
+                status: "AwaitingReleaseDocument",
+                driverRouteStatus: "ArrivedWH3",
+                arrivedWh3At: arrivedAt,
+                arrivedWh3Gps: payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.arrivedWh3Gps,
+                updatedAt: arrivedAt
+            });
+            logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ArrivedWH3", endTime: arrivedAt });
+        }
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob) });
+    }
+    if (req.method === "POST" && pathname === "/api/pickup/release-document") {
+        const payload = await parseBody(req);
+        const jobs = findPayloadJobs(db, payload);
+        const job = jobs[0];
+        if (!job) return sendJson(res, 404, { error: "Job not found" });
+        if (jobs.some(item => item.status !== "AwaitingReleaseDocument")) {
+            return sendJson(res, 409, { error: "ต้องยืนยันถึง WH3 ก่อนรับใบตรวจปล่อย" });
+        }
+        const releasedAt = nowIso();
+        for (const item of jobs) {
+            const sla = deriveFlightSla(item, new Date(releasedAt).getTime());
+            Object.assign(item, {
+                status: "WaitingForDock",
+                driverRouteStatus: "ReleasedForDock",
+                releaseDocumentReceivedAt: releasedAt,
+                wh3QueuePriorityMinutes: sla.minutesToAirportDue,
+                updatedAt: releasedAt
+            });
+            logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ReleaseDocumentReceived", endTime: releasedAt });
+        }
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob) });
     }
     if (req.method === "POST" && pathname === "/api/inbound/document-check") {
         const payload = await parseBody(req);

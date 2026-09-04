@@ -139,7 +139,7 @@ function assetUrl(path) {
 
 async function recoverCompletedRequest(path, payload) {
     const expectedStatuses = {
-        "/api/pickup/complete": [ "Delivered" ],
+        "/api/pickup/complete": [ "PickedUp", "ReturningWH3" ],
         "/api/inbound/close": [ "Stored", "ReadyForTerminal" ]
     }[path];
     if (!expectedStatuses || !payload?.houseNumber) return null;
@@ -464,14 +464,28 @@ function renderPickupGuide() {
     if ($("#pickupWorkflowDetails")) $("#pickupWorkflowDetails").hidden = !unlocked;
     if ($("#openPickupWorkflowBtn")) $("#openPickupWorkflowBtn").disabled = !selection;
     const job = jobsFromSelection(selection)[0];
+    const routeStatus = job?.driverRouteStatus || "";
     let active = unlocked ? 1 : 0;
-    if (job && [ "PickupStarted", "CargoLoaded", "Delivered" ].includes(job.status)) active = 2;
-    if (job && [ "CargoLoaded", "Delivered" ].includes(job.status)) active = 3;
-    if (job?.status === "Delivered") active = 4;
+    if (routeStatus === "EnRouteToPickup") active = 2;
+    if ([ "ArrivedAtPickup", "Loading" ].includes(routeStatus) || [ "ArrivedAtPickup", "Loading" ].includes(job?.status)) active = 3;
+    if ([ "PickedUp", "ReturningWH3", "ArrivedWH3", "ReleasedForDock" ].includes(routeStatus) || [ "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(job?.status)) active = 4;
     $("#tab-pickup .guided-mini-flow")?.querySelectorAll("span").forEach((item, index) => {
-        item.classList.toggle("active", index === Math.min(active, 3));
-        item.classList.toggle("done", index < active || active === 4);
+        item.classList.toggle("active", index === Math.min(active, 4));
+        item.classList.toggle("done", index < active || active === 5);
     });
+    renderPickupDriverActions();
+}
+
+function renderPickupDriverActions() {
+    const jobs = jobsFromSelection();
+    const routeStatus = jobs[0]?.driverRouteStatus || "";
+    const allPickedUp = jobs.length && jobs.every(job => [ "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(job.status));
+    const returnActions = $("#driverReturnActions");
+    if (returnActions) returnActions.hidden = !allPickedUp;
+    if ($("#startPickupRouteBtn")) $("#startPickupRouteBtn").disabled = !jobs.length || [ "EnRouteToPickup", "ArrivedAtPickup", "Loading", "ReturningWH3", "ArrivedWH3", "ReleasedForDock" ].includes(routeStatus);
+    if ($("#checkInBtn")) $("#checkInBtn").disabled = !jobs.length || routeStatus !== "EnRouteToPickup";
+    if ($("#arriveWh3Btn")) $("#arriveWh3Btn").disabled = routeStatus !== "ReturningWH3";
+    if ($("#releaseDocumentBtn")) $("#releaseDocumentBtn").disabled = routeStatus !== "ArrivedWH3";
 }
 
 function renderInboundGuide() {
@@ -648,7 +662,7 @@ function updatePickupFlowNotice(job = currentPickupJob()) {
     const special = isSpecialOrWd(job);
     notice.classList.toggle("warning", pickupCase === "SpecialMD");
     notice.querySelector("strong").textContent = pickupCase === "SpecialMD" ? "งานพิเศษ/MD: คนขับต้องไปรับ Cargo Pickup Form ที่ WH3" : "งานทั่วไป: คนขับกรอก/เขียน Cargo Pickup Form เองได้";
-    notice.querySelector("span").textContent = pickupCase === "SpecialMD" ? "หลังรับฟอร์มแล้วจึงเดินทางไปคลังลูกค้าเพื่อ Check-in" : "เมื่อถึงคลังลูกค้าให้ Check-in แล้วตรวจสินค้า 10 รายการ";
+    notice.querySelector("span").textContent = pickupCase === "SpecialMD" ? "หลังรับฟอร์มแล้วให้เริ่มรอบรับสินค้า และกดถึงจุดรับเมื่อรถถึงคลังลูกค้า" : "เริ่มรอบรับสินค้า แล้วกดถึงจุดรับสินค้าเมื่อรถถึงคลังลูกค้า";
     stickerNotice.classList.toggle("warning", special);
     stickerNotice.classList.toggle("ok", !special);
     stickerNotice.querySelector("strong").textContent = special ? "ต้องแปะ Sticker สี" : "ไม่บังคับ Sticker";
@@ -662,7 +676,7 @@ function checkedPickupItems() {
 function validatePickupFlow({requireLoaded: requireLoaded = false} = {}) {
     syncPickupItemsText();
     const missing = [];
-    if (!state.pickupStartTime) missing.push("กดเช็คอินก่อนเริ่มงาน");
+    if (!state.pickupStartTime) missing.push("กดถึงจุดรับสินค้าแล้วก่อนรับสินค้า");
     if ($$(".pickup-check").length && checkedPickupItems().length < 10) missing.push("ติ๊กตรวจสินค้า 10 รายการให้ครบ");
     if (isSpecialOrWd() && !$("#driverStickerColor").value.trim()) missing.push("กรอกสี Sticker สำหรับงานพิเศษ/WD");
     if (!$("#driverPickupItems").value.trim()) missing.push("เพิ่ม House/Destination อย่างน้อย 1 งาน");
@@ -780,7 +794,7 @@ function applyDriverJob(houseNumber) {
             summary.innerHTML = `\n        <strong>กลุ่มงานรับที่เดียวกัน ${selectedJobs.length} งาน</strong>\n        <span>${job.customerName} · ${job.pickupLocation || job.startPlace || "Customer warehouse"}</span>\n        <span>รวม ${pieces || "-"} ชิ้น · ปลายทาง ${destinations}</span>\n      `;
         }
     }
-    state.cargoLoaded = selectedJobs.every(item => Boolean(item.loadedAt || item.status === "CargoLoaded" || item.status === "Delivered"));
+    state.cargoLoaded = selectedJobs.every(item => Boolean(item.loadedAt || [ "Loading", "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(item.status)));
     $("#loadCargoBtn")?.classList.toggle("loaded", state.cargoLoaded);
     if ($("#loadCargoBtn")) $("#loadCargoBtn").textContent = state.cargoLoaded ? "โหลดขึ้นรถแล้ว / Cargo loaded" : "โหลดสินค้าขึ้นรถ / Load Cargo";
     $("#driverHouse").value = job.houseNumber;
@@ -1212,6 +1226,17 @@ function bindEvents() {
     $("#mobileActionModal")?.addEventListener("click", event => {
         if (event.target.id === "mobileActionModal") closeMobileActionModal();
     });
+    $("#startPickupRouteBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
+        const gps = await getGps();
+        await api("/api/pickup/route-start", {
+            houseNumber: primaryHouseNumber(),
+            houseNumbers: pickupHouseNumbers(),
+            userId: state.currentUserId,
+            ...gps
+        });
+        await refresh();
+        toast("เริ่มรอบรับสินค้าแล้ว");
+    }));
     $("#checkInBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const gps = await getGps();
         state.pickupStartTime = (new Date).toISOString();
@@ -1223,12 +1248,13 @@ function bindEvents() {
             startPlace: $("#driverStartPlace").value.trim(),
             ...gps
         });
+        await refresh();
         const timeLabel = new Date(state.pickupStartTime).toLocaleTimeString("th-TH", {
             hour: "2-digit",
             minute: "2-digit"
         });
-        showMobileActionModal("เช็คอินสำเร็จ", `เริ่มงานเวลา ${timeLabel} และบันทึก GPS แล้ว ขั้นตอนถัดไปคือกรอก/ตรวจรายการ House และถ่ายรูปสินค้า`);
-        toast("เช็คอินสำเร็จ / Check-in complete");
+        showMobileActionModal("ถึงจุดรับสินค้าแล้ว", `บันทึกเวลา ${timeLabel} และ GPS แล้ว ขั้นตอนถัดไปคือสแกน House รับสินค้า`);
+        toast("บันทึกถึงจุดรับสินค้าแล้ว");
     }));
     $("#pausePickupBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         const gps = await getGps();
@@ -1304,15 +1330,29 @@ function bindEvents() {
             receiverName: $("#driverReceiverName").value.trim(),
             endPlace: computedEndPlace()
         });
-        // The API has already set the job to Delivered (back at WH3). Close
-        // the active form so the driver is not left on a page that looks like
-        // the pickup is still in progress.
-        state.pickupUnlockedSelection = "";
-        state.pickupStartTime = null;
-        state.cargoLoaded = false;
-        $("#driverJobSelect").value = "";
-        showMobileActionModal("จบงานสำเร็จ", "ระบบบันทึกเวลาเช็คเอาท์ รูปสินค้า รูปใบ Cargo และลายเซ็นแล้ว สถานะงานเปลี่ยนเป็น Delivered (กลับ WH3) และส่งให้แอดมินตรวจแล้ว");
-        toast("จบงานแล้ว / Completed");
+        await refresh();
+        showMobileActionModal("รับสินค้าครบแล้ว", "ระบบเปลี่ยนสถานะเป็น กำลังกลับ WH3 อัตโนมัติ และเริ่มติดตามการเดินทางกลับคลัง");
+        toast("รับสินค้าแล้ว · กำลังกลับ WH3");
+    }));
+    $("#arriveWh3Btn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
+        const gps = await getGps();
+        await api("/api/pickup/arrive-wh3", {
+            houseNumber: primaryHouseNumber(),
+            houseNumbers: pickupHouseNumbers(),
+            userId: state.currentUserId,
+            ...gps
+        });
+        await refresh();
+        showMobileActionModal("ถึง WH3 แล้ว", "House เปลี่ยนเป็น รอใบตรวจปล่อย");
+    }));
+    $("#releaseDocumentBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
+        await api("/api/pickup/release-document", {
+            houseNumber: primaryHouseNumber(),
+            houseNumbers: pickupHouseNumbers(),
+            userId: state.currentUserId
+        });
+        await refresh();
+        showMobileActionModal("ได้รับใบตรวจปล่อยแล้ว", "House ถูกส่งเข้าคิวรอเข้าล็อก โดยระบบเรียงตาม SLA คงเหลือ");
     }));
     $("#twinScanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/inbound/twin-scan", {
@@ -2100,8 +2140,10 @@ function showConfirmSheet(title, desc, onOk) {
             });
         }, true);
     };
-    gate("completePickupBtn", "ยืนยันจบงาน Pickup?", "ระบบจะบันทึกเวลา รูปถ่าย และลายเซ็น แล้วปิดงานนี้ — ตรวจสอบข้อมูลครบก่อนยืนยัน");
+    gate("completePickupBtn", "ยืนยันรับสินค้าแล้ว?", "ระบบจะบันทึกเวลา รูปถ่าย และลายเซ็น เมื่อรับ House ครบ ระบบจะเปลี่ยนเป็นกำลังกลับ WH3 อัตโนมัติ");
     gate("loadCargoBtn", "ยืนยันโหลดสินค้าขึ้นรถ?", "ตรวจสินค้าครบตาม checklist และแปะ Sticker (ถ้าเป็นงานพิเศษ) แล้วใช่ไหม");
+    gate("arriveWh3Btn", "ยืนยันถึง WH3 แล้ว?", "House ทั้งหมดในรอบจะเปลี่ยนเป็นรอใบตรวจปล่อย");
+    gate("releaseDocumentBtn", "ยืนยันได้รับใบตรวจปล่อยแล้ว?", "House จะเข้าคิวรอเข้าล็อกตาม SLA คงเหลือ");
 })();
 
 var foState = {
@@ -2446,7 +2488,7 @@ async function smartScanRoute(house, detail) {
     const outboundStatuses = [ "Stored", "ReadyForTerminal", "OutboundPicking", "OutboundLocated", "EIApproved",
         "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded",
         "PackingConsolidation", "XRayPassed", "XRayHold", "ReXRayRequired" ];
-    const pickupStatuses = [ "Pending", "Assigned", "PickupStarted", "CargoLoaded" ];
+    const pickupStatuses = [ "Pending", "Assigned", "PickupStarted", "CargoLoaded", "ArrivedAtPickup", "Loading", "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ];
     if ((detail?.mode === "dual" || outboundStatuses.includes(st)) && allowed.includes("outbound")) {
         smartScanGoTab("outbound");
         const el = $("#terminalHouse");

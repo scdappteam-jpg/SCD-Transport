@@ -1475,6 +1475,34 @@ const STATUS_META = {
         cls: "st-blue",
         th: "จ่ายงานแล้ว"
     },
+    ArrivedAtPickup: {
+        cls: "st-blue",
+        th: "รถถึงจุดรับแล้ว"
+    },
+    Loading: {
+        cls: "st-blue",
+        th: "กำลังรับ/โหลดสินค้า"
+    },
+    PickedUp: {
+        cls: "st-blue",
+        th: "รับสินค้าแล้ว"
+    },
+    ReturningWH3: {
+        cls: "st-blue",
+        th: "สินค้าอยู่ระหว่างกลับ WH3"
+    },
+    AwaitingReleaseDocument: {
+        cls: "st-amber",
+        th: "รอใบตรวจปล่อย"
+    },
+    WaitingForDock: {
+        cls: "st-amber",
+        th: "รอเข้าล็อก"
+    },
+    ReceivedAtWH3: {
+        cls: "st-green",
+        th: "WH3 รับสินค้าแล้ว"
+    },
     Pickup: {
         cls: "st-blue",
         th: "กำลังรับสินค้า"
@@ -1679,9 +1707,9 @@ function statusLabelTh(status) {
     return (STATUS_META[status] || {}).th || status || "-";
 }
 
-const PICKUP_DONE_STATUSES = [ "PickupStarted", "CargoLoaded", "Delivered", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "Billed" ];
+const PICKUP_DONE_STATUSES = [ "ArrivedAtPickup", "Loading", "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "PickupStarted", "CargoLoaded", "Delivered", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "Billed" ];
 
-const LOAD_DONE_STATUSES = [ "CargoLoaded", "Delivered", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "Billed" ];
+const LOAD_DONE_STATUSES = [ "Loading", "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "CargoLoaded", "Delivered", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "Billed" ];
 
 const INBOUND_DONE_STATUSES = [ "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "Billed" ];
 
@@ -5756,6 +5784,13 @@ function openAutoGroupModal(index) {
 const NEXT_STEP_TH = {
     Pending: "CS ยืนยัน + จ่ายงานคนขับ",
     Assigned: "คนขับเช็คอินรับสินค้า",
+    ArrivedAtPickup: "คนขับตรวจและรับสินค้า",
+    Loading: "คนขับยืนยันรับสินค้าแล้ว",
+    PickedUp: "ระบบกำลังเปลี่ยนเป็นกลับ WH3",
+    ReturningWH3: "คนขับเดินทางกลับ WH3",
+    AwaitingReleaseDocument: "รอใบตรวจปล่อย",
+    WaitingForDock: "รอ WH3 เรียกรถเข้าล็อก",
+    ReceivedAtWH3: "ส่งต่อขั้นตอนคลัง / ขาออก",
     Pickup: "ส่งสินค้าเข้าคลัง WH3",
     PickupStarted: "ส่งสินค้าเข้าคลัง WH3",
     CargoLoaded: "ส่งสินค้าเข้าคลัง WH3",

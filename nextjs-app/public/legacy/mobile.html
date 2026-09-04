@@ -117,7 +117,7 @@
           <div class="bot-avatar">SCD</div>
           <div class="bubble">กรอก House แล้วกดเช็คอิน ระบบจะเก็บเวลาและ GPS / Enter House and check in.</div>
         </div>
-        <div class="guided-module-head"><h2>ขั้นตอน Pickup</h2><div class="guided-mini-flow"><span>1 เลือกงาน</span><span>2 Check-in</span><span>3 ตรวจและโหลด</span><span>4 จบงาน</span></div></div>
+        <div class="guided-module-head"><h2>ขั้นตอน Pickup</h2><div class="guided-mini-flow"><span>1 เลือกงาน</span><span>2 เริ่มรอบ</span><span>3 ถึงจุดรับ</span><span>4 รับสินค้า</span><span>5 กลับ WH3</span></div></div>
         <label>วันที่ / Pickup Date</label>
         <input id="driverPickupDate" type="date">
         <label>ใบงาน / Assigned Job</label>
@@ -143,8 +143,9 @@
         <input id="driverVehiclePlate" autocomplete="off" placeholder="เช่น 70-3472">
         <label>สถานที่เริ่มต้น / Start Place</label>
         <input id="driverStartPlace" autocomplete="off" placeholder="คลังลูกค้า / Customer warehouse">
-        <p class="step-note">1) กดเช็คอินก่อนเริ่มงาน / Check in before filling the form.</p>
-        <button id="checkInBtn" type="button" class="checkin-button">เช็คอิน / Check-in</button>
+        <p class="step-note">เริ่มรอบหนึ่งครั้ง แล้วกดถึงจุดรับเมื่อรถมาถึงหน้างาน</p>
+        <button id="startPickupRouteBtn" type="button" class="soft">เริ่มรอบรับสินค้า</button>
+        <button id="checkInBtn" type="button" class="checkin-button">ถึงจุดรับสินค้าแล้ว</button>
         <div class="pause-card">
           <label>Pause reason / เหตุผลหยุดเวลา KPI</label>
           <select id="pickupPauseReason">
@@ -221,7 +222,12 @@
         <button id="loadCargoBtn" type="button" class="load-button">โหลดสินค้าขึ้นรถ / Load Cargo</button>
         <div class="button-row">
           <button id="clearSignature" type="button" class="soft">ล้าง / Clear</button>
-          <button id="completePickupBtn" type="button">จบงาน / Complete</button>
+          <button id="completePickupBtn" type="button">ยืนยันรับสินค้าแล้ว</button>
+        </div>
+        <div id="driverReturnActions" class="guided-workflow-details" hidden>
+          <div class="flow-notice soft-note"><strong>รับ House ครบแล้ว</strong><span>ระบบเปลี่ยนสถานะเป็นกำลังกลับ WH3 อัตโนมัติ</span></div>
+          <button id="arriveWh3Btn" type="button">ถึง WH3 แล้ว</button>
+          <button id="releaseDocumentBtn" type="button" class="soft">ได้รับใบตรวจปล่อยแล้ว</button>
         </div>
         </div>
         <div class="mwf-nav">
