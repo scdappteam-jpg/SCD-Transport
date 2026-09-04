@@ -1122,7 +1122,7 @@
           </section>
 
           <section class="page" id="view-admin" data-page="admin">
-            <div class="admin-mode-chooser" role="group" aria-label="เลือกโหมดการทำงาน">
+            <div class="admin-mode-chooser" role="group" aria-label="เลือกโหมดการทำงาน" hidden>
               <button class="admin-mode-card active" id="adminModeImport" type="button" data-admin-mode="import">
                 <i data-lucide="upload-cloud" aria-hidden="true"></i>
                 <div>
@@ -1140,7 +1140,7 @@
               </button>
             </div>
             <div class="admin-layout">
-              <section class="panel admin-support" id="adminImportPanel">
+              <section class="panel admin-support" id="adminImportPanel" hidden>
                 <div class="panel-title"><h2>นำเข้าไฟล์งาน / Import</h2></div>
 
                 
@@ -1190,8 +1190,15 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
                 <div id="invoiceList" class="invoice-list"></div>
               </section>
 
-              <section class="panel admin-editor" id="adminEditorPanel" hidden>
-                <div class="panel-title"><h2>เปิดใบงาน / Create Job</h2><span>Admin control</span></div>
+              <section class="panel admin-editor" id="adminEditorPanel">
+                <div class="panel-title"><h2>เปิดใบงาน Cargo</h2><span>เฉพาะงานที่ CS อนุมัติแล้ว</span></div>
+                <div class="approved-job-selector">
+                  <div>
+                    <strong>รายการรอเปิดใบงาน</strong>
+                    <small>เลือกงานที่ CS อนุมัติแล้ว เพื่อเติมข้อมูลและจัดรถก่อนออกใบ Cargo</small>
+                  </div>
+                  <div id="adminApprovedQueue" class="queue-list"></div>
+                </div>
 
                 
                 <div class="form-section-head"><i data-lucide="file-text" aria-hidden="true"></i><span>ข้อมูลใบงาน / Job Info</span></div>

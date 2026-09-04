@@ -2139,6 +2139,7 @@ function renderAll() {
     renderImportChanges();
     renderImportHistory();
     renderCalendar();
+    renderAdminApprovedQueue();
     renderAdminWorkQueue();
     renderManualGroupList();
     renderCargoHistory();
@@ -7114,6 +7115,7 @@ async function confirmPendingImport() {
     }
     state.pendingImport = null;
     await refresh();
+    if (state.currentView === "cs-queue") renderCsQueue();
     if (state.currentView === "load-plan") renderLoadPlan();
     if (state.currentView === "attendance") renderAttendance();
 }
@@ -9274,6 +9276,23 @@ function setAdminFlow(mode) {
     if (!isImport) lucide.createIcons();
 }
 
+function selectApprovedJobForCargo(houseNumber) {
+    const job = (state.dashboard?.jobs || []).find(item => item.houseNumber === houseNumber);
+    if (!job || !job.csConfirmed || job.cargoIssuedAt) return toast("ไม่พบงานที่รอเปิดใบ Cargo");
+    state.selectedHouse = job.houseNumber;
+    fillAdminFormFromJob(job);
+    renderAdminApprovedQueue();
+    document.getElementById("adminEditorPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    toast(`เลือก ${job.houseNumber} แล้ว — ตรวจข้อมูลและจัดรถก่อนกดเปิดใบงาน`);
+}
+
+function renderAdminApprovedQueue() {
+    const list = $("#adminApprovedQueue");
+    if (!list) return;
+    const jobs = adminUnopenedJobs();
+    list.innerHTML = jobs.length ? jobs.slice(0, 40).map(job => `\n      <button class="queue-job ${state.selectedHouse === job.houseNumber ? "selected" : ""}" type="button" onclick="selectApprovedJobForCargo('${escapeAttr(job.houseNumber)}')">\n        <span class="queue-main"><strong>${safeHtml(job.houseNumber)}</strong><small>${safeHtml(job.customerName || "-")} · ${safeHtml(job.flightNo || "ยังไม่มี Flight")} · ${safeHtml(job.pieceCount || "-")} ชิ้น</small></span>\n        <span class="queue-tags"><b class="ok">CS อนุมัติแล้ว</b><b>เลือกเปิดใบ</b></span>\n      </button>`).join("") : `<div class="empty-state compact">ไม่มีงานที่ CS อนุมัติรอเปิดใบ Cargo</div>`;
+}
+
 function renderAdminWorkQueue() {
     const list = $("#adminWorkQueue");
     if (!list) return;
@@ -9595,6 +9614,7 @@ function _renderCsQueueList() {
     const listEl = document.getElementById("csQueueList");
     if (!listEl) return;
     const wrap = $("#view-cs-queue");
+    renderTransportImportFallback(wrap);
     const queueHeading = wrap?.querySelector(".cs-queue-header h2");
     if (queueHeading) queueHeading.innerHTML = `คิวงาน Transport <span style="font-size:13px;color:var(--text-muted);font-weight:400">ติดตาม CS เพื่ออนุมัติงานก่อนเปิดใบงาน</span>`;
     const pendingTab = wrap?.querySelector('[data-cstab="pending"]');
@@ -9626,6 +9646,41 @@ function _renderCsQueueList() {
         }).join("")}\n      </div>`;
     }).join("");
     onCsJobCheck();
+}
+
+function renderTransportImportFallback(wrap) {
+    if (!wrap || wrap.querySelector("#transportImportFallback")) return;
+    const panel = document.createElement("section");
+    panel.id = "transportImportFallback";
+    panel.className = "panel";
+    panel.style.cssText = "margin:0 0 14px;padding:14px 16px;border:1px dashed #60a5fa;background:#f8fbff";
+    panel.innerHTML = `
+      <div style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+        <div><strong>Import งานสำรองกรณี N8N ล่ม</strong><small style="display:block;margin-top:3px;color:var(--text-muted)">นำเข้า CSV หรือ Excel แล้วงานจะเข้าคิว Transport เพื่อรอ CS อนุมัติ</small></div>
+        <div style="display:flex;gap:8px;align-items:center"><input id="transportCsvFile" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onchange="prepareTransportImportFile(this.files[0])"><button type="button" class="secondary" onclick="document.getElementById('transportCsvFile').click()">เลือกไฟล์ CSV / Excel</button></div>
+      </div>`;
+    wrap.querySelector(".cs-queue-toolbar")?.before(panel);
+}
+
+async function prepareTransportImportFile(file) {
+    if (!file) return;
+    if (/\.xlsx$/i.test(file.name)) {
+        const fileBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader;
+            reader.onload = event => resolve(event.target.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        openXlsxImportPreview(file, fileBase64);
+        return;
+    }
+    const csvText = await new Promise((resolve, reject) => {
+        const reader = new FileReader;
+        reader.onload = event => resolve(event.target.result);
+        reader.onerror = reject;
+        reader.readAsText(file, "utf-8");
+    });
+    openImportPreview("scd", csvText, file.name);
 }
 
 function _renderCsHistoryTable(listEl) {
