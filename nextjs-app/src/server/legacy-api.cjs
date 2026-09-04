@@ -1038,6 +1038,10 @@ function findPayloadJobs(db, payload) {
     return jobs.length ? jobs : [];
 }
 
+function pickupDispatchIsReady(jobs) {
+    return jobs.length > 0 && jobs.every(job => job.csConfirmed && job.cargoIssuedAt);
+}
+
 function upsertJob(db, payload) {
     const houseNumber = String(payload.houseNumber || "").trim();
     if (!houseNumber) throw new Error("House number is required");
@@ -3032,6 +3036,7 @@ async function handleApi(req, res, pathname) {
         const jobs = findPayloadJobs(db, payload);
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
+        if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมเริ่มรอบ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
         const startedAt = nowIso();
         for (const item of jobs) {
             item.driverRouteStatus = "EnRouteToPickup";
@@ -3049,6 +3054,9 @@ async function handleApi(req, res, pathname) {
         const job = jobs[0];
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
+        });
+        if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, {
+            error: "งานยังไม่พร้อมรับสินค้า ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน"
         });
         const checkInAt = payload.startTime || nowIso();
         const logs = [];
@@ -3135,6 +3143,9 @@ async function handleApi(req, res, pathname) {
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
         });
+        if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, {
+            error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน"
+        });
         const checklist = Array.isArray(payload.checklist) ? payload.checklist : [];
         const needsSticker = payload.pickupCase === "SpecialMD" || jobs.some(item => /wd|western digital/i.test(item.customerName || ""));
         if (checklist.length < 10) return sendJson(res, 422, {
@@ -3184,6 +3195,9 @@ async function handleApi(req, res, pathname) {
         const job = jobs[0];
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
+        });
+        if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, {
+            error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน"
         });
         if (jobs.some(item => !item.checkInAt)) return sendJson(res, 409, {
             error: "Check in before completing pickup"
@@ -3290,6 +3304,7 @@ async function handleApi(req, res, pathname) {
         const jobs = findPayloadJobs(db, payload);
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
+        if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
         if (jobs.some(item => ![ "PickedUp", "ReturningWH3" ].includes(item.status))) {
             return sendJson(res, 409, { error: "รับสินค้าให้ครบก่อนยืนยันถึง WH3" });
         }
@@ -3312,6 +3327,7 @@ async function handleApi(req, res, pathname) {
         const jobs = findPayloadJobs(db, payload);
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
+        if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
         if (jobs.some(item => item.status !== "AwaitingReleaseDocument")) {
             return sendJson(res, 409, { error: "ต้องยืนยันถึง WH3 ก่อนรับใบตรวจปล่อย" });
         }

@@ -265,14 +265,14 @@ function currentWebUser() {
 function allowedWebViews(role) {
     if (role === "Driver" || role === "WH_Staff") return [ "dashboard", "hr" ];
     if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-status", "attendance", "hr" ];
-    if (role === "Team_Transport") return [ "dashboard", "orders", "wh-status", "load-plan", "outbound-open", "hr" ];
+    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr" ];
     if (role === "EI_Customer") return [ "dashboard", "orders" ];
     if (role === "Check_House") return [ "dashboard", "orders", "alerts" ];
     if (role === "Terminal") return [ "dashboard", "orders", "alerts" ];
     if (role === "Billing") return [ "dashboard", "orders", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr" ];
-    if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
+    if (role === "CS") return [ "dashboard", "orders" ];
     if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-status", "load-plan", "outbound-open", "attendance", "hr" ];
-    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "settings", "load-plan", "outbound-open", "attendance" ];
+    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "settings", "load-plan", "outbound-open", "attendance" ];
 }
 
 function applyWebRoleVisibility() {
@@ -411,8 +411,8 @@ const pageCopy = {
         title: "งานภาคสนาม / Field Operation"
     },
     admin: {
-        breadcrumb: "เปิดใบงาน / Admin Control",
-        title: "เปิดใบงาน / Import & Job Management"
+        breadcrumb: "เปิดใบงาน / Job Opening",
+        title: "เปิดใบงาน / งานที่ CS อนุมัติแล้ว"
     },
     warehouse: {
         breadcrumb: "แผนที่คลัง / Warehouse",
@@ -447,8 +447,8 @@ const pageCopy = {
         title: "เปิดใบขาออก"
     },
     "cs-queue": {
-        breadcrumb: "CS Queue / รออนุมัติ",
-        title: "รออนุมัติ CS / Pending CS Confirmation"
+        breadcrumb: "Transport Queue / ติดตาม CS",
+        title: "คิวงาน Transport / รอ CS อนุมัติ"
     },
     attendance: {
         breadcrumb: "การเข้างาน / Attendance",
@@ -2986,7 +2986,7 @@ function drawReportTable(ctx, rows, x, y, width) {
 }
 
 function adminUnopenedJobs() {
-    return (state.dashboard?.jobs || []).filter(job => !job.cargoIssuedAt);
+    return (state.dashboard?.jobs || []).filter(job => job.csConfirmed && !job.cargoIssuedAt);
 }
 
 function adminIssuedCargoJobs() {
@@ -3188,7 +3188,7 @@ function renderGroupWizard() {
         const group = state.groupWizard;
         $("#autoGroupDetails").innerHTML = `\n      <section class="wizard-panel wizard-overview-panel">\n        <h3>1. สรุปกลุ่มงาน — เลือกงานที่จะออกใบรอบนี้</h3>\n        <div class="wizard-group-summary">\n          <article><span>บริษัท</span><strong>${safeHtml(allGroupJobs[0]?.customerName || "-")}</strong></article>\n          <article><span>วันที่รับ</span><strong>${safeHtml(group.jobs?.[0]?.pickupDate || "-")}</strong></article>\n          <article><span>Flight</span><strong>${safeHtml(group.jobs?.[0]?.flightNo || "-")}</strong></article>\n          <article class="wos-sel"><span>เลือกแล้ว</span><strong>${selected.length} / ${allGroupJobs.length} งาน · ${selPcs} ชิ้น</strong></article>\n        </div>\n        <div class="wizard-overview-actions">\n          <button class="woa-btn" type="button" data-woa-select="all">เลือกทั้งหมด</button>\n          <button class="woa-btn secondary" type="button" data-woa-select="none">ยกเลิกทั้งหมด</button>\n          <small class="woa-hint">งานที่ไม่เลือกจะยังอยู่ใน queue รอรอบถัดไป</small>\n        </div>\n        ${(() => {
             const waitCs = allGroupJobs.filter(j => !j.csConfirmed && selected.includes(j.houseNumber));
-            return waitCs.length ? `<div class="wizard-cs-warn">🔒 ${waitCs.length} งานที่เลือกยังไม่ผ่าน CS ยืนยัน — ต้องให้ CS Confirm ใน "รออนุมัติ" ก่อนจึงออกใบได้</div>` : "";
+            return waitCs.length ? `<div class="wizard-cs-warn">🔒 ${waitCs.length} งานที่เลือกยังไม่ผ่าน CS ยืนยัน — ติดตามใน "คิวงาน Transport" ก่อนจึงเปิดใบงานได้</div>` : "";
         })()}\n        <div class="wizard-overview-list">\n          <div class="wizard-overview-head">\n            <span></span><span>House</span><span>ลูกค้า / Flight</span><span>ปลายทาง</span><span>ชิ้น</span>\n          </div>\n          ${allGroupJobs.map(job => {
             const isSelected = selected.includes(job.houseNumber);
             return `<label class="wizard-overview-row ${isSelected ? "selected" : ""}">\n              <input type="checkbox" class="wizard-overview-check" value="${safeHtml(job.houseNumber)}" ${isSelected ? "checked" : ""}>\n              <span><strong>${safeHtml(job.houseNumber)}</strong>${job.csConfirmed ? "" : '<em class="cs-wait-badge">รอ CS</em>'}</span>\n              <span>${safeHtml(job.customerName || "-")}<small>${safeHtml(job.pickupDate || "-")} · ${safeHtml(job.flightNo || "-")}</small></span>\n              <span>${safeHtml(job.destination || job.routeType || "WH3")}</span>\n              <span>${safeHtml(job.pieceCount || "-")}</span>\n            </label>`;
@@ -8945,7 +8945,7 @@ function bindEvents() {
         if (resultEl && createdJobs[0]) {
             resultEl.innerHTML = waitCs.length ? `<strong>${createdJobs[0].houseNumber}</strong>\n        <span class="cs-wait-badge">🔒 รอ CS ยืนยัน ${waitCs.length} งาน</span>\n        <button type="button" data-admin-result-track>ดูสถานะ / Track</button>` : `<strong>${createdJobs[0].houseNumber}</strong>\n        <button type="button" data-admin-result-print>พิมพ์ใบ Cargo / Print</button>\n        <button type="button" data-admin-result-track>ดูสถานะ / Track</button>`;
         }
-        toast(waitCs.length ? `เปิดงานแล้ว ${createdJobs.length} งาน — ส่งให้ CS ยืนยันก่อนออกใบ (ดูที่เมนู รออนุมัติ)` : createdJobs.length > 1 ? `เปิดงานกลุ่ม ${rows.length} งานแล้ว พร้อมพิมพ์ / Batch ready to print` : "เปิดงานแล้ว พร้อมพิมพ์ / Job ready to print");
+        toast(waitCs.length ? `รับงานเข้าแล้ว ${createdJobs.length} งาน — ส่งเข้าคิวงาน Transport เพื่อติดตาม CS อนุมัติก่อนเปิดใบงาน` : createdJobs.length > 1 ? `เปิดงานกลุ่ม ${rows.length} งานแล้ว พร้อมพิมพ์ / Batch ready to print` : "เปิดงานแล้ว พร้อมพิมพ์ / Job ready to print");
     }));
     $("#importFlightBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         openImportPreview("flight", $("#flightCsv").value, "Email / Flight Feed CSV");
@@ -9594,19 +9594,26 @@ function _renderCsQueueHtml() {
 function _renderCsQueueList() {
     const listEl = document.getElementById("csQueueList");
     if (!listEl) return;
+    const wrap = $("#view-cs-queue");
+    const queueHeading = wrap?.querySelector(".cs-queue-header h2");
+    if (queueHeading) queueHeading.innerHTML = `คิวงาน Transport <span style="font-size:13px;color:var(--text-muted);font-weight:400">ติดตาม CS เพื่ออนุมัติงานก่อนเปิดใบงาน</span>`;
+    const pendingTab = wrap?.querySelector('[data-cstab="pending"]');
+    const historyTab = wrap?.querySelector('[data-cstab="history"]');
+    if (pendingTab) pendingTab.textContent = "⏳ รอ CS อนุมัติ";
+    if (historyTab) historyTab.textContent = "📋 ประวัติส่งต่อเปิดใบงาน";
     if (_csQueueTab === "history") return _renderCsHistoryTable(listEl);
     const jobs = _csApplyFilters(_csQueueData, _csJobDate);
     const totalPieces = jobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0);
     const summary = document.getElementById("csQueueSummary");
     const filtered = jobs.length !== _csQueueData.length;
-    if (summary) summary.textContent = `รอยืนยัน ${jobs.length}${filtered ? " / " + _csQueueData.length : ""} งาน · ${totalPieces} ชิ้น — Invoice แยกตามบริษัทและวันที่รับ`;
+    if (summary) summary.textContent = `รอ CS อนุมัติ ${jobs.length}${filtered ? " / " + _csQueueData.length : ""} งาน · ${totalPieces} ชิ้น — Transport ติดตามการอนุมัติก่อนเปิดใบงาน`;
     const byCustomer = {};
     jobs.forEach(j => {
         const key = j.customerName || "ไม่ระบุลูกค้า";
         (byCustomer[key] ||= []).push(j);
     });
     const customers = Object.entries(byCustomer).sort((a, b) => a[0].localeCompare(b[0], "th"));
-    listEl.innerHTML = !jobs.length ? `<div class="empty-state" style="margin-top:40px"><p>${filtered ? "ไม่พบงานตามเงื่อนไข" : "✅ ไม่มีงานรอยืนยัน"}</p></div>` : customers.map(([customer, cJobs]) => {
+    listEl.innerHTML = !jobs.length ? `<div class="empty-state" style="margin-top:40px"><p>${filtered ? "ไม่พบงานตามเงื่อนไข" : "✅ ไม่มีงานรอ CS อนุมัติ"}</p></div>` : customers.map(([customer, cJobs]) => {
         const byDate = {};
         cJobs.forEach(j => {
             (byDate[_csJobDate(j) || "ไม่ระบุวันที่"] ||= []).push(j);
