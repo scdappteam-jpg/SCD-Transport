@@ -274,7 +274,7 @@ function visibleDriverJobs() {
     const user = currentUser();
     if (!user) return [];
     if (user.role !== "Driver") return state.dashboard?.jobs || [];
-    return (state.dashboard?.jobs || []).filter(job => job.driverId === user.id);
+    return (state.dashboard?.jobs || []).filter(job => job.driverId === user.id && job.csConfirmed && job.cargoIssuedAt);
 }
 
 function renderMobileLogin() {
