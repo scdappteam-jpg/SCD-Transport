@@ -2772,6 +2772,39 @@ async function handleApi(req, res, pathname) {
         res.end(html);
         return;
     }
+    if (req.method === "POST" && pathname === "/api/transport/emergency-job") {
+        const payload = await parseBody(req);
+        const houseNumber = String(payload.houseNumber || "").trim().toUpperCase();
+        if (!houseNumber) return sendJson(res, 400, { error: "กรุณากรอกเลข House" });
+        const existing = findJob(db, houseNumber);
+        if (existing && !payload.confirmEdit) {
+            return sendJson(res, 200, { ok: false, duplicate: true, job: normalizeJob(existing) });
+        }
+        if (existing?.cargoIssuedAt) {
+            return sendJson(res, 409, { error: `งาน ${houseNumber} ออกใบ Cargo แล้ว กรุณาแก้ไขผ่านผู้ดูแลระบบ` });
+        }
+        const editing = Boolean(existing);
+        const job = upsertJob(db, {
+            ...payload,
+            houseNumber: houseNumber,
+            source: "TransportEmergencyManual",
+            planSource: "ManualExtra",
+            manualExtra: true,
+            afterFinalRound: true,
+            csConfirmed: false,
+            csApprovalRequired: true,
+            approvalStatus: "PendingCSApproval",
+            evidenceRequired: true,
+            evidenceChannel: "Transport manual entry",
+            evidenceNote: payload.note || "งานด่วนที่เพิ่มโดย Transport"
+        });
+        job.urgent = true;
+        job.urgentCode = String(payload.urgentCode || "").toUpperCase();
+        job.updatedAt = nowIso();
+        await createAlert(db, `${editing ? "แก้ไข" : "เพิ่ม"}งานด่วนรอ CS อนุมัติ: ${job.houseNumber}`, "warning");
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, editing: editing, job: normalizeJob(job), dashboard: buildDashboard(db) });
+    }
     if (req.method === "POST" && pathname === "/api/admin/job") {
         const payload = await parseBody(req);
         payload.planSource ||= payload.sourceChannel || "ManualExtra";

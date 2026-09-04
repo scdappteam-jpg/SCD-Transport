@@ -9287,6 +9287,10 @@ function selectApprovedJobForCargo(houseNumber) {
 }
 
 function renderAdminApprovedQueue() {
+    const legacyModeChooser = document.querySelector("#view-admin > .admin-mode-chooser");
+    const legacyImportPanel = $("#adminImportPanel");
+    if (legacyModeChooser) legacyModeChooser.style.setProperty("display", "none", "important");
+    if (legacyImportPanel) legacyImportPanel.style.setProperty("display", "none", "important");
     const list = $("#adminApprovedQueue");
     if (!list) return;
     const jobs = adminUnopenedJobs();
@@ -9657,7 +9661,7 @@ function renderTransportImportFallback(wrap) {
     panel.innerHTML = `
       <div style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
         <div><strong>Import งานสำรองกรณี N8N ล่ม</strong><small style="display:block;margin-top:3px;color:var(--text-muted)">นำเข้า CSV หรือ Excel แล้วงานจะเข้าคิว Transport เพื่อรอ CS อนุมัติ</small></div>
-        <div style="display:flex;gap:8px;align-items:center"><input id="transportCsvFile" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onchange="prepareTransportImportFile(this.files[0])"><button type="button" class="secondary" onclick="document.getElementById('transportCsvFile').click()">เลือกไฟล์ CSV / Excel</button></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input id="transportCsvFile" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onchange="prepareTransportImportFile(this.files[0])"><button type="button" class="secondary" onclick="document.getElementById('transportCsvFile').click()">เลือกไฟล์ CSV / Excel</button><button type="button" onclick="openEmergencyJobForm()">+ เพิ่มงานด่วน</button></div>
       </div>`;
     wrap.querySelector(".cs-queue-toolbar")?.before(panel);
 }
@@ -9681,6 +9685,81 @@ async function prepareTransportImportFile(file) {
         reader.readAsText(file, "utf-8");
     });
     openImportPreview("scd", csvText, file.name);
+}
+
+let emergencyJobEditing = false;
+
+function openEmergencyJobForm(job = null) {
+    let modal = document.getElementById("emergencyJobModal");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "emergencyJobModal";
+        modal.className = "modal-backdrop";
+        modal.innerHTML = `<section class="export-modal" role="dialog" aria-modal="true" style="max-width:680px"><div class="modal-head"><div><h2 id="emergencyJobTitle">เพิ่มงานด่วน</h2><p>งานจะเข้าคิว Transport และรอ CS อนุมัติก่อนเปิดใบ Cargo</p></div><button class="icon-button" type="button" onclick="closeEmergencyJobForm()">✕</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:18px"><label>House / HAWB<input id="emergencyHouse" autocomplete="off"></label><label>ลูกค้า<input id="emergencyCustomer" autocomplete="off"></label><label>สถานที่รับสินค้า<input id="emergencyLocation" autocomplete="off"></label><label>จำนวนชิ้น<input id="emergencyPieces" type="number" min="1"></label><label>Flight<input id="emergencyFlight" autocomplete="off" placeholder="เช่น TG640"></label><label>เวลา Flight<input id="emergencyFlightTime" type="datetime-local"></label><label>รหัสเร่งด่วน<select id="emergencyUrgentCode"><option value="">งานด่วนทั่วไป</option><option value="C">C — ห้ามตกเครื่อง</option><option value="K">K — ห้ามตกเครื่อง</option></select></label><label>วันที่รับสินค้า<input id="emergencyPickupDate" type="date"></label><label style="grid-column:1/-1">หมายเหตุ / ผู้แจ้งงาน<textarea id="emergencyNote" rows="3"></textarea></label></div><div id="emergencyDuplicate" hidden style="margin:0 18px 16px;padding:12px;border:1px solid #f59e0b;border-radius:10px;background:#fff7df"></div><div class="modal-actions"><button type="button" class="ghost-button" onclick="closeEmergencyJobForm()">ยกเลิก</button><button type="button" class="primary-button" onclick="saveEmergencyJob()">บันทึกเข้าคิว Transport</button></div></section>`;
+        document.body.appendChild(modal);
+    }
+    emergencyJobEditing = Boolean(job);
+    document.getElementById("emergencyJobTitle").textContent = job ? `แก้ไขงานเดิม ${job.houseNumber}` : "เพิ่มงานด่วน";
+    document.getElementById("emergencyHouse").value = job?.houseNumber || "";
+    document.getElementById("emergencyHouse").readOnly = Boolean(job);
+    document.getElementById("emergencyCustomer").value = job?.customerName || "";
+    document.getElementById("emergencyLocation").value = job?.pickupLocation || "";
+    document.getElementById("emergencyPieces").value = job?.pieceCount || "";
+    document.getElementById("emergencyFlight").value = job?.flightNo || "";
+    document.getElementById("emergencyFlightTime").value = toDateTimeInput(job?.flightTime);
+    document.getElementById("emergencyUrgentCode").value = job?.urgentCode || "";
+    document.getElementById("emergencyPickupDate").value = job?.pickupDate || new Date().toISOString().slice(0, 10);
+    document.getElementById("emergencyNote").value = job?.evidenceNote || "";
+    document.getElementById("emergencyDuplicate").hidden = true;
+    modal.classList.add("show");
+}
+
+function closeEmergencyJobForm() {
+    document.getElementById("emergencyJobModal")?.classList.remove("show");
+}
+
+function editExistingEmergencyJob() {
+    const houseNumber = document.getElementById("emergencyDuplicate")?.dataset.house;
+    const job = (state.dashboard?.jobs || []).find(item => item.houseNumber === houseNumber);
+    if (job) openEmergencyJobForm(job);
+}
+
+function reviseEmergencyHouse() {
+    emergencyJobEditing = false;
+    const duplicate = document.getElementById("emergencyDuplicate");
+    duplicate.hidden = true;
+    const house = document.getElementById("emergencyHouse");
+    house.readOnly = false;
+    house.value = "";
+    house.focus();
+}
+
+async function saveEmergencyJob() {
+    const payload = {
+        houseNumber: document.getElementById("emergencyHouse").value.trim(),
+        customerName: document.getElementById("emergencyCustomer").value.trim(),
+        pickupLocation: document.getElementById("emergencyLocation").value.trim(),
+        pieceCount: document.getElementById("emergencyPieces").value,
+        flightNo: document.getElementById("emergencyFlight").value.trim(),
+        flightTime: document.getElementById("emergencyFlightTime").value ? new Date(document.getElementById("emergencyFlightTime").value).toISOString() : "",
+        pickupDate: document.getElementById("emergencyPickupDate").value,
+        urgentCode: document.getElementById("emergencyUrgentCode").value,
+        note: document.getElementById("emergencyNote").value.trim(),
+        confirmEdit: emergencyJobEditing
+    };
+    if (!payload.houseNumber || !payload.customerName) return toast("กรุณากรอก House และชื่อลูกค้า");
+    const data = await api("/api/transport/emergency-job", payload);
+    if (data.duplicate) {
+        const duplicate = document.getElementById("emergencyDuplicate");
+        duplicate.dataset.house = data.job.houseNumber;
+        duplicate.innerHTML = `<strong>พบ House ${safeHtml(data.job.houseNumber)} ในระบบแล้ว</strong><br><span>${safeHtml(data.job.customerName || "-")} · ${safeHtml(statusLabelTh(data.job.status))} · Flight ${safeHtml(data.job.flightNo || "-")}</span><div style="display:flex;gap:8px;margin-top:10px"><button type="button" onclick="editExistingEmergencyJob()">แก้ไขข้อมูลงานเดิม</button><button type="button" class="secondary" onclick="reviseEmergencyHouse()">กลับไปแก้เลข House ใหม่</button></div>`;
+        duplicate.hidden = false;
+        return;
+    }
+    state.dashboard = data.dashboard;
+    closeEmergencyJobForm();
+    toast(data.editing ? "แก้ไขงานเดิมแล้ว — ส่งกลับเข้าคิวรอ CS อนุมัติ" : "เพิ่มงานด่วนแล้ว — รอ CS อนุมัติ");
+    await renderCsQueue();
 }
 
 function _renderCsHistoryTable(listEl) {
