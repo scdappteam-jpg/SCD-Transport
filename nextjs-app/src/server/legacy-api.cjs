@@ -4953,7 +4953,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/zone/update") {
         const payload = await parseBody(req);
-        const {zoneId: zoneId, name: name, color: color, mapOrder: mapOrder, canvasX: canvasX, canvasY: canvasY, userId: userId, maxPallets: maxPallets, maxBoxes: maxBoxes} = payload;
+        const {zoneId: zoneId, name: name, color: color, mapOrder: mapOrder, canvasX: canvasX, canvasY: canvasY, userId: userId, maxPallets: maxPallets, maxBoxes: maxBoxes, rows: rows, cols: cols} = payload;
         if (!zoneId) return sendJson(res, 400, {
             error: "zoneId required"
         });
@@ -4986,6 +4986,38 @@ async function handleApi(req, res, pathname) {
         }
         if (maxBoxes !== undefined) {
             zone.maxBoxes = Number(maxBoxes) || 0;
+        }
+        if (rows !== undefined || cols !== undefined) {
+            const nextRows = rows === undefined ? zone.rows : Math.max(1, Number(rows) || 1);
+            const nextCols = cols === undefined ? zone.cols : Math.max(1, Number(cols) || 1);
+            const zoneLocations = (db.warehouseMap.locations || []).filter(location => location.zoneId === zoneId);
+            const removedLocations = zoneLocations.filter(location => location.row >= nextRows || location.col >= nextCols);
+            const occupiedLocations = removedLocations.filter(location => (location.occupiedBy || []).length > 0);
+            if (occupiedLocations.length) return sendJson(res, 409, {
+                error: `ย่อโซนไม่ได้ เพราะมีสินค้าอยู่ใน ${occupiedLocations.map(location => location.code).join(", ")}`
+            });
+            const retained = zoneLocations.filter(location => location.row < nextRows && location.col < nextCols);
+            const byPosition = new Set(retained.map(location => `${location.row}:${location.col}`));
+            const usedNumbers = retained.map(location => Number(String(location.code || "").split("-").pop())).filter(Number.isFinite);
+            let nextNumber = Math.max(0, ...usedNumbers) + 1;
+            const additions = [];
+            for (let row = 0; row < nextRows; row++) for (let col = 0; col < nextCols; col++) {
+                if (byPosition.has(`${row}:${col}`)) continue;
+                additions.push({
+                    id: `loc_${zoneId}_${Date.now()}_${row}_${col}`,
+                    code: `${zone.prefix}-${String(nextNumber++).padStart(2, "0")}`,
+                    zoneId: zoneId,
+                    row: row,
+                    col: col,
+                    maxLevels: zone.defaultLevels || 1,
+                    occupiedBy: []
+                });
+            }
+            db.warehouseMap.locations = (db.warehouseMap.locations || []).filter(location => location.zoneId !== zoneId).concat(retained, additions);
+            if (nextRows !== zone.rows) changes.rows = nextRows;
+            if (nextCols !== zone.cols) changes.cols = nextCols;
+            zone.rows = nextRows;
+            zone.cols = nextCols;
         }
         zone.updatedAt = nowIso();
         whLog(db, {
