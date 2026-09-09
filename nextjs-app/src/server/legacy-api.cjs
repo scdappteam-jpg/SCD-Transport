@@ -2170,19 +2170,61 @@ function warehouseLayoutPreset202609(existingLog = []) {
         ...[ 620, 735, 850 ].map((x, index) => dock(`D${index + 6}`, x)),
         ...[ 1195, 1310, 1425 ].map((x, index) => dock(`D${index + 9}`, x))
     ];
-    return {
+    const map = {
         layoutVersion: "2026-09-01",
         layoutName: "WH3 Layout 1-9-26",
         zones,
         locations,
         overlays,
         buildingOutlines: [
-            { label: "อาคาร 1 · R001–R004 / Waiting Area", canvasX: 15, canvasY: 25, width: 530, height: 790, color: "#60a5fa", background: "rgba(239,246,255,.22)" },
-            { label: "อาคาร 2 · Lithium / เก็บสินค้า / Office", canvasX: 585, canvasY: 25, width: 400, height: 790, color: "#34d399", background: "rgba(236,253,245,.2)" },
-            { label: "อาคาร 3 · WD / Receiving", canvasX: 1155, canvasY: 25, width: 390, height: 790, color: "#a78bfa", background: "rgba(245,243,255,.2)" }
+            { id: "building-1", label: "อาคาร 1 · R001–R004 / Waiting Area", canvasX: 15, canvasY: 25, width: 640, height: 850, color: "#60a5fa", background: "rgba(239,246,255,.22)" },
+            { id: "building-2", label: "อาคาร 2 · Lithium / เก็บสินค้า / Office", canvasX: 585, canvasY: 25, width: 400, height: 850, color: "#34d399", background: "rgba(236,253,245,.2)" },
+            { id: "building-3", label: "อาคาร 3 · WD / Receiving", canvasX: 1155, canvasY: 25, width: 390, height: 850, color: "#a78bfa", background: "rgba(245,243,255,.2)" }
         ],
         log: existingLog
     };
+    ensureWarehouseLayoutBuildingGroups(map);
+    return map;
+}
+
+function ensureWarehouseLayoutBuildingGroups(map) {
+    if (map?.layoutVersion !== "2026-09-01") return false;
+    let changed = false;
+    const prefixToBuilding = { R001: "building-1", R002: "building-1", R003: "building-1", R004: "building-1", LITHIUM: "building-2", STORAGE: "building-2", WD: "building-3", RECEIVING: "building-3" };
+    for (const zone of map.zones || []) {
+        const buildingId = prefixToBuilding[zone.prefix];
+        if (buildingId && zone.buildingId !== buildingId) {
+            zone.buildingId = buildingId;
+            changed = true;
+        }
+    }
+    const overlayToBuilding = { layout_202609_room1: "building-1", layout_202609_main_gate: "building-1", layout_202609_office: "building-2", layout_202609_plastic: "building-2", layout_202609_receiving_flow: "building-3" };
+    for (const overlay of map.overlays || []) {
+        const dock = /^layout_202609_D(\d+)$/.exec(overlay.id || "");
+        const buildingId = overlayToBuilding[overlay.id] || (dock ? Number(dock[1]) <= 5 ? "building-1" : Number(dock[1]) <= 8 ? "building-2" : "building-3" : null);
+        if (buildingId && overlay.buildingId !== buildingId) {
+            overlay.buildingId = buildingId;
+            changed = true;
+        }
+    }
+    const dimensions = { "building-1": [ 640, 850 ], "building-2": [ 400, 850 ], "building-3": [ 390, 850 ] };
+    for (const [index, building] of (map.buildingOutlines || []).entries()) {
+        if (!building.id) {
+            building.id = `building-${index + 1}`;
+            changed = true;
+        }
+        const min = dimensions[building.id];
+        if (!min) continue;
+        if ((building.width || 0) < min[0]) {
+            building.width = min[0];
+            changed = true;
+        }
+        if ((building.height || 0) < min[1]) {
+            building.height = min[1];
+            changed = true;
+        }
+    }
+    return changed;
 }
 
 function logActivity(db, payload) {
@@ -4786,6 +4828,29 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, { ok: true, map: db.warehouseMap });
     }
+    if (req.method === "POST" && pathname === "/api/warehouse/building/move") {
+        const payload = await parseBody(req);
+        const map = db.warehouseMap;
+        if (!map) return sendJson(res, 404, { error: "No warehouse map found" });
+        ensureWarehouseLayoutBuildingGroups(map);
+        const building = (map.buildingOutlines || []).find(item => item.id === payload.buildingId);
+        if (!building) return sendJson(res, 404, { error: "Building not found" });
+        const deltaX = Math.round(Number(payload.deltaX) || 0);
+        const deltaY = Math.round(Number(payload.deltaY) || 0);
+        building.canvasX = Math.max(0, Number(building.canvasX || 0) + deltaX);
+        building.canvasY = Math.max(0, Number(building.canvasY || 0) + deltaY);
+        for (const zone of map.zones || []) if (zone.buildingId === building.id) {
+            zone.canvasX = Math.max(0, Number(zone.canvasX || 0) + deltaX);
+            zone.canvasY = Math.max(0, Number(zone.canvasY || 0) + deltaY);
+        }
+        for (const overlay of map.overlays || []) if (overlay.buildingId === building.id) {
+            overlay.canvasX = Math.max(0, Number(overlay.canvasX || 0) + deltaX);
+            overlay.canvasY = Math.max(0, Number(overlay.canvasY || 0) + deltaY);
+        }
+        whLog(db, { action: "building_move", buildingId: building.id, deltaX, deltaY, userId: payload.userId || "system" });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, map: map });
+    }
     if ((req.method === "GET" || req.method === "POST") && pathname === "/api/warehouse/map") {
         const db = readDb();
         if (!db.warehouseMap) db.warehouseMap = {
@@ -4796,6 +4861,7 @@ async function handleApi(req, res, pathname) {
         };
         if (!db.warehouseMap.overlays) db.warehouseMap.overlays = [];
         if (!db.warehouseMap.log) db.warehouseMap.log = [];
+        if (ensureWarehouseLayoutBuildingGroups(db.warehouseMap)) writeDb(db);
         const map = db.warehouseMap;
         const jobs = db.jobs || [];
         const inboundJobs = jobs.filter(j => [ "Inbound", "Stored", "ReadyForTerminal", "XRayPassed", "LoadingReady" ].includes(j.status));

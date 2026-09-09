@@ -4910,6 +4910,14 @@ function renderWhZoneGrid() {
     canvas.style.minWidth = Math.max(900, ...allX) + "px";
     canvas.style.minHeight = Math.max(520, ...allY) + "px";
     canvas.innerHTML = buildingHtml + zoneHtml + overlayHtml;
+    canvas.querySelectorAll("[aria-label]").forEach((element, index) => {
+        const building = whMapState.buildingOutlines[index];
+        if (!building) return;
+        element.dataset.whBuildingId = building.id || `building-${index + 1}`;
+        element.title = "ลากกรอบหรือชื่ออาคารเพื่อย้ายทุกโซนภายในอาคารพร้อมกัน";
+        element.style.pointerEvents = "auto";
+        element.style.cursor = "grab";
+    });
     canvas.querySelectorAll(".wh-zone-block").forEach(block => {
         const handle = document.createElement("button");
         handle.type = "button";
@@ -5064,6 +5072,58 @@ function initWhDrag(canvas) {
         }
     }
     let resizing = null, resStartX, resStartY, resStartW, resStartH;
+    let buildingDragging = null;
+    function onBuildingMouseDown(e) {
+        const buildingElement = e.target.closest("[data-wh-building-id]");
+        if (!buildingElement || e.target.closest(".wh-canvas-item")) return;
+        e.preventDefault();
+        buildingDragging = {
+            id: buildingElement.dataset.whBuildingId,
+            element: buildingElement,
+            startX: e.clientX,
+            startY: e.clientY,
+            left: parseInt(buildingElement.style.left) || 0,
+            top: parseInt(buildingElement.style.top) || 0
+        };
+        buildingElement.style.cursor = "grabbing";
+    }
+    function onBuildingMouseMove(e) {
+        if (!buildingDragging) return;
+        const dx = snapGrid((e.clientX - buildingDragging.startX) / whViewportState.zoom);
+        const dy = snapGrid((e.clientY - buildingDragging.startY) / whViewportState.zoom);
+        buildingDragging.element.style.left = Math.max(0, buildingDragging.left + dx) + "px";
+        buildingDragging.element.style.top = Math.max(0, buildingDragging.top + dy) + "px";
+        for (const item of canvas.querySelectorAll("[data-wh-id]")) {
+            const zone = whMapState.zones.find(entry => entry.id === item.dataset.whId);
+            const overlay = whMapState.overlays.find(entry => entry.id === item.dataset.whId);
+            if ((zone || overlay)?.buildingId === buildingDragging.id) item.style.transform = `translate(${dx}px, ${dy}px)`;
+        }
+    }
+    async function onBuildingMouseUp(e) {
+        if (!buildingDragging) return;
+        const active = buildingDragging;
+        buildingDragging = null;
+        active.element.style.cursor = "grab";
+        const deltaX = snapGrid((e.clientX - active.startX) / whViewportState.zoom);
+        const deltaY = snapGrid((e.clientY - active.startY) / whViewportState.zoom);
+        if (!deltaX && !deltaY) return renderWhZoneGrid();
+        try {
+            const data = await api("/api/warehouse/building/move", {
+                buildingId: active.id,
+                deltaX: deltaX,
+                deltaY: deltaY,
+                userId: currentWebUser()?.id || "admin"
+            });
+            whMapState.zones = data.map.zones || [];
+            whMapState.locations = data.map.locations || [];
+            whMapState.overlays = data.map.overlays || [];
+            whMapState.buildingOutlines = data.map.buildingOutlines || [];
+            renderWhZoneGrid();
+        } catch (error) {
+            renderWhZoneGrid();
+            toast(error.message || "ย้ายอาคารไม่ได้", "error");
+        }
+    }
     let zoneResizing = null;
     function onZoneResizeDown(e) {
         const handle = e.target.closest("[data-zone-resize-id]");
@@ -5206,30 +5266,37 @@ function initWhDrag(canvas) {
             zoneResizing.item.classList.remove("wh-resizing");
             zoneResizing = null;
         }
+        buildingDragging = null;
     }
     canvas.addEventListener("mousedown", onMouseDown);
     canvas.addEventListener("mousedown", onResizeDown);
     canvas.addEventListener("mousedown", onZoneResizeDown);
+    canvas.addEventListener("mousedown", onBuildingMouseDown);
     canvas.addEventListener("click", onCanvasClick);
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mousemove", onResizeMove);
     document.addEventListener("mousemove", onZoneResizeMove);
+    document.addEventListener("mousemove", onBuildingMouseMove);
     document.addEventListener("mouseup", onMouseUp);
     document.addEventListener("mouseup", onResizeUp);
     document.addEventListener("mouseup", onZoneResizeUp);
+    document.addEventListener("mouseup", onBuildingMouseUp);
     window.addEventListener("blur", cancelDrag);
     document.addEventListener("visibilitychange", cancelDrag);
     _whDragCleanup = () => {
         canvas.removeEventListener("mousedown", onMouseDown);
         canvas.removeEventListener("mousedown", onResizeDown);
         canvas.removeEventListener("mousedown", onZoneResizeDown);
+        canvas.removeEventListener("mousedown", onBuildingMouseDown);
         canvas.removeEventListener("click", onCanvasClick);
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mousemove", onResizeMove);
         document.removeEventListener("mousemove", onZoneResizeMove);
+        document.removeEventListener("mousemove", onBuildingMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
         document.removeEventListener("mouseup", onResizeUp);
         document.removeEventListener("mouseup", onZoneResizeUp);
+        document.removeEventListener("mouseup", onBuildingMouseUp);
         window.removeEventListener("blur", cancelDrag);
         document.removeEventListener("visibilitychange", cancelDrag);
     };
