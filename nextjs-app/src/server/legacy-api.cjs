@@ -2131,6 +2131,60 @@ function whLog(db, entry) {
     if (db.warehouseMap.log.length > 500) db.warehouseMap.log = db.warehouseMap.log.slice(-500);
 }
 
+function warehouseLayoutPreset202609(existingLog = []) {
+    const createdAt = nowIso();
+    const zoneSpecs = [
+        [ "R004", "R004 · สินค้าทั่วไป + ยาง", 2, 6, 2, "#bfdbfe", 40, 50 ],
+        [ "R003", "R003 · สินค้าทั่วไป", 2, 8, 2, "#bfdbfe", 40, 230 ],
+        [ "R002", "R002 · Waiting Area", 1, 6, 1, "#e2e8f0", 40, 410 ],
+        [ "R001", "R001 · Small Package", 2, 10, 1, "#dbeafe", 40, 520 ],
+        [ "LITHIUM", "พาเลท LITHIUM", 3, 6, 2, "#fecaca", 610, 50 ],
+        [ "STORAGE", "โซนเก็บสินค้า", 3, 6, 2, "#bbf7d0", 610, 340 ],
+        [ "WD", "สินค้า WD", 2, 6, 2, "#e9d5ff", 1180, 50 ],
+        [ "RECEIVING", "พื้นที่งานรับ (Receiving)", 2, 6, 1, "#ddd6fe", 1180, 340 ]
+    ];
+    const zones = zoneSpecs.map(([ prefix, name, rows, cols, defaultLevels, color, canvasX, canvasY ]) => ({
+        id: `zone_layout_202609_${prefix}`,
+        name, prefix, rows, cols, defaultLevels, color, canvasX, canvasY,
+        gridCol: 0, gridRow: 0, maxPallets: 0, maxBoxes: 0, createdAt
+    }));
+    const locations = zones.flatMap(zone => Array.from({ length: zone.rows * zone.cols }, (_, index) => ({
+        id: `loc_${zone.id}_${index + 1}`,
+        code: `${zone.prefix}-${String(index + 1).padStart(2, "0")}`,
+        zoneId: zone.id,
+        row: Math.floor(index / zone.cols),
+        col: index % zone.cols,
+        maxLevels: zone.defaultLevels,
+        occupiedBy: []
+    })));
+    const dock = (id, x) => ({ id: `layout_202609_${id}`, type: "door", label: id, sublabel: "Dock", color: "#fef3c7", canvasX: x, canvasY: 760, ovW: 62, ovH: 56 });
+    const overlays = [
+        { id: "layout_202609_room1", type: "label", label: "ห้องที่ 1 · พื้นที่พักสินค้ารอจ่าย", color: "#fef3c7", canvasX: 40, canvasY: 690, ovW: 500, ovH: 55 },
+        { id: "layout_202609_office", type: "office", label: "OFFICE", color: "#e5e7eb", canvasX: 610, canvasY: 670, ovW: 360, ovH: 75 },
+        { id: "layout_202609_plastic", type: "label", label: "พาเลทพลาสติก", color: "#a5f3fc", canvasX: 610, canvasY: 620, ovW: 360, ovH: 40 },
+        { id: "layout_202609_aisle1", type: "aisle", label: "ทางเดิน", color: "#f1f5f9", canvasX: 560, canvasY: 50, ovW: 32, ovH: 690 },
+        { id: "layout_202609_aisle2", type: "aisle", label: "ทางเดิน", color: "#f1f5f9", canvasX: 1140, canvasY: 50, ovW: 28, ovH: 690 },
+        { id: "layout_202609_main_gate", type: "door", label: "ประตูหลัก", color: "#fef9c3", canvasX: 245, canvasY: 5, ovW: 110, ovH: 34 },
+        { id: "layout_202609_receiving_flow", type: "label", label: "รับเข้า → Receiving", color: "#ede9fe", canvasX: 1180, canvasY: 620, ovW: 330, ovH: 40 },
+        ...[ 50, 145, 240, 335, 430 ].map((x, index) => dock(`D${index + 1}`, x)),
+        ...[ 620, 735, 850 ].map((x, index) => dock(`D${index + 6}`, x)),
+        ...[ 1195, 1310, 1425 ].map((x, index) => dock(`D${index + 9}`, x))
+    ];
+    return {
+        layoutVersion: "2026-09-01",
+        layoutName: "WH3 Layout 1-9-26",
+        zones,
+        locations,
+        overlays,
+        buildingOutlines: [
+            { label: "อาคาร 1 · R001–R004 / Waiting Area", canvasX: 15, canvasY: 25, width: 530, height: 790, color: "#60a5fa", background: "rgba(239,246,255,.22)" },
+            { label: "อาคาร 2 · Lithium / เก็บสินค้า / Office", canvasX: 585, canvasY: 25, width: 400, height: 790, color: "#34d399", background: "rgba(236,253,245,.2)" },
+            { label: "อาคาร 3 · WD / Receiving", canvasX: 1155, canvasY: 25, width: 390, height: 790, color: "#a78bfa", background: "rgba(245,243,255,.2)" }
+        ],
+        log: existingLog
+    };
+}
+
 function logActivity(db, payload) {
     const log = {
         logId: `LOG-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
@@ -4661,7 +4715,8 @@ async function handleApi(req, res, pathname) {
             updatedAt: nowIso(),
             zones: JSON.parse(JSON.stringify(db.warehouseMap.zones || [])),
             locations: JSON.parse(JSON.stringify(db.warehouseMap.locations || [])),
-            overlays: JSON.parse(JSON.stringify(db.warehouseMap.overlays || []))
+            overlays: JSON.parse(JSON.stringify(db.warehouseMap.overlays || [])),
+            buildingOutlines: JSON.parse(JSON.stringify(db.warehouseMap.buildingOutlines || []))
         };
         if (existingIdx >= 0) db.warehouseProfiles[existingIdx] = profile; else db.warehouseProfiles.push(profile);
         writeDb(db);
@@ -4687,6 +4742,7 @@ async function handleApi(req, res, pathname) {
             zones: JSON.parse(JSON.stringify(profile.zones || [])),
             locations: JSON.parse(JSON.stringify(profile.locations || [])),
             overlays: JSON.parse(JSON.stringify(profile.overlays || [])),
+            buildingOutlines: JSON.parse(JSON.stringify(profile.buildingOutlines || [])),
             log: db.warehouseMap?.log || []
         };
         whLog(db, {
@@ -4710,6 +4766,25 @@ async function handleApi(req, res, pathname) {
             ok: true,
             deleted: before - db.warehouseProfiles.length
         });
+    }
+    if (req.method === "POST" && pathname === "/api/warehouse/layouts/2026-09-01/apply") {
+        const payload = await parseBody(req);
+        const existingLocations = db.warehouseMap?.locations || [];
+        const occupied = existingLocations.filter(location => (location.occupiedBy || []).length > 0);
+        if (occupied.length > 0) return sendJson(res, 409, {
+            error: `ยังมีสินค้าอยู่ ${occupied.length} ตำแหน่ง จึงยังใช้แปลนใหม่ไม่ได้`,
+            occupiedLocations: occupied.map(location => location.code)
+        });
+        const existingLog = db.warehouseMap?.log || [];
+        db.warehouseMap = warehouseLayoutPreset202609(existingLog);
+        whLog(db, {
+            action: "layout_apply",
+            layoutVersion: "2026-09-01",
+            layoutName: "WH3 Layout 1-9-26",
+            userId: payload.userId || "system"
+        });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, map: db.warehouseMap });
     }
     if ((req.method === "GET" || req.method === "POST") && pathname === "/api/warehouse/map") {
         const db = readDb();
