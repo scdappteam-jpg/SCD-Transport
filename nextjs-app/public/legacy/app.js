@@ -3412,6 +3412,7 @@ let whMapState = {
     zones: [],
     locations: [],
     overlays: [],
+    buildingOutlines: [],
     selectedColor: "#dbeafe",
     selectedOverlayType: "aisle",
     activeTool: "select"
@@ -3451,6 +3452,7 @@ async function loadWhProfile(profileId, profileName) {
         whMapState.zones = data.map.zones || [];
         whMapState.locations = data.map.locations || [];
         whMapState.overlays = data.map.overlays || [];
+        whMapState.buildingOutlines = data.map.buildingOutlines || [];
         toast(`โหลด "${profileName}" แล้ว`);
         collapseWhEditorToCard();
     }
@@ -3477,6 +3479,7 @@ async function loadWarehouseMap() {
             whMapState.zones = data.map.zones || [];
             whMapState.locations = data.map.locations || [];
             whMapState.overlays = data.map.overlays || [];
+            whMapState.buildingOutlines = data.map.buildingOutlines || [];
         }
         whMapState.jobStats = data?.jobStats || {
             inbound: 0,
@@ -3492,6 +3495,24 @@ async function loadWarehouseMap() {
         whCapRatio = (cfgData.config || {}).palletToBoxRatio || 10;
     } catch (e) {
         console.warn("loadWarehouseMap:", e);
+    }
+}
+
+async function applyWarehouseLayout202609() {
+    const confirmed = await showWhConfirm("ใช้แปลนคลัง 1-9-26 ตามเอกสารหรือไม่? ระบบจะสร้างโซน R001–R004, Lithium, เก็บสินค้า, WD, Receiving และ Dock D1–D11 ใหม่ โดยทำได้เฉพาะเมื่อยังไม่มีสินค้าอยู่ในตำแหน่งเก็บ");
+    if (!confirmed) return;
+    try {
+        const data = await api("/api/warehouse/layouts/2026-09-01/apply", {
+            userId: currentWebUser()?.id || "admin"
+        });
+        whMapState.zones = data.map.zones || [];
+        whMapState.locations = data.map.locations || [];
+        whMapState.overlays = data.map.overlays || [];
+        whMapState.buildingOutlines = data.map.buildingOutlines || [];
+        renderWarehouseEditor();
+        toast("ใช้แปลนคลัง 1-9-26 แล้ว");
+    } catch (error) {
+        toast(error.message || "ใช้แปลนคลังไม่ได้", "error");
     }
 }
 
@@ -4799,11 +4820,12 @@ function renderWhZoneGrid() {
         const ovW = ov.ovW || def.w, ovH = ov.ovH || def.h;
         return `<div class="wh-canvas-item wh-overlay-block wh-overlay-${ov.type} wh-drag-handle"\n        style="background:${ov.color};border-color:${ov.color === "#f1f5f9" ? "#cbd5e1" : ov.color}88;left:${x}px;top:${y}px;width:${ovW}px;height:${ovH}px"\n        data-wh-id="${ov.id}" data-wh-type="overlay" data-ov-w="${ovW}" data-ov-h="${ovH}">\n      <i data-lucide="${icon}" style="pointer-events:none;width:24px;height:24px;opacity:.7"></i>\n      <span class="wh-overlay-name" style="pointer-events:none">${safeHtml(ov.label)}</span>\n      ${ov.sublabel ? `<span class="wh-overlay-sub" style="pointer-events:none">${safeHtml(ov.sublabel)}</span>` : ""}\n      <div class="wh-item-actions" style="pointer-events:all">\n        <button class="icon-button" data-edit-overlay="${ov.id}" title="แก้ไข"><i data-lucide="pencil"></i></button>\n        <button class="icon-button danger" data-del-overlay="${ov.id}" title="ลบ"><i data-lucide="x"></i></button>\n      </div>\n      <div class="wh-resize-handle" data-resize-id="${ov.id}" title="ลากเพื่อขยาย/หด"></div>\n    </div>`;
     }).join("");
-    const allX = [ ...whMapState.zones.map(z => (z.canvasX ?? 20) + 600), ...whMapState.overlays.map(o => (o.canvasX ?? 20) + 100) ];
-    const allY = [ ...whMapState.zones.map(z => (z.canvasY ?? 20) + 500), ...whMapState.overlays.map(o => (o.canvasY ?? 20) + 200) ];
+    const buildingHtml = (whMapState.buildingOutlines || []).map(building => `<div aria-label="${safeHtml(building.label)}" style="pointer-events:none;position:absolute;left:${building.canvasX}px;top:${building.canvasY}px;width:${building.width}px;height:${building.height}px;border:3px solid ${building.color || "#64748b"};border-radius:18px;background:${building.background || "transparent"};z-index:0"><span style="position:absolute;top:-30px;left:8px;padding:3px 8px;border-radius:7px;background:#fff;color:${building.color || "#334155"};font-size:12px;font-weight:800;white-space:nowrap">${safeHtml(building.label)}</span></div>`).join("");
+    const allX = [ ...whMapState.zones.map(z => (z.canvasX ?? 20) + 600), ...whMapState.overlays.map(o => (o.canvasX ?? 20) + 100), ...(whMapState.buildingOutlines || []).map(b => b.canvasX + b.width) ];
+    const allY = [ ...whMapState.zones.map(z => (z.canvasY ?? 20) + 500), ...whMapState.overlays.map(o => (o.canvasY ?? 20) + 200), ...(whMapState.buildingOutlines || []).map(b => b.canvasY + b.height) ];
     canvas.style.minWidth = Math.max(900, ...allX) + "px";
     canvas.style.minHeight = Math.max(520, ...allY) + "px";
-    canvas.innerHTML = zoneHtml + overlayHtml;
+    canvas.innerHTML = buildingHtml + zoneHtml + overlayHtml;
     canvas.querySelectorAll("[data-loc-id]").forEach(cell => cell.addEventListener("click", e => {
         if (!e._wasDrag) openWhLocationDetail(cell.dataset.locId);
     }));
@@ -9160,6 +9182,7 @@ function bindEvents() {
     $("#whSaveMapBtn")?.addEventListener("click", () => {
         collapseWhEditorToCard();
     });
+    $("#whApplyLayout202609")?.addEventListener("click", applyWarehouseLayout202609);
     $("#whNewMapBtn")?.addEventListener("click", () => collapseWhEditorToCard());
     $("#whZoneQuickClose")?.addEventListener("click", () => setWhTool("select"));
     $("#whRefreshLog")?.addEventListener("click", loadWhLog);
