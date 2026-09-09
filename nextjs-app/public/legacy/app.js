@@ -4910,6 +4910,15 @@ function renderWhZoneGrid() {
     canvas.style.minWidth = Math.max(900, ...allX) + "px";
     canvas.style.minHeight = Math.max(520, ...allY) + "px";
     canvas.innerHTML = buildingHtml + zoneHtml + overlayHtml;
+    canvas.querySelectorAll(".wh-zone-block").forEach(block => {
+        const handle = document.createElement("button");
+        handle.type = "button";
+        handle.dataset.zoneResizeId = block.dataset.whId;
+        handle.title = "ลากเพื่อเพิ่ม/ลดความกว้างของโซน";
+        handle.textContent = "↔";
+        handle.style.cssText = "position:absolute;right:3px;bottom:3px;z-index:6;width:20px;height:24px;padding:0;border:0;border-radius:4px;color:#fff;background:#2563eb;font-size:13px;line-height:1;cursor:ew-resize";
+        block.append(handle);
+    });
     applyWarehouseZoom(whViewportState.zoom);
     canvas.querySelectorAll("[data-loc-id]").forEach(cell => cell.addEventListener("click", e => {
         if (!e._wasDrag) openWhLocationDetail(cell.dataset.locId);
@@ -5055,6 +5064,48 @@ function initWhDrag(canvas) {
         }
     }
     let resizing = null, resStartX, resStartY, resStartW, resStartH;
+    let zoneResizing = null;
+    function onZoneResizeDown(e) {
+        const handle = e.target.closest("[data-zone-resize-id]");
+        if (!handle) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const zone = whMapState.zones.find(item => item.id === handle.dataset.zoneResizeId);
+        const item = handle.closest(".wh-zone-block");
+        if (!zone || !item) return;
+        zoneResizing = {
+            id: zone.id,
+            item: item,
+            startX: e.clientX,
+            startWidth: item.getBoundingClientRect().width / whViewportState.zoom,
+            cols: zone.cols
+        };
+        item.classList.add("wh-resizing");
+    }
+    function onZoneResizeMove(e) {
+        if (!zoneResizing) return;
+        const width = Math.max(120, zoneResizing.startWidth + (e.clientX - zoneResizing.startX) / whViewportState.zoom);
+        zoneResizing.item.style.width = width + "px";
+    }
+    async function onZoneResizeUp() {
+        if (!zoneResizing) return;
+        const active = zoneResizing;
+        zoneResizing = null;
+        active.item.classList.remove("wh-resizing");
+        const width = parseInt(active.item.style.width) || active.startWidth;
+        const cols = Math.max(1, Math.round((width - 12) / 56));
+        if (cols === active.cols) return renderWhZoneGrid();
+        try {
+            const data = await api("/api/warehouse/zone/update", { zoneId: active.id, cols: cols });
+            const zone = whMapState.zones.find(item => item.id === active.id);
+            if (zone) zone.cols = data.zone.cols;
+            renderWhZoneGrid();
+            whShowSaveStatus(`ปรับความกว้างเป็น ${cols} ช่องแล้ว`);
+        } catch (error) {
+            renderWhZoneGrid();
+            toast(error.message || "ปรับความกว้างโซนไม่ได้", "error");
+        }
+    }
     function onResizeDown(e) {
         const handle = e.target.closest(".wh-resize-handle");
         if (!handle) return;
@@ -5151,24 +5202,34 @@ function initWhDrag(canvas) {
             resizing.item.classList.remove("wh-resizing");
             resizing = null;
         }
+        if (zoneResizing) {
+            zoneResizing.item.classList.remove("wh-resizing");
+            zoneResizing = null;
+        }
     }
     canvas.addEventListener("mousedown", onMouseDown);
     canvas.addEventListener("mousedown", onResizeDown);
+    canvas.addEventListener("mousedown", onZoneResizeDown);
     canvas.addEventListener("click", onCanvasClick);
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mousemove", onResizeMove);
+    document.addEventListener("mousemove", onZoneResizeMove);
     document.addEventListener("mouseup", onMouseUp);
     document.addEventListener("mouseup", onResizeUp);
+    document.addEventListener("mouseup", onZoneResizeUp);
     window.addEventListener("blur", cancelDrag);
     document.addEventListener("visibilitychange", cancelDrag);
     _whDragCleanup = () => {
         canvas.removeEventListener("mousedown", onMouseDown);
         canvas.removeEventListener("mousedown", onResizeDown);
+        canvas.removeEventListener("mousedown", onZoneResizeDown);
         canvas.removeEventListener("click", onCanvasClick);
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mousemove", onResizeMove);
+        document.removeEventListener("mousemove", onZoneResizeMove);
         document.removeEventListener("mouseup", onMouseUp);
         document.removeEventListener("mouseup", onResizeUp);
+        document.removeEventListener("mouseup", onZoneResizeUp);
         window.removeEventListener("blur", cancelDrag);
         document.removeEventListener("visibilitychange", cancelDrag);
     };
