@@ -3500,6 +3500,8 @@ let whMapState = {
     activeTool: "select"
 };
 
+let whViewportState = { zoom: 1 };
+
 let whProfiles = [];
 
 let whCapData = {};
@@ -4908,6 +4910,7 @@ function renderWhZoneGrid() {
     canvas.style.minWidth = Math.max(900, ...allX) + "px";
     canvas.style.minHeight = Math.max(520, ...allY) + "px";
     canvas.innerHTML = buildingHtml + zoneHtml + overlayHtml;
+    applyWarehouseZoom(whViewportState.zoom);
     canvas.querySelectorAll("[data-loc-id]").forEach(cell => cell.addEventListener("click", e => {
         if (!e._wasDrag) openWhLocationDetail(cell.dataset.locId);
     }));
@@ -4929,6 +4932,56 @@ function renderWhZoneGrid() {
     }));
     lucide.createIcons();
     initWhDrag(canvas);
+    initWarehouseViewport();
+}
+
+function applyWarehouseZoom(zoom = 1) {
+    whViewportState.zoom = Math.min(1.6, Math.max(.55, Math.round(zoom * 100) / 100));
+    const grid = $("#whZoneGrid");
+    const label = $("#whZoomLabel");
+    if (grid) grid.style.zoom = whViewportState.zoom;
+    if (label) label.textContent = `${Math.round(whViewportState.zoom * 100)}%`;
+}
+
+function resetWarehouseViewport() {
+    applyWarehouseZoom(1);
+    const viewport = $("#whMapCanvas");
+    if (viewport) {
+        viewport.scrollLeft = 0;
+        viewport.scrollTop = 0;
+    }
+}
+
+function initWarehouseViewport() {
+    const viewport = $("#whMapCanvas");
+    const grid = $("#whZoneGrid");
+    if (!viewport || !grid || viewport.dataset.viewportBound === "true") return;
+    viewport.dataset.viewportBound = "true";
+    let panning = null;
+    grid.addEventListener("pointerdown", event => {
+        if (event.button !== 0 || event.target !== grid || whMapState.activeTool !== "select") return;
+        panning = { x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
+        grid.style.cursor = "grabbing";
+        grid.setPointerCapture?.(event.pointerId);
+    });
+    grid.addEventListener("pointermove", event => {
+        if (!panning) return;
+        viewport.scrollLeft = panning.left - (event.clientX - panning.x);
+        viewport.scrollTop = panning.top - (event.clientY - panning.y);
+    });
+    const stopPan = () => {
+        if (!panning) return;
+        panning = null;
+        grid.style.cursor = whMapState.activeTool === "select" ? "grab" : "crosshair";
+    };
+    grid.addEventListener("pointerup", stopPan);
+    grid.addEventListener("pointercancel", stopPan);
+    viewport.addEventListener("wheel", event => {
+        if (!event.ctrlKey && !event.metaKey) return;
+        event.preventDefault();
+        applyWarehouseZoom(whViewportState.zoom + (event.deltaY < 0 ? .1 : -.1));
+    }, { passive: false });
+    grid.style.cursor = "grab";
 }
 
 function initWhDrag(canvas) {
@@ -4951,8 +5004,8 @@ function initWhDrag(canvas) {
     }
     function onMouseMove(e) {
         if (!dragging) return;
-        const dx = e.clientX - startMX;
-        const dy = e.clientY - startMY;
+        const dx = (e.clientX - startMX) / whViewportState.zoom;
+        const dy = (e.clientY - startMY) / whViewportState.zoom;
         if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
         const newL = snapGrid(Math.max(0, startL + dx));
         const newT = snapGrid(Math.max(0, startT + dy));
@@ -5021,7 +5074,7 @@ function initWhDrag(canvas) {
     }
     function onResizeMove(e) {
         if (!resizing) return;
-        const dw = e.clientX - resStartX, dh = e.clientY - resStartY;
+        const dw = (e.clientX - resStartX) / whViewportState.zoom, dh = (e.clientY - resStartY) / whViewportState.zoom;
         const newW = Math.max(60, snapGrid(resStartW + dw));
         const newH = Math.max(40, snapGrid(resStartH + dh));
         resizing.item.style.width = newW + "px";
@@ -5055,8 +5108,9 @@ function initWhDrag(canvas) {
         if (tool === "select" || tool === "zone") return;
         if (e.target.closest(".wh-canvas-item") || e.target.closest("button")) return;
         const rect = canvas.getBoundingClientRect();
-        const x = snapGrid(e.clientX - rect.left + canvas.scrollLeft);
-        const y = snapGrid(e.clientY - rect.top + canvas.scrollTop);
+        const viewport = $("#whMapCanvas");
+        const x = snapGrid((e.clientX - rect.left + (viewport?.scrollLeft || 0)) / whViewportState.zoom);
+        const y = snapGrid((e.clientY - rect.top + (viewport?.scrollTop || 0)) / whViewportState.zoom);
         const colors = {
             aisle: "#f1f5f9",
             door: "#fef9c3",
@@ -9255,7 +9309,7 @@ function bindEvents() {
             whMapState.selectedOverlayType = btn.dataset.ovType;
         });
     });
-    document.querySelectorAll(".wh-tool-btn").forEach(btn => {
+    document.querySelectorAll(".wh-tool-btn[data-tool]").forEach(btn => {
         btn.addEventListener("click", () => setWhTool(btn.dataset.tool));
     });
     $("#whPreviewBtn")?.addEventListener("click", () => {
@@ -9266,6 +9320,9 @@ function bindEvents() {
         collapseWhEditorToCard();
     });
     $("#whApplyLayout202609")?.addEventListener("click", applyWarehouseLayout202609);
+    $("#whZoomOutBtn")?.addEventListener("click", () => applyWarehouseZoom(whViewportState.zoom - .1));
+    $("#whZoomInBtn")?.addEventListener("click", () => applyWarehouseZoom(whViewportState.zoom + .1));
+    $("#whZoomResetBtn")?.addEventListener("click", resetWarehouseViewport);
     $("#whNewMapBtn")?.addEventListener("click", () => collapseWhEditorToCard());
     $("#whZoneQuickClose")?.addEventListener("click", () => setWhTool("select"));
     $("#whRefreshLog")?.addEventListener("click", loadWhLog);
