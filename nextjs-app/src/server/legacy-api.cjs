@@ -5313,6 +5313,12 @@ async function handleApi(req, res, pathname) {
                 boxes: Number(j.warehouseBoxes) || 0,
                 warehouseLocation: j.warehouseLocation || ""
             }));
+            const reservedHouses = reservedJobs.map(j => ({
+                houseNumber: j.houseNumber,
+                customerName: j.customerName || "",
+                reservedPallets: Number(j.warehouseReservedPallets) || 0,
+                reservedAt: j.warehouseReservedAt || ""
+            }));
             return {
                 id: zone.id,
                 name: zone.name,
@@ -5333,7 +5339,8 @@ async function handleApi(req, res, pathname) {
                 fillPct: fillPct,
                 trafficLight: trafficLight,
                 houseCount: houseNumbersInLocations.size,
-                houses: houses
+                houses: houses,
+                reservedHouses: reservedHouses
             };
         });
         return sendJson(res, 200, {
