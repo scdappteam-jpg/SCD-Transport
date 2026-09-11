@@ -10203,8 +10203,23 @@ async function openWarehouseReservationModal(jobs) {
     Object.assign(modal.querySelector(".modal-box")?.style || {}, {
         background: "#ffffff",
         opacity: "1",
+        width: "min(820px, calc(100vw - 32px))",
+        maxWidth: "820px",
+        border: "1px solid #dbe7f5",
+        borderRadius: "20px",
+        overflow: "hidden",
         boxShadow: "0 24px 70px rgba(15, 23, 42, .28)"
     });
+    Object.assign(modal.style, { background: "rgba(15, 35, 63, .58)", backdropFilter: "blur(4px)", padding: "16px" });
+    const header = modal.querySelector(".modal-header");
+    const body = modal.querySelector(".modal-body");
+    const footer = modal.querySelector(".modal-footer");
+    Object.assign(header?.style || {}, { padding: "18px 22px", color: "#10233f", borderBottom: "1px solid #e8eef6", background: "linear-gradient(135deg,#f8fbff,#eef5ff)", fontSize: "17px", fontWeight: "700" });
+    Object.assign(body?.style || {}, { padding: "18px 22px", background: "#ffffff" });
+    Object.assign(footer?.style || {}, { padding: "14px 22px 20px", margin: "0", borderTop: "1px solid #e8eef6", background: "#fbfdff" });
+    modal.querySelectorAll(".wh-reserve-zone").forEach(select => Object.assign(select.parentElement.style, { gridTemplateColumns: "minmax(180px,1fr) minmax(230px,1.2fr) minmax(150px,.55fr)", padding: "13px 14px", borderColor: "#dbe7f5", background: "#f9fbfe", boxShadow: "0 1px 2px rgba(15,35,63,.04)" }));
+    modal.querySelectorAll(".form-input").forEach(input => Object.assign(input.style, { minHeight: "44px", borderColor: "#cbd8e8", borderRadius: "10px", background: "#ffffff" }));
+    modal.querySelector(".modal-footer .btn")?.style.setProperty("background", "#0b4ea2");
 }
 
 async function saveWarehouseReservations() {
