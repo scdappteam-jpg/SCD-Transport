@@ -4969,6 +4969,9 @@ async function handleApi(req, res, pathname) {
         if (job) {
             job.warehouseLocation = isFlexible ? loc.code : `${loc.code}-L${lvl}`;
             job.warehouseZoneId = loc.zoneId;
+            job.warehouseReservedZoneId = "";
+            job.warehouseReservedPallets = 0;
+            job.warehouseReservationStatus = "";
             job.warehousePallets = palletCount;
             job.warehouseBoxes = boxCount;
             job.warehousePieces = pieceCount;
@@ -5150,6 +5153,38 @@ async function handleApi(req, res, pathname) {
             config: db.warehouseConfig
         });
     }
+    if (req.method === "POST" && pathname === "/api/warehouse/reservations") {
+        const payload = await parseBody(req);
+        const reservations = Array.isArray(payload.reservations) ? payload.reservations : [];
+        if (!reservations.length) return sendJson(res, 400, { error: "reservations required" });
+        const db = readDb();
+        const zones = db.warehouseMap?.zones || [];
+        let saved = 0;
+        for (const item of reservations) {
+            const houseNumber = String(item.houseNumber || "").trim();
+            const zoneId = String(item.zoneId || "").trim();
+            const job = (db.jobs || []).find(row => row.houseNumber === houseNumber);
+            const zone = zones.find(row => row.id === zoneId);
+            if (!job || !zone) continue;
+            job.warehouseReservedZoneId = zoneId;
+            job.warehouseReservedPallets = Math.max(0, Number(item.reservedPallets) || 0);
+            job.warehouseReservationStatus = "Reserved";
+            job.warehouseReservedAt = nowIso();
+            job.warehouseReservedBy = payload.userId || "Transport";
+            job.updatedAt = nowIso();
+            whLog(db, {
+                action: "reserve",
+                houseNumber,
+                zoneId,
+                zoneName: zone.name,
+                reservedPallets: job.warehouseReservedPallets,
+                userId: payload.userId
+            });
+            saved++;
+        }
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, saved });
+    }
     if (req.method === "GET" && pathname === "/api/warehouse/zones/capacity") {
         const db = readDb();
         const zones = db.warehouseMap?.zones || [];
@@ -5158,7 +5193,9 @@ async function handleApi(req, res, pathname) {
         const ACTIVE = new Set([ "Inbound", "Stored", "ReadyForTerminal", "Assigned" ]);
         const result = zones.map(zone => {
             const zoneJobs = jobs.filter(j => j.warehouseZoneId === zone.id && ACTIVE.has(j.status));
+            const reservedJobs = jobs.filter(j => j.warehouseReservedZoneId === zone.id && !j.warehouseZoneId && j.warehouseReservationStatus === "Reserved");
             const usedPallets = zoneJobs.reduce((s, j) => s + (Number(j.warehousePallets) || 0), 0);
+            const reservedPallets = reservedJobs.reduce((s, j) => s + (Number(j.warehouseReservedPallets) || 0), 0);
             const usedBoxes = zoneJobs.reduce((s, j) => s + (Number(j.warehouseBoxes) || 0), 0);
             const usedAreaSqm = zoneJobs.reduce((s, j) => s + (Number(j.warehouseAreaSqm) || 0), 0);
             const usedVolumeCbm = zoneJobs.reduce((s, j) => s + (Number(j.warehouseVolumeCbm) || 0), 0);
@@ -5191,9 +5228,9 @@ async function handleApi(req, res, pathname) {
             } else if (capacityUnit === "Volume" && maxVolumeCbm > 0) {
                 fillPct = Math.min(100, Math.round(totalVolumeCbm / maxVolumeCbm * 100));
             } else if (maxPallets > 0) {
-                // Cartons have no fixed pallet conversion. Capacity reflects only
-                // pallets confirmed by warehouse staff after physical placement.
-                fillPct = Math.min(100, Math.round(totalPallets / maxPallets * 100));
+                // Cartons have no fixed pallet conversion. Capacity includes only
+                // physically confirmed pallets and explicit pallet reservations.
+                fillPct = Math.min(100, Math.round((totalPallets + reservedPallets) / maxPallets * 100));
             }
             const trafficLight = fillPct >= 90 ? "red" : fillPct >= 70 ? "yellow" : "green";
             const houses = zoneJobs.map(j => ({
@@ -5215,6 +5252,9 @@ async function handleApi(req, res, pathname) {
                 maxVolumeCbm: maxVolumeCbm,
                 capacityUnit: capacityUnit,
                 usedPallets: totalPallets,
+                reservedPallets: reservedPallets,
+                reservedHouseCount: reservedJobs.length,
+                availablePallets: maxPallets > 0 ? Math.max(0, maxPallets - totalPallets - reservedPallets) : 0,
                 usedBoxes: totalBoxes,
                 usedAreaSqm: totalAreaSqm,
                 usedVolumeCbm: totalVolumeCbm,
@@ -5776,7 +5816,8 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
-            confirmed: confirmed
+            confirmed: confirmed,
+            jobs: (db.jobs || []).filter(job => houseNumbers.includes(job.houseNumber)).map(normalizeJob)
         });
     }
     if (req.method === "GET" && pathname === "/api/jobs/cs-history") {

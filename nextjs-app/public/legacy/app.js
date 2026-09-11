@@ -4597,7 +4597,7 @@ async function renderWarehouseStatus() {
     const capBlocks = zonesData.map(z => {
         const light = z.trafficLight || "green";
         const fillPct = z.fillPct || 0;
-        const palletText = z.capacityUnit === "Area" ? `${z.usedAreaSqm || 0} / ${z.maxAreaSqm || 0} ตร.ม.` : z.capacityUnit === "Volume" ? `${z.usedVolumeCbm || 0} / ${z.maxVolumeCbm || 0} ลบ.ม.` : z.maxPallets ? `${z.usedPallets} / ${z.maxPallets} พาเลท` : `${z.usedPallets} พาเลท`;
+        const palletText = z.capacityUnit === "Area" ? `${z.usedAreaSqm || 0} / ${z.maxAreaSqm || 0} ตร.ม.` : z.capacityUnit === "Volume" ? `${z.usedVolumeCbm || 0} / ${z.maxVolumeCbm || 0} ลบ.ม.` : z.maxPallets ? `จัดเก็บจริง ${z.usedPallets} / ${z.maxPallets} พาเลท<br><small>จอง ${z.reservedPallets || 0} พาเลท · ${z.reservedHouseCount || 0} House · เหลือ ${z.availablePallets || 0} พาเลท</small>` : `จัดเก็บจริง ${z.usedPallets} พาเลท<br><small>จอง ${z.reservedPallets || 0} พาเลท · ${z.reservedHouseCount || 0} House</small>`;
         const boxText = z.maxBoxes ? `${z.usedBoxes} / ${z.maxBoxes} กล่อง` : z.usedBoxes ? `${z.usedBoxes} กล่อง` : "";
         const tags = z.houses.slice(0, 8).map(h => `<span class="zcb-tag">${h.houseNumber}${h.pallets || h.boxes ? ` (${h.pallets || 0}P ${h.boxes || 0}B)` : ""}</span>`).join("") + (z.houses.length > 8 ? `<span class="zcb-tag-more">+${z.houses.length - 8}</span>` : "");
         const editBtn = isAdmin ? `<button class="zcb-edit" onclick="openZoneCapModal('${z.id}','${z.name.replace(/'/g, "\\'")}',${z.maxPallets},${z.maxBoxes},${z.maxAreaSqm || 0},${z.maxVolumeCbm || 0},'${z.capacityUnit || "Pallet"}')">✏️</button>` : "";
@@ -10064,11 +10064,51 @@ async function submitCsConfirm(gkey) {
             toast(`✅ Confirm แล้ว ${data.confirmed} รายการ — Invoice: ${invoiceNo}`);
             _csHistoryData = [];
             renderCsQueue();
+            openWarehouseReservationModal(data.jobs || []);
         } else {
             toast("เกิดข้อผิดพลาด: " + (data.error || "unknown"));
         }
     } catch (e) {
         toast("เกิดข้อผิดพลาด");
+    }
+}
+
+function defaultReservationZone(job, zones) {
+    const byPrefix = prefix => zones.find(zone => zone.prefix === prefix || zone.id === prefix);
+    if (job.isLithium || job.requiresLithiumDocs || /^(L|LN)$/i.test(job.dgType || "") || /lithium/i.test(job.productType || "")) return byPrefix("LITHIUM");
+    if (/western digital|\bwd\b/i.test(job.customerName || "")) return byPrefix("WD");
+    if (/small package|กล่องเล็ก/i.test(job.productType || "")) return byPrefix("R001");
+    return byPrefix("STORAGE") || byPrefix("R003") || zones[0];
+}
+
+async function openWarehouseReservationModal(jobs) {
+    const list = Array.isArray(jobs) ? jobs : [];
+    if (!list.length) return;
+    await loadWarehouseMap();
+    const zones = whMapState.zones || [];
+    if (!zones.length) return toast("ยังไม่มีโซนในแผนที่คลัง", "error");
+    document.getElementById("warehouseReservationModal")?.remove();
+    const modal = document.createElement("div");
+    modal.id = "warehouseReservationModal";
+    modal.className = "modal-overlay show";
+    modal.innerHTML = `<div class="modal-box" style="max-width:760px"><div class="modal-header"><span>📌 จองพื้นที่ล่วงหน้า</span><button class="modal-close" onclick="document.getElementById('warehouseReservationModal').remove()">✕</button></div><div class="modal-body" style="padding:18px 20px"><p style="margin:0 0 14px;color:var(--muted);font-size:13px">เลือกโซนให้ House ที่ยืนยันแล้ว และกรอกพาเลทเฉพาะเมื่อทราบจริง — จำนวนกล่องจะไม่ถูกแปลงเป็นพาเลท</p><div style="display:grid;gap:9px">${list.map((job, index) => { const preferred = defaultReservationZone(job, zones); return `<div style="display:grid;grid-template-columns:1.1fr 1.2fr 130px;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px"><div><strong>${safeHtml(job.houseNumber)}</strong><small style="display:block;color:var(--muted)">${safeHtml(job.customerName || "-")}</small></div><select class="form-input wh-reserve-zone" data-house="${safeHtml(job.houseNumber)}">${zones.map(zone => `<option value="${safeHtml(zone.id)}" ${zone.id === preferred?.id ? "selected" : ""}>${safeHtml(zone.name)}</option>`).join("")}</select><input class="form-input wh-reserve-pallet" data-house="${safeHtml(job.houseNumber)}" type="number" min="0" step="1" placeholder="พาเลท (ถ้าทราบ)"></div>`; }).join("")}</div></div><div class="modal-footer"><button class="btn" onclick="saveWarehouseReservations()">บันทึกการจอง</button><button class="btn btn-outline" onclick="document.getElementById('warehouseReservationModal').remove()">ข้ามก่อน</button></div></div>`;
+    document.body.appendChild(modal);
+}
+
+async function saveWarehouseReservations() {
+    const zones = Array.from(document.querySelectorAll(".wh-reserve-zone"));
+    const reservations = zones.map(select => ({
+        houseNumber: select.dataset.house,
+        zoneId: select.value,
+        reservedPallets: Number(document.querySelector(`.wh-reserve-pallet[data-house="${CSS.escape(select.dataset.house)}"]`)?.value) || 0
+    }));
+    try {
+        const data = await api("/api/warehouse/reservations", { reservations, userId: state.currentUserId || currentWebUser()?.name || "Transport" });
+        document.getElementById("warehouseReservationModal")?.remove();
+        toast(`จองโซนแล้ว ${data.saved} House`);
+        if (document.querySelector("#view-wh-status")?.classList.contains("active")) renderWarehouseStatus();
+    } catch (error) {
+        toast(error.message || "บันทึกการจองไม่สำเร็จ", "error");
     }
 }
 
