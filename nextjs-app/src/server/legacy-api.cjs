@@ -1507,7 +1507,9 @@ function detectXlsxKind(rows) {
 
 function consolPackageInfo(row, map) {
     const packagePattern = /^(PLT|PALLET|CTN|CTNS|CARTON|CARTONS)$/i;
-    const start = Math.max(0, (map.etd >= 0 ? map.etd : 30) - 1);
+    // The packing type always follows ETD. The actual column may move when
+    // the source file merges or shifts columns, so derive it from ETD.
+    const start = Math.max(0, (map.etd >= 0 ? map.etd : 30) + 1);
     const end = map.grs > start ? map.grs : Math.min(row.length, start + 8);
     let packageIndex = -1;
     for (let i = start; i < end; i++) {
