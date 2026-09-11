@@ -4746,6 +4746,7 @@ function renderWhZoneGrid() {
     const zoneHtml = whMapState.zones.map(zone => {
         const locs = whMapState.locations.filter(l => l.zoneId === zone.id);
         const rows = zone.rows, cols = zone.cols;
+        const isFlexible = zone.storageMode === "Flexible";
         const x = zone.canvasX ?? 20;
         const y = zone.canvasY ?? 20;
         const occTotal = locs.reduce((s, l) => s + l.occupiedBy.length, 0);
@@ -4758,10 +4759,11 @@ function renderWhZoneGrid() {
             const loc = locs.find(l => l.row === r && l.col === c);
             if (!loc) return `<div class="wh-cell empty"></div>`;
             const occ = loc.occupiedBy.length, max = loc.maxLevels;
-            const cls = occ === 0 ? "free" : occ >= max ? "full" : "partial";
+            const cls = occ === 0 ? "free" : isFlexible ? "partial" : occ >= max ? "full" : "partial";
             const lvl = max > 1 ? `<span class="wh-levels">${max}L</span>` : "";
             const houses = loc.occupiedBy.map(o => o.houseNumber || o).join(", ");
-            const occTxt = occ > 0 ? `<span class="wh-occ" title="${houses}">${occ}/${max}</span>` : "";
+            const pieces = loc.occupiedBy.reduce((sum, item) => sum + (Number(item.pieces) || 0), 0);
+            const occTxt = occ > 0 ? `<span class="wh-occ" title="${houses}">${isFlexible ? `${occ} Lot${pieces ? ` · ${pieces} ชิ้น` : ""}` : `${occ}/${max}`}</span>` : "";
             const houseTags = occ > 0 ? loc.occupiedBy.map(o => `<span class="wh-house-mini">${safeHtml(o.houseNumber || o)}</span>`).join("") : "";
             return `<div class="wh-cell ${cls}" data-loc-id="${loc.id}" title="${loc.code}: ${houses || "ว่าง"}">\n          <span class="wh-cell-code">${loc.code}</span>${lvl}${occTxt}${houseTags}\n        </div>`;
         }).join("")).map(row => `<div class="wh-row">${row}</div>`).join("");
@@ -4782,7 +4784,8 @@ function renderWhZoneGrid() {
         const boxTxt = cap ? cap.maxBoxes ? ` · ${cap.usedBoxes}/${cap.maxBoxes}B` : cap.usedBoxes ? ` · ${cap.usedBoxes}B` : "" : "";
         const capBadge = cap ? `<span class="wh-cap-badge" style="background:${lightBg};color:${lightDot}" onclick="event.stopPropagation();setView('wh-status')" title="ดูสถานะความจุ">\n           <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${lightDot};margin-right:4px;vertical-align:middle"></span>${palletTxt}${boxTxt}\n         </span>` : "";
         const capFillHtml = capFill > 0 ? `<div class="wh-zone-cap-fill" style="height:${capFill}%;background:${lightBg}"></div>` : "";
-        return `<div class="wh-canvas-item wh-zone-block"\n        style="border-color:${zone.color};background:${zone.color}18;left:${x}px;top:${y}px;overflow:hidden;position:absolute"\n        data-wh-id="${zone.id}" data-wh-type="zone">\n      ${capFillHtml}\n      <div class="wh-zone-header wh-drag-handle" style="position:relative;z-index:1">\n        <span class="wh-zone-title">${safeHtml(zone.name)}</span>\n        <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">${rows}×${cols} · ${occTotal}/${lvlTotal}</span>\n        ${capBadge}\n        <div class="wh-zone-actions">\n          <button class="icon-button" data-edit-zone="${zone.id}" title="แก้ไข"><i data-lucide="pencil"></i></button>\n          <button class="icon-button danger" data-delete-zone="${zone.id}" title="ลบ"><i data-lucide="trash-2"></i></button>\n        </div>\n      </div>\n      <div class="wh-zone-cells" style="position:relative;z-index:1">${cells}</div>\n    </div>`;
+        const flexibleSummary = isFlexible ? `${occTotal} Lot · ${locs.reduce((sum, location) => sum + (location.occupiedBy || []).reduce((inner, item) => inner + (Number(item.pieces) || 0), 0), 0)} ชิ้น · พื้นที่ยืดหยุ่น` : `${rows}×${cols} · ${occTotal}/${lvlTotal}`;
+        return `<div class="wh-canvas-item wh-zone-block"\n        style="border-color:${zone.color};background:${zone.color}18;left:${x}px;top:${y}px;overflow:hidden;position:absolute"\n        data-wh-id="${zone.id}" data-wh-type="zone">\n      ${capFillHtml}\n      <div class="wh-zone-header wh-drag-handle" style="position:relative;z-index:1">\n        <span class="wh-zone-title">${safeHtml(zone.name)}</span>\n        <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">${flexibleSummary}</span>\n        ${capBadge}\n        <div class="wh-zone-actions">\n          <button class="icon-button" data-edit-zone="${zone.id}" title="แก้ไข"><i data-lucide="pencil"></i></button>\n          <button class="icon-button danger" data-delete-zone="${zone.id}" title="ลบ"><i data-lucide="trash-2"></i></button>\n        </div>\n      </div>\n      <div class="wh-zone-cells" style="position:relative;z-index:1">${cells}</div>\n    </div>`;
     }).join("");
     const overlayHtml = whMapState.overlays.map(ov => {
         const x = ov.canvasX ?? 20;
@@ -5384,7 +5387,9 @@ function openWhLocationDetail(locId) {
     if (title) title.textContent = loc.code || loc.id;
     if (body) {
         const occ = loc.occupiedBy || [];
-        body.innerHTML = occ.length ? occ.map(o => `<div class="wh-house-tag">${safeHtml(o.houseNumber || o)}<span style="color:var(--muted);font-size:10px"> ชั้น ${o.level || 1}</span></div>`).join("") : '<p style="color:var(--muted);font-size:13px">ช่องนี้ว่างอยู่</p>';
+        const zone = (whMapState.zones || []).find(item => item.id === loc.zoneId);
+        const isFlexible = zone?.storageMode === "Flexible";
+        body.innerHTML = occ.length ? occ.map(o => `<div class="wh-house-tag">${safeHtml(o.houseNumber || o)}<span style="color:var(--muted);font-size:10px">${isFlexible ? ` Lot · ${Number(o.pieces) || 0} ชิ้น` : ` ชั้น ${o.level || 1}`}</span></div>`).join("") : `<p style="color:var(--muted);font-size:13px">${isFlexible ? "พื้นที่ยืดหยุ่น — เพิ่ม Lot ได้ตามขนาดสินค้า" : "ช่องนี้ว่างอยู่"}</p>`;
     }
     m.style.display = "";
     m.classList.add("show");
@@ -5547,6 +5552,7 @@ function renderPickerCanvas() {
     canvas.innerHTML = whMapState.zones.map(zone => {
         const locs = whMapState.locations.filter(l => l.zoneId === zone.id);
         const rows = zone.rows, cols = zone.cols;
+        const isFlexible = zone.storageMode === "Flexible";
         const cells = Array.from({
             length: rows
         }, (_, r) => Array.from({
@@ -5556,9 +5562,9 @@ function renderPickerCanvas() {
             if (!loc) return `<div class="wh-cell empty"></div>`;
             const occ = loc.occupiedBy.length;
             const max = loc.maxLevels;
-            const full = occ >= max;
+            const full = !isFlexible && occ >= max;
             const cls = occ === 0 ? "free" : full ? "full" : "partial";
-            const title = full ? "เต็ม" : "กดเพื่อเลือก";
+            const title = isFlexible ? "กดเพื่อเพิ่ม Lot" : full ? "เต็ม" : "กดเพื่อเลือก";
             return `<div class="wh-cell ${cls}${full ? "" : " pickable"}" data-pick-loc="${loc.id}" title="${loc.code} — ${title}">\n          <span class="wh-cell-code">${loc.code}</span>\n          ${max > 1 ? `<span class="wh-levels">${occ}/${max}</span>` : ""}\n        </div>`;
         }).join("")).map(row => `<div class="wh-row">${row}</div>`).join("");
         return `<div class="wh-zone-block" style="--zone-cols:${cols};border-color:${zone.color};background:${zone.color}22">\n      <div class="wh-zone-label">${safeHtml(zone.name)}</div>\n      <div class="wh-zone-cells">${cells}</div>\n    </div>`;
@@ -5579,6 +5585,13 @@ function selectPickerLocation(locId) {
     const levelBtns = $("#whPickerLevelBtns");
     if (!levelRow || !levelBtns) return;
     $("#whPickerLocLabel").textContent = loc.code;
+    const zone = (whMapState.zones || []).find(item => item.id === loc.zoneId);
+    if (zone?.storageMode === "Flexible") {
+        levelBtns.innerHTML = '<button class="wh-level-btn" type="button" data-level="1">+ เพิ่ม Lot ในพื้นที่นี้</button>';
+        levelBtns.querySelector("button")?.addEventListener("click", () => confirmPickerAssign(locId, 1, true));
+        levelRow.hidden = false;
+        return;
+    }
     const takenLevels = new Set(loc.occupiedBy.map(o => o.level));
     levelBtns.innerHTML = Array.from({
         length: loc.maxLevels
@@ -5593,18 +5606,21 @@ function selectPickerLocation(locId) {
     levelRow.hidden = false;
 }
 
-async function confirmPickerAssign(locId, level) {
+async function confirmPickerAssign(locId, level, isFlexible = false) {
     const modal = $("#whPickerModal");
     const houseNumber = modal._houseNumber;
     const loc = whMapState.locations.find(l => l.id === locId);
     if (!houseNumber || !loc) return;
+    const pieces = isFlexible ? Number(window.prompt("จำนวนชิ้นของ Lot นี้", "1")) || 0 : 0;
+    if (isFlexible && pieces < 1) return toast("กรุณาระบุจำนวนชิ้นมากกว่า 0", "error");
     try {
         await api("/api/warehouse/location/assign", {
             locationId: locId,
             level: level,
-            houseNumber: houseNumber
+            houseNumber: houseNumber,
+            pieces: pieces
         });
-        toast(`จัดเก็บ ${houseNumber} ที่ ${loc.code}-L${level} แล้ว`);
+        toast(`จัดเก็บ ${houseNumber} ที่ ${loc.code}${isFlexible ? ` · ${pieces} ชิ้น` : `-L${level}`} แล้ว`);
         modal.classList.remove("show");
         modal.setAttribute("aria-hidden", "true");
         await loadWarehouseMap();
