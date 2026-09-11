@@ -4682,10 +4682,10 @@ async function renderWarehouseStatus() {
     const capBlocks = zonesData.map(z => {
         const light = z.trafficLight || "green";
         const fillPct = z.fillPct || 0;
-        const palletText = z.maxPallets ? `${z.usedPallets} / ${z.maxPallets} พาเลท` : `${z.usedPallets} พาเลท`;
+        const palletText = z.capacityUnit === "Area" ? `${z.usedAreaSqm || 0} / ${z.maxAreaSqm || 0} ตร.ม.` : z.capacityUnit === "Volume" ? `${z.usedVolumeCbm || 0} / ${z.maxVolumeCbm || 0} ลบ.ม.` : z.maxPallets ? `${z.usedPallets} / ${z.maxPallets} พาเลท` : `${z.usedPallets} พาเลท`;
         const boxText = z.maxBoxes ? `${z.usedBoxes} / ${z.maxBoxes} กล่อง` : z.usedBoxes ? `${z.usedBoxes} กล่อง` : "";
         const tags = z.houses.slice(0, 8).map(h => `<span class="zcb-tag">${h.houseNumber}${h.pallets || h.boxes ? ` (${h.pallets || 0}P ${h.boxes || 0}B)` : ""}</span>`).join("") + (z.houses.length > 8 ? `<span class="zcb-tag-more">+${z.houses.length - 8}</span>` : "");
-        const editBtn = isAdmin ? `<button class="zcb-edit" onclick="openZoneCapModal('${z.id}','${z.name.replace(/'/g, "\\'")}',${z.maxPallets},${z.maxBoxes})">✏️</button>` : "";
+        const editBtn = isAdmin ? `<button class="zcb-edit" onclick="openZoneCapModal('${z.id}','${z.name.replace(/'/g, "\\'")}',${z.maxPallets},${z.maxBoxes},${z.maxAreaSqm || 0},${z.maxVolumeCbm || 0},'${z.capacityUnit || "Pallet"}')">✏️</button>` : "";
         return `\n      <div class="zcb" style="--zone-color:${z.color || "#dbeafe"};--fill:${fillPct}%;--light-bg:${lightColors[light]};--dark-c:${darkColors[light]}">\n        <div class="zcb-fill"></div>\n        <div class="zcb-inner">\n          <div class="zcb-head">\n            <span class="zcb-name">${z.name}</span>\n            <span class="zcb-traffic" style="background:${darkColors[light]}" title="${fillPct}% เต็ม"></span>\n            ${editBtn}\n          </div>\n          <div class="zcb-nums">\n            <div class="zcb-num-row"><span class="zcb-icon">🟫</span><span class="zcb-big">${palletText}</span></div>\n            ${boxText ? `<div class="zcb-num-row"><span class="zcb-icon">📦</span><span class="zcb-big">${boxText}</span></div>` : ""}\n          </div>\n          <div class="zcb-tags">${tags || "<span style='color:var(--muted);font-size:12px'>ว่าง</span>"}</div>\n          <div class="zcb-foot">\n            <span>${z.houseCount} รายการ · ${fillPct}% เต็ม</span>\n            <button class="zcb-map-btn" onclick="whsShowTab('map')" title="ดูในแผนที่คลัง">🗺 แผนที่</button>\n          </div>\n        </div>\n      </div>`;
     }).join("");
     const capViewHtml = `<div class="zcb-grid" id="whsCapView">\n    ${zonesData.length ? capBlocks : "<div style='padding:40px;text-align:center;color:var(--muted)'>ยังไม่มีโซน</div>"}\n  </div>`;
@@ -4716,7 +4716,7 @@ function whsShowLocDetail(locId, code, houses, occ, max) {
     document.body.appendChild(popup);
 }
 
-function openZoneCapModal(zoneId, zoneName, maxPallets, maxBoxes) {
+function openZoneCapModal(zoneId, zoneName, maxPallets, maxBoxes, maxAreaSqm = 0, maxVolumeCbm = 0, capacityUnit = "Pallet") {
     const existing = document.getElementById("zoneCapModal");
     if (existing) existing.remove();
     const modal = document.createElement("div");
@@ -4724,16 +4724,39 @@ function openZoneCapModal(zoneId, zoneName, maxPallets, maxBoxes) {
     modal.className = "modal-overlay show";
     modal.innerHTML = `\n    <div class="modal-box" style="max-width:400px">\n      <div class="modal-header">\n        <span>ตั้งค่าความจุโซน: ${zoneName}</span>\n        <button class="modal-close" onclick="document.getElementById('zoneCapModal').remove()">✕</button>\n      </div>\n      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;padding:20px">\n        <label style="font-size:13px;font-weight:600">จำนวนพาเลทสูงสุด\n          <input id="zcMaxPallets" type="number" min="0" value="${maxPallets}" class="form-input" style="margin-top:4px">\n          <small style="color:var(--muted)">ใส่ 0 = ไม่จำกัด</small>\n        </label>\n        <label style="font-size:13px;font-weight:600">จำนวนกล่องสูงสุด\n          <input id="zcMaxBoxes" type="number" min="0" value="${maxBoxes}" class="form-input" style="margin-top:4px">\n          <small style="color:var(--muted)">ใส่ 0 = ไม่จำกัด</small>\n        </label>\n      </div>\n      <div class="modal-footer">\n        <button class="btn" onclick="saveZoneCapacity('${zoneId}')">บันทึก</button>\n        <button class="btn btn-outline" onclick="document.getElementById('zoneCapModal').remove()">ยกเลิก</button>\n      </div>\n    </div>`;
     document.body.appendChild(modal);
+    modal.querySelector(".modal-body")?.insertAdjacentHTML("beforeend", `
+      <label style="font-size:13px;font-weight:600">หน่วยหลักสำหรับแจ้งความจุ
+        <select id="zcCapacityUnit" class="form-input" style="margin-top:4px">
+          <option value="Pallet" ${capacityUnit === "Pallet" ? "selected" : ""}>พาเลท</option>
+          <option value="Area" ${capacityUnit === "Area" ? "selected" : ""}>พื้นที่ (ตร.ม.)</option>
+          <option value="Volume" ${capacityUnit === "Volume" ? "selected" : ""}>ปริมาตร (ลบ.ม.)</option>
+        </select>
+      </label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <label style="font-size:13px;font-weight:600">พื้นที่สูงสุด (ตร.ม.)
+          <input id="zcMaxAreaSqm" type="number" min="0" step="0.01" value="${maxAreaSqm}" class="form-input" style="margin-top:4px">
+        </label>
+        <label style="font-size:13px;font-weight:600">ปริมาตรสูงสุด (ลบ.ม.)
+          <input id="zcMaxVolumeCbm" type="number" min="0" step="0.01" value="${maxVolumeCbm}" class="form-input" style="margin-top:4px">
+        </label>
+      </div>
+      <small style="color:var(--muted);margin-top:-8px">ข้อมูลพื้นที่/ปริมาตรเป็นค่าเตรียมไว้ ใช้เมื่อเริ่มบันทึกขนาด Lot</small>`);
 }
 
 async function saveZoneCapacity(zoneId) {
     const maxPallets = parseInt(document.getElementById("zcMaxPallets")?.value) || 0;
     const maxBoxes = parseInt(document.getElementById("zcMaxBoxes")?.value) || 0;
+    const maxAreaSqm = Number(document.getElementById("zcMaxAreaSqm")?.value) || 0;
+    const maxVolumeCbm = Number(document.getElementById("zcMaxVolumeCbm")?.value) || 0;
+    const capacityUnit = document.getElementById("zcCapacityUnit")?.value || "Pallet";
     try {
         await api("/api/warehouse/zone/update", {
             zoneId: zoneId,
             maxPallets: maxPallets,
             maxBoxes: maxBoxes,
+            maxAreaSqm: maxAreaSqm,
+            maxVolumeCbm: maxVolumeCbm,
+            capacityUnit: capacityUnit,
             userId: state.currentUserId
         });
         document.getElementById("zoneCapModal")?.remove();
@@ -5695,12 +5718,16 @@ async function confirmPickerAssign(locId, level, isFlexible = false) {
     if (!houseNumber || !loc) return;
     const pieces = isFlexible ? Number(window.prompt("จำนวนชิ้นของ Lot นี้", "1")) || 0 : 0;
     if (isFlexible && pieces < 1) return toast("กรุณาระบุจำนวนชิ้นมากกว่า 0", "error");
+    const areaSqm = isFlexible ? Number(window.prompt("พื้นที่ใช้โดยประมาณ (ตร.ม.) — เว้นว่างได้", "")) || 0 : 0;
+    const volumeCbm = isFlexible ? Number(window.prompt("ปริมาตรโดยประมาณ (ลบ.ม.) — เว้นว่างได้", "")) || 0 : 0;
     try {
         await api("/api/warehouse/location/assign", {
             locationId: locId,
             level: level,
             houseNumber: houseNumber,
-            pieces: pieces
+            pieces: pieces,
+            areaSqm: areaSqm,
+            volumeCbm: volumeCbm
         });
         toast(`จัดเก็บ ${houseNumber} ที่ ${loc.code}${isFlexible ? ` · ${pieces} ชิ้น` : `-L${level}`} แล้ว`);
         modal.classList.remove("show");
