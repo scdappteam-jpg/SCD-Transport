@@ -4927,7 +4927,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/location/assign") {
         const payload = await parseBody(req);
-        const {locationId: locationId, level: level, houseNumber: houseNumber, pallets: pallets, boxes: boxes, pieces: pieces} = payload;
+        const {locationId: locationId, level: level, houseNumber: houseNumber, pallets: pallets, boxes: boxes, pieces: pieces, areaSqm: areaSqm, volumeCbm: volumeCbm} = payload;
         if (!locationId || !houseNumber) return sendJson(res, 400, {
             error: "locationId and houseNumber required"
         });
@@ -4953,13 +4953,17 @@ async function handleApi(req, res, pathname) {
         const palletCount = Number(pallets) || 0;
         const boxCount = Number(boxes) || 0;
         const pieceCount = Number(pieces) || boxCount || 0;
+        const areaCount = Math.max(0, Number(areaSqm) || 0);
+        const volumeCount = Math.max(0, Number(volumeCbm) || 0);
         loc.occupiedBy.push({
             houseNumber: houseNumber,
             level: isFlexible ? null : lvl,
             since: nowIso(),
             pallets: palletCount,
             boxes: boxCount,
-            pieces: pieceCount
+            pieces: pieceCount,
+            areaSqm: areaCount,
+            volumeCbm: volumeCount
         });
         const job = (db.jobs || []).find(j => j.houseNumber === houseNumber);
         if (job) {
@@ -4968,6 +4972,8 @@ async function handleApi(req, res, pathname) {
             job.warehousePallets = palletCount;
             job.warehouseBoxes = boxCount;
             job.warehousePieces = pieceCount;
+            job.warehouseAreaSqm = areaCount;
+            job.warehouseVolumeCbm = volumeCount;
             job.updatedAt = nowIso();
         }
         logActivity(db, {
@@ -4978,6 +4984,7 @@ async function handleApi(req, res, pathname) {
             pallets: palletCount,
             boxes: boxCount,
             pieces: pieceCount
+            , areaSqm: areaCount, volumeCbm: volumeCount
         });
         whLog(db, {
             action: "assign",
@@ -4987,6 +4994,8 @@ async function handleApi(req, res, pathname) {
             pallets: palletCount,
             boxes: boxCount,
             pieces: pieceCount,
+            areaSqm: areaCount,
+            volumeCbm: volumeCount,
             storageMode: isFlexible ? "Flexible" : "Fixed",
             userId: payload.userId
         });
@@ -5033,7 +5042,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/zone/update") {
         const payload = await parseBody(req);
-        const {zoneId: zoneId, name: name, color: color, mapOrder: mapOrder, canvasX: canvasX, canvasY: canvasY, userId: userId, maxPallets: maxPallets, maxBoxes: maxBoxes, rows: rows, cols: cols} = payload;
+        const {zoneId: zoneId, name: name, color: color, mapOrder: mapOrder, canvasX: canvasX, canvasY: canvasY, userId: userId, maxPallets: maxPallets, maxBoxes: maxBoxes, maxAreaSqm: maxAreaSqm, maxVolumeCbm: maxVolumeCbm, capacityUnit: capacityUnit, rows: rows, cols: cols} = payload;
         if (!zoneId) return sendJson(res, 400, {
             error: "zoneId required"
         });
@@ -5067,6 +5076,9 @@ async function handleApi(req, res, pathname) {
         if (maxBoxes !== undefined) {
             zone.maxBoxes = Number(maxBoxes) || 0;
         }
+        if (maxAreaSqm !== undefined) zone.maxAreaSqm = Math.max(0, Number(maxAreaSqm) || 0);
+        if (maxVolumeCbm !== undefined) zone.maxVolumeCbm = Math.max(0, Number(maxVolumeCbm) || 0);
+        if ([ "Pallet", "Area", "Volume" ].includes(capacityUnit)) zone.capacityUnit = capacityUnit;
         if (rows !== undefined || cols !== undefined) {
             const nextRows = rows === undefined ? zone.rows : Math.max(1, Number(rows) || 1);
             const nextCols = cols === undefined ? zone.cols : Math.max(1, Number(cols) || 1);
@@ -5151,25 +5163,38 @@ async function handleApi(req, res, pathname) {
             const zoneJobs = jobs.filter(j => j.warehouseZoneId === zone.id && ACTIVE.has(j.status));
             const usedPallets = zoneJobs.reduce((s, j) => s + (Number(j.warehousePallets) || 0), 0);
             const usedBoxes = zoneJobs.reduce((s, j) => s + (Number(j.warehouseBoxes) || 0), 0);
+            const usedAreaSqm = zoneJobs.reduce((s, j) => s + (Number(j.warehouseAreaSqm) || 0), 0);
+            const usedVolumeCbm = zoneJobs.reduce((s, j) => s + (Number(j.warehouseVolumeCbm) || 0), 0);
             const zoneLocs = locations.filter(l => l.zoneId === zone.id);
             const houseNumbersInLocations = new Set;
             zoneLocs.forEach(l => l.occupiedBy.forEach(o => houseNumbersInLocations.add(o.houseNumber)));
-            let extraPallets = 0, extraBoxes = 0;
+            let extraPallets = 0, extraBoxes = 0, extraAreaSqm = 0, extraVolumeCbm = 0;
             for (const hn of houseNumbersInLocations) {
                 const j = jobs.find(jj => jj.houseNumber === hn && !jj.warehouseZoneId && ACTIVE.has(jj.status));
                 if (j) {
                     const locEntry = zoneLocs.flatMap(l => l.occupiedBy).find(o => o.houseNumber === hn);
                     extraPallets += Number(locEntry?.pallets) || 0;
                     extraBoxes += Number(locEntry?.boxes) || 0;
+                    extraAreaSqm += Number(locEntry?.areaSqm) || 0;
+                    extraVolumeCbm += Number(locEntry?.volumeCbm) || 0;
                 }
             }
             const totalPallets = usedPallets + extraPallets;
             const totalBoxes = usedBoxes + extraBoxes;
+            const totalAreaSqm = usedAreaSqm + extraAreaSqm;
+            const totalVolumeCbm = usedVolumeCbm + extraVolumeCbm;
             const ratio = config.palletToBoxRatio || 10;
             const maxPallets = zone.maxPallets || 0;
             const maxBoxes = zone.maxBoxes || 0;
+            const maxAreaSqm = zone.maxAreaSqm || 0;
+            const maxVolumeCbm = zone.maxVolumeCbm || 0;
+            const capacityUnit = [ "Pallet", "Area", "Volume" ].includes(zone.capacityUnit) ? zone.capacityUnit : "Pallet";
             let fillPct = 0;
-            if (maxPallets > 0) {
+            if (capacityUnit === "Area" && maxAreaSqm > 0) {
+                fillPct = Math.min(100, Math.round(totalAreaSqm / maxAreaSqm * 100));
+            } else if (capacityUnit === "Volume" && maxVolumeCbm > 0) {
+                fillPct = Math.min(100, Math.round(totalVolumeCbm / maxVolumeCbm * 100));
+            } else if (maxPallets > 0) {
                 const equiv = totalPallets + totalBoxes / ratio;
                 fillPct = Math.min(100, Math.round(equiv / maxPallets * 100));
             }
@@ -5189,8 +5214,13 @@ async function handleApi(req, res, pathname) {
                 color: zone.color,
                 maxPallets: maxPallets,
                 maxBoxes: maxBoxes,
+                maxAreaSqm: maxAreaSqm,
+                maxVolumeCbm: maxVolumeCbm,
+                capacityUnit: capacityUnit,
                 usedPallets: totalPallets,
                 usedBoxes: totalBoxes,
+                usedAreaSqm: totalAreaSqm,
+                usedVolumeCbm: totalVolumeCbm,
                 fillPct: fillPct,
                 trafficLight: trafficLight,
                 houseCount: houseNumbersInLocations.size,
