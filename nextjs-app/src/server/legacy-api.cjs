@@ -5273,8 +5273,7 @@ async function handleApi(req, res, pathname) {
         });
         return sendJson(res, 200, {
             ok: true,
-            zones: result,
-            config: config
+            zones: result
         });
     }
     if (req.method === "POST" && pathname === "/api/warehouse/overlay/create") {
