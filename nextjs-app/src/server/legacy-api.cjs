@@ -1505,6 +1505,29 @@ function detectXlsxKind(rows) {
     return "";
 }
 
+function consolPackageInfo(row, map) {
+    const packagePattern = /^(PLT|PALLET|CTN|CTNS|CARTON|CARTONS)$/i;
+    const start = Math.max(0, (map.etd >= 0 ? map.etd : 30) - 1);
+    const end = map.grs > start ? map.grs : Math.min(row.length, start + 8);
+    let packageIndex = -1;
+    for (let i = start; i < end; i++) {
+        if (packagePattern.test(String(row[i] == null ? "" : row[i]).trim())) {
+            packageIndex = i;
+            break;
+        }
+    }
+    if (packageIndex < 0) return { packageType: "", pieces: "" };
+    let pieces = "";
+    for (let i = packageIndex + 1; i < end; i++) {
+        const value = xlsxNumStr(row[i]);
+        if (/^\d+(?:\.\d+)?$/.test(value) && Number(value) > 0) {
+            pieces = value;
+            break;
+        }
+    }
+    return { packageType: String(row[packageIndex]).trim().toUpperCase(), pieces };
+}
+
 function consolXlsxToCsv(rows) {
     const out = [ [ "IC", "IC", "MAWB" ] ];
     const csvCell = v => {
@@ -1526,11 +1549,6 @@ function consolXlsxToCsv(rows) {
                 grs: labels.indexOf("GRS WGT"),
                 vol: labels.indexOf("VOL WGT"),
                 cbm: labels.indexOf("CBM"),
-                // Consol Planning stores the package type in column AF.
-                // Use the column explicitly instead of assuming it follows ETD.
-                pkg: 31,
-                // The quantity matching CTN/PLT is stored in column AH.
-                pcs: 33,
                 cin: labels.indexOf("EDOC_CIN"),
                 inv: labels.findIndex(l => l.startsWith("EDOC_(")),
                 desc: labels.indexOf("DESC")
@@ -1544,10 +1562,11 @@ function consolXlsxToCsv(rows) {
         const cinVal = S(map.cin);
         const dgVal = S(map.dg).toUpperCase();
         const mawbVal = xlsxNumStr(cell(map.mawb));
+        const packageInfo = consolPackageInfo(r, map);
         const isDetail = cinVal === "✓" || cinVal === "✗" || /^(N|L|LN|DG)$/.test(dgVal) && /^[A-Z0-9]{6,}$/i.test(mawbVal);
         if (isDetail) {
             if (!mawbVal || !/^[A-Z0-9-]{6,}$/i.test(mawbVal)) continue;
-            out.push([ "", xlsxDateStr(cell(map.ic)), mawbVal, dgVal || "N", "", S(map.flt), S(map.fltDate), S(map.dest), xlsxNumStr(cell(map.pcs)), S(map.pkg), "", "", xlsxNumStr(cell(map.grs)), xlsxNumStr(cell(map.vol)), xlsxNumStr(cell(map.cbm)), "", cinVal, S(map.inv), S(map.desc) ]);
+            out.push([ "", xlsxDateStr(cell(map.ic)), mawbVal, dgVal || "N", "", S(map.flt), S(map.fltDate), S(map.dest), packageInfo.pieces, packageInfo.packageType, "", "", xlsxNumStr(cell(map.grs)), xlsxNumStr(cell(map.vol)), xlsxNumStr(cell(map.cbm)), "", cinVal, S(map.inv), S(map.desc) ]);
         } else if (mawbVal) {
             const ic = xlsxNumStr(cell(map.ic)) || mawbVal;
             if (!/^[A-Z0-9]/i.test(ic) || /CONSOL|REPORT/i.test(ic)) continue;
