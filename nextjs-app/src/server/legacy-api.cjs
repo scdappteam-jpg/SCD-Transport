@@ -3178,6 +3178,22 @@ async function handleApi(req, res, pathname) {
         }
         const kind = detectXlsxKind(rows);
         if (kind === "consol") {
+            // A controlled replacement is used for a full daily planning file.
+            // Keep master/configuration data such as users and warehouse maps,
+            // but discard operational records that reference the previous jobs.
+            const replacedPreviousJobs = Boolean(payload.replaceAll);
+            if (replacedPreviousJobs) {
+                db.jobs = [];
+                db.billing = [];
+                db.loadPlans = [];
+                db.taskGroups = [];
+                db.attachments = [];
+                db.activityLogs = [];
+                db.importChanges = [];
+                db.importHistory = [];
+                db.alerts = [];
+                db.notifications = [];
+            }
             const result = importGlobalConsolRows(db, consolXlsxToCsv(rows));
             const history = recordImportHistory(db, result, payload.fileName || "Consol Planning.xlsx", "Manual");
             const criticalChanges = result.changes.filter(change => change.changes.some(item => item !== "NEW_JOB"));
@@ -3193,6 +3209,7 @@ async function handleApi(req, res, pathname) {
                 imported: result.imported.length,
                 newJobs: result.newJobs,
                 changedJobs: result.changedJobs || 0,
+                replacedPreviousJobs: replacedPreviousJobs,
                 changes: result.changes,
                 history: history,
                 dashboard: buildDashboard(db)
