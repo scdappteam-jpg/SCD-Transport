@@ -5155,9 +5155,6 @@ async function handleApi(req, res, pathname) {
         const zones = db.warehouseMap?.zones || [];
         const locations = db.warehouseMap?.locations || [];
         const jobs = db.jobs || [];
-        const config = db.warehouseConfig || {
-            palletToBoxRatio: 10
-        };
         const ACTIVE = new Set([ "Inbound", "Stored", "ReadyForTerminal", "Assigned" ]);
         const result = zones.map(zone => {
             const zoneJobs = jobs.filter(j => j.warehouseZoneId === zone.id && ACTIVE.has(j.status));
@@ -5183,7 +5180,6 @@ async function handleApi(req, res, pathname) {
             const totalBoxes = usedBoxes + extraBoxes;
             const totalAreaSqm = usedAreaSqm + extraAreaSqm;
             const totalVolumeCbm = usedVolumeCbm + extraVolumeCbm;
-            const ratio = config.palletToBoxRatio || 10;
             const maxPallets = zone.maxPallets || 0;
             const maxBoxes = zone.maxBoxes || 0;
             const maxAreaSqm = zone.maxAreaSqm || 0;
@@ -5195,8 +5191,9 @@ async function handleApi(req, res, pathname) {
             } else if (capacityUnit === "Volume" && maxVolumeCbm > 0) {
                 fillPct = Math.min(100, Math.round(totalVolumeCbm / maxVolumeCbm * 100));
             } else if (maxPallets > 0) {
-                const equiv = totalPallets + totalBoxes / ratio;
-                fillPct = Math.min(100, Math.round(equiv / maxPallets * 100));
+                // Cartons have no fixed pallet conversion. Capacity reflects only
+                // pallets confirmed by warehouse staff after physical placement.
+                fillPct = Math.min(100, Math.round(totalPallets / maxPallets * 100));
             }
             const trafficLight = fillPct >= 90 ? "red" : fillPct >= 70 ? "yellow" : "green";
             const houses = zoneJobs.map(j => ({

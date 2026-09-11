@@ -4511,22 +4511,19 @@ async function seedWh3SketchZones() {
 async function renderWarehouseStatus() {
     const container = document.querySelector("#view-wh-status");
     if (!container) return;
-    let zonesData = [], config = {
-        palletToBoxRatio: 10
-    };
+    let zonesData = [];
     try {
-        const [capRes, cfgRes] = await Promise.all([ fetch(API_BASE + "/api/warehouse/zones/capacity"), fetch(API_BASE + "/api/warehouse/config") ]);
+        const capRes = await fetch(API_BASE + "/api/warehouse/zones/capacity");
         zonesData = (await capRes.json()).zones || [];
-        config = (await cfgRes.json()).config || {
-            palletToBoxRatio: 10
-        };
     } catch (e) {
         container.innerHTML = `<div style="padding:20px;color:var(--danger)">โหลดข้อมูลล้มเหลว: ${e.message}</div>`;
         return;
     }
     if (!whMapState.zones?.length) await loadWarehouseMap();
     const isAdmin = state.currentRole === "Admin";
-    const ratio = config.palletToBoxRatio || 10;
+    // Kept only while the legacy toolbar template is being rendered below.
+    // Cartons are no longer converted to pallets for warehouse capacity.
+    const ratio = 0;
     const statsHtml = `\n    <div class="wh-status-header">\n      <div class="wh-stat-card">\n        <i data-lucide="warehouse"></i>\n        <div><div class="wh-stat-num">${zonesData.length}</div><small>โซน</small></div>\n      </div>\n      <div class="wh-stat-card">\n        <i data-lucide="layers"></i>\n        <div><div class="wh-stat-num">${zonesData.reduce((s, z) => s + z.usedPallets, 0)}</div><small>พาเลทในคลัง</small></div>\n      </div>\n      <div class="wh-stat-card">\n        <i data-lucide="package"></i>\n        <div><div class="wh-stat-num">${zonesData.reduce((s, z) => s + z.usedBoxes, 0)}</div><small>กล่องในคลัง</small></div>\n      </div>\n      <div class="wh-stat-card ${whMapState.locations?.filter(l => l.occupiedBy?.length === 0).length > 0 ? "free" : ""}">\n        <i data-lucide="layout-grid"></i>\n        <div>\n          <div class="wh-stat-num">${whMapState.locations?.filter(l => l.occupiedBy?.length === 0).length || 0}</div>\n          <small>ช่องว่าง</small>\n        </div>\n      </div>\n    </div>`;
     const toolbarHtml = `\n    <div class="whs-tabs">\n      <button class="whs-tab active" id="whsTabMap" onclick="whsShowTab('map')">\n        <i data-lucide="map" style="width:14px"></i> แผนที่คลัง\n      </button>\n      <button class="whs-tab" id="whsTabCap" onclick="whsShowTab('cap')">\n        <i data-lucide="layers" style="width:14px"></i> ความจุโซน\n      </button>\n      <div style="flex:1"></div>\n      <button class="btn btn-sm" onclick="renderWarehouseStatus()" style="margin-left:8px">\n        <i data-lucide="refresh-cw" style="width:13px"></i> รีเฟรช\n      </button>\n      ${isAdmin ? `\n        <button class="btn btn-sm btn-outline" onclick="openZoneCapTable()">\n          <i data-lucide="table-2" style="width:13px"></i> ตั้งค่าความจุ\n        </button>\n        <button class="btn btn-sm btn-outline" onclick="openZoneRatioModal(${ratio})">⚙️ อัตราส่วน</button>\n      ` : ""}\n    </div>`;
     const WH_OVERLAY_ICONS = {
@@ -4609,6 +4606,7 @@ async function renderWarehouseStatus() {
     const capViewHtml = `<div class="zcb-grid" id="whsCapView">\n    ${zonesData.length ? capBlocks : "<div style='padding:40px;text-align:center;color:var(--muted)'>ยังไม่มีโซน</div>"}\n  </div>`;
     const noZonesHtml = !mapZones.length && !zonesData.length ? `\n    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:16px;text-align:center">\n      <i data-lucide="warehouse" style="width:48px;height:48px;color:#94a3b8"></i>\n      <div style="font-size:18px;font-weight:700;color:var(--ink)">ยังไม่มีโซนคลัง</div>\n      <div style="font-size:13px;color:var(--muted);max-width:320px">ไปที่ <b>แผนที่คลัง</b> เพื่อสร้างโซนและช่องจัดเก็บก่อน แล้วค่อยกลับมาดูสถานะที่หน้านี้</div>\n      <button onclick="setView('warehouse')" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px">\n        <i data-lucide="map" style="width:14px;height:14px"></i> ไปที่แผนที่คลัง →\n      </button>\n    </div>` : "";
     container.innerHTML = `\n    <div class="wh-status-layout" style="padding:20px;display:flex;flex-direction:column;gap:16px;min-height:calc(100vh - 120px)">\n      ${statsHtml}\n      ${noZonesHtml || toolbarHtml + `\n      <div id="whsMapPanel" style="min-height:520px;display:flex;flex-direction:column">${mapViewHtml}</div>\n      <div id="whsCapPanel" style="display:none">${capViewHtml}</div>`}\n    </div>`;
+    container.querySelector('[onclick^="openZoneRatioModal"]')?.remove();
     lucide.createIcons();
 }
 
