@@ -1585,6 +1585,8 @@ function consolXlsxToCsv(rows) {
                 // Consol Planning stores the package type in column AF.
                 // Use the column explicitly instead of assuming it follows ETD.
                 pkg: 31,
+                // The quantity matching CTN/PLT is stored in column AH.
+                pcs: 33,
                 cin: labels.indexOf("EDOC_CIN"),
                 inv: labels.findIndex(l => l.startsWith("EDOC_(")),
                 desc: labels.indexOf("DESC")
@@ -1601,7 +1603,7 @@ function consolXlsxToCsv(rows) {
         const isDetail = cinVal === "✓" || cinVal === "✗" || /^(N|L|LN|DG)$/.test(dgVal) && /^[A-Z0-9]{6,}$/i.test(mawbVal);
         if (isDetail) {
             if (!mawbVal || !/^[A-Z0-9-]{6,}$/i.test(mawbVal)) continue;
-            out.push([ "", xlsxDateStr(cell(map.ic)), mawbVal, dgVal || "N", "", S(map.flt), S(map.fltDate), S(map.dest), xlsxNumStr(cell(map.etd)), S(map.pkg), "", "", xlsxNumStr(cell(map.grs)), xlsxNumStr(cell(map.vol)), xlsxNumStr(cell(map.cbm)), "", cinVal, S(map.inv), S(map.desc) ]);
+            out.push([ "", xlsxDateStr(cell(map.ic)), mawbVal, dgVal || "N", "", S(map.flt), S(map.fltDate), S(map.dest), xlsxNumStr(cell(map.pcs)), S(map.pkg), "", "", xlsxNumStr(cell(map.grs)), xlsxNumStr(cell(map.vol)), xlsxNumStr(cell(map.cbm)), "", cinVal, S(map.inv), S(map.desc) ]);
         } else if (mawbVal) {
             const ic = xlsxNumStr(cell(map.ic)) || mawbVal;
             if (!/^[A-Z0-9]/i.test(ic) || /CONSOL|REPORT/i.test(ic)) continue;
