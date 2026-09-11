@@ -10183,6 +10183,11 @@ async function openWarehouseReservationModal(jobs) {
     modal.className = "modal-overlay show";
     modal.innerHTML = `<div class="modal-box" style="max-width:760px"><div class="modal-header"><span>📌 จองพื้นที่ล่วงหน้า</span><button class="modal-close" onclick="document.getElementById('warehouseReservationModal').remove()">✕</button></div><div class="modal-body" style="padding:18px 20px"><p style="margin:0 0 14px;color:var(--muted);font-size:13px">เลือกโซนให้ House ที่ยืนยันแล้ว และกรอกพาเลทเฉพาะเมื่อทราบจริง — จำนวนกล่องจะไม่ถูกแปลงเป็นพาเลท</p><div style="display:grid;gap:9px">${list.map((job, index) => { const preferred = defaultReservationZone(job, zones); return `<div style="display:grid;grid-template-columns:1.1fr 1.2fr 130px;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px"><div><strong>${safeHtml(job.houseNumber)}</strong><small style="display:block;color:var(--muted)">${safeHtml(job.customerName || "-")}</small></div><select class="form-input wh-reserve-zone" data-house="${safeHtml(job.houseNumber)}">${zones.map(zone => `<option value="${safeHtml(zone.id)}" ${zone.id === preferred?.id ? "selected" : ""}>${safeHtml(zone.name)}</option>`).join("")}</select><input class="form-input wh-reserve-pallet" data-house="${safeHtml(job.houseNumber)}" type="number" min="0" step="1" placeholder="พาเลท (ถ้าทราบ)"></div>`; }).join("")}</div></div><div class="modal-footer"><button class="btn" onclick="saveWarehouseReservations()">บันทึกการจอง</button><button class="btn btn-outline" onclick="document.getElementById('warehouseReservationModal').remove()">ข้ามก่อน</button></div></div>`;
     document.body.appendChild(modal);
+    Object.assign(modal.querySelector(".modal-box")?.style || {}, {
+        background: "#ffffff",
+        opacity: "1",
+        boxShadow: "0 24px 70px rgba(15, 23, 42, .28)"
+    });
 }
 
 async function saveWarehouseReservations() {
