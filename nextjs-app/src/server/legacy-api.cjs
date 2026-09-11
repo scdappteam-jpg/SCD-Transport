@@ -2191,10 +2191,16 @@ function ensureWarehouseLayoutBuildingGroups(map) {
     if (map?.layoutVersion !== "2026-09-01") return false;
     let changed = false;
     const prefixToBuilding = { R001: "building-1", R002: "building-1", R003: "building-1", R004: "building-1", LITHIUM: "building-2", STORAGE: "building-2", WD: "building-3", RECEIVING: "building-3" };
+    const flexiblePrefixes = new Set([ "R003", "R004", "LITHIUM", "STORAGE", "WD" ]);
     for (const zone of map.zones || []) {
         const buildingId = prefixToBuilding[zone.prefix];
         if (buildingId && zone.buildingId !== buildingId) {
             zone.buildingId = buildingId;
+            changed = true;
+        }
+        const storageMode = flexiblePrefixes.has(zone.prefix) ? "Flexible" : "Fixed";
+        if (zone.storageMode !== storageMode) {
+            zone.storageMode = storageMode;
             changed = true;
         }
     }
@@ -4993,7 +4999,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/location/assign") {
         const payload = await parseBody(req);
-        const {locationId: locationId, level: level, houseNumber: houseNumber, pallets: pallets, boxes: boxes} = payload;
+        const {locationId: locationId, level: level, houseNumber: houseNumber, pallets: pallets, boxes: boxes, pieces: pieces} = payload;
         if (!locationId || !houseNumber) return sendJson(res, 400, {
             error: "locationId and houseNumber required"
         });
@@ -5002,11 +5008,13 @@ async function handleApi(req, res, pathname) {
         if (!loc) return sendJson(res, 404, {
             error: "Location not found"
         });
+        const zone = (db.warehouseMap?.zones || []).find(item => item.id === loc.zoneId);
+        const isFlexible = zone?.storageMode === "Flexible";
         const lvl = Number(level) || 1;
-        if (lvl > loc.maxLevels) return sendJson(res, 400, {
+        if (!isFlexible && lvl > loc.maxLevels) return sendJson(res, 400, {
             error: `ช่องนี้รองรับสูงสุด ${loc.maxLevels} ระดับ`
         });
-        if (loc.occupiedBy.some(o => o.level === lvl)) return sendJson(res, 409, {
+        if (!isFlexible && loc.occupiedBy.some(o => o.level === lvl)) return sendJson(res, 409, {
             error: `ระดับ ${lvl} ของ ${loc.code} ถูกใช้แล้ว`
         });
         const allLocs = db.warehouseMap.locations;
@@ -5016,36 +5024,42 @@ async function handleApi(req, res, pathname) {
         }
         const palletCount = Number(pallets) || 0;
         const boxCount = Number(boxes) || 0;
+        const pieceCount = Number(pieces) || boxCount || 0;
         loc.occupiedBy.push({
             houseNumber: houseNumber,
-            level: lvl,
+            level: isFlexible ? null : lvl,
             since: nowIso(),
             pallets: palletCount,
-            boxes: boxCount
+            boxes: boxCount,
+            pieces: pieceCount
         });
         const job = (db.jobs || []).find(j => j.houseNumber === houseNumber);
         if (job) {
-            job.warehouseLocation = `${loc.code}-L${lvl}`;
+            job.warehouseLocation = isFlexible ? loc.code : `${loc.code}-L${lvl}`;
             job.warehouseZoneId = loc.zoneId;
             job.warehousePallets = palletCount;
             job.warehouseBoxes = boxCount;
+            job.warehousePieces = pieceCount;
             job.updatedAt = nowIso();
         }
         logActivity(db, {
             houseNumber: houseNumber,
             activityType: "LocationAssigned",
             locationCode: loc.code,
-            level: lvl,
+            level: isFlexible ? null : lvl,
             pallets: palletCount,
-            boxes: boxCount
+            boxes: boxCount,
+            pieces: pieceCount
         });
         whLog(db, {
             action: "assign",
             houseNumber: houseNumber,
             locationCode: loc.code,
-            level: lvl,
+            level: isFlexible ? null : lvl,
             pallets: palletCount,
             boxes: boxCount,
+            pieces: pieceCount,
+            storageMode: isFlexible ? "Flexible" : "Fixed",
             userId: payload.userId
         });
         writeDb(db);
