@@ -978,7 +978,8 @@ function buildDashboard(db) {
         csApproved: jobs.filter(job => [ "CSApproved", "ManualExtraApproved" ].includes(job.approvalStatus)).length,
         afterFinalRound: jobs.filter(job => job.afterFinalRound).length,
         mustReturnWh3: jobs.filter(job => job.mustReturnWh3).length,
-        missingDoorPhoto: jobs.filter(job => job.doorClosedPhotoRequired && !job.doorClosedPhotoAt && [ "CargoLoaded", "Delivered" ].includes(job.status)).length,
+        // Keep legacy values while the pickup flow uses Loading → PickedUp.
+        missingDoorPhoto: jobs.filter(job => job.doorClosedPhotoRequired && !job.doorClosedPhotoAt && [ "CargoLoaded", "Delivered", "Loading", "PickedUp" ].includes(job.status)).length,
         paused: jobs.filter(job => job.kpiPaused).length,
         documentReady: jobs.filter(job => job.wh3Documents?.ready || job.wh3PreDispatchReady).length,
         documentPending: jobs.filter(job => job.terminalDestination && !(job.wh3Documents?.ready || job.wh3PreDispatchReady)).length,
@@ -1052,7 +1053,10 @@ function buildDashboard(db) {
 }
 
 function buildStaffStats(db) {
-    const finishedStatuses = new Set([ "Delivered", "Stored", "ReadyForTerminal", "TerminalArrived", "ReadyForBilling", "InvoiceSent", "Billed" ]);
+    // Pickup work is complete for the driver once every assigned House has
+    // been collected, including the return-to-WH3 and release/dock stages.
+    // Retain legacy Delivered for historical records.
+    const finishedStatuses = new Set([ "Delivered", "PickedUp", "ReturningWH3", "ArrivedWH3", "AwaitingReleaseDocument", "WaitingForDock", "Stored", "ReadyForTerminal", "TerminalArrived", "ReadyForBilling", "InvoiceSent", "Billed" ]);
     return (db.users || []).map(user => {
         const logRows = (db.activityLogs || []).filter(log => log.userId === user.id);
         const houses = new Set(logRows.map(log => log.houseNumber).filter(Boolean));
