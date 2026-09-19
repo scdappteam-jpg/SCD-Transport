@@ -10,6 +10,8 @@ const crypto = require("crypto");
 
 const zlib = require("zlib");
 
+const { createProductionRelationalMirror } = require("./production-relational-mirror.cjs");
+
 const PORT = Number(process.env.PORT || 3e3);
 
 const HOST = process.env.HOST || "0.0.0.0";
@@ -44,6 +46,8 @@ const SUPABASE_STATE_TABLE = process.env.SUPABASE_STATE_TABLE || "app_state";
 
 const SUPABASE_STATE_ID = process.env.SUPABASE_STATE_ID || "scd-transport";
 
+const RELATIONAL_MIRROR_ENABLED = String(process.env.RELATIONAL_MIRROR_ENABLED || "true").toLowerCase() !== "false";
+
 const SCAN_SERVICE_URL = process.env.SCAN_SERVICE_URL || "http://localhost:5000/scan";
 
 const CARTRACK_BASE_URL = (process.env.CARTRACK_BASE_URL || "").replace(/\/$/, "");
@@ -57,6 +61,13 @@ const CARTRACK_DEMO_ENABLED = String(process.env.CARTRACK_DEMO_ENABLED || "false
 let dbCache = null;
 
 let dbPersistPromise = Promise.resolve();
+
+const relationalMirror = createProductionRelationalMirror({
+    url: SUPABASE_URL,
+    key: SUPABASE_KEY,
+    storageDir: STORAGE_DIR,
+    enabled: RELATIONAL_MIRROR_ENABLED
+});
 
 const TERMINAL_REACHED_STATUSES = new Set([ "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ]);
 const WH3_RECEIVED_STATUSES = new Set([ "ReceivedAtWH3", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ]);
@@ -339,12 +350,14 @@ async function loadDbFromSupabase() {
             dbCache = rows[0].data;
             ensureCoreUsers(dbCache);
             ensureDbShape(dbCache);
+            relationalMirror.schedule(dbCache);
             console.log(`[db] Loaded shared data from Supabase (${SUPABASE_STATE_TABLE}/${SUPABASE_STATE_ID}).`);
             return;
         }
         const seed = readDbFromFile();
         dbCache = seed;
         await persistDbToSupabase(seed);
+        relationalMirror.schedule(dbCache);
         console.log(`[db] Seeded Supabase shared data from bundled/runtime db.json.`);
     } catch (err) {
         console.error(`[db] Supabase load failed, using local db.json fallback: ${err.message}`);
@@ -372,6 +385,7 @@ function scheduleSupabasePersist(db) {
 
 async function flushSupabasePersistence() {
     await dbPersistPromise;
+    await relationalMirror.flush();
 }
 
 function readDbFromFile() {
@@ -421,6 +435,7 @@ function writeDb(db) {
         ensureDbShape(db);
         dbCache = db;
         scheduleSupabasePersist(db);
+        relationalMirror.schedule(db);
     }
     try {
         const content = JSON.stringify(db, (k, v) => typeof v === "string" ? v.replace(/[\uFFFD\uFFFE\uFFFF]/g, "") : v);
@@ -2139,7 +2154,17 @@ function buildImportChangeMessage(job, changes, notIssued) {
 function saveBase64File(db, {houseNumber: houseNumber, fileType: fileType, base64: base64, mimeType: mimeType}) {
     if (!base64) return null;
     const clean = String(base64).includes(",") ? String(base64).split(",").pop() : String(base64);
-    const ext = mimeType && mimeType.includes("pdf") ? ".pdf" : ".jpg";
+    const normalizedMimeType = String(mimeType || "image/jpeg").toLowerCase();
+    const extensions = {
+        "application/pdf": ".pdf",
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp"
+    };
+    const ext = extensions[normalizedMimeType];
+    if (!ext) throw new Error("รองรับเฉพาะไฟล์ PDF, JPG, PNG และ WebP");
+    const content = Buffer.from(clean, "base64");
+    if (content.length > 10 * 1024 * 1024) throw new Error("ไฟล์มีขนาดเกิน 10 MB");
     const fileId = `FILE-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
     const folder = path.join(STORAGE_DIR, houseNumber || "unassigned");
     fs.mkdirSync(folder, {
@@ -2147,14 +2172,14 @@ function saveBase64File(db, {houseNumber: houseNumber, fileType: fileType, base6
     });
     const filename = `${fileId}${ext}`;
     const filePath = path.join(folder, filename);
-    fs.writeFileSync(filePath, Buffer.from(clean, "base64"));
+    fs.writeFileSync(filePath, content);
     const url = `/storage/${encodeURIComponent(houseNumber || "unassigned")}/${filename}`;
     const attachment = {
         fileId: fileId,
         houseNumber: houseNumber,
         fileType: fileType,
         url: url,
-        mimeType: mimeType || "image/jpeg",
+        mimeType: normalizedMimeType,
         createdAt: nowIso()
     };
     db.attachments.push(attachment);
@@ -6392,14 +6417,47 @@ function streamFile(res, fullPath) {
     });
 }
 
-function serveStatic(req, res, pathname) {
+function attachmentStorageObjectPath(attachment) {
+    const createdAt = new Date(attachment.createdAt || Date.now());
+    const date = Number.isNaN(createdAt.getTime()) ? new Date() : createdAt;
+    const safeHouse = String(attachment.houseNumber || "unassigned").replace(/[^A-Za-z0-9_-]/g, "_");
+    const filename = String(attachment.url || "").split("/").pop() || `${attachment.fileId || "document"}.bin`;
+    const extension = path.extname(filename).toLowerCase() || ".bin";
+    return `${safeHouse}/${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, "0")}/${attachment.fileId}${extension}`;
+}
+
+async function streamSupabaseAttachment(res, pathname) {
+    if (!supabaseEnabled()) return false;
+    const attachment = (readDb().attachments || []).find(item => item.url === pathname && item.fileId);
+    if (!attachment) return false;
+    const objectPath = attachmentStorageObjectPath(attachment).split("/").map(encodeURIComponent).join("/");
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/scd-documents/${objectPath}`, {
+        headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`
+        }
+    });
+    if (!response.ok) return false;
+    const body = Buffer.from(await response.arrayBuffer());
+    res.writeHead(200, {
+        "Content-Type": response.headers.get("content-type") || attachment.mimeType || "application/octet-stream",
+        "Content-Length": body.length,
+        "Cache-Control": "private, max-age=60"
+    });
+    res.end(body);
+    return true;
+}
+
+async function serveStatic(req, res, pathname) {
     if (pathname.startsWith("/storage/")) {
         const relative = decodeURIComponent(pathname.replace("/storage/", ""));
         const filePath = path.normalize(path.join(STORAGE_DIR, relative));
         if (!filePath.startsWith(STORAGE_DIR)) return sendJson(res, 403, {
             error: "Forbidden"
         });
-        return streamFile(res, filePath);
+        if (fs.existsSync(filePath)) return streamFile(res, filePath);
+        if (await streamSupabaseAttachment(res, pathname)) return;
+        return sendJson(res, 404, { error: "File not found" });
     }
     let file = pathname === "/" || pathname === "/index.html" ? "/index.html" : pathname === "/mobile" || pathname === "/mobile.html" ? "/mobile.html" : pathname === "/web" ? "/index.html" : pathname;
     const fullPath = path.join(__dirname, "public", file);
@@ -6424,7 +6482,7 @@ const requestHandler = async (req, res) => {
         if (url.pathname.startsWith("/api/")) {
             await handleApi(req, res, url.pathname);
         } else {
-            serveStatic(req, res, url.pathname);
+            await serveStatic(req, res, url.pathname);
         }
     } catch (err) {
         console.error("Unhandled server error:", err);
