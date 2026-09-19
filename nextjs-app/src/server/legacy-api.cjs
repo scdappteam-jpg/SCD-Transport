@@ -303,21 +303,32 @@ function sanitizedClone(db) {
 
 async function supabaseRequest(method, query, body) {
     const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_STATE_TABLE}${query}`;
-    const response = await fetch(url, {
-        method: method,
-        headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-            "Content-Type": "application/json",
-            Prefer: "resolution=merge-duplicates,return=representation"
-        },
-        body: body ? JSON.stringify(body) : undefined
-    });
-    if (!response.ok) {
-        const message = await response.text().catch(() => response.statusText);
-        throw new Error(`Supabase ${method} ${response.status}: ${message}`);
+    let lastError;
+    // Render can occasionally lose an outbound connection while waking or
+    // recycling.  A bounded retry prevents a successful in-memory update
+    // from being reported as a failed user action on a transient failure.
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    apikey: SUPABASE_KEY,
+                    Authorization: `Bearer ${SUPABASE_KEY}`,
+                    "Content-Type": "application/json",
+                    Prefer: "resolution=merge-duplicates,return=representation"
+                },
+                body: body ? JSON.stringify(body) : undefined
+            });
+            if (response.ok) return response.status === 204 ? null : response.json();
+            const message = await response.text().catch(() => response.statusText);
+            lastError = new Error(`Supabase ${method} ${response.status}: ${message}`);
+            if (response.status < 500) throw lastError;
+        } catch (err) {
+            lastError = err;
+        }
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
     }
-    return response.status === 204 ? null : response.json();
+    throw lastError || new Error("Supabase request failed");
 }
 
 async function loadDbFromSupabase() {
@@ -528,20 +539,26 @@ function firstDefined(...values) {
 function normalizeCartrackVehicles(payload) {
     const source = Array.isArray(payload) ? payload : firstDefined(payload?.data, payload?.vehicles, payload?.result?.vehicles, payload?.result, payload?.items, []);
     const rows = Array.isArray(source) ? source : [];
-    return rows.map((row, index) => {
+    const vehiclesById = new Map;
+    rows.forEach((row, index) => {
         const location = row.location || row.lastLocation || row.position || row.gps || {};
-        return {
-            id: String(firstDefined(row.id, row.vehicleId, row.unitId, row.deviceId, index + 1)),
-            label: String(firstDefined(row.registrationNumber, row.registration, row.vehicleName, row.name, row.vehicle, row.plateNumber, row.id, "Vehicle " + (index + 1))),
-            driver: firstDefined(row.driver?.name, row.driverName, row.driver, row.currentDriver?.name),
-            status: firstDefined(row.status, row.vehicleStatus, row.currentStatus, row.ignitionStatus, row.ignition),
+        const id = String(firstDefined(row.vehicle_id, row.id, row.vehicleId, row.unitId, row.deviceId, index + 1));
+        const speedKph = firstDefined(row.speedKph, row.speed, row.speedKMH, row.speedKmh);
+        const ignition = firstDefined(row.ignition, row.ignitionStatus);
+        const driverName = [ row.driver?.first_name, row.driver?.last_name ].filter(Boolean).join(" ");
+        vehiclesById.set(id, {
+            id: id,
+            label: String(firstDefined(row.registration, row.registrationNumber, row.vehicleName, row.name, row.vehicle, row.plateNumber, row.id, "Vehicle " + (index + 1))),
+            driver: firstDefined(driverName, row.driver?.name, row.driverName, row.currentDriver?.name),
+            status: firstDefined(row.status, row.vehicleStatus, row.currentStatus, ignition === true ? "IgnitionOn" : ignition === false ? "IgnitionOff" : null),
             latitude: firstDefined(location.latitude, location.lat, row.latitude, row.lat),
             longitude: firstDefined(location.longitude, location.lng, row.longitude, row.lng),
-            speedKph: firstDefined(row.speedKph, row.speed, row.speedKMH, row.speedKmh),
-            updatedAt: firstDefined(location.updatedAt, location.timestamp, row.updatedAt, row.lastUpdated, row.gpsTime, row.timestamp),
-            address: firstDefined(location.address, location.description, row.address, row.locationName)
-        };
+            speedKph: speedKph,
+            updatedAt: firstDefined(location.updated, location.updatedAt, location.timestamp, row.updatedAt, row.lastUpdated, row.gpsTime, row.timestamp),
+            address: firstDefined(location.position_description, location.address, location.description, row.address, row.locationName)
+        });
     });
+    return [ ...vehiclesById.values() ];
 }
 
 async function getCartrackDemoVehicles() {
