@@ -1163,6 +1163,9 @@ function normalizePickupItems(value) {
             houseNumber: houseNumber,
             dest: dest || "",
             destination: dest || "",
+            // dest is the flight destination.  Pickup must always follow the
+            // separately supplied route, which defaults to WH3.
+            pickupDestination: route || "WH3",
             carton: carton || "",
             pickupDate: pickupDate || "",
             route: route || "",
@@ -3378,10 +3381,10 @@ async function handleApi(req, res, pathname) {
                 error: "Signed Cargo Pickup Form photo is required"
             });
         }
-        const nonWh3Rows = normalizePickupItems(payload.pickupItems || "").filter(row => row.destination && String(row.destination).toUpperCase() !== "WH3");
+        const nonWh3Rows = normalizePickupItems(payload.pickupItems || "").filter(row => String(row.pickupDestination || "WH3").toUpperCase() !== "WH3");
         if (nonWh3Rows.length) {
             return sendJson(res, 422, {
-                error: `ตามกฎประชุม สินค้าต้องกลับเข้า WH3 ก่อนส่ง Terminal — พบปลายทางอื่น: ${nonWh3Rows.map(r => r.houseNumber + "→" + r.destination).join(", ")}`
+                error: `ตามกฎประชุม สินค้าต้องกลับเข้า WH3 ก่อนส่ง Terminal — พบเส้นทางอื่น: ${nonWh3Rows.map(r => r.houseNumber + "→" + r.pickupDestination).join(", ")}`
             });
         }
         if (!Array.isArray(payload.doorClosedImages) || !payload.doorClosedImages.length) {
