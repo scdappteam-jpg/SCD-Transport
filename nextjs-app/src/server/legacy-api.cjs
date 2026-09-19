@@ -295,21 +295,22 @@ function sanitizedClone(db) {
 
 async function supabaseRequest(method, query, body) {
     const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_STATE_TABLE}${query}`;
-    const response = await fetch(url, {
-        method: method,
-        headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-            "Content-Type": "application/json",
-            Prefer: "resolution=merge-duplicates,return=representation"
-        },
-        body: body ? JSON.stringify(body) : undefined
-    });
-    if (!response.ok) {
-        const message = await response.text().catch(() => response.statusText);
-        throw new Error(`Supabase ${method} ${response.status}: ${message}`);
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const response = await fetch(url, {
+                method,
+                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=representation" },
+                body: body ? JSON.stringify(body) : undefined
+            });
+            if (response.ok) return response.status === 204 ? null : response.json();
+            const message = await response.text().catch(() => response.statusText);
+            lastError = new Error(`Supabase ${method} ${response.status}: ${message}`);
+            if (response.status < 500) throw lastError;
+        } catch (error) { lastError = error; }
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
     }
-    return response.status === 204 ? null : response.json();
+    throw lastError || new Error("Supabase request failed");
 }
 
 async function loadDbFromSupabase() {
