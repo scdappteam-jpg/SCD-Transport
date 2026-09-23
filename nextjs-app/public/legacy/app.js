@@ -276,7 +276,9 @@ function allowedWebViews(role) {
     if (role === "Check_House") return [ "dashboard", "orders", "alerts" ];
     if (role === "Terminal") return [ "dashboard", "orders", "alerts" ];
     if (role === "Billing") return [ "dashboard", "orders", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr" ];
-    if (role === "CS") return [ "dashboard", "orders" ];
+    // CS owns the confirmation step, but must not be able to open Cargo or
+    // operate the Transport workflow after confirmation.
+    if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
     if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-status", "load-plan", "outbound-open", "attendance", "hr" ];
     return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "fleet-demo", "settings", "load-plan", "outbound-open", "attendance" ];
 }
@@ -727,6 +729,17 @@ function applyDashboardFilterInputs(options = {}) {
 
 function setView(view) {
     if (!pageCopy[view]) return;
+    // Do not rely on hidden navigation alone. Role-specific dashboard cards
+    // and direct URL changes can otherwise render a page outside the user's
+    // workflow (for example CS opening the Cargo form).
+    if (isWebAuthenticated()) {
+        const user = currentWebUser();
+        const allowed = user ? allowedWebViews(user.role) : [];
+        if (user && !allowed.includes(view)) {
+            view = allowed[0] || "dashboard";
+            toast("ไม่มีสิทธิ์เข้าถึงหน้านี้");
+        }
+    }
     state.currentView = view;
     const currentUrl = new URL(window.location.href);
     if (currentUrl.pathname.endsWith("/legacy/index.html")) {
@@ -3069,7 +3082,13 @@ function drawReportTable(ctx, rows, x, y, width) {
 }
 
 function adminUnopenedJobs() {
-    return (state.dashboard?.jobs || []).filter(job => job.csConfirmed && !job.cargoIssuedAt);
+    // The queue used to preserve import order and the UI then showed only
+    // the first 40 records. A job just confirmed by CS could therefore be
+    // absent from the next step. Put newest approvals first so the hand-off
+    // from CS to Transport is always visible immediately.
+    return (state.dashboard?.jobs || [])
+        .filter(job => job.csConfirmed && !job.cargoIssuedAt)
+        .sort((a, b) => new Date(b.csConfirmedAt || b.updatedAt || 0) - new Date(a.csConfirmedAt || a.updatedAt || 0));
 }
 
 function adminIssuedCargoJobs() {
@@ -9633,7 +9652,7 @@ function renderAdminApprovedQueue() {
     const list = $("#adminApprovedQueue");
     if (!list) return;
     const jobs = adminUnopenedJobs();
-    list.innerHTML = jobs.length ? jobs.slice(0, 40).map(job => `\n      <button class="queue-job ${state.selectedHouse === job.houseNumber ? "selected" : ""}" type="button" onclick="selectApprovedJobForCargo('${escapeAttr(job.houseNumber)}')">\n        <span class="queue-main"><strong>${safeHtml(job.houseNumber)}</strong><small>${safeHtml(job.customerName || "-")} · ${safeHtml(job.flightNo || "ยังไม่มี Flight")} · ${safeHtml(job.pieceCount || "-")} ชิ้น</small></span>\n        <span class="queue-tags"><b class="ok">CS อนุมัติแล้ว</b><b>เลือกเปิดใบ</b></span>\n      </button>`).join("") : `<div class="empty-state compact">ไม่มีงานที่ CS อนุมัติรอเปิดใบ Cargo</div>`;
+    list.innerHTML = jobs.length ? jobs.map(job => `\n      <button class="queue-job ${state.selectedHouse === job.houseNumber ? "selected" : ""}" type="button" onclick="selectApprovedJobForCargo('${escapeAttr(job.houseNumber)}')">\n        <span class="queue-main"><strong>${safeHtml(job.houseNumber)}</strong><small>${safeHtml(job.customerName || "-")} · ${safeHtml(job.flightNo || "ยังไม่มี Flight")} · ${safeHtml(job.pieceCount || "-")} ชิ้น</small></span>\n        <span class="queue-tags"><b class="ok">CS อนุมัติแล้ว</b><b>เลือกเปิดใบ</b></span>\n      </button>`).join("") : `<div class="empty-state compact">ไม่มีงานที่ CS อนุมัติรอเปิดใบ Cargo</div>`;
 }
 
 function renderAdminWorkQueue() {
