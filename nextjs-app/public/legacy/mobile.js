@@ -228,6 +228,8 @@ function render() {
     updateInboundInfo();
     updateTerminalRequirements();
     renderGuidedModules();
+    // Dashboard loads asynchronously; refresh the SIT control after driver jobs are available.
+    if (typeof renderSimulatedCheckinControl === "function") renderSimulatedCheckinControl(attState?.currentRecord || null);
     applyLanguage();
 }
 
