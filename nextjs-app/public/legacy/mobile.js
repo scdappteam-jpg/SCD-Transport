@@ -1735,10 +1735,16 @@ function initAttendanceTab() {
     $("#attCheckoutBtn").addEventListener("click", submitAttCheckout);
 }
 
-function isSimulatedCheckinEligible() {
+function simulatedCheckinJob() {
     const user = currentUser();
-    const job = currentPickupJob();
-    return user?.role === "Driver" && /^SIT(?:UI)?[-A-Z0-9]/i.test(String(job?.houseNumber || ""));
+    if (user?.role !== "Driver") return null;
+    const selected = currentPickupJob();
+    if (/^SIT(?:UI)?[-A-Z0-9]/i.test(String(selected?.houseNumber || ""))) return selected;
+    return visibleDriverJobs().find(job => /^SIT(?:UI)?[-A-Z0-9]/i.test(String(job?.houseNumber || ""))) || null;
+}
+
+function isSimulatedCheckinEligible() {
+    return Boolean(simulatedCheckinJob());
 }
 
 function renderSimulatedCheckinControl(record) {
@@ -1966,8 +1972,8 @@ async function submitAttCheckin() {
 
 async function submitSimulatedAttCheckin() {
     const user = currentUser();
-    const job = currentPickupJob();
-    if (!user || !isSimulatedCheckinEligible()) return alert("เช็คอินจำลองใช้ได้เฉพาะงานทดสอบที่มอบหมายให้คุณ");
+    const job = simulatedCheckinJob();
+    if (!user || !job) return alert("เช็คอินจำลองใช้ได้เฉพาะงานทดสอบที่มอบหมายให้คุณ");
     const button = $("#attSimulatedCheckinBtn");
     if (button) {
         button.disabled = true;
