@@ -5,6 +5,7 @@ const state = {
     lang: localStorage.getItem("smartLogisticsLang") || "th",
     pickupStartTime: null,
     cargoLoaded: false,
+    simulatedPickupEvidenceHouse: "",
     outboundUnlockedHouse: "",
     outboundReturnMode: false,
     pickupUnlockedSelection: "",
@@ -683,9 +684,10 @@ function validatePickupFlow({requireLoaded: requireLoaded = false} = {}) {
     if (isSpecialOrWd() && !$("#driverStickerColor").value.trim()) missing.push("กรอกสี Sticker สำหรับงานพิเศษ/WD");
     if (!$("#driverPickupItems").value.trim()) missing.push("เพิ่ม House/Destination อย่างน้อย 1 งาน");
     if (requireLoaded && !state.cargoLoaded) missing.push("กดโหลดสินค้าขึ้นรถก่อนจบงาน");
-    if (requireLoaded && !$("#productImages")?.files?.length) missing.push("แนบรูปสินค้าก่อนจบงาน");
-    if (requireLoaded && !$("#cargoImages")?.files?.length) missing.push("แนบรูปใบ Cargo Pickup Form ที่เซ็นแล้วก่อนจบงาน");
-    if (requireLoaded && !$("#doorClosedImages")?.files?.length) missing.push("แนบรูปปิดประตูตู้/ท้ายรถก่อนจบงาน (กฎ Audit)");
+    const hasSimulatedEvidence = state.simulatedPickupEvidenceHouse === primaryHouseNumber() && isSimulatedPickupEvidenceEligible();
+    if (requireLoaded && !hasSimulatedEvidence && !$("#productImages")?.files?.length) missing.push("แนบรูปสินค้าก่อนจบงาน");
+    if (requireLoaded && !hasSimulatedEvidence && !$("#cargoImages")?.files?.length) missing.push("แนบรูปใบ Cargo Pickup Form ที่เซ็นแล้วก่อนจบงาน");
+    if (requireLoaded && !hasSimulatedEvidence && !$("#doorClosedImages")?.files?.length) missing.push("แนบรูปปิดประตูตู้/ท้ายรถก่อนจบงาน (กฎ Audit)");
     const _dests = pickupRowsFromInputs().map(row => (row.destination || "").toUpperCase()).filter(Boolean);
     const _nonWh3 = _dests.filter(d => d !== "WH3");
     if (_nonWh3.length) missing.push(`ตามกฎประชุม สินค้าต้องกลับเข้า WH3 ก่อนส่ง Terminal — พบปลายทาง ${[ ...new Set(_nonWh3) ].join(", ")} กรุณาเปลี่ยนเป็น WH3`);
@@ -824,6 +826,7 @@ function applyDriverJob(houseNumber) {
     }
     $("#driverEndPlace").value = computedEndPlace() || "คำนวณจากปลายทางของแต่ละ House";
     updatePickupFlowNotice(job);
+    renderSimulatedPickupEvidenceControl();
 }
 
 function primaryHouseNumber() {
@@ -1304,14 +1307,22 @@ function bindEvents() {
         showMobileActionModal("โหลดสินค้าขึ้นรถแล้ว", `บันทึกปลายทาง ${computedEndPlace()} แล้ว ขั้นตอนถัดไปคือถ่ายรูปใบ Cargo/ลายเซ็น และกดจบงาน`);
         toast("โหลดสินค้าขึ้นรถแล้ว / Cargo loaded");
     }));
+    $("#simulatePickupEvidenceBtn")?.addEventListener("click", () => {
+        if (!isSimulatedPickupEvidenceEligible()) return alert("หลักฐานจำลองใช้ได้เฉพาะ House SIT ที่มอบหมายให้คนขับเท่านั้น");
+        state.simulatedPickupEvidenceHouse = primaryHouseNumber();
+        $("#simulatePickupEvidenceBtn").textContent = "🧪 สร้างหลักฐานจำลองแล้ว";
+        toast("สร้างหลักฐานจำลองสำหรับ SIT แล้ว");
+    });
     $("#completePickupBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         validatePickupFlow({
             requireLoaded: true
         });
         const gps = await getGps();
-        const productImages = await filesToCompressedBase64($("#productImages"));
-        const cargoImages = await filesToCompressedBase64($("#cargoImages"));
-        const doorClosedImages = await filesToCompressedBase64($("#doorClosedImages"));
+        const simulation = state.simulatedPickupEvidenceHouse === primaryHouseNumber() && isSimulatedPickupEvidenceEligible();
+        const simulatedImage = { base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL7WQAAAABJRU5ErkJggg==", mimeType: "image/png" };
+        const productImages = simulation ? [ simulatedImage ] : await filesToCompressedBase64($("#productImages"));
+        const cargoImages = simulation ? [ simulatedImage ] : await filesToCompressedBase64($("#cargoImages"));
+        const doorClosedImages = simulation ? [ simulatedImage ] : await filesToCompressedBase64($("#doorClosedImages"));
         await api("/api/pickup/complete", {
             houseNumber: primaryHouseNumber(),
             houseNumbers: pickupHouseNumbers(),
@@ -1330,7 +1341,8 @@ function bindEvents() {
             packageType: $("#driverPackageType").value,
             inspectorName: $("#driverInspectorName").value.trim(),
             receiverName: $("#driverReceiverName").value.trim(),
-            endPlace: computedEndPlace()
+            endPlace: computedEndPlace(),
+            simulation: simulation
         });
         await refresh();
         showMobileActionModal("รับสินค้าครบแล้ว", "ระบบเปลี่ยนสถานะเป็น กำลังกลับ WH3 อัตโนมัติ และเริ่มติดตามการเดินทางกลับคลัง");
@@ -1747,6 +1759,19 @@ function simulatedCheckinJob() {
 
 function isSimulatedCheckinEligible() {
     return Boolean(simulatedCheckinJob());
+}
+
+function isSimulatedPickupEvidenceEligible() {
+    const job = simulatedCheckinJob();
+    return Boolean(job && job.houseNumber === primaryHouseNumber());
+}
+
+function renderSimulatedPickupEvidenceControl() {
+    const button = $("#simulatePickupEvidenceBtn");
+    const hint = $("#simulatePickupEvidenceHint");
+    const visible = isSimulatedPickupEvidenceEligible();
+    if (button) button.hidden = !visible;
+    if (hint) hint.hidden = !visible;
 }
 
 function renderSimulatedCheckinControl(record) {

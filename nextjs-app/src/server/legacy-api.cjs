@@ -3498,6 +3498,9 @@ async function handleApi(req, res, pathname) {
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, {
             error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน"
         });
+        if (payload.simulation === true && jobs.some(item => !/^SIT(?:UI)?[-A-Z0-9]/i.test(String(item.houseNumber || "")) || item.driverId !== payload.userId)) {
+            return sendJson(res, 403, { error: "หลักฐานจำลองใช้ได้เฉพาะงาน SIT ที่มอบหมายให้คนขับเท่านั้น" });
+        }
         if (jobs.some(item => !item.checkInAt)) return sendJson(res, 409, {
             error: "Check in before completing pickup"
         });

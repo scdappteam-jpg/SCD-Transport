@@ -45,7 +45,9 @@ a[role="button"],
 }
 
 .att-simulated-checkin[hidden],
-.att-simulated-checkin-hint[hidden] {
+.att-simulated-checkin-hint[hidden],
+#simulatePickupEvidenceBtn[hidden],
+#simulatePickupEvidenceHint[hidden] {
   display: none !important;
 }
 
