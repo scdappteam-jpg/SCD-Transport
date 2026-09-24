@@ -1742,7 +1742,7 @@ function simulatedCheckinJob() {
     if (user?.role !== "Driver") return null;
     const selected = currentPickupJob();
     if (/^SIT(?:UI)?[-A-Z0-9]/i.test(String(selected?.houseNumber || ""))) return selected;
-    return visibleDriverJobs().find(job => /^SIT(?:UI)?[-A-Z0-9]/i.test(String(job?.houseNumber || ""))) || null;
+    return (state.dashboard?.jobs || []).find(job => job.driverId === user.id && /^SIT(?:UI)?[-A-Z0-9]/i.test(String(job?.houseNumber || ""))) || null;
 }
 
 function isSimulatedCheckinEligible() {

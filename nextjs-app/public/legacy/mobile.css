@@ -44,6 +44,11 @@ a[role="button"],
   line-height: 1.45;
 }
 
+.att-simulated-checkin[hidden],
+.att-simulated-checkin-hint[hidden] {
+  display: none !important;
+}
+
 button svg,
 button i[data-lucide],
 a svg,
