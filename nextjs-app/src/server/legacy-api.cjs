@@ -6074,7 +6074,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/attendance/checkin") {
         const payload = await parseBody(req);
-        const {userId: userId, photo: photo, gpsLat: gpsLat, gpsLon: gpsLon, zone: zone, jobType: jobType} = payload;
+        const {userId: userId, photo: photo, gpsLat: gpsLat, gpsLon: gpsLon, zone: zone, jobType: jobType, simulation: simulation, testHouse: testHouse} = payload;
         if (!userId) return sendJson(res, 400, {
             error: "userId required"
         });
@@ -6084,6 +6084,14 @@ async function handleApi(req, res, pathname) {
         if (!user) return sendJson(res, 404, {
             error: "User not found"
         });
+        const isSimulation = simulation === true;
+        if (isSimulation) {
+            const simulationJob = findJob(db, String(testHouse || "").trim());
+            const isTestHouse = /^SIT(?:UI)?[-A-Z0-9]/i.test(String(simulationJob?.houseNumber || ""));
+            if (!isTestHouse || simulationJob.driverId !== userId) return sendJson(res, 403, {
+                error: "เช็คอินจำลองใช้ได้เฉพาะงาน SIT ที่มอบหมายให้คนขับคนนี้"
+            });
+        }
         const today = (new Date).toLocaleDateString("en-CA", {
             timeZone: TZ
         });
@@ -6120,6 +6128,8 @@ async function handleApi(req, res, pathname) {
             checkOutLon: null,
             zone: zone || "",
             jobType: jobType || "",
+            isSimulation: isSimulation,
+            testHouse: isSimulation ? String(testHouse || "").trim() : "",
             status: "checkin",
             reallocations: []
         };

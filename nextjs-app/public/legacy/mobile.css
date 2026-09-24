@@ -29,6 +29,21 @@ a[role="button"],
   overflow-wrap: anywhere;
 }
 
+.att-simulated-checkin {
+  width: 100%;
+  margin-top: 10px;
+  color: #713f12 !important;
+  border: 1px dashed #f59e0b !important;
+  background: #fffbeb !important;
+}
+
+.att-simulated-checkin-hint {
+  display: block;
+  margin-top: 6px;
+  color: #92400e !important;
+  line-height: 1.45;
+}
+
 button svg,
 button i[data-lucide],
 a svg,

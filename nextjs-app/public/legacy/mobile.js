@@ -1731,7 +1731,22 @@ function initAttendanceTab() {
     });
     $("#attRetakeBtn").addEventListener("click", retakeAttPhoto);
     $("#attCheckinBtn").addEventListener("click", submitAttCheckin);
+    $("#attSimulatedCheckinBtn")?.addEventListener("click", submitSimulatedAttCheckin);
     $("#attCheckoutBtn").addEventListener("click", submitAttCheckout);
+}
+
+function isSimulatedCheckinEligible() {
+    const user = currentUser();
+    const job = currentPickupJob();
+    return user?.role === "Driver" && /^SIT(?:UI)?[-A-Z0-9]/i.test(String(job?.houseNumber || ""));
+}
+
+function renderSimulatedCheckinControl(record) {
+    const button = $("#attSimulatedCheckinBtn");
+    const hint = $("#attSimulatedCheckinHint");
+    const visible = !record && isSimulatedCheckinEligible();
+    if (button) button.hidden = !visible;
+    if (hint) hint.hidden = !visible;
 }
 
 async function loadAttendanceStatus() {
@@ -1752,8 +1767,9 @@ function renderAttendanceStatus(record) {
     const checkinBtn = $("#attCheckinBtn");
     const checkoutBtn = $("#attCheckoutBtn");
     if (!badge) return;
+    renderSimulatedCheckinControl(record);
     if (record && !record.checkOutTime) {
-        badge.textContent = "เช็คอินแล้ว ✓";
+        badge.textContent = record.isSimulation ? "เช็คอินจำลองแล้ว 🧪" : "เช็คอินแล้ว ✓";
         badge.className = "att-status-badge att-status-in";
         if (card) {
             card.hidden = false;
@@ -1765,7 +1781,7 @@ function renderAttendanceStatus(record) {
             const timeEl = $("#attCardTime");
             if (timeEl) timeEl.textContent = "เช็คอิน: " + formatBangkokMobile(record.checkInTime);
             const zoneEl = $("#attCardZone");
-            if (zoneEl) zoneEl.textContent = (record.zone ? "โซน: " + record.zone : "") + (record.jobType ? "  งาน: " + record.jobType : "");
+            if (zoneEl) zoneEl.textContent = (record.isSimulation ? "🧪 ข้อมูลทดสอบ" : "") + (record.zone ? (record.isSimulation ? " · " : "") + "โซน: " + record.zone : "") + (record.jobType ? "  งาน: " + record.jobType : "");
             const gpsEl = $("#attCardGps");
             if (gpsEl && record.checkInLat) gpsEl.textContent = "GPS: " + record.checkInLat.toFixed(5) + ", " + record.checkInLon.toFixed(5);
         }
@@ -1944,6 +1960,46 @@ async function submitAttCheckin() {
         if (btn) {
             btn.disabled = false;
             btn.textContent = "✅ เช็คอิน";
+        }
+    }
+}
+
+async function submitSimulatedAttCheckin() {
+    const user = currentUser();
+    const job = currentPickupJob();
+    if (!user || !isSimulatedCheckinEligible()) return alert("เช็คอินจำลองใช้ได้เฉพาะงานทดสอบที่มอบหมายให้คุณ");
+    const button = $("#attSimulatedCheckinBtn");
+    if (button) {
+        button.disabled = true;
+        button.textContent = "กำลังบันทึกข้อมูลทดสอบ...";
+    }
+    try {
+        const simulatedGps = {
+            gpsLat: 13.694,
+            gpsLon: 100.7501
+        };
+        const res = await api("/api/attendance/checkin", {
+            userId: user.id,
+            photo: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL7WQAAAABJRU5ErkJggg==",
+            ...simulatedGps,
+            zone: "ทดสอบระบบ",
+            jobType: "Pickup",
+            simulation: true,
+            testHouse: job.houseNumber
+        });
+        attState.currentRecord = res.record;
+        attState.gpsLat = simulatedGps.gpsLat;
+        attState.gpsLon = simulatedGps.gpsLon;
+        renderAttendanceStatus(res.record);
+        loadMyAttTasks();
+        showAttResult("🧪 เช็คอินจำลองสำเร็จ — ใช้ทดสอบ Flow ของ " + job.houseNumber, false);
+        toast("เช็คอินจำลองสำเร็จ");
+    } catch (err) {
+        showAttResult("❌ " + (err.message || "เช็คอินจำลองไม่สำเร็จ"), true);
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = "🧪 เช็คอินจำลองสำหรับทดสอบ";
         }
     }
 }
