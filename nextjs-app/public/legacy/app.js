@@ -275,7 +275,10 @@ function allowedWebViews(role) {
     if (role === "EI_Customer") return [ "dashboard", "orders" ];
     if (role === "Check_House") return [ "dashboard", "orders", "alerts" ];
     if (role === "Terminal") return [ "dashboard", "orders", "alerts" ];
-    if (role === "Billing") return [ "dashboard", "orders", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr" ];
+    // Billing works in the Field Ops workspace, but only the Billing panel is
+    // exposed below.  Without this entry, the account can see its KPI cards
+    // but has no UI path to review, draft, send, or close an invoice.
+    if (role === "Billing") return [ "dashboard", "orders", "mobile", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr" ];
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
     if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
@@ -300,6 +303,14 @@ function applyWebRoleVisibility() {
         }
         label.hidden = !hasVisible;
     });
+    const isAdmin = user.role === "Admin";
+    $$(".ops-main-card").forEach(button => {
+        button.hidden = !isAdmin && button.dataset.roleTarget !== user.role;
+    });
+    $$("[data-role-panel]").forEach(panel => {
+        panel.hidden = !isAdmin && panel.dataset.rolePanel !== user.role;
+    });
+    if (user.role === "Billing") showRolePanel("Billing");
     if (!allowed.includes(state.currentView)) {
         setView(allowed[0] || "dashboard");
     }
@@ -760,6 +771,7 @@ function setView(view) {
     if (view === "attendance") renderAttendance();
     if (view === "cs-queue") renderCsQueue();
     if (view === "hr") renderHR();
+    if (view === "mobile" && currentWebUser()?.role === "Billing") showRolePanel("Billing");
     renderLpWidget();
 }
 
@@ -2047,12 +2059,12 @@ function renderRoleHome() {
             n: C(j => j.status === "ReadyForBilling" || j.readyForBilling),
             t: "พร้อมวางบิล",
             c: "st-amber",
-            v: "orders"
+            v: "mobile"
         }, {
             n: C(j => j.status === "PendingBillingReview"),
             t: "เอกสารรอตรวจ",
             c: "st-blue",
-            v: "orders"
+            v: "mobile"
         }, {
             n: waitCs,
             t: "ยังไม่ผ่าน CS",
