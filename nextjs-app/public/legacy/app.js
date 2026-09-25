@@ -9221,6 +9221,8 @@ function bindEvents() {
         });
         state.dashboard = data.dashboard;
         $("#invoiceId").value = data.bill.id;
+        renderAll();
+        $("#invoiceId").value = data.bill.id;
         $("#billingResult").innerHTML = `<strong>${data.bill.id}</strong><br>ยอด ${money(data.bill.amount)} บาท · <a href="${assetUrl(data.bill.pdfUrl)}" target="_blank" rel="noreferrer">เปิดเอกสาร / Open document</a>`;
         renderBillingContext();
         toast("สร้างใบแจ้งหนี้ Draft แล้ว / Invoice draft created");
@@ -9244,6 +9246,8 @@ function bindEvents() {
             status: "Reviewed",
             note: $("#billingReviewNote").value.trim()
         });
+        state.dashboard = data.dashboard;
+        renderAll();
         $("#billingResult").innerHTML = `<strong>${data.job.houseNumber}</strong><br>เอกสารพร้อมวางบิล / Documents reviewed`;
         toast("เอกสารพร้อมวางบิล / Reviewed");
     }));
@@ -9253,6 +9257,8 @@ function bindEvents() {
             status: "Hold",
             note: $("#billingReviewNote").value.trim()
         });
+        state.dashboard = data.dashboard;
+        renderAll();
         $("#billingResult").innerHTML = `<strong>${data.job.houseNumber}</strong><br>พักรายการไว้ตรวจเอกสารเพิ่ม / Pending review`;
         toast("พักรายการแล้ว / Hold");
     }));
@@ -9262,6 +9268,9 @@ function bindEvents() {
             invoiceId: $("#invoiceId").value.trim(),
             emailFiles: emailFiles
         });
+        state.dashboard = data.dashboard;
+        renderAll();
+        $("#invoiceId").value = data.bill.id;
         $("#billingResult").innerHTML = `<strong>${data.bill.id}</strong><br>${data.bill.status} · ${data.bill.billingEmail} · แนบ ${data.bill.emailAttachments?.length || 0} ไฟล์`;
         toast("บันทึกสถานะส่งอีเมลแล้ว / Email status saved");
     }));
@@ -9269,6 +9278,9 @@ function bindEvents() {
         const data = await api("/api/billing/mark-billed", {
             invoiceId: $("#invoiceId").value.trim()
         });
+        state.dashboard = data.dashboard;
+        renderAll();
+        $("#invoiceId").value = data.bill.id;
         $("#billingResult").innerHTML = `<strong>${data.bill.id}</strong><br>Billed · Due ${data.bill.dueDate}`;
         toast("ปิดเป็น Billed แล้ว / Billed");
     }));
