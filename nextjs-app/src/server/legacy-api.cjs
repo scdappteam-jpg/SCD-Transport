@@ -268,6 +268,126 @@ function addHoursIso(hours) {
     return new Date(Date.now() + hours * 60 * 60 * 1e3).toISOString();
 }
 
+const DEFAULT_DOCK_BAYS = [ {
+    id: "D1",
+    name: "ท่า 1",
+    zone: "A",
+    status: "Available",
+    note: ""
+}, {
+    id: "D2",
+    name: "ท่า 2",
+    zone: "A",
+    status: "Available",
+    note: ""
+}, {
+    id: "D3",
+    name: "ท่า 3",
+    zone: "A",
+    status: "Available",
+    note: ""
+}, {
+    id: "D4",
+    name: "ท่า 4",
+    zone: "B",
+    status: "Available",
+    note: ""
+}, {
+    id: "D5",
+    name: "ท่า 5",
+    zone: "B",
+    status: "Available",
+    note: ""
+}, {
+    id: "D6",
+    name: "ท่า 6",
+    zone: "B",
+    status: "Available",
+    note: ""
+}, {
+    id: "D7",
+    name: "ท่า 7",
+    zone: "C",
+    status: "Available",
+    note: ""
+}, {
+    id: "D8",
+    name: "ท่า 8",
+    zone: "C",
+    status: "Available",
+    note: ""
+} ];
+
+function dockBayList(db) {
+    if (!db.dock || !Array.isArray(db.dock.bays) || !db.dock.bays.length) {
+        db.dock ||= {};
+        db.dock.bays = DEFAULT_DOCK_BAYS.map(bay => ({ ...bay }));
+    }
+    return db.dock.bays;
+}
+
+function dockFindBay(db, bayId) {
+    const key = String(bayId || "").trim().toUpperCase();
+    return dockBayList(db).find(bay => String(bay.id).toUpperCase() === key
+        || String(bay.name).replace(/\s+/g, "").toUpperCase() === key.replace(/\s+/g, "")) || null;
+}
+
+/* เสนอช่องเทียบที่เหมาะที่สุด: ว่างอยู่ + โซนใกล้ช่องเก็บปลายทาง */
+function dockSuggestBay(db, job) {
+    const bays = dockBayList(db).filter(bay => bay.status === "Available" && !bay.houseNumber);
+    if (!bays.length) return null;
+    const target = String(job && (job.locationId || job.plannedLocationId) || "").trim().toUpperCase();
+    const zone = target ? target.charAt(0) : "";
+    return bays.find(bay => zone && String(bay.zone).toUpperCase() === zone) || bays[0];
+}
+
+function dockNormalizeQueue(db) {
+    db.dock ||= {};
+    db.dock.queue = (db.dock.queue || []).filter(item => item && item.houseNumber);
+    return db.dock.queue;
+}
+
+function dockBoard(db) {
+    const bays = dockBayList(db).map(bay => {
+        const job = bay.houseNumber ? findJob(db, bay.houseNumber) : null;
+        return {
+            ...bay,
+            customerName: job ? job.customerName : "",
+            pieceCount: job ? job.pieceCount : "",
+            locationId: job ? job.locationId : "",
+            flightNo: job ? job.flightNo : ""
+        };
+    });
+    const queue = dockNormalizeQueue(db).map((item, index) => {
+        const job = findJob(db, item.houseNumber);
+        return {
+            ...item,
+            position: index + 1,
+            customerName: job ? job.customerName : item.customerName || "",
+            pieceCount: job ? job.pieceCount : item.pieceCount || "",
+            suggestedBayId: (dockSuggestBay(db, job) || {}).id || ""
+        };
+    });
+    const waitMinutes = queue.map(item => {
+        const ms = Date.now() - new Date(item.arrivedAt || item.createdAt || nowIso()).getTime();
+        return isNaN(ms) ? 0 : Math.max(0, Math.round(ms / 6e4));
+    });
+    return {
+        bays: bays,
+        queue: queue,
+        summary: {
+            total: bays.length,
+            available: bays.filter(bay => bay.status === "Available" && !bay.houseNumber).length,
+            busy: bays.filter(bay => bay.houseNumber).length,
+            reserved: bays.filter(bay => bay.status === "Reserved" && !bay.houseNumber).length,
+            closed: bays.filter(bay => bay.status === "Closed").length,
+            waiting: queue.length,
+            avgWaitMinutes: waitMinutes.length ? Math.round(waitMinutes.reduce((a, b) => a + b, 0) / waitMinutes.length) : 0
+        },
+        updatedAt: nowIso()
+    };
+}
+
 function ensureDbShape(db) {
     db.jobs ||= [];
     db.billing ||= [];
@@ -282,6 +402,10 @@ function ensureDbShape(db) {
     db.attendance ||= [];
     db.taskGroups ||= [];
     db.notifications ||= [];
+    db.dock ||= {};
+    db.dock.bays ||= DEFAULT_DOCK_BAYS.map(bay => ({ ...bay }));
+    db.dock.queue ||= [];
+    db.dock.log ||= [];
     db.hr ||= {};
     db.hr.leaveRequests ||= [];
     db.hr.otRequests ||= [];
@@ -2970,6 +3094,116 @@ async function handleApi(req, res, pathname) {
                 error: err.name === "AbortError" ? "Cartrack request timed out" : err.message
             });
         }
+    }
+    if (req.method === "GET" && pathname === "/api/dock/board") {
+        return sendJson(res, 200, { ok: true, ...dockBoard(db) });
+    }
+    if (req.method === "POST" && pathname === "/api/dock/queue") {
+        const payload = await parseBody(req);
+        const houseNumber = String(payload.houseNumber || "").trim();
+        if (!houseNumber) return sendJson(res, 400, { error: "houseNumber required" });
+        const job = findJob(db, houseNumber);
+        dockNormalizeQueue(db);
+        if (db.dock.queue.some(item => item.houseNumber === houseNumber)) {
+            return sendJson(res, 409, { error: `House ${houseNumber} อยู่ในคิวแล้ว` });
+        }
+        if (dockBayList(db).some(bay => bay.houseNumber === houseNumber)) {
+            return sendJson(res, 409, { error: `House ${houseNumber} กำลังเทียบท่าอยู่แล้ว` });
+        }
+        const entry = {
+            id: `DQ-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+            houseNumber: houseNumber,
+            customerName: job ? job.customerName : payload.customerName || "",
+            pieceCount: job ? job.pieceCount : payload.pieceCount || "",
+            vehiclePlate: payload.vehiclePlate || (job ? job.vehiclePlate : "") || "",
+            driverName: payload.driverName || (job ? job.driverName : "") || "",
+            etaAt: payload.etaAt || "",
+            arrivedAt: payload.arrived ? nowIso() : "",
+            note: payload.note || "",
+            createdBy: payload.userId || "",
+            createdAt: nowIso()
+        };
+        db.dock.queue.push(entry);
+        db.dock.log = [ ...db.dock.log || [], { at: nowIso(), action: "Queued", houseNumber: houseNumber, by: payload.userId || "" } ].slice(-200);
+        logActivity(db, { houseNumber: houseNumber, activityType: "DockQueued", vehiclePlate: entry.vehiclePlate });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, entry: entry, ...dockBoard(db) });
+    }
+    if (req.method === "POST" && pathname === "/api/dock/assign") {
+        const payload = await parseBody(req);
+        const houseNumber = String(payload.houseNumber || "").trim();
+        if (!houseNumber) return sendJson(res, 400, { error: "houseNumber required" });
+        dockNormalizeQueue(db);
+        const job = findJob(db, houseNumber);
+        const entry = db.dock.queue.find(item => item.houseNumber === houseNumber) || null;
+        let bay = payload.bayId ? dockFindBay(db, payload.bayId) : dockSuggestBay(db, job);
+        if (!bay) return sendJson(res, 409, { error: "ไม่มีช่องเทียบท่าว่างในขณะนี้" });
+        if (bay.status === "Closed") return sendJson(res, 409, { error: `${bay.name} ปิดใช้งานอยู่` });
+        if (bay.houseNumber && bay.houseNumber !== houseNumber) {
+            return sendJson(res, 409, { error: `${bay.name} ถูกใช้โดย House ${bay.houseNumber}` });
+        }
+        Object.assign(bay, {
+            status: "Occupied",
+            houseNumber: houseNumber,
+            vehiclePlate: payload.vehiclePlate || (entry ? entry.vehiclePlate : "") || "",
+            driverName: payload.driverName || (entry ? entry.driverName : "") || "",
+            assignedAt: nowIso(),
+            assignedBy: payload.userId || "",
+            expectedMinutes: Number(payload.expectedMinutes || 30)
+        });
+        db.dock.queue = db.dock.queue.filter(item => item.houseNumber !== houseNumber);
+        if (job) {
+            job.dockBayId = bay.id;
+            job.dockBayName = bay.name;
+            job.dockAssignedAt = bay.assignedAt;
+            job.updatedAt = nowIso();
+        }
+        db.dock.log = [ ...db.dock.log || [], { at: nowIso(), action: "Assigned", houseNumber: houseNumber, bayId: bay.id, by: payload.userId || "" } ].slice(-200);
+        logActivity(db, { houseNumber: houseNumber, activityType: "DockAssigned", dockBay: bay.name });
+        await createAlert(db, `จัดช่องเทียบท่า ${bay.name} ให้ House ${houseNumber}`, "info");
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, bay: bay, ...dockBoard(db) });
+    }
+    if (req.method === "POST" && pathname === "/api/dock/release") {
+        const payload = await parseBody(req);
+        const bay = payload.bayId ? dockFindBay(db, payload.bayId)
+            : dockBayList(db).find(item => item.houseNumber === String(payload.houseNumber || "").trim());
+        if (!bay) return sendJson(res, 404, { error: "ไม่พบช่องเทียบท่า" });
+        const houseNumber = bay.houseNumber || "";
+        const job = houseNumber ? findJob(db, houseNumber) : null;
+        if (job) {
+            job.dockReleasedAt = nowIso();
+            job.dockBayId = "";
+            job.updatedAt = nowIso();
+        }
+        Object.assign(bay, {
+            status: payload.close ? "Closed" : "Available",
+            houseNumber: "",
+            vehiclePlate: "",
+            driverName: "",
+            assignedAt: "",
+            assignedBy: "",
+            note: payload.note || bay.note || ""
+        });
+        db.dock.log = [ ...db.dock.log || [], { at: nowIso(), action: payload.close ? "Closed" : "Released", houseNumber: houseNumber, bayId: bay.id, by: payload.userId || "" } ].slice(-200);
+        if (houseNumber) logActivity(db, { houseNumber: houseNumber, activityType: "DockReleased", dockBay: bay.name });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, bay: bay, ...dockBoard(db) });
+    }
+    if (req.method === "GET" && pathname === "/api/dock/my") {
+        const url = new URL(req.url, `http://localhost:${PORT}`);
+        const house = String(url.searchParams.get("houseNumber") || "").trim();
+        const plate = String(url.searchParams.get("vehiclePlate") || "").trim();
+        const board = dockBoard(db);
+        const bay = board.bays.find(item => (house && item.houseNumber === house) || (plate && item.vehiclePlate === plate)) || null;
+        const queued = board.queue.find(item => (house && item.houseNumber === house) || (plate && item.vehiclePlate === plate)) || null;
+        return sendJson(res, 200, {
+            ok: true,
+            bay: bay,
+            queue: queued,
+            ahead: queued ? Math.max(0, queued.position - 1) : 0,
+            summary: board.summary
+        });
     }
     if (req.method === "GET" && pathname === "/api/flight-risks") {
         const dashboard = buildDashboard(db);

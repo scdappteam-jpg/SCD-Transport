@@ -275,12 +275,12 @@ function currentWebUser() {
 }
 
 function allowedWebViews(role) {
-    if (role === "Driver" || role === "WH_Staff") return [ "dashboard", "hr" ];
-    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-status", "attendance", "hr" ];
-    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr" ];
+    if (role === "Driver" || role === "WH_Staff") return [ "dashboard", "hr", "flight-board", "dock" ];
+    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-status", "attendance", "hr", "flight-board", "dock" ];
+    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr", "flight-board", "dock" ];
     if (role === "EI_Customer") return [ "dashboard", "orders" ];
     if (role === "Check_House") return [ "dashboard", "orders", "alerts" ];
-    if (role === "Terminal") return [ "dashboard", "orders", "alerts" ];
+    if (role === "Terminal") return [ "dashboard", "orders", "alerts", "flight-board", "dock" ];
     // Billing works in the Field Ops workspace, but only the Billing panel is
     // exposed below.  Without this entry, the account can see its KPI cards
     // but has no UI path to review, draft, send, or close an invoice.
@@ -288,8 +288,8 @@ function allowedWebViews(role) {
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
     if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
-    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-status", "load-plan", "outbound-open", "attendance", "hr" ];
-    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "settings", "load-plan", "outbound-open", "attendance" ];
+    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock" ];
+    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock" ];
 }
 
 function applyWebRoleVisibility() {
@@ -430,6 +430,14 @@ const pageCopy = {
     hr: {
         breadcrumb: "HR / Leave & OT",
         title: "HR ลาและโอที / Leave & OT"
+    },
+    "flight-board": {
+        breadcrumb: "ปฏิบัติการ / Flight Board",
+        title: "บอร์ดแจ้งเตือนไฟลท์ด่วน"
+    },
+    dock: {
+        breadcrumb: "ปฏิบัติการ / Dock Booking",
+        title: "ช่องเทียบท่า WH3"
     },
     mobile: {
         breadcrumb: "Field Ops",
@@ -809,6 +817,8 @@ function setView(view) {
     if (view === "attendance") renderAttendance();
     if (view === "cs-queue") renderCsQueue();
     if (view === "hr") renderHR();
+    if (view === "flight-board") renderFlightBoard();
+    if (view === "dock") renderDockBoard();
     if (view === "mobile" && currentWebUser()?.role === "Billing") showRolePanel("Billing");
     renderLpWidget();
 }
@@ -7083,7 +7093,236 @@ async function renderHR() {
     renderHrSettings();
     renderHrCoreSetup();
     renderHrNotifications();
+    renderHrReport();
     if (window.lucide) window.lucide.createIcons();
+}
+
+
+/* ══════════ รายงาน HR : ตัวกรอง + ส่งออกไฟล์ ══════════ */
+var hrReportFilter = { from: "", to: "", dept: "", type: "all", employees: [], preset: "month" };
+
+function hrDeptOf(emp) {
+    var p = (state.hrProfiles || {})[emp.id] || {};
+    return p.department || emp.department || emp.zone || hrRoleDept(emp.role);
+}
+
+function hrRoleDept(role) {
+    if (role === "Driver" || role === "Team_Transport") return "ขนส่ง";
+    if (role === "WH_Staff" || role === "WH3_TeamLeader") return "คลังสินค้า WH3";
+    if (role === "Terminal") return "Terminal";
+    if (role === "Billing" || role === "CS" || role === "Admin") return "ธุรการ";
+    return "อื่น ๆ";
+}
+
+function hrDeptList() {
+    var set = {};
+    hrEmployees().forEach(function (e) { set[hrDeptOf(e)] = 1; });
+    return Object.keys(set).sort();
+}
+
+function hrPresetRange(preset) {
+    var now = new Date();
+    var y = now.getFullYear(), m = now.getMonth();
+    var fmt = function (d) { return d.toISOString().slice(0, 10); };
+    if (preset === "week") {
+        var day = (now.getDay() + 6) % 7;
+        var s = new Date(now); s.setDate(now.getDate() - day);
+        return { from: fmt(s), to: fmt(now) };
+    }
+    if (preset === "lastmonth") return { from: fmt(new Date(y, m - 1, 1)), to: fmt(new Date(y, m, 0)) };
+    if (preset === "quarter") { var q = Math.floor(m / 3) * 3; return { from: fmt(new Date(y, q, 1)), to: fmt(new Date(y, q + 3, 0)) }; }
+    if (preset === "year") return { from: fmt(new Date(y, 0, 1)), to: fmt(new Date(y, 11, 31)) };
+    return { from: fmt(new Date(y, m, 1)), to: fmt(new Date(y, m + 1, 0)) };
+}
+
+function hrSetPreset(preset) {
+    hrReportFilter.preset = preset;
+    if (preset !== "custom") {
+        var r = hrPresetRange(preset);
+        hrReportFilter.from = r.from;
+        hrReportFilter.to = r.to;
+    }
+    renderHrReport();
+}
+
+function hrReportApply() {
+    hrReportFilter.from = document.getElementById("hrRepFrom")?.value || "";
+    hrReportFilter.to = document.getElementById("hrRepTo")?.value || "";
+    hrReportFilter.dept = document.getElementById("hrRepDept")?.value || "";
+    hrReportFilter.type = document.getElementById("hrRepType")?.value || "all";
+    hrReportFilter.preset = "custom";
+    renderHrReport();
+}
+
+function hrReportAddEmp() {
+    var sel = document.getElementById("hrRepEmp");
+    var id = sel?.value;
+    if (!id) return;
+    if (!hrReportFilter.employees.includes(id)) hrReportFilter.employees.push(id);
+    renderHrReport();
+}
+
+function hrReportDelEmp(id) {
+    hrReportFilter.employees = hrReportFilter.employees.filter(function (x) { return x !== id; });
+    renderHrReport();
+}
+
+function hrReportClear() {
+    hrReportFilter = { from: "", to: "", dept: "", type: "all", employees: [], preset: "month" };
+    hrSetPreset("month");
+}
+
+function hrInRange(dateStr) {
+    if (!dateStr) return false;
+    var d = String(dateStr).slice(0, 10);
+    if (hrReportFilter.from && d < hrReportFilter.from) return false;
+    if (hrReportFilter.to && d > hrReportFilter.to) return false;
+    return true;
+}
+
+function hrReportRows() {
+    hrSeedRequests();
+    var emps = hrEmployees().filter(function (e) {
+        if (hrReportFilter.dept && hrDeptOf(e) !== hrReportFilter.dept) return false;
+        if (hrReportFilter.employees.length && !hrReportFilter.employees.includes(e.id)) return false;
+        return true;
+    });
+    var wantLeave = hrReportFilter.type === "all" || hrReportFilter.type === "leave";
+    var wantOt = hrReportFilter.type === "all" || hrReportFilter.type === "ot";
+    return emps.map(function (e) {
+        var leaves = wantLeave ? (state.leaveRequests || []).filter(function (r) {
+            return r.employeeId === e.id && r.status === "approved" && hrInRange(r.startDate);
+        }) : [];
+        var ots = wantOt ? (state.otRequests || []).filter(function (r) {
+            return r.employeeId === e.id && ["approved", "closed", "done"].includes(r.status) && hrInRange(r.date);
+        }) : [];
+        var byType = function (t) { return leaves.filter(function (r) { return r.type === t; }).reduce(function (s, r) { return s + Number(r.days || 1); }, 0); };
+        var otHours = ots.reduce(function (s, r) { return s + Number(r.paidHours || r.requestedHours || 0); }, 0);
+        var rate = Number(((state.hrPayrollProfiles || {})[e.id] || {}).otRate || 0);
+        var attend = (state.attendanceAll || []).filter(function (a) { return a.userId === e.id && hrInRange(a.date); }).length;
+        return {
+            id: e.id, name: e.name, dept: hrDeptOf(e),
+            workDays: attend,
+            sick: byType("sick"), personal: byType("personal"), vacation: byType("vacation"),
+            otHours: Math.round(otHours * 10) / 10,
+            otPay: Math.round(otHours * (rate || 0))
+        };
+    });
+}
+
+function renderHrReport() {
+    var box = document.getElementById("hrReportBox");
+    if (!box) return;
+    if (!hrReportFilter.from) { var r = hrPresetRange("month"); hrReportFilter.from = r.from; hrReportFilter.to = r.to; }
+    var rows = hrReportRows();
+    var tot = rows.reduce(function (a, r) {
+        a.sick += r.sick; a.personal += r.personal; a.vacation += r.vacation;
+        a.ot += r.otHours; a.pay += r.otPay; return a;
+    }, { sick: 0, personal: 0, vacation: 0, ot: 0, pay: 0 });
+    var presets = [["week", "สัปดาห์นี้"], ["month", "เดือนนี้"], ["lastmonth", "เดือนที่แล้ว"], ["quarter", "ไตรมาสนี้"], ["year", "ปีนี้"]];
+    var deptOpts = ['<option value="">ทุกแผนก</option>'].concat(hrDeptList().map(function (d) {
+        return '<option value="' + safeHtml(d) + '"' + (hrReportFilter.dept === d ? " selected" : "") + '>' + safeHtml(d) + '</option>';
+    })).join("");
+    var empOpts = ['<option value="">+ เลือกพนักงาน</option>'].concat(hrEmployees().map(function (e) {
+        return '<option value="' + safeHtml(e.id) + '">' + safeHtml(e.name) + '</option>';
+    })).join("");
+
+    box.innerHTML = '<div class="hr-rep-head"><h3>รายงาน HR</h3>' +
+      '<span>เลือกช่วงวันที่ แผนก หรือรายบุคคล แล้วส่งออกเป็นไฟล์ได้ทันที</span></div>' +
+      '<div class="hr-rep-filter">' +
+        '<label>วันที่เริ่มต้น<input type="date" id="hrRepFrom" value="' + hrReportFilter.from + '" onchange="hrReportApply()"></label>' +
+        '<label>วันที่สิ้นสุด<input type="date" id="hrRepTo" value="' + hrReportFilter.to + '" onchange="hrReportApply()"></label>' +
+        '<label>แผนก<select id="hrRepDept" onchange="hrReportApply()">' + deptOpts + '</select></label>' +
+        '<label>ประเภท<select id="hrRepType" onchange="hrReportApply()">' +
+          '<option value="all"' + (hrReportFilter.type === "all" ? " selected" : "") + '>ลา + โอที</option>' +
+          '<option value="leave"' + (hrReportFilter.type === "leave" ? " selected" : "") + '>เฉพาะการลา</option>' +
+          '<option value="ot"' + (hrReportFilter.type === "ot" ? " selected" : "") + '>เฉพาะโอที</option></select></label>' +
+        '<label class="wide">พนักงาน (เลือกได้หลายคน)<select id="hrRepEmp" onchange="hrReportAddEmp()">' + empOpts + '</select></label>' +
+      '</div>' +
+      '<div class="hr-rep-chips">' + (hrReportFilter.employees.length
+          ? hrReportFilter.employees.map(function (id) {
+              return '<i>' + safeHtml(hrEmployeeName(id)) + '<b onclick="hrReportDelEmp(\'' + safeHtml(id) + '\')">×</b></i>';
+            }).join("")
+          : '<span class="hr-rep-none">ยังไม่เลือกรายบุคคล — แสดงทุกคนในแผนกที่เลือก</span>') + '</div>' +
+      '<div class="hr-rep-preset"><em>ช่วงเวลาด่วน:</em>' +
+        presets.map(function (p) {
+          return '<span class="' + (hrReportFilter.preset === p[0] ? "on" : "") + '" onclick="hrSetPreset(\'' + p[0] + '\')">' + p[1] + '</span>';
+        }).join("") +
+        '<span class="rt" onclick="hrReportClear()">ล้างตัวกรอง</span></div>' +
+      '<div class="hr-rep-kpi">' +
+        '<div><span>พนักงานในรายงาน</span><b>' + rows.length + '</b></div>' +
+        '<div><span>วันลารวม</span><b>' + (tot.sick + tot.personal + tot.vacation) + '</b><em>ป่วย ' + tot.sick + ' · กิจ ' + tot.personal + ' · พักร้อน ' + tot.vacation + '</em></div>' +
+        '<div><span>ชั่วโมงโอทีรวม</span><b>' + Math.round(tot.ot * 10) / 10 + '</b></div>' +
+        '<div><span>ค่าโอทีรวม</span><b>฿' + tot.pay.toLocaleString("th-TH") + '</b></div>' +
+      '</div>' +
+      (rows.length ? '<div class="hr-rep-tblwrap"><table class="hr-rep-tbl"><thead><tr>' +
+        '<th>พนักงาน</th><th>แผนก</th><th>วันเข้างาน</th><th>ลาป่วย</th><th>ลากิจ</th><th>พักร้อน</th><th>ชม. โอที</th><th>ค่าโอที</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          return '<tr><td>' + safeHtml(r.name) + '</td><td>' + safeHtml(r.dept) + '</td><td>' + r.workDays + '</td>' +
+            '<td>' + r.sick + '</td><td>' + r.personal + '</td><td>' + r.vacation + '</td>' +
+            '<td>' + r.otHours + '</td><td><b>' + r.otPay.toLocaleString("th-TH") + '</b></td></tr>';
+        }).join("") + '</tbody></table></div>'
+        : '<div class="empty-state compact"><p>ไม่พบข้อมูลตามเงื่อนไขที่เลือก</p></div>') +
+      '<div class="hr-rep-export"><div><b>ส่งออกรายงาน</b><span>ไฟล์จะมีช่วงวันที่และตัวกรองกำกับหัวรายงานเสมอ</span></div>' +
+        '<div class="rt"><button type="button" onclick="hrExportReport(\'xls\')">Excel</button>' +
+        '<button type="button" onclick="hrExportReport(\'csv\')">CSV</button>' +
+        '<button type="button" onclick="hrExportReport(\'pdf\')">PDF / พิมพ์</button></div></div>';
+}
+
+function hrReportTitle() {
+    var parts = ["รายงาน HR", hrReportFilter.from + " ถึง " + hrReportFilter.to];
+    if (hrReportFilter.dept) parts.push("แผนก: " + hrReportFilter.dept);
+    if (hrReportFilter.employees.length) parts.push("พนักงาน: " + hrReportFilter.employees.map(hrEmployeeName).join(", "));
+    parts.push(hrReportFilter.type === "leave" ? "เฉพาะการลา" : hrReportFilter.type === "ot" ? "เฉพาะโอที" : "ลา + โอที");
+    return parts.join(" | ");
+}
+
+function hrExportReport(kind) {
+    var rows = hrReportRows();
+    if (!rows.length) return toast("ไม่มีข้อมูลให้ส่งออก");
+    var head = ["พนักงาน", "แผนก", "วันเข้างาน", "ลาป่วย", "ลากิจ", "พักร้อน", "ชม.โอที", "ค่าโอที"];
+    var body = rows.map(function (r) { return [r.name, r.dept, r.workDays, r.sick, r.personal, r.vacation, r.otHours, r.otPay]; });
+    var stamp = (hrReportFilter.from || "") + "_" + (hrReportFilter.to || "");
+
+    if (kind === "pdf") {
+        var w = window.open("", "_blank");
+        if (!w) return toast("เบราว์เซอร์บล็อกหน้าต่างใหม่");
+        w.document.write('<html><head><meta charset="utf-8"><title>' + hrReportTitle() + '</title>' +
+          '<style>body{font-family:Kanit,sans-serif;padding:26px;color:#0f1b2d}h1{font-size:18px;margin:0 0 4px}' +
+          'p{font-size:12px;color:#64748b;margin:0 0 16px}table{width:100%;border-collapse:collapse;font-size:12px}' +
+          'th{text-align:left;background:#eef2f8;padding:8px;border-bottom:1px solid #d9e0ea}' +
+          'td{padding:8px;border-bottom:1px solid #eef2f8}</style></head><body>' +
+          '<h1>รายงาน HR — S.C.D.TRANSPORT</h1><p>' + hrReportTitle() + '</p><table><thead><tr>' +
+          head.map(function (h) { return "<th>" + h + "</th>"; }).join("") + '</tr></thead><tbody>' +
+          body.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + c + "</td>"; }).join("") + "</tr>"; }).join("") +
+          '</tbody></table></body></html>');
+        w.document.close();
+        setTimeout(function () { w.print(); }, 350);
+        return;
+    }
+
+    if (kind === "xls") {
+        var tbl = '<table border="1"><tr><td colspan="8">' + hrReportTitle() + '</td></tr><tr>' +
+          head.map(function (h) { return "<th>" + h + "</th>"; }).join("") + "</tr>" +
+          body.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + c + "</td>"; }).join("") + "</tr>"; }).join("") + "</table>";
+        var blobX = new Blob(["﻿<html><head><meta charset='utf-8'></head><body>" + tbl + "</body></html>"], { type: "application/vnd.ms-excel" });
+        hrDownload(blobX, "SCD-HR-Report-" + stamp + ".xls");
+        return;
+    }
+
+    var lines = [[hrReportTitle()], head].concat(body)
+        .map(function (row) { return row.map(function (v) { return '"' + String(v ?? "").replaceAll('"', '""') + '"'; }).join(","); }).join("\n");
+    hrDownload(new Blob(["﻿" + lines], { type: "text/csv;charset=utf-8" }), "SCD-HR-Report-" + stamp + ".csv");
+}
+
+function hrDownload(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("ส่งออกไฟล์ " + filename + " แล้ว");
 }
 
 function exportHrMonthlyCsv() {
@@ -10471,6 +10710,210 @@ async function saveWarehouseReservations() {
     } catch (error) {
         toast(error.message || "บันทึกการจองไม่สำเร็จ", "error");
     }
+}
+
+
+/* ══════════ บอร์ดแจ้งเตือนไฟลท์ด่วน (จอในคลัง) ══════════ */
+var _fbTimer = null;
+
+function fbTier(minutes) {
+    if (minutes === null || isNaN(minutes)) return { key: "none", label: "ไม่มีกำหนด", color: "#64748B" };
+    if (minutes < 0) return { key: "over", label: "เลยกำหนดแล้ว", color: "#FF4D4D" };
+    if (minutes < 120) return { key: "critical", label: "ด่วนมาก", color: "#FF6B6B" };
+    if (minutes < 240) return { key: "warning", label: "เฝ้าระวัง", color: "#FFB44D" };
+    return { key: "normal", label: "ปกติ", color: "#5BD98A" };
+}
+
+function fbLeftLabel(minutes) {
+    if (minutes === null || isNaN(minutes)) return "—";
+    if (minutes < 0) return "เลย " + Math.abs(Math.round(minutes)) + " น.";
+    var h = Math.floor(minutes / 60), m = Math.round(minutes % 60);
+    return h > 0 ? h + " ชม. " + String(m).padStart(2, "0") + " น." : m + " นาที";
+}
+
+function fbDueAt(job) {
+    return job.effectiveAirportDueAt || job.airportDueAt || job.flightTime || job.closeTime || "";
+}
+
+function flightBoardRows() {
+    var jobs = (state.dashboard?.jobs || []).filter(function (job) {
+        return !["Billed", "InvoiceSent", "Completed", "ReadyForBilling"].includes(job.status);
+    });
+    var now = Date.now();
+    return jobs.map(function (job) {
+        var due = fbDueAt(job);
+        var ms = due ? new Date(due).getTime() : NaN;
+        var minutes = isNaN(ms) ? null : (ms - now) / 6e4;
+        return { job: job, minutes: minutes, tier: fbTier(minutes) };
+    }).filter(function (row) {
+        return row.minutes !== null && row.minutes < 24 * 60;
+    }).sort(function (a, b) { return a.minutes - b.minutes; }).slice(0, 14);
+}
+
+function renderFlightBoard() {
+    var box = $("#view-flight-board");
+    if (!box) return;
+    var rows = flightBoardRows();
+    var counts = { critical: 0, warning: 0, normal: 0, over: 0 };
+    rows.forEach(function (r) { counts[r.tier.key] = (counts[r.tier.key] || 0) + 1; });
+    var now = new Date();
+    var clock = new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
+    var dateTxt = new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now);
+    var urgent = rows.filter(function (r) { return r.tier.key === "critical" || r.tier.key === "over"; })[0];
+
+    box.innerHTML = '<div class="fb-wrap" id="fbWrap">' +
+      '<div class="fb-head"><div class="fb-mark">SCD</div><div class="fb-title"><b>สถานะงานส่งออก · WH3</b>' +
+      '<span>เรียงตามเวลาที่เหลือก่อนปิดรับ · อัปเดตอัตโนมัติทุก 30 วินาที</span></div>' +
+      '<div class="fb-clock"><b>' + clock + '</b><span>' + dateTxt + '</span></div>' +
+      '<button type="button" class="fb-full" onclick="fbToggleFull()">เต็มจอ</button></div>' +
+      '<div class="fb-legend"><span><i style="background:#FF6B6B"></i>ด่วนมาก · น้อยกว่า 2 ชม.</span>' +
+      '<span><i style="background:#FFB44D"></i>เฝ้าระวัง · 2–4 ชม.</span>' +
+      '<span><i style="background:#5BD98A"></i>ปกติ · มากกว่า 4 ชม.</span></div>' +
+      '<div class="fb-body">' + (rows.length ? '<table class="fb-tbl"><thead><tr>' +
+        '<th style="width:11%">FLIGHT</th><th style="width:8%">ปลายทาง</th><th style="width:9%">ปิดรับ</th>' +
+        '<th style="width:17%">HOUSE</th><th style="width:6%">ชิ้น</th><th style="width:21%">สถานะงาน</th>' +
+        '<th style="width:14%">เหลือเวลา</th><th style="width:10%">ท่าเทียบ</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+            var j = r.job;
+            var due = fbDueAt(j);
+            var dueTxt = due ? new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(due)) : "—";
+            return '<tr class="fb-' + r.tier.key + '" onclick="openJobQuickView(\'' + safeHtml(j.houseNumber) + '\')">' +
+              '<td class="fb-fl">' + safeHtml(j.flightNo || "—") + '</td>' +
+              '<td>' + safeHtml(j.destAirport || j.destination || "—") + '</td>' +
+              '<td>' + dueTxt + '</td>' +
+              '<td class="fb-hs">' + safeHtml(j.houseNumber) + '<em>' + safeHtml(j.customerName || "") + '</em></td>' +
+              '<td>' + safeHtml(j.pieceCount || "—") + '</td>' +
+              '<td><span class="fb-st"><i style="background:' + r.tier.color + '"></i>' + safeHtml(statusLabelTh(j.status)) + '</span></td>' +
+              '<td class="fb-left">' + fbLeftLabel(r.minutes) + '</td>' +
+              '<td>' + safeHtml(j.dockBayName || "—") + '</td></tr>';
+        }).join("") + '</tbody></table>'
+        : '<div class="fb-empty">ไม่มีงานส่งออกที่ต้องเฝ้าระวังใน 24 ชั่วโมงข้างหน้า</div>') + '</div>' +
+      '<div class="fb-foot"><div><b>' + rows.length + '</b><span>งานเฝ้าระวัง</span></div>' +
+      '<div><b style="color:#FF6B6B">' + (counts.critical + counts.over) + '</b><span>ด่วนมาก</span></div>' +
+      '<div><b style="color:#FFB44D">' + counts.warning + '</b><span>เฝ้าระวัง</span></div>' +
+      '<div><b>' + (state.dockSummary ? state.dockSummary.available : "—") + '</b><span>ท่าเทียบว่าง</span></div>' +
+      '<div class="fb-ticker">' + (urgent ? 'ด่วน: ' + safeHtml(urgent.job.houseNumber) + ' · ไฟลท์ ' + safeHtml(urgent.job.flightNo || "-") + ' เหลือ ' + fbLeftLabel(urgent.minutes) + ' — เร่งดำเนินการทันที' : 'ไม่มีประกาศด่วนในขณะนี้') + '</div></div></div>';
+
+    if (_fbTimer) clearInterval(_fbTimer);
+    _fbTimer = setInterval(function () {
+        if (state.view !== "flight-board") { clearInterval(_fbTimer); _fbTimer = null; return; }
+        renderFlightBoard();
+    }, 30000);
+}
+
+function fbToggleFull() {
+    var el = document.getElementById("fbWrap");
+    if (!el) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (el.requestFullscreen) el.requestFullscreen();
+}
+
+/* ══════════ ช่องเทียบท่า (Dock Booking) ══════════ */
+var _dockData = null;
+
+async function renderDockBoard() {
+    var box = $("#view-dock");
+    if (!box) return;
+    if (!_dockData) box.innerHTML = '<div class="empty-state" style="margin-top:40px"><p>กำลังโหลดข้อมูลช่องเทียบท่า...</p></div>';
+    try {
+        _dockData = await api("/api/dock/board", null, "GET");
+        state.dockSummary = _dockData.summary;
+    } catch (e) {
+        box.innerHTML = '<div class="empty-state" style="margin-top:40px"><p>โหลดข้อมูลไม่สำเร็จ</p></div>';
+        return;
+    }
+    _renderDockHtml();
+}
+
+function dockBayClass(bay) {
+    if (bay.status === "Closed") return "closed";
+    if (bay.houseNumber) return "busy";
+    if (bay.status === "Reserved") return "soon";
+    return "free";
+}
+
+function _renderDockHtml() {
+    var box = $("#view-dock");
+    var d = _dockData || { bays: [], queue: [], summary: {} };
+    var s = d.summary || {};
+    box.innerHTML = '<div class="att-dash-wrap">' +
+      '<div class="dock-kpis">' +
+        '<div class="dock-kpi grn"><span>ท่าว่างตอนนี้</span><b>' + (s.available || 0) + '</b><em>จากทั้งหมด ' + (s.total || 0) + ' ท่า</em></div>' +
+        '<div class="dock-kpi pri"><span>รถกำลังเทียบ</span><b>' + (s.busy || 0) + '</b><em>กำลังขน/ลงสินค้า</em></div>' +
+        '<div class="dock-kpi amb"><span>รถรอคิว</span><b>' + (s.waiting || 0) + '</b><em>รอจัดช่อง</em></div>' +
+        '<div class="dock-kpi pur"><span>เวลารอเฉลี่ย</span><b>' + (s.avgWaitMinutes || 0) + ' น.</b><em>เป้าหมาย 20 นาที</em></div>' +
+      '</div>' +
+      '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>สถานะช่องเทียบท่า</h3>' +
+        '<button type="button" class="dock-btn ghost" onclick="_dockData=null;renderDockBoard()">รีเฟรช</button></div>' +
+        '<div class="dock-grid">' + d.bays.map(function (bay) {
+            var cls = dockBayClass(bay);
+            var label = cls === "busy" ? "กำลังใช้งาน" : cls === "closed" ? "ปิดใช้งาน" : cls === "soon" ? "จองแล้ว" : "ว่าง";
+            return '<div class="dock-bay ' + cls + '"><div class="dock-bay-h"><b>' + safeHtml(bay.name) + '</b><span>' + label + '</span></div>' +
+              (bay.houseNumber
+                ? '<div class="dock-bay-b"><b>' + safeHtml(bay.houseNumber) + '</b><span>' + safeHtml(bay.customerName || "-") + ' · ' + safeHtml(bay.pieceCount || "-") + ' ชิ้น</span>' +
+                  '<em>' + safeHtml(bay.vehiclePlate || "-") + (bay.driverName ? " · " + safeHtml(bay.driverName) : "") + '</em>' +
+                  (bay.locationId ? '<em>ช่องเก็บปลายทาง ' + safeHtml(bay.locationId) + '</em>' : "") + '</div>' +
+                  '<button type="button" class="dock-btn" onclick="dockRelease(\'' + bay.id + '\')">ปล่อยท่า</button>'
+                : '<div class="dock-bay-b empty"><b>' + (cls === "closed" ? "ปิดซ่อมบำรุง" : "ว่าง พร้อมรับรถ") + '</b><span>โซน ' + safeHtml(bay.zone || "-") + '</span></div>') +
+              '</div>';
+        }).join("") + '</div></div>' +
+      '<div class="dock-cols">' +
+        '<div class="card"><div class="card-head"><h3>คิวรถรอจัดช่อง</h3>' +
+          '<button type="button" class="dock-btn" onclick="dockAddQueue()">+ เพิ่มรถเข้าคิว</button></div>' +
+          (d.queue.length ? d.queue.map(function (q) {
+            return '<div class="dock-q"><div class="dock-q-n">' + q.position + '</div>' +
+              '<div class="dock-q-t"><b>' + safeHtml(q.houseNumber) + ' · ' + safeHtml(q.customerName || "-") + '</b>' +
+              '<span>' + safeHtml(q.vehiclePlate || "ไม่ระบุทะเบียน") + (q.driverName ? " · " + safeHtml(q.driverName) : "") +
+              (q.suggestedBayId ? " · แนะนำ " + safeHtml(q.suggestedBayId) : "") + '</span></div>' +
+              '<button type="button" class="dock-btn" onclick="dockAssign(\'' + safeHtml(q.houseNumber) + '\')">จัดช่อง</button>' +
+              '<button type="button" class="dock-btn ghost" onclick="dockRemoveQueue(\'' + safeHtml(q.houseNumber) + '\')">ลบ</button></div>';
+          }).join("") : '<div class="empty-state compact"><p>ไม่มีรถรอคิว</p></div>') +
+          '<div class="dock-note">ระบบเสนอช่องอัตโนมัติจากโซนของช่องเก็บปลายทาง เพื่อลดระยะเข็นสินค้า</div></div>' +
+        '<div class="card"><div class="card-head"><h3>บันทึกล่าสุด</h3></div>' +
+          ((_dockData.log || []).length ? "" : '<div class="empty-state compact"><p>ดูประวัติทั้งหมดได้ที่หน้า Timeline ของแต่ละงาน</p></div>') +
+          '<div class="dock-note">ทุกการจัดช่อง/ปล่อยท่า ถูกบันทึกใน Timeline ของ House นั้นอัตโนมัติ</div></div>' +
+      '</div></div>';
+}
+
+async function dockAddQueue() {
+    var house = prompt("ใส่เลข House ที่รถบรรทุกมา:");
+    if (!house) return;
+    var plate = prompt("ทะเบียนรถ (ไม่บังคับ):", "") || "";
+    try {
+        _dockData = await api("/api/dock/queue", { houseNumber: house.trim(), vehiclePlate: plate.trim(), arrived: true });
+        state.dockSummary = _dockData.summary;
+        _renderDockHtml();
+        toast("เพิ่มรถเข้าคิวแล้ว");
+    } catch (e) { toast(e.message || "เพิ่มคิวไม่สำเร็จ"); }
+}
+
+async function dockAssign(house) {
+    var bay = prompt("ระบุช่องเทียบท่า (เว้นว่าง = ให้ระบบเลือกให้):", "");
+    try {
+        _dockData = await api("/api/dock/assign", { houseNumber: house, bayId: (bay || "").trim() });
+        state.dockSummary = _dockData.summary;
+        _renderDockHtml();
+        toast("จัดช่อง " + (_dockData.bay ? _dockData.bay.name : "") + " ให้ " + house + " แล้ว");
+    } catch (e) { toast(e.message || "จัดช่องไม่สำเร็จ"); }
+}
+
+async function dockRelease(bayId) {
+    if (!window.confirm("ปล่อยช่องเทียบท่านี้ให้ว่าง?")) return;
+    try {
+        _dockData = await api("/api/dock/release", { bayId: bayId });
+        state.dockSummary = _dockData.summary;
+        _renderDockHtml();
+        toast("ปล่อยท่าเรียบร้อย");
+    } catch (e) { toast(e.message || "ปล่อยท่าไม่สำเร็จ"); }
+}
+
+async function dockRemoveQueue(house) {
+    try {
+        _dockData = await api("/api/dock/release", { houseNumber: house });
+        state.dockSummary = _dockData.summary;
+    } catch (e) { /* ไม่มีท่าให้ปล่อย */ }
+    _dockData = await api("/api/dock/board", null, "GET");
+    _renderDockHtml();
 }
 
 async function renderAttendance() {

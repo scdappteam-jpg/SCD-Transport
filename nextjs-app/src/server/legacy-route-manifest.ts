@@ -4,6 +4,8 @@ export const legacyViewRoutes = {
   calendar: "calendar",
   staff: "staff",
   hr: "hr",
+  "flight-board": "flight-board",
+  dock: "dock",
   admin: "admin",
   grouping: "grouping",
   "cargo-history": "cargo-history",

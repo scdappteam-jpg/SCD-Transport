@@ -2346,6 +2346,107 @@ function foOpenRequeue(houseToken) {
     showMobileActionModal("ยืนยันการรีคิว", `งาน ${houseNumber} ต้องรอ CS/ระบบอนุมัติ Re-Queue ก่อนดำเนินการต่อ`);
 }
 
+
+/* ══════════ ช่องเทียบท่าของฉัน (มือถือ) ══════════ */
+async function renderMDock() {
+    const box = $("#foDockCard");
+    if (!box) return;
+    const user = currentUser();
+    const jobs = visibleDriverJobs().filter(j => ![ "Billed", "Completed" ].includes(j.status));
+    const house = state.inboundUnlockedHouse || state.outboundUnlockedHouse || (jobs[0] && jobs[0].houseNumber) || "";
+    const plate = user?.vehiclePlate || "";
+    if (!house && !plate) { box.hidden = true; return; }
+    let data = null;
+    try {
+        const qs = new URLSearchParams();
+        if (house) qs.set("houseNumber", house);
+        if (plate) qs.set("vehiclePlate", plate);
+        const res = await fetch(apiUrl("/api/dock/my?" + qs.toString()));
+        if (!res.ok) throw new Error("no dock");
+        data = await res.json();
+    } catch (e) { box.hidden = true; return; }
+
+    if (data.bay) {
+        box.hidden = false;
+        box.className = "fo-card fo-dock-card ok";
+        box.innerHTML = `
+          <div class="fo-dock-lbl">ช่องเทียบท่าที่ได้รับ</div>
+          <div class="fo-dock-no">${escapeHtmlMobile(data.bay.name || "-")}</div>
+          <div class="fo-dock-sub">${escapeHtmlMobile(data.bay.houseNumber || house)} · ${escapeHtmlMobile(data.bay.pieceCount || "-")} ชิ้น</div>
+          <div class="fo-dock-kv"><span>ช่องเก็บปลายทาง</span><b>${escapeHtmlMobile(data.bay.locationId || "รอระบุ")}</b></div>
+          <div class="fo-dock-kv"><span>จัดช่องเมื่อ</span><b>${data.bay.assignedAt ? formatBangkokMobile(data.bay.assignedAt).slice(-8, -3) : "-"}</b></div>
+          <button type="button" class="fo-primary-btn" onclick="renderMDock()">รีเฟรชสถานะ</button>`;
+        return;
+    }
+    if (data.queue) {
+        box.hidden = false;
+        box.className = "fo-card fo-dock-card wait";
+        box.innerHTML = `
+          <div class="fo-dock-lbl">อยู่ในคิวรอช่องเทียบท่า</div>
+          <div class="fo-dock-no">คิวที่ ${data.queue.position}</div>
+          <div class="fo-dock-sub">${escapeHtmlMobile(data.queue.houseNumber)} · รออีก ${data.ahead} คัน</div>
+          ${data.queue.suggestedBayId ? `<div class="fo-dock-kv"><span>ช่องที่ระบบเสนอ</span><b>${escapeHtmlMobile(data.queue.suggestedBayId)}</b></div>` : ""}
+          <div class="fo-dock-kv"><span>ท่าว่างตอนนี้</span><b>${data.summary?.available ?? "-"} ท่า</b></div>
+          <button type="button" class="fo-primary-btn outline" onclick="renderMDock()">รีเฟรชสถานะ</button>`;
+        return;
+    }
+    box.hidden = false;
+    box.className = "fo-card fo-dock-card none";
+    box.innerHTML = `
+      <div class="fo-dock-lbl">ยังไม่ได้จองช่องเทียบท่า</div>
+      <div class="fo-dock-sub">House ${escapeHtmlMobile(house || "-")} · ท่าว่าง ${data.summary?.available ?? "-"} ท่า</div>
+      <button type="button" class="fo-primary-btn" onclick="mobileJoinDockQueue('${escapeHtmlMobile(house)}')">แจ้งว่าถึงหน้าคลังแล้ว</button>`;
+}
+
+async function mobileJoinDockQueue(house) {
+    if (!house) return toast("ยังไม่มีเลข House สำหรับจองช่อง");
+    try {
+        await api("/api/dock/queue", {
+            houseNumber: house,
+            vehiclePlate: currentUser()?.vehiclePlate || "",
+            driverName: currentUser()?.name || "",
+            arrived: true
+        });
+        toast("เข้าคิวแล้ว รอระบบจัดช่องให้");
+        renderMDock();
+    } catch (e) { toast(e.message || "เข้าคิวไม่สำเร็จ"); }
+}
+
+/* ══════════ บอร์ดไฟลท์ด่วน (มือถือ) ══════════ */
+function mobileFlightRows() {
+    const jobs = (state.dashboard?.jobs || []).filter(j => ![ "Billed", "InvoiceSent", "Completed" ].includes(j.status));
+    const now = Date.now();
+    return jobs.map(j => {
+        const due = j.effectiveAirportDueAt || j.airportDueAt || j.flightTime || "";
+        const ms = due ? new Date(due).getTime() : NaN;
+        return { j, min: isNaN(ms) ? null : (ms - now) / 6e4 };
+    }).filter(r => r.min !== null && r.min < 12 * 60).sort((a, b) => a.min - b.min).slice(0, 6);
+}
+
+function renderMFlight() {
+    const box = $("#foFlightCard");
+    if (!box) return;
+    const rows = mobileFlightRows();
+    if (!rows.length) { box.hidden = true; return; }
+    const tier = m => m < 0 ? "cr" : m < 120 ? "cr" : m < 240 ? "wn" : "ok";
+    const lbl = m => {
+        if (m < 0) return "เลย " + Math.abs(Math.round(m)) + " น.";
+        const h = Math.floor(m / 60), mm = Math.round(m % 60);
+        return h > 0 ? h + ":" + String(mm).padStart(2, "0") : mm + " น.";
+    };
+    const crit = rows.filter(r => r.min < 120).length;
+    box.hidden = false;
+    box.className = "fo-card fo-flight-card";
+    box.innerHTML = `
+      <div class="fo-fl-head"><b>งานด่วนวันนี้</b><span>${crit ? crit + " งานเร่งด่วน" : "ไม่มีงานเร่งด่วน"}</span></div>
+      ${rows.map(r => `
+        <div class="fo-fl-row ${tier(r.min)}">
+          <span class="f">${escapeHtmlMobile(r.j.flightNo || "—")}</span>
+          <span class="h">${escapeHtmlMobile(r.j.houseNumber)} · ${escapeHtmlMobile(r.j.destAirport || r.j.destination || "-")}</span>
+          <span class="l">${lbl(r.min)}</span>
+        </div>`).join("")}`;
+}
+
 async function renderMHome() {
     const user = currentUser();
     if (!user) return;
@@ -2383,6 +2484,8 @@ async function renderMHome() {
         jc.classList.add("ez-driver-home-card");
         jc.innerHTML = `\n      <div class="ez-summary-head">\n        <div><strong>สรุปคิว</strong><span>ข้อมูลวันนี้ ${formatBangkokMobile((new Date).toISOString())}</span></div>\n        <button type="button" class="ez-refresh-btn" onclick="refresh()">↻ รีเฟรช</button>\n      </div>\n      <div class="ez-summary-tiles">\n        <button type="button" class="active" onclick="showMnav('work')"><span>🚚</span><b>${runningJobs.length}</b><small>กำลังดำเนินการ</small></button>\n        <button type="button" onclick="showMnav('map')"><span>📦</span><b>${completedJobs.length}</b><small>เสร็จสิ้น</small></button>\n        <button type="button" onclick="showMnav('work')"><span>✖</span><b>${cancelledJobs.length}</b><small>ยกเลิก</small></button>\n        <button type="button" onclick="showMnav('work')"><span>▦</span><b>${allDriverJobs.length}</b><small>ทั้งหมด</small></button>\n      </div>\n      <div class="ez-queue-title"><strong>จำนวนคิวทั้งหมด: ${allDriverJobs.length}</strong><span>กำลังดำเนินการ (${runningJobs.length}) · เสร็จสิ้น (${completedJobs.length}) · ยกเลิก (${cancelledJobs.length})</span></div>\n      <div class="ez-driver-tabs" role="tablist">\n        <button type="button" class="active">กำลังดำเนินการ (${runningJobs.length})</button>\n        <button type="button" onclick="showMnav('map')">เสร็จสิ้น (${completedJobs.length})</button>\n        <button type="button" onclick="showMnav('work')">ยกเลิก (${cancelledJobs.length})</button>\n        <button type="button" onclick="showMnav('work')">ทั้งหมด (${allDriverJobs.length})</button>\n      </div>\n      ${next ? foDriverJobCard(next) : `<div class="fo-empty">ไม่มีงานค้างของคนขับคนนี้</div>`}`;
     }
+    renderMDock();
+    renderMFlight();
     const tl = $("#foTimeline");
     if (tl) {
         const events = [];
