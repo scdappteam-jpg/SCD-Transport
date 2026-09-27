@@ -5708,7 +5708,7 @@ function showWarehouseEditor() {
 async function startNewWarehouseMap() {
     const saveFirst = whMapState.zones?.length > 0;
     if (saveFirst) {
-        const name = window.prompt("บันทึกแผนที่ปัจจุบันก่อนไหม? ใส่ชื่อหรือกด Cancel เพื่อข้าม");
+        const name = await scdPrompt({ title: "บันทึกแผนที่ปัจจุบัน", note: "เว้นว่างหรือกดยกเลิกเพื่อข้าม", label: "ชื่อแผนที่", placeholder: "เช่น WH3 ชั้น 2" });
         if (name) await saveWhAsProfile(name);
     }
     if (!await showWhConfirm("สร้างแผนที่ใหม่? โซนปัจจุบันจะถูกล้าง")) return;
@@ -5842,10 +5842,10 @@ async function confirmPickerAssign(locId, level, isFlexible = false) {
     const houseNumber = modal._houseNumber;
     const loc = whMapState.locations.find(l => l.id === locId);
     if (!houseNumber || !loc) return;
-    const pieces = isFlexible ? Number(window.prompt("จำนวนชิ้นของ Lot นี้", "1")) || 0 : 0;
+    const pieces = isFlexible ? Number(await scdPrompt({ title: "จองพื้นที่แบบยืดหยุ่น", label: "จำนวนชิ้นของ Lot นี้", type: "number", value: "1" })) || 0 : 0;
     if (isFlexible && pieces < 1) return toast("กรุณาระบุจำนวนชิ้นมากกว่า 0", "error");
-    const areaSqm = isFlexible ? Number(window.prompt("พื้นที่ใช้โดยประมาณ (ตร.ม.) — เว้นว่างได้", "")) || 0 : 0;
-    const volumeCbm = isFlexible ? Number(window.prompt("ปริมาตรโดยประมาณ (ลบ.ม.) — เว้นว่างได้", "")) || 0 : 0;
+    const areaSqm = isFlexible ? Number(await scdPrompt({ title: "จองพื้นที่แบบยืดหยุ่น", label: "พื้นที่ใช้โดยประมาณ (ตร.ม.)", note: "เว้นว่างได้", type: "number" })) || 0 : 0;
+    const volumeCbm = isFlexible ? Number(await scdPrompt({ title: "จองพื้นที่แบบยืดหยุ่น", label: "ปริมาตรโดยประมาณ (ลบ.ม.)", note: "เว้นว่างได้", type: "number" })) || 0 : 0;
     try {
         await api("/api/warehouse/location/assign", {
             locationId: locId,
@@ -6844,7 +6844,7 @@ async function approveHrRequest(kind, id) {
     let action = "approve";
     let actualHours;
     if (kind === "ot" && req.status === "approved") {
-        const actual = Number(prompt("กรอกชั่วโมงทำจริง / Actual OT hours", req.requestedHours || 0));
+        const actual = Number(await scdPrompt({ title: "อนุมัติโอที", label: "ชั่วโมงทำจริง", note: "ขอไว้ " + (req.requestedHours || 0) + " ชม. — จ่ายตามจริงแต่ไม่เกินที่อนุมัติ", type: "number", value: String(req.requestedHours || 0) }));
         if (!Number.isFinite(actual)) return;
         action = "recordActual";
         actualHours = Math.max(0, actual);
@@ -6865,7 +6865,7 @@ async function approveHrRequest(kind, id) {
 async function rejectHrRequest(kind, id) {
     const req = hrFindRequest(kind, id);
     if (!req) return;
-    const reason = prompt("เหตุผลที่ไม่อนุมัติ / Rejection reason", "");
+    const reason = await scdPrompt({ title: "ไม่อนุมัติคำขอ", label: "เหตุผลที่ไม่อนุมัติ", placeholder: "ระบุเหตุผลให้พนักงานทราบ" });
     if (reason === null) return;
     try {
         const user = currentWebUser();
@@ -7380,9 +7380,9 @@ async function closeHrMonth() {
 
 async function createHrPayrollRun() {
     if (!hrCanManageCore()) return toast("เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น");
-    const periodStart = prompt("วันเริ่มรอบจ่าย (YYYY-MM-DD)", `${dateInputValue().slice(0, 8)}01`);
+    const periodStart = await scdPrompt({ title: "สร้างรอบเงินเดือน", label: "วันเริ่มรอบจ่าย", type: "date", value: `${dateInputValue().slice(0, 8)}01` });
     if (!periodStart) return;
-    const periodEnd = prompt("วันสิ้นสุดรอบจ่าย (YYYY-MM-DD)", dateInputValue());
+    const periodEnd = await scdPrompt({ title: "สร้างรอบเงินเดือน", label: "วันสิ้นสุดรอบจ่าย", type: "date", value: dateInputValue() });
     if (!periodEnd) return;
     try {
         const data = await api("/api/hr/payroll-run", { actorId: currentWebUser()?.id || "", periodStart, periodEnd });
@@ -10575,7 +10575,7 @@ async function csBulkConfirmFiltered() {
     if (_csQueueTab !== "pending") return toast("สลับไปแท็บรอยืนยันก่อน");
     const jobs = _csApplyFilters(_csQueueData, _csJobDate);
     if (!jobs.length) return toast("ไม่มีงานตามเงื่อนไขให้ยืนยัน");
-    const invoiceNo = prompt(`กำลังยืนยันแบบกลุ่ม ${jobs.length} งาน\nกรอกเลขอ้างอิง/Invoice กลาง (ใช้ร่วมกันทุกงาน):`, "BULK-" + new Date().toISOString().slice(0, 10));
+    const invoiceNo = await scdPrompt({ title: "ยืนยันแบบกลุ่ม " + jobs.length + " งาน", note: "ใช้เลขอ้างอิงเดียวกันทุกงานในกลุ่มนี้", label: "เลขอ้างอิง / Invoice", value: "BULK-" + new Date().toISOString().slice(0, 10) });
     if (!invoiceNo) return;
     if (!window.confirm(`ยืนยัน CS ทั้งหมด ${jobs.length} งาน ด้วยอ้างอิง "${invoiceNo}" ?\nงานจะพร้อมเปิดใบ Cargo ทันที`)) return;
     const user = currentWebUser();
@@ -10600,7 +10600,7 @@ async function adminResetAllJobs() {
     if (user?.role !== "Admin") return toast("เฉพาะ Admin เท่านั้นที่ล้างงานได้", "error");
     const totalNow = (state.dashboard?.jobs || []).length;
     if (!window.confirm(`ล้างงานทั้งหมด ${totalNow} งาน + ใบแจ้งหนี้ + แผนโหลด + ประวัติ Import ออกจากระบบถาวร?\n\nผู้ใช้ / ลูกค้า / ผังคลัง / HR จะยังอยู่ครบ`)) return;
-    const word = prompt("พิมพ์ RESET (ตัวใหญ่) เพื่อยืนยันครั้งสุดท้าย:");
+    const word = await scdPrompt({ title: "ยืนยันการล้างข้อมูล", note: "การล้างข้อมูลย้อนกลับไม่ได้", label: "พิมพ์ RESET (ตัวใหญ่) เพื่อยืนยัน", okText: "ล้างข้อมูล" });
     if (word !== "RESET") return toast("ยกเลิก — ไม่ได้ล้างข้อมูล");
     try {
         const data = await api("/api/admin/reset-jobs", { confirm: "RESET_ALL_JOBS", userId: user.id });
@@ -10751,14 +10751,30 @@ function fbTier(minutes) {
 }
 
 function fbLeftLabel(minutes) {
-    if (minutes === null || isNaN(minutes)) return "—";
-    if (minutes < 0) return "เลย " + Math.abs(Math.round(minutes)) + " น.";
-    var h = Math.floor(minutes / 60), m = Math.round(minutes % 60);
-    return h > 0 ? h + " ชม. " + String(m).padStart(2, "0") + " น." : m + " นาที";
+    if (minutes === null || isNaN(minutes)) return "\u2014";
+    var abs = Math.abs(minutes);
+    var text;
+    if (abs >= 1440) {
+        var d = Math.floor(abs / 1440), hh = Math.round(abs % 1440 / 60);
+        text = d + " วัน" + (hh ? " " + hh + " ชม." : "");
+    } else if (abs >= 60) {
+        text = Math.floor(abs / 60) + " ชม. " + String(Math.round(abs % 60)).padStart(2, "0") + " น.";
+    } else {
+        text = Math.round(abs) + " นาที";
+    }
+    return minutes < 0 ? "เลย " + text : text;
 }
 
 function fbDueAt(job) {
-    return job.effectiveAirportDueAt || job.airportDueAt || job.flightTime || job.closeTime || "";
+    var list = [ job.effectiveAirportDueAt, job.airportDueAt, job.flightTime, job.closeTime ];
+    for (var i = 0; i < list.length; i++) {
+        var v = list[i];
+        if (!v) continue;
+        var t = new Date(v).getTime();
+        // กันค่าที่อ่านจาก Excel เพี้ยน (เช่น เลขทศนิยมกลายเป็นปี 1970)
+        if (!isNaN(t) && new Date(t).getFullYear() >= 2020) return v;
+    }
+    return "";
 }
 
 function flightBoardRows() {
@@ -10772,7 +10788,7 @@ function flightBoardRows() {
         var minutes = isNaN(ms) ? null : (ms - now) / 6e4;
         return { job: job, minutes: minutes, tier: fbTier(minutes) };
     }).filter(function (row) {
-        return row.minutes !== null && row.minutes < 24 * 60;
+        return row.minutes !== null && row.minutes < 24 * 60 && row.minutes > -24 * 60;
     }).sort(function (a, b) { return a.minutes - b.minutes; }).slice(0, 60);
 }
 
@@ -10791,15 +10807,17 @@ function renderFlightBoard() {
         var j = r.job;
         var due = fbDueAt(j);
         var dueTxt = due ? new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(due)) : "—";
+        var mawb = j.mawbNumber || j.masterAwb || j.scannedMasterAwb || "";
         return '<div class="fb-row fb-' + r.tier.key + '" onclick="openJobQuickView(\'' + safeHtml(j.houseNumber) + '\')">'
-            + '<span class="fb-c fb-fl">' + safeHtml(j.flightNo || "—") + '</span>'
-            + '<span class="fb-c">' + safeHtml(j.destAirport || j.destination || "—") + '</span>'
-            + '<span class="fb-c">' + dueTxt + '</span>'
-            + '<span class="fb-c fb-hs">' + safeHtml(j.houseNumber) + '<em>' + safeHtml(j.customerName || "") + '</em></span>'
-            + '<span class="fb-c">' + safeHtml(j.pieceCount || "—") + '</span>'
-            + '<span class="fb-c"><i class="fb-dot" style="background:' + r.tier.color + '"></i>' + safeHtml(statusLabelTh(j.status)) + '</span>'
+            + '<span class="fb-c fb-key"><b>' + safeHtml(mawb || "\u2014") + '</b><em>MASTER</em></span>'
+            + '<span class="fb-c fb-key"><b>' + safeHtml(j.houseNumber) + '</b><em>' + safeHtml(j.customerName || "") + '</em></span>'
+            + '<span class="fb-c fb-sm">' + safeHtml(j.destAirport || j.destination || "\u2014") + '</span>'
+            + '<span class="fb-c fb-sm">' + safeHtml(j.flightNo || "\u2014") + '</span>'
+            + '<span class="fb-c fb-sm">' + dueTxt + '</span>'
+            + '<span class="fb-c fb-sm">' + safeHtml(j.pieceCount || "\u2014") + '</span>'
+            + '<span class="fb-c fb-st"><i class="fb-dot" style="background:' + r.tier.color + '"></i>' + safeHtml(statusLabelTh(j.status)) + '</span>'
             + '<span class="fb-c fb-left">' + fbLeftLabel(r.minutes) + '</span>'
-            + '<span class="fb-c">' + safeHtml(j.dockBayName || "—") + '</span></div>';
+            + '<span class="fb-c fb-sm">' + safeHtml(j.dockBayName || "\u2014") + '</span></div>';
     };
 
     var body = rows.map(rowHtml).join("");
@@ -10815,8 +10833,8 @@ function renderFlightBoard() {
         + '<span><i style="background:#FFB44D"></i>เฝ้าระวัง · 2–4 ชม.</span>'
         + '<span><i style="background:#5BD98A"></i>ปกติ · มากกว่า 4 ชม.</span>'
         + '<span class="fb-count">' + rows.length + ' รายการ</span></div>'
-        + '<div class="fb-th"><span>FLIGHT</span><span>ปลายทาง</span><span>ปิดรับ</span><span>HOUSE</span>'
-        + '<span>ชิ้น</span><span>สถานะงาน</span><span>เหลือเวลา</span><span>ท่าเทียบ</span></div>'
+        + '<div class="fb-th"><span>MASTER AWB</span><span>HOUSE</span><span>ปลายทาง</span><span>ไฟลท์</span>'
+        + '<span>ปิดรับ</span><span>ชิ้น</span><span>สถานะงาน</span><span>เหลือเวลา</span><span>ท่าเทียบ</span></div>'
         + '<div class="fb-body' + (scrolling ? " scrolling" : "") + '">'
         + (rows.length
             ? '<div class="fb-track" style="animation-duration:' + dur + 's">' + body + (scrolling ? body : "") + '</div>'
@@ -10998,9 +11016,9 @@ function dockBaysReset() {
 }
 
 async function dockAddQueue() {
-    var house = prompt("ใส่เลข House ที่รถบรรทุกมา:");
+    var house = await scdPrompt({ title: "เพิ่มรถเข้าคิว", label: "เลข House ที่รถบรรทุกมา", placeholder: "เช่น 4840795308" });
     if (!house) return;
-    var plate = prompt("ทะเบียนรถ (ไม่บังคับ):", "") || "";
+    var plate = (await scdPrompt({ title: "เพิ่มรถเข้าคิว", label: "ทะเบียนรถ (ไม่บังคับ)", placeholder: "เช่น 70-3472" })) || "";
     try {
         _dockData = await api("/api/dock/queue", { houseNumber: house.trim(), vehiclePlate: plate.trim(), arrived: true });
         state.dockSummary = _dockData.summary;
@@ -11010,7 +11028,7 @@ async function dockAddQueue() {
 }
 
 async function dockAssign(house) {
-    var bay = prompt("ระบุช่องเทียบท่า (เว้นว่าง = ให้ระบบเลือกให้):", "");
+    var bay = await scdPrompt({ title: "จัดช่องเทียบท่า", note: "เว้นว่างไว้ให้ระบบเลือกช่องที่เหมาะสมให้", label: "ช่องเทียบท่า", placeholder: "เช่น D3" });
     try {
         _dockData = await api("/api/dock/assign", { houseNumber: house, bayId: (bay || "").trim() });
         state.dockSummary = _dockData.summary;
@@ -11036,6 +11054,35 @@ async function dockRemoveQueue(house) {
     } catch (e) { /* ไม่มีท่าให้ปล่อย */ }
     _dockData = await api("/api/dock/board", null, "GET");
     _renderDockHtml();
+}
+
+
+/* ══════════ ป็อปอัพกรอกข้อมูลในระบบ (แทน prompt ของเบราว์เซอร์) ══════════ */
+function scdPrompt(options) {
+    var opt = typeof options === "string" ? { label: options } : (options || {});
+    return new Promise(function (resolve) {
+        var back = document.createElement("div");
+        back.className = "scd-ask";
+        back.innerHTML = '<div class="scd-ask-box">' +
+            '<div class="scd-ask-h"><b>' + safeHtml(opt.title || "กรอกข้อมูล") + '</b>' +
+            (opt.note ? '<span>' + safeHtml(opt.note) + '</span>' : "") + '</div>' +
+            '<label class="scd-ask-l">' + safeHtml(opt.label || "") + '</label>' +
+            '<input class="scd-ask-i" type="' + (opt.type || "text") + '" value="' + safeHtml(opt.value || "") + '"' +
+            (opt.placeholder ? ' placeholder="' + safeHtml(opt.placeholder) + '"' : "") + '>' +
+            '<div class="scd-ask-a"><button type="button" class="scd-ask-cancel">ยกเลิก</button>' +
+            '<button type="button" class="scd-ask-ok primary">' + safeHtml(opt.okText || "ตกลง") + '</button></div></div>';
+        document.body.appendChild(back);
+        var input = back.querySelector(".scd-ask-i");
+        var done = function (value) { back.remove(); resolve(value); };
+        back.querySelector(".scd-ask-cancel").onclick = function () { done(null); };
+        back.querySelector(".scd-ask-ok").onclick = function () { done(input.value); };
+        back.onclick = function (e) { if (e.target === back) done(null); };
+        input.onkeydown = function (e) {
+            if (e.key === "Enter") done(input.value);
+            if (e.key === "Escape") done(null);
+        };
+        setTimeout(function () { input.focus(); input.select(); }, 30);
+    });
 }
 
 async function renderAttendance() {

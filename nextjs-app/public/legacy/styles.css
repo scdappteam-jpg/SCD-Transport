@@ -307,3 +307,37 @@ hr{border-color:var(--r-line)!important}
 .modal-close,.att-modal-box .modal-close,.dock-x{position:relative;z-index:2}
 .att-modal-box,.mobile-action-modal{padding-top:22px!important}
 .att-modal-title{padding-right:44px}
+
+/* ════════ POLISH · ROUND 2 ════════ */
+/* แถบข้างเป็นแถบสีเต็มความสูงหน้า ไม่เหลือพื้นขาวด้านล่าง */
+.app-shell{background:var(--r-navy)!important}
+.workspace{background:var(--r-bg)!important;min-width:0}
+body.sidebar-collapsed .app-shell{background:var(--r-navy)!important}
+/* บอร์ดไฟลท์: เน้น Master + House ช่องอื่นเล็กลง */
+.fb-th,.fb-row{grid-template-columns:17% 20% 8% 8% 8% 5% 14% 13% 7%!important}
+.fb-th{font-size:11px!important;letter-spacing:.06em}
+.fb-row{padding:11px 0!important;font-size:14px!important}
+.fb-key b{display:block;font-size:19px;font-weight:600;letter-spacing:.03em;line-height:1.2;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-key em{display:block;font-style:normal;font-size:10.5px;color:#7D93B5;margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-sm{font-size:13px;color:#C3D2E6}
+.fb-st{font-size:12.5px}
+.fb-left{font-size:17px!important;font-weight:600}
+/* ป็อปอัพกรอกข้อมูลในระบบ */
+.scd-ask{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+  background:rgba(9,17,31,.5);padding:20px}
+.scd-ask-box{width:min(440px,96vw);background:#fff;border-radius:16px;padding:22px 24px;
+  box-shadow:0 24px 60px rgba(15,27,45,.3)}
+.scd-ask-h b{font-size:16px;font-weight:500;display:block}
+.scd-ask-h span{display:block;font-size:12px;color:var(--r-mut);margin-top:3px}
+.scd-ask-l{display:block;font-size:11.5px;color:var(--r-mut);margin:16px 0 6px}
+.scd-ask-i{width:100%;min-height:44px;border:1px solid var(--r-line);border-radius:10px;
+  padding:0 13px;font-family:inherit;font-size:14px;background:#F7F9FC;color:var(--r-ink)}
+.scd-ask-i:focus{outline:0;border-color:var(--r-pri);background:#fff;box-shadow:0 0 0 3px rgba(27,77,177,.12)}
+.scd-ask-a{display:flex;gap:9px;justify-content:flex-end;margin-top:20px}
+.scd-ask-a button{min-height:40px;padding:0 20px;border-radius:9px;font-family:inherit;font-size:13px;
+  border:1px solid var(--r-line);background:#fff;color:var(--r-ink2);cursor:pointer}
+.scd-ask-a .primary{background:var(--r-pri);border-color:var(--r-pri);color:#fff}
+@media (max-width:1200px){.fb-th,.fb-row{grid-template-columns:19% 22% 9% 9% 9% 6% 0 17% 9%!important}
+  .fb-th span:nth-child(7),.fb-row .fb-st{display:none}}
