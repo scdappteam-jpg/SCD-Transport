@@ -2901,6 +2901,9 @@ async function handleApi(req, res, pathname) {
         });
     }
     if (req.method === "GET" && pathname === "/api/integrations/cartrack/demo") {
+        const viewerId = new URL(req.url, "http://localhost").searchParams.get("userId") || "";
+        const viewer = (db.users || []).find(user => user.id === viewerId);
+        if (!viewer || ![ "Admin", "Executive", "Team_Transport" ].includes(viewer.role)) return sendJson(res, 403, { ok: false, error: "ไม่มีสิทธิ์ดูข้อมูลตำแหน่งรถ" });
         try {
             const vehicles = await getCartrackDemoVehicles();
             return sendJson(res, 200, {
@@ -4329,6 +4332,12 @@ async function handleApi(req, res, pathname) {
         if (!job.wh3PreDispatchReady) return sendJson(res, 409, {
             error: "Complete WH3 original document checklist before terminal booking"
         });
+        const actor = (db.users || []).find(user => user.id === payload.userId);
+        const canBook = actor && [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ].includes(actor.role);
+        const canApprove = actor && [ "Admin", "Executive" ].includes(actor.role);
+        if (!canBook || payload.approved && !canApprove) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จองหรืออนุมัติคิว AOT" });
+        if (payload.approved && job.aotApprovedAt) return sendJson(res, 200, { ok: true, idempotent: true, job: normalizeJob(job), dashboard: buildDashboard(db) });
+        if (!payload.approved && job.aotBookedAt) return sendJson(res, 200, { ok: true, idempotent: true, job: normalizeJob(job), dashboard: buildDashboard(db) });
         if (payload.approved && !job.aotBookedAt) return sendJson(res, 409, {
             error: "Book the AOT queue before approval"
         });

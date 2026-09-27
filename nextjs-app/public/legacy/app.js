@@ -542,6 +542,23 @@ function applyLanguage(root = document.body) {
     if (toggle) toggle.textContent = state.lang === "en" ? "EN" : "TH";
 }
 
+async function recoverCompletedDesktopRequest(path, payload) {
+    const expectedStatuses = {
+        "/api/outbound/aot-booking": payload?.approved ? [ "AOTQueueApproved" ] : [ "AOTQueueBooked", "AOTQueueApproved" ],
+        "/api/billing/send-email": [ "InvoiceSent", "Billed" ],
+        "/api/billing/mark-billed": [ "Billed" ]
+    }[path];
+    if (!expectedStatuses || !payload?.houseNumber) return null;
+    const response = await fetch(apiUrl("/api/bootstrap"));
+    if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) return null;
+    const data = await response.json();
+    const job = (data.dashboard?.jobs || []).find(item => item.houseNumber === payload.houseNumber);
+    if (!job || !expectedStatuses.includes(job.status)) return null;
+    state.dashboard = data.dashboard;
+    state.users = data.users || state.users;
+    return job;
+}
+
 async function api(path, payload, method) {
     try {
         const m = method || "POST";
@@ -557,6 +574,13 @@ async function api(path, payload, method) {
         if (!res.ok) throw new Error(data.error || "Request failed");
         return data;
     } catch (error) {
+        try {
+            const job = await recoverCompletedDesktopRequest(path, payload);
+            if (job) {
+                toast(`บันทึกสำเร็จแล้ว: ${job.houseNumber} · ${job.status}`);
+                return { ok: true, recovered: true, job };
+            }
+        } catch (_) {}
         if (!navigator.onLine) {
             queueOffline(path, payload);
             return {
@@ -2253,7 +2277,7 @@ async function renderFleetDemo(force = false) {
     const button = $("#fleetDemoRefresh");
     if (button) button.disabled = true;
     try {
-        const result = await api("/api/integrations/cartrack/demo", null, "GET");
+        const result = await api(`/api/integrations/cartrack/demo?userId=${encodeURIComponent(currentWebUser()?.id || "")}`, null, "GET");
         state.fleetDemo.vehicles = result.vehicles || [];
         state.fleetDemo.fetchedAt = result.fetchedAt || new Date().toISOString();
         state.fleetDemo.loaded = true;

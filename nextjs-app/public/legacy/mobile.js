@@ -141,7 +141,10 @@ function assetUrl(path) {
 async function recoverCompletedRequest(path, payload) {
     const expectedStatuses = {
         "/api/pickup/complete": [ "PickedUp", "ReturningWH3" ],
-        "/api/inbound/close": [ "Stored", "ReadyForTerminal" ]
+        "/api/inbound/close": [ "Stored", "ReadyForTerminal" ],
+        "/api/outbound/aot-booking": payload?.approved ? [ "AOTQueueApproved" ] : [ "AOTQueueBooked", "AOTQueueApproved" ],
+        "/api/billing/send-email": [ "InvoiceSent", "Billed" ],
+        "/api/billing/mark-billed": [ "Billed" ]
     }[path];
     if (!expectedStatuses || !payload?.houseNumber) return null;
     const res = await fetch(apiUrl("/api/bootstrap"));
