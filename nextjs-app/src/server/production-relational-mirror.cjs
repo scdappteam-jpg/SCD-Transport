@@ -354,8 +354,23 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
         })).filter(row => row.legacy_request_id && row.employee_id && row.target_date && row.reason);
         await upsert("hr_attendance_corrections", "legacy_request_id", corrections);
 
+        const hrNotifications = (source.notifications || []).filter(notification => notification.module === "HR").flatMap(notification => (notification.targetUserIds || []).map(recipientUserId => ({
+            legacy_notification_id: asText(notification.id),
+            recipient_user_id: asText(recipientUserId),
+            notification_type: asText(notification.type, "hr_workflow"),
+            title: asText(notification.title),
+            body: asText(notification.body),
+            request_id: asText(notification.requestId) || null,
+            request_kind: asText(notification.requestKind) || null,
+            actor_id: asText(notification.actorId) || null,
+            read: notification.read === true,
+            created_at: asIso(notification.createdAt) || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        }))).filter(row => row.legacy_notification_id && row.recipient_user_id && row.title && row.body);
+        await upsert("hr_in_app_notifications", "legacy_notification_id", hrNotifications);
+
         lastSnapshotHash = snapshotHash;
-        return { jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult, leaveRequests: leaveRequests.length, otRequests: otRequests.length, employeeProfiles: employeeProfiles.length, checkInLocations: checkInLocations.length, attendanceCorrections: corrections.length };
+        return { jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult, leaveRequests: leaveRequests.length, otRequests: otRequests.length, employeeProfiles: employeeProfiles.length, checkInLocations: checkInLocations.length, attendanceCorrections: corrections.length, hrNotifications: hrNotifications.length };
     }
 
     function schedule(db) {

@@ -679,6 +679,50 @@ function bangkokDate(iso = nowIso()) {
     return new Date(d.getTime() + 7 * 36e5).toISOString().slice(0, 10);
 }
 
+function createHrNotification(db, { recipientUserId, title, body, request, kind, actor }) {
+    if (!recipientUserId) return;
+    db.notifications ||= [];
+    db.notifications.push({
+        id: `HRN-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+        module: "HR",
+        type: "hr_workflow",
+        title,
+        body,
+        targetUserIds: [ recipientUserId ],
+        targetRoles: [],
+        requestId: request?.id || "",
+        requestKind: kind || "",
+        actorId: actor?.id || "",
+        createdAt: nowIso(),
+        read: false
+    });
+}
+
+function notifyHrApprover(db, request, kind) {
+    const profile = db.hr?.employeeProfiles?.[request.employeeId] || {};
+    const supervisorId = profile.supervisorId || (db.users || []).find(user => [ "WH3_TeamLeader", "Team_Transport" ].includes(user.role))?.id;
+    createHrNotification(db, { recipientUserId: supervisorId, title: "มีคำขอ HR รออนุมัติ", body: `${(db.users || []).find(user => user.id === request.employeeId)?.name || request.employeeId} ส่งคำขอ${kind === "ot" ? "โอที" : kind === "attendance" ? "แก้ไขเวลาเข้างาน" : "ลา"}`, request, kind });
+}
+
+function notifyHrExecutive(db, request, kind, actor) {
+    (db.users || []).filter(user => [ "Admin", "Executive" ].includes(user.role)).forEach(user => createHrNotification(db, { recipientUserId: user.id, title: "มีคำขอ HR รออนุมัติขั้นสุดท้าย", body: `คำขอ${kind === "ot" ? "โอที" : kind === "attendance" ? "แก้ไขเวลาเข้างาน" : "ลา"} ผ่านหัวหน้างานแล้ว`, request, kind, actor }));
+}
+
+function notifyHrEmployee(db, request, kind, title, body) {
+    createHrNotification(db, { recipientUserId: request.employeeId, title, body, request, kind });
+}
+
+function applyApprovedAttendanceCorrection(db, request) {
+    const record = (db.attendance || []).find(item => item.userId === request.employeeId && item.date === request.targetDate);
+    if (!record) return;
+    const at = value => value ? `${request.targetDate}T${value}:00+07:00` : null;
+    if (request.requestedCheckIn) record.checkInTime = at(request.requestedCheckIn);
+    if (request.requestedCheckOut) record.checkOutTime = at(request.requestedCheckOut);
+    record.attendanceStatus = "approved_correction";
+    record.correctionRequestId = request.id;
+    record.correctionAppliedAt = nowIso();
+}
+
 const LOAD_PLAN_ROUNDS = String(process.env.LOAD_PLAN_ROUNDS || "08:00,12:00,16:00").split(",").map(value => value.trim()).filter(Boolean);
 
 const TERMINAL_PROFILES = {
@@ -6070,13 +6114,16 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "GET" && pathname === "/api/hr/bootstrap") {
         const db = readDb();
+        const viewerId = new URL(req.url, "http://localhost").searchParams.get("viewerId") || "";
+        const notifications = (db.notifications || []).filter(item => item.module === "HR" && (!viewerId || (item.targetUserIds || []).includes(viewerId))).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))).slice(0, 30);
         return sendJson(res, 200, {
             leaveRequests: db.hr.leaveRequests,
             otRequests: db.hr.otRequests,
             settings: db.hr.settings,
             employeeProfiles: db.hr.employeeProfiles,
             checkInLocations: db.hr.checkInLocations,
-            attendanceCorrections: db.hr.attendanceCorrections
+            attendanceCorrections: db.hr.attendanceCorrections,
+            notifications
         });
     }
     if (req.method === "POST" && pathname === "/api/hr/profile") {
@@ -6132,6 +6179,7 @@ async function handleApi(req, res, pathname) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || !String(payload.reason || "").trim()) return sendJson(res, 400, { error: "Target date and reason are required" });
         const request = { id: `ATC-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, employeeId: user.id, targetDate, requestedCheckIn: String(payload.requestedCheckIn || "").slice(0, 5), requestedCheckOut: String(payload.requestedCheckOut || "").slice(0, 5), reason: String(payload.reason).trim().slice(0, 2e3), status: "pendingLead", createdAt: nowIso(), trail: [] };
         db.hr.attendanceCorrections.unshift(request);
+        notifyHrApprover(db, request, "attendance");
         writeDb(db);
         return sendJson(res, 201, { ok: true, request, attendanceCorrections: db.hr.attendanceCorrections });
     }
@@ -6162,6 +6210,7 @@ async function handleApi(req, res, pathname) {
             trail: []
         };
         db.hr.leaveRequests.unshift(request);
+        notifyHrApprover(db, request, "leave");
         writeDb(db);
         return sendJson(res, 201, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
     }
@@ -6198,27 +6247,37 @@ async function handleApi(req, res, pathname) {
             trail: []
         };
         db.hr.otRequests.unshift(request);
+        notifyHrApprover(db, request, "ot");
         writeDb(db);
         return sendJson(res, 201, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
     }
     if (req.method === "POST" && pathname === "/api/hr/request-action") {
         const payload = await parseBody(req);
         const db = readDb();
-        const kind = payload.kind === "ot" ? "ot" : "leave";
-        const list = kind === "ot" ? db.hr.otRequests : db.hr.leaveRequests;
+        const kind = [ "leave", "ot", "attendance" ].includes(payload.kind) ? payload.kind : "leave";
+        const list = kind === "ot" ? db.hr.otRequests : kind === "attendance" ? db.hr.attendanceCorrections : db.hr.leaveRequests;
         const request = list.find(item => item.id === payload.id);
         if (!request) return sendJson(res, 404, { error: "HR request not found" });
         const actor = (db.users || []).find(item => item.id === payload.actorId);
-        const actorName = actor?.name || String(payload.actorName || "System");
+        if (!actor) return sendJson(res, 403, { error: "ไม่พบผู้ดำเนินการ HR" });
+        const actorName = actor.name || "System";
         const action = String(payload.action || "");
+        const canLead = actor.role === "Admin" || actor.role === "Executive" || [ "WH3_TeamLeader", "Team_Transport" ].includes(actor.role) || db.hr?.employeeProfiles?.[request.employeeId]?.supervisorId === actor.id;
+        const canExecutive = [ "Admin", "Executive" ].includes(actor.role);
+        const canCancel = actor.id === request.employeeId || canExecutive;
         if (action === "approve") {
             if (request.status === "pendingLead") {
+                if (!canLead) return sendJson(res, 403, { error: "เฉพาะหัวหน้างานที่ได้รับมอบหมายเท่านั้นที่อนุมัติขั้นต้นได้" });
                 request.status = "pendingExecutive";
                 request.trail = [ ...(request.trail || []), { step: "lead", action: "approved", by: actorName, at: nowIso() } ];
+                notifyHrExecutive(db, request, kind, actor);
             } else if (request.status === "pendingExecutive") {
+                if (!canExecutive) return sendJson(res, 403, { error: "เฉพาะผู้บริหารหรือผู้ดูแลระบบเท่านั้นที่อนุมัติขั้นสุดท้ายได้" });
                 request.status = "approved";
                 request.approvedAt = nowIso();
                 request.trail = [ ...(request.trail || []), { step: "executive", action: "approved", by: actorName, at: nowIso() } ];
+                if (kind === "attendance") applyApprovedAttendanceCorrection(db, request);
+                notifyHrEmployee(db, request, kind, "คำขอได้รับอนุมัติ", "คำขอ HR ของคุณได้รับอนุมัติแล้ว");
             } else return sendJson(res, 409, { error: "Request is not awaiting approval" });
         } else if (action === "recordActual" && kind === "ot" && request.status === "approved") {
             const actual = Number(payload.actualHours);
@@ -6231,16 +6290,19 @@ async function handleApi(req, res, pathname) {
             request.status = "closed";
             request.closedAt = nowIso();
         } else if (action === "reject" && [ "pendingLead", "pendingExecutive" ].includes(request.status)) {
+            if (request.status === "pendingLead" && !canLead || request.status === "pendingExecutive" && !canExecutive) return sendJson(res, 403, { error: "คุณไม่มีสิทธิ์ดำเนินการคำขอนี้" });
             const rejectionStep = request.status === "pendingExecutive" ? "executive" : "lead";
             request.status = "rejected";
             request.rejectionReason = String(payload.reason || "-").trim().slice(0, 2e3) || "-";
             request.trail = [ ...(request.trail || []), { step: rejectionStep, action: "rejected", by: actorName, at: nowIso(), reason: request.rejectionReason } ];
+            notifyHrEmployee(db, request, kind, "คำขอไม่ผ่านการอนุมัติ", `เหตุผล: ${request.rejectionReason}`);
         } else if (action === "cancel" && [ "pendingLead", "pendingExecutive", "approved" ].includes(request.status)) {
+            if (!canCancel) return sendJson(res, 403, { error: "ยกเลิกได้เฉพาะผู้ยื่นคำขอหรือผู้ดูแลระบบ" });
             request.status = "cancelled";
             request.cancelledAt = nowIso();
         } else return sendJson(res, 409, { error: "Invalid HR status transition" });
         writeDb(db);
-        return sendJson(res, 200, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
+        return sendJson(res, 200, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, attendanceCorrections: db.hr.attendanceCorrections, settings: db.hr.settings });
     }
     if (req.method === "POST" && pathname === "/api/hr/close-month") {
         const db = readDb();

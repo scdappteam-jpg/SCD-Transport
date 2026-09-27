@@ -6619,10 +6619,11 @@ function applyHrData(data) {
     state.hrEmployeeProfiles = data?.employeeProfiles || {};
     state.hrCheckInLocations = Array.isArray(data?.checkInLocations) ? data.checkInLocations : [];
     state.hrAttendanceCorrections = Array.isArray(data?.attendanceCorrections) ? data.attendanceCorrections : [];
+    state.hrNotifications = Array.isArray(data?.notifications) ? data.notifications : [];
 }
 
 async function loadHrData() {
-    const data = await api("/api/hr/bootstrap", null, "GET");
+    const data = await api(`/api/hr/bootstrap?viewerId=${encodeURIComponent(currentWebUser()?.id || "")}`, null, "GET");
     applyHrData(data);
 }
 
@@ -6665,7 +6666,7 @@ function hrOtHours(startTime, endTime) {
 
 function updateHrEmployeeSelects() {
     const options = hrEmployees().map(user => `<option value="${safeHtml(user.id)}">${safeHtml(user.name || user.id)} · ${safeHtml(staffRoleLabel(user.role))}${user.vehiclePlate ? ` · ${safeHtml(user.vehiclePlate)}` : ""}</option>`).join("");
-    [ "#hrLeaveEmployee", "#hrOtEmployee" ].forEach(selector => {
+    [ "#hrLeaveEmployee", "#hrOtEmployee", "#hrAttendanceEmployee" ].forEach(selector => {
         const select = $(selector);
         if (!select) return;
         const previous = select.value;
@@ -6675,13 +6676,26 @@ function updateHrEmployeeSelects() {
     if ($("#hrLeaveStart") && !$("#hrLeaveStart").value) $("#hrLeaveStart").value = dateInputValue();
     if ($("#hrLeaveEnd") && !$("#hrLeaveEnd").value) $("#hrLeaveEnd").value = dateInputValue();
     if ($("#hrOtDate") && !$("#hrOtDate").value) $("#hrOtDate").value = dateInputValue();
+    if ($("#hrCorrectionDate") && !$("#hrCorrectionDate").value) $("#hrCorrectionDate").value = dateInputValue();
 }
 
 function switchHrForm(mode) {
-    state.hrFormMode = mode === "ot" ? "ot" : "leave";
+    state.hrFormMode = [ "leave", "ot", "attendance" ].includes(mode) ? mode : "leave";
     $$("[data-hr-form-tab]").forEach(button => button.classList.toggle("active", button.dataset.hrFormTab === state.hrFormMode));
     $("#hrLeaveForm").hidden = state.hrFormMode !== "leave";
     $("#hrOtForm").hidden = state.hrFormMode !== "ot";
+    $("#hrAttendanceCorrectionForm").hidden = state.hrFormMode !== "attendance";
+}
+
+async function submitHrAttendanceCorrection(event) {
+    event?.preventDefault();
+    try {
+        const data = await api("/api/hr/attendance-correction", { employeeId: $("#hrAttendanceEmployee")?.value || currentWebUser()?.id || "", targetDate: $("#hrCorrectionDate")?.value || dateInputValue(), requestedCheckIn: $("#hrCorrectionCheckIn")?.value || "", requestedCheckOut: $("#hrCorrectionCheckOut")?.value || "", reason: $("#hrCorrectionReason")?.value.trim() || "" });
+        applyHrData(data);
+        $("#hrCorrectionReason").value = "";
+        renderHR();
+        toast("ส่งคำขอแก้ไขเวลาแล้ว");
+    } catch (error) { toast(error.message || "ส่งคำขอแก้ไขเวลาไม่สำเร็จ"); }
 }
 
 async function submitHrLeave(event) {
@@ -6729,7 +6743,7 @@ async function submitHrOt(event) {
 }
 
 function hrFindRequest(kind, id) {
-    const list = kind === "leave" ? state.leaveRequests : state.otRequests;
+    const list = kind === "leave" ? state.leaveRequests : kind === "attendance" ? state.hrAttendanceCorrections : state.otRequests;
     return (list || []).find(req => req.id === id);
 }
 
@@ -6827,13 +6841,18 @@ function renderHrApprovalQueue() {
     })), ...(state.otRequests || []).map(req => ({
         ...req,
         kind: "ot"
+    })), ...(state.hrAttendanceCorrections || []).map(req => ({
+        ...req,
+        kind: "attendance"
     })) ].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
     const visible = combined.slice(0, 18);
     $("#hrApprovalQueue").innerHTML = visible.length ? visible.map(req => {
         const isLeave = req.kind === "leave";
-        const primary = isLeave ? hrLeaveTypeLabel(req.type) : `OT ${req.requestedHours} ชม.`;
-        const detail = isLeave ? `${req.startDate} ถึง ${req.endDate} · ${req.days} วัน · ${req.part}` : `${req.date} · ${req.startTime}-${req.endTime} · จ่ายจริง ${req.paidHours || 0}/${req.requestedHours} ชม.`;
-        const canApprove = [ "pendingLead", "pendingExecutive", "approved", "done" ].includes(req.status);
+        const isAttendance = req.kind === "attendance";
+        const primary = isLeave ? hrLeaveTypeLabel(req.type) : isAttendance ? "แก้ไขเวลาเข้างาน" : `OT ${req.requestedHours} ชม.`;
+        const detail = isLeave ? `${req.startDate} ถึง ${req.endDate} · ${req.days} วัน · ${req.part}` : isAttendance ? `${req.targetDate} · เข้า ${req.requestedCheckIn || "-"} · ออก ${req.requestedCheckOut || "-"}` : `${req.date} · ${req.startTime}-${req.endTime} · จ่ายจริง ${req.paidHours || 0}/${req.requestedHours} ชม.`;
+        const canApprove = hrCanActOnRequest(req) && (isAttendance ? [ "pendingLead", "pendingExecutive" ].includes(req.status) : [ "pendingLead", "pendingExecutive", "approved", "done" ].includes(req.status));
+        const canCancel = (currentWebUser()?.id === req.employeeId || hrCanManageCore()) && [ "pendingLead", "pendingExecutive", "approved" ].includes(req.status);
         return `\n      <article class="hr-request-row ${req.kind}">\n        <div class="hr-row-main">\n          <strong>${safeHtml(hrEmployeeName(req.employeeId))}</strong>\n          <span>${safeHtml(primary)}</span>\n          <small>${safeHtml(detail)}${req.workRef ? ` · ${safeHtml(req.workRef)}` : ""}</small>\n          ${req.rejectionReason ? `<em>เหตุผลปฏิเสธ: ${safeHtml(req.rejectionReason)}</em>` : ""}\n        </div>\n        <div class="hr-row-status">${hrStatusPill(req.status)}</div>\n        <div class="hr-row-actions">\n          ${canApprove ? `<button type="button" onclick="approveHrRequest('${req.kind}','${req.id}')">${req.status === "approved" && req.kind === "ot" ? "บันทึกจริง" : req.status === "done" ? "ปิดรอบ" : "อนุมัติ"}</button>` : ""}\n          ${[ "pendingLead", "pendingExecutive" ].includes(req.status) ? `<button class="danger" type="button" onclick="rejectHrRequest('${req.kind}','${req.id}')">ไม่อนุมัติ</button>` : ""}\n          ${[ "pendingLead", "pendingExecutive", "approved" ].includes(req.status) ? `<button class="ghost" type="button" onclick="cancelHrRequest('${req.kind}','${req.id}')">ยกเลิก</button>` : ""}\n        </div>\n      </article>`;
     }).join("") : `<div class="empty-state compact">ยังไม่มีคำขอ HR</div>`;
 }
@@ -6841,6 +6860,26 @@ function renderHrApprovalQueue() {
 function renderHrCalendar() {
     const approved = (state.leaveRequests || []).filter(req => [ "approved", "pendingLead", "pendingExecutive" ].includes(req.status)).slice(0, 10);
     $("#hrCalendarList").innerHTML = approved.length ? approved.map(req => `\n    <article class="hr-calendar-item ${HR_LEAVE_TYPES[req.type]?.tone || "blue"}">\n      <div><strong>${safeHtml(req.startDate)}${req.endDate !== req.startDate ? ` - ${safeHtml(req.endDate)}` : ""}</strong><span>${safeHtml(hrEmployeeName(req.employeeId))} · ${safeHtml(hrLeaveTypeLabel(req.type))}</span></div>\n      <b>${safeHtml(req.zone || "Operations")}</b>\n      ${hrStatusPill(req.status)}\n    </article>`).join("") : `<div class="empty-state compact">ยังไม่มีวันลาที่ต้องจัดกำลังคน</div>`;
+}
+
+function hrCanActOnRequest(req) {
+    const viewer = currentWebUser();
+    if (!viewer) return false;
+    if ([ "Admin", "Executive" ].includes(viewer.role)) return true;
+    const profile = state.hrEmployeeProfiles?.[req.employeeId] || {};
+    return req.status === "pendingLead" && (profile.supervisorId === viewer.id || [ "WH3_TeamLeader", "Team_Transport" ].includes(viewer.role));
+}
+
+function renderHrNotifications() {
+    const container = $("#hrNotificationList");
+    if (!container) return;
+    const notifications = state.hrNotifications || [];
+    container.innerHTML = notifications.length ? notifications.map(item => `<article class="hr-request-row"><div class="hr-row-main"><strong>${safeHtml(item.title || "HR")}</strong><span>${safeHtml(item.body || "")}</span><small>${safeHtml(formatDateTime(item.createdAt) || "")}</small></div>${item.read ? `<div class="hr-row-status">อ่านแล้ว</div>` : `<div class="hr-row-status"><button class="ghost" type="button" onclick="markHrNotificationRead('${item.id}')">อ่านแล้ว</button></div>`}</article>`).join("") : `<div class="empty-state compact">ไม่มีการแจ้งเตือน HR</div>`;
+}
+
+async function markHrNotificationRead(id) {
+    try { await api("/api/notifications/mark-read", { ids: [ id ] }); await loadHrData(); renderHrNotifications(); }
+    catch (error) { toast(error.message || "อัปเดตการแจ้งเตือนไม่สำเร็จ"); }
 }
 
 function renderHrSettings() {
@@ -6956,6 +6995,7 @@ async function renderHR() {
     renderHrCalendar();
     renderHrSettings();
     renderHrCoreSetup();
+    renderHrNotifications();
     if (window.lucide) window.lucide.createIcons();
 }
 

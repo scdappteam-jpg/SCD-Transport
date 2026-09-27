@@ -681,6 +681,7 @@
                 <div class="hr-form-tabs" role="tablist">
                   <button class="active" type="button" data-hr-form-tab="leave" onclick="switchHrForm('leave')">ขอลา</button>
                   <button type="button" data-hr-form-tab="ot" onclick="switchHrForm('ot')">ขอโอที</button>
+                  <button type="button" data-hr-form-tab="attendance" onclick="switchHrForm('attendance')">แก้ไขเวลา</button>
                 </div>
                 <form id="hrLeaveForm" class="hr-form" onsubmit="submitHrLeave(event)">
                   <label>พนักงาน / Employee<select id="hrLeaveEmployee"></select></label>
@@ -713,6 +714,16 @@
                   <label>เหตุผล / Reason<textarea id="hrOtReason" rows="3" placeholder="เช่น โหลดสินค้าต่อเนื่องหลังเวลางาน"></textarea></label>
                   <button class="primary-button" type="submit">ส่งคำขอโอที / Submit OT</button>
                 </form>
+                <form id="hrAttendanceCorrectionForm" class="hr-form" hidden onsubmit="submitHrAttendanceCorrection(event)">
+                  <label>พนักงาน / Employee<select id="hrAttendanceEmployee"></select></label>
+                  <div class="hr-form-grid">
+                    <label>วันที่ขอแก้ไข<input id="hrCorrectionDate" type="date" required></label>
+                    <label>เวลาเข้างานที่ถูกต้อง<input id="hrCorrectionCheckIn" type="time"></label>
+                    <label>เวลาออกงานที่ถูกต้อง<input id="hrCorrectionCheckOut" type="time"></label>
+                  </div>
+                  <label>เหตุผล / Reason<textarea id="hrCorrectionReason" rows="3" required placeholder="เช่น GPS หรือกล้องมีปัญหา"></textarea></label>
+                  <button class="primary-button" type="submit">ส่งคำขอแก้ไขเวลา</button>
+                </form>
               </section>
               <section class="card hr-queue-card">
                 <div class="card-head">
@@ -724,6 +735,10 @@
                 <div id="hrApprovalQueue" class="hr-approval-list"></div>
               </section>
             </div>
+            <section class="card hr-queue-card">
+              <div class="card-head"><div><h2>การแจ้งเตือน HR</h2><p>แจ้งเตือนภายในระบบเท่านั้น</p></div></div>
+              <div id="hrNotificationList" class="hr-approval-list"></div>
+            </section>
             <div class="hr-layout lower">
               <section class="card">
                 <div class="card-head">
