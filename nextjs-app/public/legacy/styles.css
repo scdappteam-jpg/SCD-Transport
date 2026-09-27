@@ -110,3 +110,127 @@
 .hr-rep-export button{min-height:36px;padding:0 15px;border:1px solid var(--border,#e5e9f0);border-radius:9px;background:#fff;font-family:inherit;font-size:12.5px;cursor:pointer;color:#33415c}
 .hr-rep-export button:last-child{background:#1b4db1;color:#fff;border-color:#1b4db1}
 @media (max-width:1100px){.hr-rep-filter{grid-template-columns:repeat(2,1fr)}.hr-rep-kpi{grid-template-columns:repeat(2,1fr)}}
+
+/* ══ ตั้งค่าช่องเทียบท่า ══ */
+.dock-modal{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;background:rgba(9,17,31,.5);padding:20px}
+.dock-modal.show{display:flex}
+.dock-modal-box{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:20px 22px}
+.dock-modal-h{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.dock-modal-h b{font-size:16px}
+.dock-modal-h span{display:block;font-size:12px;color:#64748b;margin-top:3px}
+.dock-x{margin-left:auto;width:34px;height:34px;border:1px solid var(--border,#e5e9f0);border-radius:10px;background:#fff;cursor:pointer;font-size:15px;color:#64748b}
+.dock-cfg-add{display:grid;grid-template-columns:1fr 130px auto;gap:9px;margin-bottom:14px}
+.dock-cfg-add input{min-height:40px;border:1px solid var(--border,#e5e9f0);border-radius:9px;padding:0 12px;font-family:inherit;font-size:13px;background:#f7f9fc}
+.dock-cfg-add .dock-btn{width:auto;margin:0;padding:0 18px}
+.dock-cfg-list{display:grid;gap:8px}
+.dock-cfg-row{display:grid;grid-template-columns:1fr 110px 150px 110px;gap:9px;align-items:center;padding:9px;border:1px solid var(--border,#e5e9f0);border-radius:11px}
+.dock-cfg-row.busy{background:#f7f9fc;opacity:.85}
+.dock-cfg-row input,.dock-cfg-row select{min-height:36px;border:1px solid var(--border,#e5e9f0);border-radius:8px;padding:0 10px;font-family:inherit;font-size:12.5px;background:#fff;width:100%}
+.dock-cfg-row input:disabled,.dock-cfg-row select:disabled{background:#eef2f8;color:#94a3b8}
+.dock-cfg-row .dock-btn{margin:0;width:100%}
+.dock-cfg-busy{font-size:11px;color:#b26b00;text-align:center}
+.dock-cfg-foot{display:grid;grid-template-columns:1fr 90px 150px auto;gap:10px;align-items:center;margin-top:18px;padding-top:16px;border-top:1px solid var(--border,#e5e9f0)}
+.dock-cfg-foot b{font-size:13px}
+.dock-cfg-foot span{display:block;font-size:11.5px;color:#64748b}
+.dock-cfg-foot input{min-height:38px;border:1px solid var(--border,#e5e9f0);border-radius:9px;padding:0 11px;font-family:inherit;font-size:12.5px;background:#f7f9fc}
+.dock-cfg-foot .dock-btn{width:auto;margin:0;padding:0 18px}
+@media (max-width:760px){.dock-cfg-row{grid-template-columns:1fr 1fr}.dock-cfg-foot{grid-template-columns:1fr 1fr}}
+
+/* ════════════════════════════════════════════════════════
+   DESIGN REFRESH 2026 — ชั้นสุดท้าย ปรับหน้าตาทั้งระบบ
+   อ้างอิงกระดานต้นแบบ: Kanit 300/400/500 · กริด 8px
+   ════════════════════════════════════════════════════════ */
+:root{
+  --r-ink:#0F1B2D;--r-ink2:#33415C;--r-mut:#64748B;--r-mut2:#8494AA;
+  --r-line:#E5E9F0;--r-line2:#EEF2F8;--r-bg:#F4F6FA;--r-card:#FFFFFF;
+  --r-pri:#1B4DB1;--r-pri-s:#E9F0FD;--r-pri-d:#123363;
+  --r-grn:#0F8A4D;--r-grn-s:#E6F6ED;--r-amb:#B26B00;--r-amb-s:#FCF3E3;
+  --r-red:#C62828;--r-red-s:#FBEBEB;--r-pur:#5B35B5;--r-pur-s:#EFEAFB;
+  --r-navy:#0B1A30;--r-rad:12px;--r-rad-s:9px;
+  --r-sh:0 1px 2px rgba(15,27,45,.05);--r-sh2:0 6px 22px rgba(15,27,45,.10);
+}
+body{background:var(--r-bg)!important;color:var(--r-ink)!important;font-weight:300!important;
+  -webkit-font-smoothing:antialiased;letter-spacing:0!important}
+b,strong,h1,h2,h3,h4{font-weight:500!important}
+/* ── เมนูข้าง ── */
+.sidebar{background:var(--r-navy)!important;border-right:0!important}
+.sidebar .nav-group-label{font-size:10px!important;letter-spacing:.1em!important;text-transform:uppercase;
+  color:#5B7098!important;margin:16px 0 6px!important;padding-left:14px!important;font-weight:400!important}
+.sidebar .nav-item{border-radius:var(--r-rad-s)!important;padding:9px 12px!important;margin:1px 8px!important;
+  color:#C3D0E4!important;font-size:13px!important;font-weight:300!important;background:transparent!important;
+  border:0!important;position:relative;transition:background .12s ease}
+.sidebar .nav-item b{font-weight:300!important;font-size:13px!important}
+.sidebar .nav-item:hover{background:rgba(255,255,255,.07)!important;color:#fff!important}
+.sidebar .nav-item.active{background:rgba(255,255,255,.12)!important;color:#fff!important}
+.sidebar .nav-item.active b{font-weight:400!important}
+.sidebar .nav-item.active:before{content:"";position:absolute;left:-8px;top:8px;bottom:8px;width:3px;
+  border-radius:0 3px 3px 0;background:#5C93F5}
+.sidebar .nav-item svg,.sidebar .nav-item i{opacity:.72}
+.sidebar .nav-item.active svg,.sidebar .nav-item.active i{opacity:1}
+.nav-badge{background:var(--r-red)!important;border-radius:99px!important;font-size:10px!important;font-weight:400!important}
+/* ── แถบบน ── */
+.topbar{background:var(--r-card)!important;border-bottom:1px solid var(--r-line)!important;box-shadow:none!important}
+.topbar h1,#pageTitle{font-size:19px!important;font-weight:500!important;letter-spacing:0!important}
+#breadcrumb{font-size:11px!important;color:var(--r-mut2)!important;letter-spacing:.02em}
+.topbar input[type=search],.topbar input[type=text],#globalSearch{background:var(--r-bg)!important;
+  border:1px solid var(--r-line)!important;border-radius:var(--r-rad-s)!important;min-height:38px!important;
+  font-size:12.5px!important;color:var(--r-ink2)!important}
+/* ── การ์ด ── */
+.card,.metric-card,.panel,.list-panel,.mobile-panel,.att-map-panel,.att-timeline-panel,
+.att-staff-panel,.att-tasks-panel,.hr-hero,.outbound-flow-overview{
+  background:var(--r-card)!important;border:1px solid var(--r-line)!important;border-radius:var(--r-rad)!important;
+  box-shadow:var(--r-sh)!important}
+.card h2,.card h3,.panel h2,.panel h3{font-size:14.5px!important;font-weight:500!important}
+/* ── ตัวเลข KPI ── */
+.metric-card{border-top:3px solid var(--r-line)!important;padding:15px 17px!important}
+.metric-card strong,.metric-card .metric-value,.ct-kpi-row b,.kpi-value{font-size:27px!important;font-weight:500!important;line-height:1.25!important}
+.metric-card span,.metric-card small{font-size:11.5px!important;color:var(--r-mut)!important}
+.metric-card.good,.metric-card.ok{border-top-color:var(--r-grn)!important}
+.metric-card.warn,.metric-card.warning{border-top-color:var(--r-amb)!important}
+.metric-card.risk,.metric-card.danger,.metric-card.bad{border-top-color:var(--r-red)!important}
+.metric-card.info{border-top-color:var(--r-pri)!important}
+/* ── ปุ่ม ── */
+button,.btn,.att-action-btn,.fo-primary-btn,.cs-confirm-btn{font-family:inherit!important;letter-spacing:0!important}
+.topbar button,.card button:not(.dock-btn):not(.dock-x),.page button:not(.dock-btn):not(.dock-x):not(.nav-item){
+  border-radius:var(--r-rad-s)!important;font-size:12.5px!important;font-weight:400!important;min-height:38px}
+button.primary,.btn.primary,.att-modal-confirm,.cs-confirm-btn{background:var(--r-pri)!important;border-color:var(--r-pri)!important;color:#fff!important}
+button.ghost,.btn.ghost,.att-action-btn{background:var(--r-card)!important;border:1px solid var(--r-line)!important;color:var(--r-ink2)!important}
+button:disabled{opacity:.5!important}
+/* ── ตาราง ── */
+table{border-collapse:collapse!important;font-size:12.5px!important}
+table thead th{text-align:left!important;font-size:11px!important;font-weight:400!important;color:var(--r-mut)!important;
+  background:transparent!important;padding:0 10px 9px!important;border-bottom:1px solid var(--r-line)!important;white-space:nowrap}
+table tbody td{padding:11px 10px!important;border-bottom:1px solid var(--r-line2)!important;color:var(--r-ink)!important;vertical-align:middle}
+table tbody tr:last-child td{border-bottom:0!important}
+table tbody tr:hover td{background:#F8FAFD!important}
+.table-wrap{border-radius:var(--r-rad)!important;border:1px solid var(--r-line)!important;background:var(--r-card)!important;overflow:auto}
+/* ── ป้ายสถานะ ── */
+.pill,.badge,.status-pill,.cs-status-badge,.fo-status-chip{border-radius:99px!important;font-size:11.5px!important;
+  font-weight:400!important;padding:4px 11px!important;letter-spacing:0!important;border:0!important}
+.pill.st-green,.pill.completed,.pill.done,.badge.green,.fo-status-chip.green{background:var(--r-grn-s)!important;color:var(--r-grn)!important}
+.pill.st-amber,.pill.pending,.badge.amber,.cs-status-badge.pending{background:var(--r-amb-s)!important;color:var(--r-amb)!important}
+.pill.st-red,.pill.danger,.badge.red{background:var(--r-red-s)!important;color:var(--r-red)!important}
+.pill.st-blue,.pill.inbound,.badge.blue,.fo-status-chip.blue{background:var(--r-pri-s)!important;color:var(--r-pri)!important}
+.pill.st-purple,.badge.purple{background:var(--r-pur-s)!important;color:var(--r-pur)!important}
+/* ── ฟอร์ม ── */
+input,select,textarea{font-family:inherit!important;font-size:13px!important;color:var(--r-ink)!important}
+.card input:not([type=checkbox]):not([type=radio]),.card select,.card textarea,
+.page input:not([type=checkbox]):not([type=radio]):not(.dock-cfg-row input),.page select,.page textarea{
+  border:1px solid var(--r-line)!important;border-radius:var(--r-rad-s)!important;background:#F7F9FC!important;
+  min-height:40px!important;padding:9px 12px!important}
+.card input:focus,.card select:focus,.page input:focus,.page select:focus,.page textarea:focus{
+  outline:0!important;border-color:var(--r-pri)!important;background:#fff!important;
+  box-shadow:0 0 0 3px rgba(27,77,177,.12)!important}
+label{font-size:11.5px!important;color:var(--r-mut)!important;font-weight:400!important}
+/* ── ชิป/ตัวกรอง ── */
+.filter-chip,.chip,.cs-tab,.att-filter-btn,.f-chip{border-radius:99px!important;font-size:11.5px!important;
+  font-weight:400!important;border:1px solid var(--r-line)!important;background:var(--r-card)!important;color:var(--r-ink2)!important;padding:6px 13px!important}
+.filter-chip.active,.chip.active,.cs-tab.active,.att-filter-btn.active{background:var(--r-pri)!important;color:#fff!important;border-color:var(--r-pri)!important}
+/* ── อื่น ๆ ── */
+.empty-state{color:var(--r-mut)!important;font-size:13px!important}
+.page{background:transparent!important}
+.section-title,.card-head h3{font-size:14.5px!important;font-weight:500!important}
+hr{border-color:var(--r-line)!important}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#CDD6E3;border-radius:99px}
+::-webkit-scrollbar-track{background:transparent}

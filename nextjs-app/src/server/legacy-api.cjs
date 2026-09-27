@@ -3095,6 +3095,83 @@ async function handleApi(req, res, pathname) {
             });
         }
     }
+    if (req.method === "POST" && pathname === "/api/dock/bays") {
+        const payload = await parseBody(req);
+        const actor = (db.users || []).find(user => user.id === payload.userId);
+        const allowed = actor && [ "Admin", "Executive", "WH3_TeamLeader" ].includes(actor.role);
+        if (!allowed) return sendJson(res, 403, { error: "เฉพาะ Admin / ผู้บริหาร / หัวหน้าคลัง เท่านั้นที่แก้ไขช่องเทียบท่าได้" });
+        const bays = dockBayList(db);
+        const action = String(payload.action || "").toLowerCase();
+
+        if (action === "add") {
+            const name = String(payload.name || "").trim() || `ท่า ${bays.length + 1}`;
+            if (bays.some(bay => bay.name === name)) return sendJson(res, 409, { error: `มีช่องชื่อ "${name}" อยู่แล้ว` });
+            const bay = {
+                id: `D${Date.now().toString(36).toUpperCase().slice(-5)}`,
+                name: name,
+                zone: String(payload.zone || "A").trim().toUpperCase().slice(0, 4),
+                status: "Available",
+                note: String(payload.note || "").slice(0, 120)
+            };
+            bays.push(bay);
+            db.dock.log = [ ...db.dock.log || [], { at: nowIso(), action: "BayAdded", bayId: bay.id, by: payload.userId } ].slice(-200);
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, bay: bay, ...dockBoard(db) });
+        }
+
+        if (action === "update") {
+            const bay = dockFindBay(db, payload.bayId);
+            if (!bay) return sendJson(res, 404, { error: "ไม่พบช่องเทียบท่า" });
+            if (payload.name !== undefined) {
+                const name = String(payload.name || "").trim();
+                if (!name) return sendJson(res, 400, { error: "ชื่อช่องห้ามว่าง" });
+                if (bays.some(item => item !== bay && item.name === name)) return sendJson(res, 409, { error: `มีช่องชื่อ "${name}" อยู่แล้ว` });
+                bay.name = name;
+            }
+            if (payload.zone !== undefined) bay.zone = String(payload.zone || "").trim().toUpperCase().slice(0, 4);
+            if (payload.note !== undefined) bay.note = String(payload.note || "").slice(0, 120);
+            if (payload.status !== undefined) {
+                const status = String(payload.status);
+                if (status === "Closed" && bay.houseNumber) {
+                    return sendJson(res, 409, { error: `${bay.name} มีรถเทียบอยู่ ปล่อยท่าก่อนจึงปิดใช้งานได้` });
+                }
+                bay.status = [ "Available", "Closed", "Reserved" ].includes(status) ? status : bay.status;
+            }
+            db.dock.log = [ ...db.dock.log || [], { at: nowIso(), action: "BayUpdated", bayId: bay.id, by: payload.userId } ].slice(-200);
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, bay: bay, ...dockBoard(db) });
+        }
+
+        if (action === "delete") {
+            const bay = dockFindBay(db, payload.bayId);
+            if (!bay) return sendJson(res, 404, { error: "ไม่พบช่องเทียบท่า" });
+            if (bay.houseNumber) return sendJson(res, 409, { error: `${bay.name} มีรถเทียบอยู่ ลบไม่ได้` });
+            if (bays.length <= 1) return sendJson(res, 409, { error: "ต้องเหลือช่องเทียบท่าอย่างน้อย 1 ช่อง" });
+            db.dock.bays = bays.filter(item => item !== bay);
+            db.dock.log = [ ...db.dock.log || [], { at: nowIso(), action: "BayDeleted", bayId: bay.id, by: payload.userId } ].slice(-200);
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, ...dockBoard(db) });
+        }
+
+        if (action === "reset") {
+            const busy = bays.filter(bay => bay.houseNumber);
+            if (busy.length) return sendJson(res, 409, { error: `ยังมีรถเทียบอยู่ ${busy.length} ท่า ปล่อยให้หมดก่อน` });
+            const count = Math.max(1, Math.min(40, Number(payload.count || 8)));
+            const zones = String(payload.zones || "A,B,C").split(",").map(z => z.trim().toUpperCase()).filter(Boolean);
+            db.dock.bays = Array.from({ length: count }, (_, i) => ({
+                id: `D${i + 1}`,
+                name: `ท่า ${i + 1}`,
+                zone: zones[Math.floor(i / Math.ceil(count / zones.length))] || zones[zones.length - 1] || "A",
+                status: "Available",
+                note: ""
+            }));
+            db.dock.log = [ ...db.dock.log || [], { at: nowIso(), action: "BaysReset", count: count, by: payload.userId } ].slice(-200);
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, ...dockBoard(db) });
+        }
+
+        return sendJson(res, 400, { error: "action ต้องเป็น add / update / delete / reset" });
+    }
     if (req.method === "GET" && pathname === "/api/dock/board") {
         return sendJson(res, 200, { ok: true, ...dockBoard(db) });
     }

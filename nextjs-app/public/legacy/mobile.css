@@ -684,3 +684,56 @@ body:not(.mobile-locked) main {
 .fo-fl-row .h{flex:1;color:#9bb0ce;font-size:11.5px!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fo-fl-row .l{font-size:14px!important;font-weight:600}
 .fo-fl-row.cr .l{color:#ff6b6b}.fo-fl-row.wn .l{color:#ffb44d}.fo-fl-row.ok .l{color:#5bd98a}
+
+/* ════════ DESIGN REFRESH 2026 · มือถือ ════════ */
+:root{--m-ink:#0F1B2D;--m-mut:#8494AA;--m-line:#E5E9F0;--m-bg:#F4F6FA;
+  --m-pri:#1B4DB1;--m-pri-s:#E9F0FD;--m-navy:#0B1A30;--m-grn:#0F8A4D;--m-amb:#B26B00;--m-red:#C62828}
+body:not(.mobile-locked){background:var(--m-bg)!important}
+body{color:var(--m-ink)!important;font-weight:300!important;-webkit-font-smoothing:antialiased}
+b,strong{font-weight:500!important}
+/* หัวแอป */
+body:not(.mobile-locked) .mobile-header{background:var(--m-navy)!important;background-image:none!important;
+  border-radius:0 0 20px 20px!important;padding:13px 18px!important}
+.mobile-header strong{font-size:15px!important;font-weight:500!important}
+.mobile-header span{font-size:11px!important;color:#8FA6C8!important}
+/* การ์ด */
+.fo-card,.mobile-panel,.hero-card,.mlist,.fo-checkin-card{border-radius:16px!important;
+  border:1px solid var(--m-line)!important;box-shadow:0 1px 2px rgba(15,27,45,.05)!important}
+.fo-card-head strong{font-size:14px!important;font-weight:500!important}
+.fo-header h1{font-size:22px!important;font-weight:500!important;letter-spacing:-.2px}
+.fo-header small{font-size:12px!important;color:var(--m-mut)!important}
+/* ปุ่มหลัก */
+.fo-primary-btn,.mbtn,#completePickupBtn,.checkin-button,.load-button{border-radius:13px!important;
+  min-height:50px!important;font-size:15px!important;font-weight:500!important;letter-spacing:0!important}
+.fo-primary-btn{background:var(--m-pri)!important}
+.fo-primary-btn.outline{background:#fff!important;color:var(--m-pri)!important;border:1.5px solid #C9DCFA!important}
+.fo-mini-btn{border-radius:10px!important;font-size:12px!important;font-weight:400!important}
+/* ฟอร์ม */
+.mobile-panel input,.mobile-panel select,.mobile-panel textarea{border-radius:11px!important;
+  border:1px solid var(--m-line)!important;background:#F7F9FC!important;min-height:46px!important;font-size:14px!important}
+.mobile-panel input:focus,.mobile-panel select:focus{border-color:var(--m-pri)!important;background:#fff!important;
+  box-shadow:0 0 0 3px rgba(27,77,177,.12)!important;outline:0!important}
+label{color:#64748B!important;font-weight:400!important}
+/* ป้ายสถานะ */
+.pill,.badge,.fo-status-chip{border-radius:99px!important;font-weight:400!important;font-size:11.5px!important;padding:4px 11px!important}
+.fo-status-chip.green{background:#E6F6ED!important;color:var(--m-grn)!important}
+.fo-status-chip.blue{background:var(--m-pri-s)!important;color:var(--m-pri)!important}
+/* แถบล่าง */
+.fo-bottomnav{border-radius:22px 22px 0 0!important;box-shadow:0 -4px 22px rgba(15,27,45,.08)!important;border-top:0!important}
+.fo-bottomnav button{font-size:18px!important;color:#9AA8BC!important}
+.fo-bottomnav button small{font-size:10px!important;font-weight:400!important}
+.fo-bottomnav button.active{color:var(--m-pri)!important;background:transparent!important}
+.fo-bottomnav button.active small{font-weight:500!important}
+/* ปุ่มสแกนหน้าแรก */
+.smart-scan-card{border-radius:18px!important;background:linear-gradient(140deg,#123363,#1B4DB1)!important;
+  box-shadow:0 10px 26px rgba(27,77,177,.26)!important}
+#smartScanBtn b{font-size:17px!important;font-weight:500!important}
+/* ขั้นตอนงาน */
+.mwf-dot{border-radius:12px!important}
+.mwf-dot.active{border-color:var(--m-pri)!important;background:var(--m-pri-s)!important}
+.mwf-dot.active span{background:var(--m-pri)!important}
+.mwf-next{background:var(--m-pri)!important;border-radius:13px!important}
+.mwf-prev{border-radius:13px!important}
+/* แถวรายการ */
+.job,.location,.result,.fo-att-row,.fo-point-row{border-radius:12px!important;font-size:13.5px!important}
+.step-note{border-radius:12px!important}

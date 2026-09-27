@@ -10844,7 +10844,7 @@ function _renderDockHtml() {
         '<div class="dock-kpi pur"><span>เวลารอเฉลี่ย</span><b>' + (s.avgWaitMinutes || 0) + ' น.</b><em>เป้าหมาย 20 นาที</em></div>' +
       '</div>' +
       '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>สถานะช่องเทียบท่า</h3>' +
-        '<button type="button" class="dock-btn ghost" onclick="_dockData=null;renderDockBoard()">รีเฟรช</button></div>' +
+        '<button type="button" class="dock-btn ghost" onclick="dockConfigOpen()">ตั้งค่าช่องเทียบท่า</button>' + '<button type="button" class="dock-btn ghost" onclick="_dockData=null;renderDockBoard()">รีเฟรช</button></div>' +
         '<div class="dock-grid">' + d.bays.map(function (bay) {
             var cls = dockBayClass(bay);
             var label = cls === "busy" ? "กำลังใช้งาน" : cls === "closed" ? "ปิดใช้งาน" : cls === "soon" ? "จองแล้ว" : "ว่าง";
@@ -10873,6 +10873,91 @@ function _renderDockHtml() {
           ((_dockData.log || []).length ? "" : '<div class="empty-state compact"><p>ดูประวัติทั้งหมดได้ที่หน้า Timeline ของแต่ละงาน</p></div>') +
           '<div class="dock-note">ทุกการจัดช่อง/ปล่อยท่า ถูกบันทึกใน Timeline ของ House นั้นอัตโนมัติ</div></div>' +
       '</div></div>';
+}
+
+
+/* ══════════ ตั้งค่าช่องเทียบท่า ══════════ */
+function dockCanConfig() {
+    var role = currentWebUser()?.role;
+    return [ "Admin", "Executive", "WH3_TeamLeader" ].includes(role);
+}
+
+function dockConfigOpen() {
+    if (!dockCanConfig()) return toast("เฉพาะ Admin / ผู้บริหาร / หัวหน้าคลัง เท่านั้นที่แก้ไขได้");
+    var wrap = document.getElementById("dockConfigModal");
+    if (!wrap) {
+        wrap = document.createElement("div");
+        wrap.id = "dockConfigModal";
+        wrap.className = "dock-modal";
+        document.body.appendChild(wrap);
+    }
+    _renderDockConfig();
+    wrap.classList.add("show");
+}
+
+function dockConfigClose() {
+    document.getElementById("dockConfigModal")?.classList.remove("show");
+}
+
+function _renderDockConfig() {
+    var wrap = document.getElementById("dockConfigModal");
+    if (!wrap) return;
+    var bays = (_dockData && _dockData.bays) || [];
+    wrap.innerHTML = '<div class="dock-modal-box"><div class="dock-modal-h"><div><b>ตั้งค่าช่องเทียบท่า</b>' +
+      '<span>เพิ่ม ลบ เปลี่ยนชื่อ หรือปิดใช้ชั่วคราวได้ · ช่องที่มีรถเทียบอยู่จะแก้ไม่ได้</span></div>' +
+      '<button type="button" class="dock-x" onclick="dockConfigClose()">✕</button></div>' +
+      '<div class="dock-cfg-add"><input id="dockNewName" placeholder="ชื่อช่อง เช่น ท่า 9 / Dock A1">' +
+      '<input id="dockNewZone" placeholder="โซน (A/B/C)" maxlength="4">' +
+      '<button type="button" class="dock-btn" onclick="dockBayAdd()">+ เพิ่มช่อง</button></div>' +
+      '<div class="dock-cfg-list">' + (bays.length ? bays.map(function (bay) {
+        var busy = !!bay.houseNumber;
+        return '<div class="dock-cfg-row' + (busy ? " busy" : "") + '">' +
+          '<input value="' + safeHtml(bay.name) + '" ' + (busy ? "disabled" : "") + ' onchange="dockBayUpdate(\'' + bay.id + '\',{name:this.value})">' +
+          '<input value="' + safeHtml(bay.zone || "") + '" maxlength="4" ' + (busy ? "disabled" : "") + ' onchange="dockBayUpdate(\'' + bay.id + '\',{zone:this.value})">' +
+          '<select ' + (busy ? "disabled" : "") + ' onchange="dockBayUpdate(\'' + bay.id + '\',{status:this.value})">' +
+            '<option value="Available"' + (bay.status === "Available" ? " selected" : "") + '>เปิดใช้งาน</option>' +
+            '<option value="Reserved"' + (bay.status === "Reserved" ? " selected" : "") + '>กันไว้</option>' +
+            '<option value="Closed"' + (bay.status === "Closed" ? " selected" : "") + '>ปิดใช้งาน</option></select>' +
+          (busy ? '<span class="dock-cfg-busy">มีรถเทียบอยู่ (' + safeHtml(bay.houseNumber) + ')</span>'
+                : '<button type="button" class="dock-btn ghost" onclick="dockBayDelete(\'' + bay.id + '\')">ลบ</button>') +
+          '</div>';
+      }).join("") : '<div class="empty-state compact"><p>ยังไม่มีช่องเทียบท่า</p></div>') + '</div>' +
+      '<div class="dock-cfg-foot"><div><b>สร้างชุดใหม่ทั้งหมด</b><span>ลบของเดิมแล้วสร้างเรียงใหม่ (ต้องไม่มีรถเทียบอยู่)</span></div>' +
+      '<input id="dockResetCount" type="number" min="1" max="40" value="' + (bays.length || 8) + '">' +
+      '<input id="dockResetZones" value="A,B,C" placeholder="โซน คั่นด้วย ,">' +
+      '<button type="button" class="dock-btn ghost" onclick="dockBaysReset()">สร้างใหม่</button></div></div>';
+}
+
+async function dockSendConfig(payload, okMsg) {
+    try {
+        _dockData = await api("/api/dock/bays", payload);
+        state.dockSummary = _dockData.summary;
+        _renderDockHtml();
+        _renderDockConfig();
+        if (okMsg) toast(okMsg);
+    } catch (e) { toast(e.message || "บันทึกไม่สำเร็จ"); }
+}
+
+function dockBayAdd() {
+    var name = (document.getElementById("dockNewName")?.value || "").trim();
+    var zone = (document.getElementById("dockNewZone")?.value || "A").trim();
+    dockSendConfig({ action: "add", name: name, zone: zone }, "เพิ่มช่องเทียบท่าแล้ว");
+}
+
+function dockBayUpdate(bayId, patch) {
+    dockSendConfig(Object.assign({ action: "update", bayId: bayId }, patch), "บันทึกแล้ว");
+}
+
+function dockBayDelete(bayId) {
+    if (!window.confirm("ลบช่องเทียบท่านี้?")) return;
+    dockSendConfig({ action: "delete", bayId: bayId }, "ลบช่องแล้ว");
+}
+
+function dockBaysReset() {
+    var count = Number(document.getElementById("dockResetCount")?.value || 8);
+    var zones = (document.getElementById("dockResetZones")?.value || "A,B,C").trim();
+    if (!window.confirm("สร้างช่องเทียบท่าใหม่ " + count + " ช่อง แทนของเดิมทั้งหมด?")) return;
+    dockSendConfig({ action: "reset", count: count, zones: zones }, "สร้างช่องใหม่แล้ว");
 }
 
 async function dockAddQueue() {
