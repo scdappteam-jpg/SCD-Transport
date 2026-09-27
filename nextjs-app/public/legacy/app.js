@@ -6850,7 +6850,7 @@ function renderHrSettings() {
 }
 
 function hrCanManageCore() {
-    return [ "Admin", "Executive", "WH3_TeamLeader" ].includes(currentWebUser()?.role);
+    return [ "Admin", "Executive" ].includes(currentWebUser()?.role);
 }
 
 function selectHrProfile(employeeId) {
