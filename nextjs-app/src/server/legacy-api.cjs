@@ -1056,7 +1056,7 @@ function normalizeJob(job) {
         processTracking: processTrackingStatus(job),
         flightTimeLabel: formatBangkok(job.flightTime),
         hoursToFlight: hoursToFlight,
-        redFlag: hoursToFlight !== null && hoursToFlight < 4 && !loadingDone,
+        redFlag: hoursToFlight !== null && hoursToFlight >= 0 && hoursToFlight < 4 && !loadingDone,
         ...flightRisk,
         canUploadLoadingDetail: false
     };
@@ -2759,6 +2759,53 @@ async function handleApi(req, res, pathname) {
             dataDir: DATA_DIR,
             storageDir: STORAGE_DIR,
             dbFile: DB_FILE
+        });
+    }
+    if (req.method === "POST" && pathname === "/api/admin/reset-jobs") {
+        const payload = await parseBody(req);
+        const actor = (db.users || []).find(user => user.id === payload.userId);
+        if (!actor || actor.role !== "Admin") return sendJson(res, 403, {
+            ok: false,
+            error: "เฉพาะ Admin เท่านั้นที่ล้างงานได้"
+        });
+        if (payload.confirm !== "RESET_ALL_JOBS") return sendJson(res, 400, {
+            ok: false,
+            error: "Invalid reset confirmation"
+        });
+        const removed = {
+            jobs: (db.jobs || []).length,
+            billing: (db.billing || []).length,
+            loadPlans: (db.loadPlans || []).length,
+            activityLogs: (db.activityLogs || []).length,
+            attachments: (db.attachments || []).length,
+            importChanges: (db.importChanges || []).length,
+            importHistory: (db.importHistory || []).length,
+            alerts: (db.alerts || []).length
+        };
+        db.jobs = [];
+        db.billing = [];
+        db.loadPlans = [];
+        db.activityLogs = [];
+        db.attachments = [];
+        db.importChanges = [];
+        db.importHistory = [];
+        db.alerts = [];
+        db.integrations ||= {};
+        db.integrations.importedFeedHashes = {};
+        db.integrations.lastFeedRun = {
+            checked: 0,
+            importedFiles: 0,
+            jobs: 0,
+            changes: 0,
+            checkedAt: nowIso()
+        };
+        writeDb(db);
+        await flushSupabasePersistence();
+        return sendJson(res, 200, {
+            ok: true,
+            removedJobs: removed.jobs,
+            removed,
+            dashboard: buildDashboard(db)
         });
     }
     if (req.method === "GET" && pathname === "/api/process/config") {

@@ -733,6 +733,11 @@ function dashboardFilteredJobs() {
     });
 }
 
+function isDashboardRiskJob(job) {
+    if (!job || [ "Completed", "Billed" ].includes(job.status)) return false;
+    return Boolean(job.redFlag) || [ "XRayHold", "ReXRayRequired" ].includes(job.status);
+}
+
 function statusOptions() {
     return [ "All", ...new Set((state.dashboard?.jobs || []).map(job => job.status).filter(Boolean)) ];
 }
@@ -1803,7 +1808,7 @@ function renderCtKpis() {
     const doneStatuses = [ "Completed", "Billed", "LoadingReady", "InvoiceSent" ];
     const total = jobs.length;
     const done = jobs.filter(j => doneStatuses.includes(j.status)).length;
-    const risk = jobs.filter(j => j.redFlag || [ "XRayHold", "ReXRayRequired" ].includes(j.status)).length;
+    const risk = jobs.filter(isDashboardRiskJob).length;
     const awaitBill = jobs.filter(j => [ "ReadyForBilling", "PendingBillingReview" ].includes(j.status) || j.readyForBilling).length;
     const noDriver = jobs.filter(j => !j.driverId && !doneStatuses.includes(j.status)).length;
     const inProgress = Math.max(0, total - done - jobs.filter(j => j.status === "Pending").length);
@@ -1902,7 +1907,7 @@ function renderCtRisk() {
     const box = document.getElementById("ctRiskList");
     if (!box) return;
     const jobs = dashboardFilteredJobs();
-    const risks = jobs.filter(j => j.redFlag || [ "XRayHold", "ReXRayRequired" ].includes(j.status)).sort((a, b) => (a.hoursToFlight ?? 999) - (b.hoursToFlight ?? 999)).slice(0, 8);
+    const risks = jobs.filter(isDashboardRiskJob).sort((a, b) => (a.hoursToFlight ?? 999) - (b.hoursToFlight ?? 999)).slice(0, 8);
     const sub = document.getElementById("ctRiskSub");
     if (sub) sub.textContent = risks.length ? `${risks.length} งานเรียงตามความเร่งด่วน` : "ไม่มีงานเสี่ยงในช่วงที่เลือก";
     box.innerHTML = risks.length ? risks.map(j => `\n    <button type="button" class="ct-risk-item" onclick="openJobQuickView('${safeHtml(j.houseNumber)}')">\n      <b>${safeHtml(j.houseNumber)}</b>\n      <span>${safeHtml(j.customerName || "-")}</span>\n      <em>${j.redFlag ? typeof j.hoursToFlight === "number" ? `เหลือ ${j.hoursToFlight.toFixed(1)} ชม.` : "เสี่ยงตกไฟลท์" : statusLabelTh(j.status)}</em>\n    </button>`).join("") : `<div class="empty-state compact">✅ ไม่มีงานเสี่ยง</div>`;
@@ -2027,12 +2032,12 @@ function renderRoleHome() {
         box.innerHTML = "";
         return;
     }
-    const jobs = state.dashboard?.jobs || [];
+    const jobs = dashboardFilteredJobs();
     const today = dateInputValue();
     const isToday = j => j.pickupDate === today || String(j.flightTime || "").slice(0, 10) === today;
     const C = fn => jobs.filter(fn).length;
     const waitCs = C(j => !j.csConfirmed && j.status !== "Billed");
-    const risk = C(j => j.redFlag || [ "XRayHold", "ReXRayRequired" ].includes(j.status));
+    const risk = C(isDashboardRiskJob);
     const todayJobs = C(isToday);
     let cards = [], actions = [];
     const role = user.role;
@@ -2170,8 +2175,9 @@ function renderRoleHome() {
         box.innerHTML = "";
         return;
     }
-    const riskJobs = jobs.filter(j => j.redFlag || [ "XRayHold", "ReXRayRequired" ].includes(j.status)).slice(0, 5);
-    box.innerHTML = `\n    <section class="role-home card">\n      <div class="rh-head">\n        <div>\n          <strong>สวัสดี ${safeHtml(user.name || "")}</strong>\n          <span>${safeHtml(ROLE_LABEL_TH[role] || role)} · สิ่งที่ต้องโฟกัสตอนนี้</span>\n        </div>\n        ${actions.length ? `<div class="rh-actions">${actions.map(([t, v]) => `<button type="button" onclick="setView('${v}')">${t}</button>`).join("")}</div>` : ""}\n      </div>\n      <div class="rh-cards">\n        ${cards.map(c => `\n          <button type="button" class="rh-card ${c.c}" onclick="setView('${c.v}')">\n            <strong>${c.n}</strong><span>${c.t}</span>\n          </button>`).join("")}\n      </div>\n      ${role === "Admin" || role === "Executive" || role === "WH3_TeamLeader" || role === "Team_Transport" ? `<div class="rh-staff-strip" id="rhStaffStrip"></div>` : ""}\n      ${riskJobs.length && (role === "Admin" || role === "Executive" || role === "Terminal") ? `\n        <div class="rh-risk">\n          <span class="rh-risk-title">🚨 ต้องจัดการด่วน</span>\n          ${riskJobs.map(j => `\n            <button type="button" class="rh-risk-item" onclick="setView('orders')">\n              <b>${safeHtml(j.houseNumber)}</b>\n              <span>${safeHtml(j.customerName || "-")}</span>\n              <em>${j.redFlag ? "เสี่ยงตกไฟลท์ &lt;4 ชม." : statusLabelTh(j.status)}</em>\n            </button>`).join("")}\n        </div>` : ""}\n    </section>`;
+    const riskJobs = jobs.filter(isDashboardRiskJob).slice(0, 5);
+    const actionButtons = actions.map(([t, v]) => `<button type="button" onclick="setView('${v}')">${t}</button>`).join("") + (role === "Admin" ? `<button type="button" style="background:#fee2e2;color:#b91c1c" onclick="adminResetAllJobs()">ล้างงานทั้งหมด</button>` : "");
+    box.innerHTML = `\n    <section class="role-home card">\n      <div class="rh-head">\n        <div>\n          <strong>สวัสดี ${safeHtml(user.name || "")}</strong>\n          <span>${safeHtml(ROLE_LABEL_TH[role] || role)} · สิ่งที่ต้องโฟกัสตอนนี้ · เฉพาะช่วงวันที่เลือก</span>\n        </div>\n        ${actionButtons ? `<div class="rh-actions">${actionButtons}</div>` : ""}\n      </div>\n      <div class="rh-cards">\n        ${cards.map(c => `\n          <button type="button" class="rh-card ${c.c}" onclick="setView('${c.v}')">\n            <strong>${c.n}</strong><span>${c.t}</span>\n          </button>`).join("")}\n      </div>\n      ${role === "Admin" || role === "Executive" || role === "WH3_TeamLeader" || role === "Team_Transport" ? `<div class="rh-staff-strip" id="rhStaffStrip"></div>` : ""}\n      ${riskJobs.length && (role === "Admin" || role === "Executive" || role === "Terminal") ? `\n        <div class="rh-risk">\n          <span class="rh-risk-title">🚨 ต้องจัดการด่วน</span>\n          ${riskJobs.map(j => `\n            <button type="button" class="rh-risk-item" onclick="setView('orders')">\n              <b>${safeHtml(j.houseNumber)}</b>\n              <span>${safeHtml(j.customerName || "-")}</span>\n              <em>${j.redFlag ? "เสี่ยงตกไฟลท์ &lt;4 ชม." : statusLabelTh(j.status)}</em>\n            </button>`).join("")}\n        </div>` : ""}\n    </section>`;
     loadRoleHomeAttendance();
 }
 
@@ -2320,7 +2326,7 @@ function renderExecutiveSummary() {
     if (!box) return;
     const jobs = dashboardFilteredJobs();
     const total = jobs.length;
-    const riskJobs = jobs.filter(j => j.redFlag || [ "XRayHold", "ReXRayRequired" ].includes(j.status));
+    const riskJobs = jobs.filter(isDashboardRiskJob);
     const flightCount = new Set(jobs.map(j => j.flightNo).filter(Boolean)).size;
     const topCustomer = countBy(jobs, j => j.customerName)[0];
     const topFlight = countBy(jobs, j => j.flightNo)[0];
@@ -2339,7 +2345,7 @@ function renderExecutiveSummary() {
     const topCustomerEl = $("#execTopCustomer");
     topCustomerEl.textContent = topCustomer ? topCustomer[0] : "-";
     topCustomerEl.title = topCustomer ? `${topCustomer[0]} (${topCustomer[1]} jobs)` : "";
-    $("#execSummarySubtitle").textContent = `${state.filters.dateFrom} ถึง ${state.filters.dateTo} · ${total} งาน · อัปเดต ${new Intl.DateTimeFormat("th-TH", {
+    $("#execSummarySubtitle").textContent = `เฉพาะช่วงวันที่เลือก ${state.filters.dateFrom} ถึง ${state.filters.dateTo} · ${total} งาน (ทั้งระบบ ${(state.dashboard?.jobs || []).length} งาน) · อัปเดต ${new Intl.DateTimeFormat("th-TH", {
         timeZone: "Asia/Bangkok",
         hour: "2-digit",
         minute: "2-digit"
@@ -2348,6 +2354,16 @@ function renderExecutiveSummary() {
     if (ring) ring.style.setProperty("--score", readiness);
     $("#execHealthScore").textContent = `${readiness}%`;
     $("#execHealthText").textContent = readiness >= 75 ? "ภาพรวมอยู่ในเกณฑ์ดี ติดตามงานเสี่ยงและงานรอวางบิลเป็นหลัก" : readiness >= 45 ? "มีงานที่ต้องเร่งจัดการ ตรวจสอบงานค้างและการมอบหมายคน" : "งานส่วนใหญ่ยังอยู่ต้นกระบวนการ ควรเร่งจัดกลุ่มและติดตามความพร้อม";
+    const healthActionsEl = document.getElementById("execHealthActions");
+    if (healthActionsEl) {
+        const pendingCsCount = jobs.filter(j => j.approvalStatus === "PendingCSApproval" || j.csApprovalRequired).length;
+        const btnStyle = "padding:7px 12px;border:1px solid var(--border,#dbe4ef);border-radius:9px;background:#fff;font-size:12px;font-weight:600;cursor:pointer";
+        const healthButtons = [];
+        if (pendingCsCount) healthButtons.push(`<button type="button" style="${btnStyle};color:#b45309;border-color:#fde68a;background:#fffbeb" onclick="setView('cs-queue')">ไปยืนยัน CS (${pendingCsCount})</button>`);
+        if (noDriver) healthButtons.push(`<button type="button" style="${btnStyle};color:#1d4ed8" onclick="setView('grouping')">ไปจัดกลุ่มงาน (${noDriver})</button>`);
+        if (riskJobs.length) healthButtons.push(`<button type="button" style="${btnStyle};color:#b91c1c;border-color:#fecaca;background:#fef2f2" onclick="setView('orders')">ดูงานเสี่ยง (${riskJobs.length})</button>`);
+        healthActionsEl.innerHTML = healthButtons.join("") || `<span style="font-size:12px;color:#16a34a;font-weight:600">ไม่มีงานค้างที่ต้องเร่ง</span>`;
+    }
     const insights = [ {
         icon: "alert-triangle",
         cls: riskJobs.length ? "risk" : "ok",
@@ -2379,8 +2395,13 @@ function renderExecutiveSummary() {
 function renderFlightRiskPanel() {
     const panel = $("#flightRiskPanel");
     if (!panel) return;
-    const risks = state.dashboard?.flightRiskJobs || [];
-    const summary = state.dashboard?.metrics?.flightRiskSummary || {};
+    const visibleHouses = new Set(dashboardFilteredJobs().map(job => job.houseNumber));
+    const risks = (state.dashboard?.flightRiskJobs || []).filter(job => visibleHouses.has(job.houseNumber));
+    const summary = {
+        critical: risks.filter(job => [ "Critical", "Breached" ].includes(job.flightRiskStatus)).length,
+        urgent: risks.filter(job => job.flightRiskStatus === "Urgent").length,
+        noMiss: risks.filter(job => job.mustNotMissFlight).length
+    };
     panel.hidden = !risks.length;
     if (!risks.length) return;
     const severity = risk => [ "Critical", "Breached" ].includes(risk.flightRiskStatus) ? "#b91c1c" : risk.flightRiskStatus === "Urgent" ? "#c2410c" : "#a16207";
@@ -10121,7 +10142,7 @@ function csSelectDateGroup(btn) {
 function _renderCsQueueHtml() {
     const wrap = $("#view-cs-queue");
     if (!wrap) return;
-    wrap.innerHTML = `\n    <div class="att-dash-wrap">\n      <div class="cs-queue-header">\n        <div>\n          <h2 style="margin:0;font-size:18px;font-weight:500">CS Queue <span style="font-size:13px;color:var(--text-muted);font-weight:400">ยืนยัน Invoice กับลูกค้า</span></h2>\n          <p style="margin:4px 0 0;font-size:12px;color:var(--text-muted)" id="csQueueSummary"></p>\n        </div>\n        <div style="display:flex;gap:8px;align-items:center">\n          <div class="cs-tabs">\n            <button type="button" class="cs-tab active" data-cstab="pending" onclick="csSwitchTab('pending')">⏳ รอยืนยัน</button>\n            <button type="button" class="cs-tab" data-cstab="history" onclick="csSwitchTab('history')">📋 ประวัติการยืนยัน</button>\n          </div>\n          <button onclick="_csHistoryData=[];renderCsQueue()" style="padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface-1);font-size:12px;cursor:pointer">🔄 รีเฟรช</button>\n        </div>\n      </div>\n      <div class="cs-queue-toolbar">\n        <input id="csSearchInput" type="search" placeholder="🔍 ค้นหาบริษัท / เลข House / Invoice..." oninput="csQueueFilterChange()">\n        <span id="csDateLabel" class="cs-tb-label">วันที่รับ</span>\n        <input id="csDateFrom" type="date" onchange="csQueueFilterChange()">\n        <span class="cs-tb-dash">–</span>\n        <input id="csDateTo" type="date" onchange="csQueueFilterChange()">\n        <button type="button" onclick="csQueueClearFilters()">ล้าง</button>\n      </div>\n      <div id="csQueueList"></div>\n    </div>`;
+    wrap.innerHTML = `\n    <div class="att-dash-wrap">\n      <div class="cs-queue-header">\n        <div>\n          <h2 style="margin:0;font-size:18px;font-weight:500">CS Queue <span style="font-size:13px;color:var(--text-muted);font-weight:400">ยืนยัน Invoice กับลูกค้า</span></h2>\n          <p style="margin:4px 0 0;font-size:12px;color:var(--text-muted)" id="csQueueSummary"></p>\n        </div>\n        <div style="display:flex;gap:8px;align-items:center">\n          <div class="cs-tabs">\n            <button type="button" class="cs-tab active" data-cstab="pending" onclick="csSwitchTab('pending')">⏳ รอยืนยัน</button>\n            <button type="button" class="cs-tab" data-cstab="history" onclick="csSwitchTab('history')">📋 ประวัติการยืนยัน</button>\n          </div>\n          <button onclick="_csHistoryData=[];renderCsQueue()" style="padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface-1);font-size:12px;cursor:pointer">🔄 รีเฟรช</button>\n        </div>\n      </div>\n      <div class="cs-queue-toolbar">\n        <input id="csSearchInput" type="search" placeholder="🔍 ค้นหาบริษัท / เลข House / Invoice..." oninput="csQueueFilterChange()">\n        <span id="csDateLabel" class="cs-tb-label">วันที่รับ</span>\n        <input id="csDateFrom" type="date" onchange="csQueueFilterChange()">\n        <span class="cs-tb-dash">–</span>\n        <input id="csDateTo" type="date" onchange="csQueueFilterChange()">\n        <button type="button" onclick="csQueueClearFilters()">ล้าง</button>\n        <button type="button" onclick="csBulkConfirmFiltered()" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-weight:700">ยืนยันทั้งหมดที่กรอง</button>\n      </div>\n      <div id="csQueueList"></div>\n    </div>`;
     _renderCsQueueList();
 }
 
@@ -10283,6 +10304,47 @@ function onCsJobCheck() {
         const bar = grp.querySelector(".cs-confirm-bar");
         if (bar) bar.style.display = checks.length ? "flex" : "none";
     });
+}
+
+async function csBulkConfirmFiltered() {
+    if (_csQueueTab !== "pending") return toast("สลับไปแท็บรอยืนยันก่อน");
+    const jobs = _csApplyFilters(_csQueueData, _csJobDate);
+    if (!jobs.length) return toast("ไม่มีงานตามเงื่อนไขให้ยืนยัน");
+    const invoiceNo = prompt(`กำลังยืนยันแบบกลุ่ม ${jobs.length} งาน\nกรอกเลขอ้างอิง/Invoice กลาง (ใช้ร่วมกันทุกงาน):`, "BULK-" + new Date().toISOString().slice(0, 10));
+    if (!invoiceNo) return;
+    if (!window.confirm(`ยืนยัน CS ทั้งหมด ${jobs.length} งาน ด้วยอ้างอิง "${invoiceNo}" ?\nงานจะพร้อมเปิดใบ Cargo ทันที`)) return;
+    const user = currentWebUser();
+    try {
+        const data = await api("/api/jobs/cs-confirm", {
+            houseNumbers: jobs.map(j => j.houseNumber),
+            invoiceNo: invoiceNo,
+            confirmedBy: user?.name || "CS",
+            evidenceChannel: "Bulk",
+            evidenceNote: "ยืนยันแบบกลุ่มจากหน้า CS Queue"
+        });
+        toast(`ยืนยันแบบกลุ่มแล้ว ${data.confirmed} งาน`);
+        _csHistoryData = [];
+        renderCsQueue();
+    } catch (e) {
+        toast(e.message || "เกิดข้อผิดพลาด", "error");
+    }
+}
+
+async function adminResetAllJobs() {
+    const user = currentWebUser();
+    if (user?.role !== "Admin") return toast("เฉพาะ Admin เท่านั้นที่ล้างงานได้", "error");
+    const totalNow = (state.dashboard?.jobs || []).length;
+    if (!window.confirm(`ล้างงานทั้งหมด ${totalNow} งาน + ใบแจ้งหนี้ + แผนโหลด + ประวัติ Import ออกจากระบบถาวร?\n\nผู้ใช้ / ลูกค้า / ผังคลัง / HR จะยังอยู่ครบ`)) return;
+    const word = prompt("พิมพ์ RESET (ตัวใหญ่) เพื่อยืนยันครั้งสุดท้าย:");
+    if (word !== "RESET") return toast("ยกเลิก — ไม่ได้ล้างข้อมูล");
+    try {
+        const data = await api("/api/admin/reset-jobs", { confirm: "RESET_ALL_JOBS", userId: user.id });
+        toast(`ล้างแล้ว ${data.removedJobs} งาน — ระบบพร้อมรับข้อมูลชุดใหม่`);
+        if (data.dashboard) state.dashboard = data.dashboard;
+        renderAll();
+    } catch (e) {
+        toast(e.message || "ล้างข้อมูลไม่สำเร็จ", "error");
+    }
 }
 
 async function submitCsConfirm(gkey) {
