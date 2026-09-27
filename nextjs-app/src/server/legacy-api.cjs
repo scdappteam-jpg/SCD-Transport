@@ -282,6 +282,21 @@ function ensureDbShape(db) {
     db.attendance ||= [];
     db.taskGroups ||= [];
     db.notifications ||= [];
+    db.hr ||= {};
+    db.hr.leaveRequests ||= [];
+    db.hr.otRequests ||= [];
+    db.hr.settings ||= {};
+    db.hr.settings.quotas ||= {
+        sick: 30,
+        personal: 6,
+        vacation: 10,
+        other: 0
+    };
+    db.hr.settings.otRates ||= {
+        normal: 1.5,
+        holidayWork: 2,
+        holidayOt: 3
+    };
     db.warehouseMaps ||= [];
     db.warehouseProfiles ||= [];
     db.integrations ||= {};
@@ -6045,6 +6060,134 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, {
             ok: true
         });
+    }
+    if (req.method === "GET" && pathname === "/api/hr/bootstrap") {
+        const db = readDb();
+        return sendJson(res, 200, {
+            leaveRequests: db.hr.leaveRequests,
+            otRequests: db.hr.otRequests,
+            settings: db.hr.settings
+        });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/leave") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const user = (db.users || []).find(item => item.id === payload.employeeId);
+        if (!user) return sendJson(res, 404, { error: "Employee not found" });
+        const startDate = String(payload.startDate || "").slice(0, 10);
+        const endDate = String(payload.endDate || startDate).slice(0, 10);
+        const part = [ "full", "am", "pm" ].includes(payload.part) ? payload.part : "full";
+        const allowedTypes = new Set([ "sick", "personal", "vacation", "other" ]);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || endDate < startDate) return sendJson(res, 400, { error: "Invalid leave dates" });
+        const days = part === "full" ? Math.floor((new Date(`${endDate}T00:00:00Z`) - new Date(`${startDate}T00:00:00Z`)) / 864e5) + 1 : .5;
+        const request = {
+            id: `LV-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+            employeeId: user.id,
+            type: allowedTypes.has(payload.type) ? payload.type : "other",
+            part,
+            startDate,
+            endDate,
+            days,
+            reason: String(payload.reason || "-").trim().slice(0, 2e3) || "-",
+            status: "pendingLead",
+            zone: user.role === "Driver" ? "Pickup" : user.role === "WH_Staff" ? "WH3" : "Operations",
+            createdAt: nowIso(),
+            remainingQuotaAtSubmit: Number(payload.remainingQuotaAtSubmit || 0),
+            trail: []
+        };
+        db.hr.leaveRequests.unshift(request);
+        writeDb(db);
+        return sendJson(res, 201, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/ot") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const user = (db.users || []).find(item => item.id === payload.employeeId);
+        if (!user) return sendJson(res, 404, { error: "Employee not found" });
+        const date = String(payload.date || "").slice(0, 10);
+        const startTime = String(payload.startTime || "");
+        const endTime = String(payload.endTime || "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) return sendJson(res, 400, { error: "Invalid OT date or time" });
+        const [ sh, sm ] = startTime.split(":").map(Number);
+        const [ eh, em ] = endTime.split(":").map(Number);
+        const start = sh * 60 + sm;
+        let end = eh * 60 + em;
+        if (end < start) end += 1440;
+        const requestedHours = Math.max(0, Math.round((end - start) / 6) / 10);
+        if (!requestedHours) return sendJson(res, 400, { error: "OT hours must be greater than zero" });
+        const request = {
+            id: `OT-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+            employeeId: user.id,
+            date,
+            startTime,
+            endTime,
+            requestedHours,
+            workRef: String(payload.workRef || "งานปฏิบัติการ").trim().slice(0, 500),
+            reason: String(payload.reason || "-").trim().slice(0, 2e3) || "-",
+            status: "pendingLead",
+            actualHours: 0,
+            paidHours: 0,
+            rate: Number(db.hr.settings.otRates.normal || 1.5),
+            createdAt: nowIso(),
+            trail: []
+        };
+        db.hr.otRequests.unshift(request);
+        writeDb(db);
+        return sendJson(res, 201, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/request-action") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const kind = payload.kind === "ot" ? "ot" : "leave";
+        const list = kind === "ot" ? db.hr.otRequests : db.hr.leaveRequests;
+        const request = list.find(item => item.id === payload.id);
+        if (!request) return sendJson(res, 404, { error: "HR request not found" });
+        const actor = (db.users || []).find(item => item.id === payload.actorId);
+        const actorName = actor?.name || String(payload.actorName || "System");
+        const action = String(payload.action || "");
+        if (action === "approve") {
+            if (request.status === "pendingLead") {
+                request.status = "pendingExecutive";
+                request.trail = [ ...(request.trail || []), { step: "lead", action: "approved", by: actorName, at: nowIso() } ];
+            } else if (request.status === "pendingExecutive") {
+                request.status = "approved";
+                request.approvedAt = nowIso();
+                request.trail = [ ...(request.trail || []), { step: "executive", action: "approved", by: actorName, at: nowIso() } ];
+            } else return sendJson(res, 409, { error: "Request is not awaiting approval" });
+        } else if (action === "recordActual" && kind === "ot" && request.status === "approved") {
+            const actual = Number(payload.actualHours);
+            if (!Number.isFinite(actual) || actual < 0) return sendJson(res, 400, { error: "Invalid actual OT hours" });
+            request.actualHours = actual;
+            request.paidHours = Math.min(actual, Number(request.requestedHours || 0));
+            request.status = "done";
+            request.trail = [ ...(request.trail || []), { step: "actual", action: "recorded", by: actorName, at: nowIso() } ];
+        } else if (action === "close" && kind === "ot" && request.status === "done") {
+            request.status = "closed";
+            request.closedAt = nowIso();
+        } else if (action === "reject" && [ "pendingLead", "pendingExecutive" ].includes(request.status)) {
+            const rejectionStep = request.status === "pendingExecutive" ? "executive" : "lead";
+            request.status = "rejected";
+            request.rejectionReason = String(payload.reason || "-").trim().slice(0, 2e3) || "-";
+            request.trail = [ ...(request.trail || []), { step: rejectionStep, action: "rejected", by: actorName, at: nowIso(), reason: request.rejectionReason } ];
+        } else if (action === "cancel" && [ "pendingLead", "pendingExecutive", "approved" ].includes(request.status)) {
+            request.status = "cancelled";
+            request.cancelledAt = nowIso();
+        } else return sendJson(res, 409, { error: "Invalid HR status transition" });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/close-month") {
+        const db = readDb();
+        let closed = 0;
+        db.hr.otRequests.forEach(request => {
+            if (request.status === "done") {
+                request.status = "closed";
+                request.closedAt = nowIso();
+                closed++;
+            }
+        });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, closed, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
     }
     if (req.method === "GET" && pathname === "/api/attendance/today") {
         const db = readDb();

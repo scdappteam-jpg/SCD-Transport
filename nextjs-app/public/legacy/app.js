@@ -99,9 +99,9 @@ const state = {
     selectedStaffId: null,
     staffRoleFilter: "All",
     hrFormMode: "leave",
-    leaveRequests: JSON.parse(localStorage.getItem("scdHrLeaveRequests") || "null") || null,
-    otRequests: JSON.parse(localStorage.getItem("scdHrOtRequests") || "null") || null,
-    hrSettings: JSON.parse(localStorage.getItem("scdHrSettings") || "null") || {
+    leaveRequests: [],
+    otRequests: [],
+    hrSettings: {
         quotas: {
             sick: 30,
             personal: 6,
@@ -6604,89 +6604,19 @@ function hrEmployeeName(userId) {
 }
 
 function hrSeedRequests() {
-    const users = hrEmployees();
-    const today = dateInputValue();
-    if (!state.leaveRequests) {
-        state.leaveRequests = [ {
-            id: "LV-2026-001",
-            employeeId: users.find(u => u.role === "Driver")?.id || users[0]?.id || "u_driver_01",
-            type: "personal",
-            part: "full",
-            startDate: today,
-            endDate: today,
-            days: 1,
-            reason: "ทำธุระราชการ",
-            status: "pendingLead",
-            zone: "Pickup",
-            createdAt: new Date().toISOString(),
-            remainingQuotaAtSubmit: 5,
-            trail: []
-        }, {
-            id: "LV-2026-002",
-            employeeId: users.find(u => u.role === "WH_Staff")?.id || users[1]?.id || "u_wh_01",
-            type: "sick",
-            part: "am",
-            startDate: dateOffsetValue(1),
-            endDate: dateOffsetValue(1),
-            days: .5,
-            reason: "พบแพทย์ช่วงเช้า",
-            status: "pendingExecutive",
-            zone: "WH3",
-            createdAt: new Date().toISOString(),
-            remainingQuotaAtSubmit: 29.5,
-            trail: [ {
-                step: "lead",
-                action: "approved",
-                by: "หัวหน้าทีม",
-                at: new Date().toISOString()
-            } ]
-        } ];
-    }
-    if (!state.otRequests) {
-        state.otRequests = [ {
-            id: "OT-2026-001",
-            employeeId: users.find(u => u.role === "Driver")?.id || users[0]?.id || "u_driver_01",
-            date: today,
-            startTime: "18:00",
-            endTime: "20:00",
-            requestedHours: 2,
-            workRef: "TG Load Plan",
-            reason: "โหลดสินค้าต่อหลังเวลางาน",
-            status: "pendingExecutive",
-            actualHours: 0,
-            paidHours: 0,
-            rate: state.hrSettings.otRates.normal,
-            createdAt: new Date().toISOString(),
-            trail: [ {
-                step: "lead",
-                action: "approved",
-                by: "หัวหน้าทีม",
-                at: new Date().toISOString()
-            } ]
-        }, {
-            id: "OT-2026-002",
-            employeeId: users.find(u => u.role === "WH_Staff")?.id || users[1]?.id || "u_wh_01",
-            date: dateOffsetValue(-1),
-            startTime: "19:00",
-            endTime: "21:30",
-            requestedHours: 2.5,
-            workRef: "WH3 Recheck",
-            reason: "ตรวจเอกสารและจัดพื้นที่คลังก่อนส่งออก",
-            status: "approved",
-            actualHours: 2,
-            paidHours: 2,
-            rate: state.hrSettings.otRates.normal,
-            createdAt: new Date().toISOString(),
-            trail: []
-        } ];
-    }
-    saveHrData();
+    state.leaveRequests ||= [];
+    state.otRequests ||= [];
 }
 
-function saveHrData() {
-    localStorage.setItem("scdHrLeaveRequests", JSON.stringify(state.leaveRequests || []));
-    localStorage.setItem("scdHrOtRequests", JSON.stringify(state.otRequests || []));
-    localStorage.setItem("scdHrSettings", JSON.stringify(state.hrSettings));
+function applyHrData(data) {
+    state.leaveRequests = Array.isArray(data?.leaveRequests) ? data.leaveRequests : [];
+    state.otRequests = Array.isArray(data?.otRequests) ? data.otRequests : [];
+    if (data?.settings?.quotas && data?.settings?.otRates) state.hrSettings = data.settings;
+}
+
+async function loadHrData() {
+    const data = await api("/api/hr/bootstrap", null, "GET");
+    applyHrData(data);
 }
 
 function hrStatusPill(status) {
@@ -6747,7 +6677,7 @@ function switchHrForm(mode) {
     $("#hrOtForm").hidden = state.hrFormMode !== "ot";
 }
 
-function submitHrLeave(event) {
+async function submitHrLeave(event) {
     event?.preventDefault();
     const employeeId = $("#hrLeaveEmployee")?.value || currentWebUser()?.id || "";
     const type = $("#hrLeaveType")?.value || "personal";
@@ -6755,55 +6685,40 @@ function submitHrLeave(event) {
     const endDate = $("#hrLeaveEnd")?.value || startDate;
     const part = $("#hrLeavePart")?.value || "full";
     const days = hrRequestDays(startDate, endDate, part);
-    const request = {
-        id: `LV-${Date.now().toString().slice(-8)}`,
-        employeeId,
-        type,
-        part,
-        startDate,
-        endDate,
-        days,
-        reason: $("#hrLeaveReason")?.value.trim() || "-",
-        status: "pendingLead",
-        zone: hrEmployee(employeeId).role === "Driver" ? "Pickup" : hrEmployee(employeeId).role === "WH_Staff" ? "WH3" : "Operations",
-        createdAt: new Date().toISOString(),
-        remainingQuotaAtSubmit: hrQuotaRemaining(employeeId, type),
-        trail: []
-    };
-    state.leaveRequests.unshift(request);
-    saveHrData();
-    $("#hrLeaveReason").value = "";
-    renderHR();
-    toast("ส่งคำขอลาแล้ว / Leave request submitted");
+    try {
+        const data = await api("/api/hr/leave", {
+            employeeId, type, part, startDate, endDate, days,
+            reason: $("#hrLeaveReason")?.value.trim() || "-",
+            remainingQuotaAtSubmit: hrQuotaRemaining(employeeId, type)
+        });
+        applyHrData(data);
+        $("#hrLeaveReason").value = "";
+        renderHR();
+        toast("ส่งคำขอลาแล้ว / Leave request submitted");
+    } catch (error) {
+        toast(error.message || "ส่งคำขอลาไม่สำเร็จ");
+    }
 }
 
-function submitHrOt(event) {
+async function submitHrOt(event) {
     event?.preventDefault();
     const employeeId = $("#hrOtEmployee")?.value || currentWebUser()?.id || "";
     const startTime = $("#hrOtStart")?.value || "18:00";
     const endTime = $("#hrOtEnd")?.value || "19:00";
     const requestedHours = hrOtHours(startTime, endTime);
-    const request = {
-        id: `OT-${Date.now().toString().slice(-8)}`,
-        employeeId,
-        date: $("#hrOtDate")?.value || dateInputValue(),
-        startTime,
-        endTime,
-        requestedHours,
-        workRef: $("#hrOtWorkRef")?.value.trim() || "งานปฏิบัติการ",
-        reason: $("#hrOtReason")?.value.trim() || "-",
-        status: "pendingLead",
-        actualHours: 0,
-        paidHours: 0,
-        rate: state.hrSettings.otRates.normal,
-        createdAt: new Date().toISOString(),
-        trail: []
-    };
-    state.otRequests.unshift(request);
-    saveHrData();
-    $("#hrOtReason").value = "";
-    renderHR();
-    toast("ส่งคำขอโอทีแล้ว / OT request submitted");
+    try {
+        const data = await api("/api/hr/ot", {
+            employeeId, date: $("#hrOtDate")?.value || dateInputValue(), startTime, endTime, requestedHours,
+            workRef: $("#hrOtWorkRef")?.value.trim() || "งานปฏิบัติการ",
+            reason: $("#hrOtReason")?.value.trim() || "-"
+        });
+        applyHrData(data);
+        $("#hrOtReason").value = "";
+        renderHR();
+        toast("ส่งคำขอโอทีแล้ว / OT request submitted");
+    } catch (error) {
+        toast(error.message || "ส่งคำขอโอทีไม่สำเร็จ");
+    }
 }
 
 function hrFindRequest(kind, id) {
@@ -6811,69 +6726,57 @@ function hrFindRequest(kind, id) {
     return (list || []).find(req => req.id === id);
 }
 
-function approveHrRequest(kind, id) {
+async function approveHrRequest(kind, id) {
     const req = hrFindRequest(kind, id);
     if (!req) return;
-    const user = currentWebUser();
-    if (req.status === "pendingLead") {
-        req.status = "pendingExecutive";
-        req.trail = [ ...(req.trail || []), {
-            step: "lead",
-            action: "approved",
-            by: user?.name || "Lead",
-            at: new Date().toISOString()
-        } ];
-    } else if (req.status === "pendingExecutive") {
-        req.status = "approved";
-        req.approvedAt = new Date().toISOString();
-        req.trail = [ ...(req.trail || []), {
-            step: "executive",
-            action: "approved",
-            by: user?.name || "Executive",
-            at: new Date().toISOString()
-        } ];
-    } else if (kind === "ot" && req.status === "approved") {
+    let action = "approve";
+    let actualHours;
+    if (kind === "ot" && req.status === "approved") {
         const actual = Number(prompt("กรอกชั่วโมงทำจริง / Actual OT hours", req.requestedHours || 0));
         if (!Number.isFinite(actual)) return;
-        req.actualHours = Math.max(0, actual);
-        req.paidHours = Math.min(req.actualHours, Number(req.requestedHours || 0));
-        req.status = "done";
+        action = "recordActual";
+        actualHours = Math.max(0, actual);
     } else if (kind === "ot" && req.status === "done") {
-        req.status = "closed";
-        req.closedAt = new Date().toISOString();
+        action = "close";
     }
-    saveHrData();
-    renderHR();
-    toast("อัปเดตสถานะ HR แล้ว / HR status updated");
+    try {
+        const user = currentWebUser();
+        const data = await api("/api/hr/request-action", { kind, id, action, actualHours, actorId: user?.id || "", actorName: user?.name || "" });
+        applyHrData(data);
+        renderHR();
+        toast("อัปเดตสถานะ HR แล้ว / HR status updated");
+    } catch (error) {
+        toast(error.message || "อัปเดตสถานะ HR ไม่สำเร็จ");
+    }
 }
 
-function rejectHrRequest(kind, id) {
+async function rejectHrRequest(kind, id) {
     const req = hrFindRequest(kind, id);
     if (!req) return;
     const reason = prompt("เหตุผลที่ไม่อนุมัติ / Rejection reason", "");
     if (reason === null) return;
-    const rejectStep = req.status === "pendingExecutive" ? "executive" : "lead";
-    req.status = "rejected";
-    req.rejectionReason = reason.trim() || "-";
-    req.trail = [ ...(req.trail || []), {
-        step: rejectStep,
-        action: "rejected",
-        by: currentWebUser()?.name || "Approver",
-        at: new Date().toISOString(),
-        reason: req.rejectionReason
-    } ];
-    saveHrData();
-    renderHR();
-    toast("บันทึกผลไม่อนุมัติแล้ว / Rejected");
+    try {
+        const user = currentWebUser();
+        const data = await api("/api/hr/request-action", { kind, id, action: "reject", reason, actorId: user?.id || "", actorName: user?.name || "" });
+        applyHrData(data);
+        renderHR();
+        toast("บันทึกผลไม่อนุมัติแล้ว / Rejected");
+    } catch (error) {
+        toast(error.message || "ไม่สามารถบันทึกผลได้");
+    }
 }
 
-function cancelHrRequest(kind, id) {
+async function cancelHrRequest(kind, id) {
     const req = hrFindRequest(kind, id);
     if (!req || !confirm("ยืนยันยกเลิกคำขอนี้?")) return;
-    req.status = "cancelled";
-    req.cancelledAt = new Date().toISOString();
-    saveHrData();
-    renderHR();
+    try {
+        const user = currentWebUser();
+        const data = await api("/api/hr/request-action", { kind, id, action: "cancel", actorId: user?.id || "", actorName: user?.name || "" });
+        applyHrData(data);
+        renderHR();
+    } catch (error) {
+        toast(error.message || "ไม่สามารถยกเลิกคำขอได้");
+    }
 }
 
 function renderHrKpis() {
@@ -6939,8 +6842,14 @@ function renderHrSettings() {
     $("#hrSettingsPanel").innerHTML = `\n    <div class="hr-policy-grid">\n      ${Object.entries(HR_LEAVE_TYPES).map(([type, meta]) => `\n        <article class="hr-policy ${meta.tone}">\n          <strong>${safeHtml(meta.th)} / ${safeHtml(meta.en)}</strong>\n          <span>โควตา ${safeHtml(q[type] || 0)} วัน</span>\n          <small>${safeHtml(meta.rule)}</small>\n        </article>`).join("")}\n    </div>\n    <div class="hr-rate-grid">\n      <article><span>OT วันปกติ</span><strong>x${r.normal}</strong></article>\n      <article><span>ทำงานวันหยุด</span><strong>x${r.holidayWork}</strong></article>\n      <article><span>OT วันหยุด</span><strong>x${r.holidayOt}</strong></article>\n    </div>\n    <p class="hr-note">กฎ OT: ต้องขอล่วงหน้าและอนุมัติก่อนทำงาน ระบบจ่ายตามชั่วโมงจริง แต่ไม่เกินชั่วโมงที่อนุมัติ</p>`;
 }
 
-function renderHR() {
+async function renderHR() {
     if (!$("#hrKpiGrid")) return;
+    try {
+        await loadHrData();
+    } catch (error) {
+        toast("โหลดข้อมูล HR ไม่สำเร็จ / HR data unavailable");
+        return;
+    }
     hrSeedRequests();
     updateHrEmployeeSelects();
     switchHrForm(state.hrFormMode);
@@ -6967,13 +6876,15 @@ function exportHrMonthlyCsv() {
     toast("Export สรุป HR แล้ว / HR summary exported");
 }
 
-function closeHrMonth() {
-    (state.otRequests || []).forEach(req => {
-        if (req.status === "done") req.status = "closed";
-    });
-    saveHrData();
-    renderHR();
-    toast("ปิดรอบ OT รายเดือนแล้ว / Monthly OT closed");
+async function closeHrMonth() {
+    try {
+        const data = await api("/api/hr/close-month", {});
+        applyHrData(data);
+        renderHR();
+        toast(`ปิดรอบ OT รายเดือนแล้ว ${data.closed || 0} รายการ`);
+    } catch (error) {
+        toast(error.message || "ปิดรอบ OT ไม่สำเร็จ");
+    }
 }
 
 function setStaffVehicleVisibility() {

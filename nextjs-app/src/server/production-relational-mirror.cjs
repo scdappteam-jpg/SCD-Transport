@@ -120,7 +120,8 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
             activityLogs: db.activityLogs || [],
             attachments: db.attachments || [],
             importHistory: db.importHistory || [],
-            warehouseMap: db.warehouseMap || { zones: [], locations: [] }
+            warehouseMap: db.warehouseMap || { zones: [], locations: [] },
+            hr: db.hr || { leaveRequests: [], otRequests: [], settings: {} }
         };
         const snapshotHash = stableHash(source);
         if (snapshotHash === lastSnapshotHash) return { skipped: true };
@@ -264,8 +265,51 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
         }));
         await upsert("import_batches", "source,content_hash", batches);
 
+        const leaveRequests = (source.hr.leaveRequests || []).map(request => ({
+            legacy_request_id: asText(request.id),
+            employee_id: asText(request.employeeId),
+            leave_type: asText(request.type, "other"),
+            day_part: asText(request.part, "full"),
+            start_date: asText(request.startDate) || null,
+            end_date: asText(request.endDate) || null,
+            requested_days: asNumber(request.days) || 0,
+            reason: asText(request.reason) || null,
+            status: asText(request.status, "pendingLead"),
+            work_zone: asText(request.zone) || null,
+            remaining_quota_at_submit: asNumber(request.remainingQuotaAtSubmit),
+            approval_trail: request.trail || [],
+            requested_at: asIso(request.createdAt) || new Date().toISOString(),
+            approved_at: asIso(request.approvedAt),
+            cancelled_at: asIso(request.cancelledAt),
+            rejection_reason: asText(request.rejectionReason) || null,
+            updated_at: new Date().toISOString()
+        })).filter(row => row.legacy_request_id && row.employee_id);
+        await upsert("hr_leave_requests", "legacy_request_id", leaveRequests);
+
+        const otRequests = (source.hr.otRequests || []).map(request => ({
+            legacy_request_id: asText(request.id),
+            employee_id: asText(request.employeeId),
+            work_date: asText(request.date) || null,
+            start_time: asText(request.startTime) || null,
+            end_time: asText(request.endTime) || null,
+            requested_hours: asNumber(request.requestedHours) || 0,
+            actual_hours: asNumber(request.actualHours) || 0,
+            paid_hours: asNumber(request.paidHours) || 0,
+            rate_multiplier: asNumber(request.rate),
+            work_ref: asText(request.workRef) || null,
+            reason: asText(request.reason) || null,
+            status: asText(request.status, "pendingLead"),
+            approval_trail: request.trail || [],
+            requested_at: asIso(request.createdAt) || new Date().toISOString(),
+            approved_at: asIso(request.approvedAt),
+            closed_at: asIso(request.closedAt),
+            rejection_reason: asText(request.rejectionReason) || null,
+            updated_at: new Date().toISOString()
+        })).filter(row => row.legacy_request_id && row.employee_id);
+        await upsert("hr_ot_requests", "legacy_request_id", otRequests);
+
         lastSnapshotHash = snapshotHash;
-        return { jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult };
+        return { jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult, leaveRequests: leaveRequests.length, otRequests: otRequests.length };
     }
 
     function schedule(db) {
