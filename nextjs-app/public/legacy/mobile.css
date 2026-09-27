@@ -927,3 +927,33 @@ body:not(.mobile-locked) main{padding:0 14px calc(var(--ms-nav) + 26px)!importan
   border:1px solid rgba(255,255,255,.4)!important;box-shadow:none!important}
 .fo-checkin-card{background:linear-gradient(140deg,#123B79,#1B4DB1)!important;border:0!important;
   border-radius:16px!important;padding:16px!important}
+
+/* ════════ MOBILE FIX · TESTED — แก้จากการทดสอบบนเครื่องจริง ════════ */
+/* แผ่นเมนูต้องหายจริงตอนปิด ไม่งั้นมันคลุมทั้งจอจนกดอะไรไม่ได้ */
+.more-sheet[hidden]{display:none!important}
+/* หัวจอ: กฎเก่าบังคับสูง 152px — เขียนทับด้วยความจำเพาะเท่ากัน */
+body:not(.mobile-locked) .mobile-header{
+  min-height:58px!important;height:auto!important;
+  padding:10px 14px!important;align-items:center!important;
+  border-radius:0!important;gap:10px!important}
+/* ปุ่มสแกนวงกลม: ตัวหนังสืออยู่ใต้วงกลม ไม่ทับกัน */
+.fo-bottomnav .fo-search-tab{position:relative!important;padding-top:18px!important}
+.fo-bottomnav .fo-search-tab::before{top:-20px!important;width:54px!important;height:54px!important}
+.fo-bottomnav .fo-search-tab i,.fo-bottomnav .fo-search-tab svg{
+  position:absolute!important;top:-7px!important;left:50%!important;transform:translateX(-50%)!important;
+  width:24px!important;height:24px!important;color:#fff!important}
+.fo-bottomnav .fo-search-tab small{position:static!important;top:auto!important;margin-top:auto!important}
+/* การ์ดสแกนโผล่เฉพาะหน้าหลัก/หน้างาน */
+body[data-mnav="docs"] .smart-scan-card,body[data-mnav="map"] .smart-scan-card,
+body[data-mnav="hr"] .smart-scan-card,body[data-mnav="profile"] .smart-scan-card{display:none!important}
+/* ปุ่มบนหัวหมวด (รีเฟรช ฯลฯ) ต้องไม่ยืดเต็มบรรทัด */
+.fo-header{align-items:center!important;gap:12px!important}
+.fo-header button,.mnav-panel .fo-header button{
+  width:auto!important;min-width:0!important;flex:0 0 auto!important;
+  min-height:36px!important;height:36px!important;padding:0 14px!important;
+  border-radius:10px!important;font-size:12.5px!important;font-weight:400!important;
+  background:#fff!important;color:#1B4DB1!important;border:1px solid #C7D7F2!important;box-shadow:none!important}
+.fo-map{min-height:180px!important}
+/* ชื่อบริษัทบนหัวจอไม่ต้องโดนตัดเร็วเกินไป */
+.mobile-header .mh-name strong{font-size:13.5px!important}
+@media (max-width:360px){.mobile-header .mh-name span{display:none!important}}

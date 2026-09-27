@@ -715,17 +715,17 @@
       <button type="button" data-mnav="docs"><i data-lucide="bell"></i><small>แจ้งเตือน</small></button>
       <button type="button" data-mnav="work" class="fo-search-tab" aria-label="สแกน / ค้นหางาน"><i data-lucide="scan-line"></i><small>สแกนงาน</small></button>
       <button type="button" data-mnav="map"><i data-lucide="history"></i><small>ประวัติ</small></button>
-      <button type="button" id="foMoreBtn"><i data-lucide="menu"></i><small>เพิ่มเติม</small></button>
+      <button type="button" id="foMoreBtn" onclick="foOpenMore()"><i data-lucide="menu"></i><small>เพิ่มเติม</small></button>
     </nav>
 
     <div id="moreSheet" class="more-sheet" hidden>
       <div class="more-panel" role="dialog" aria-modal="true" aria-label="เมนูเพิ่มเติม">
         <div class="more-grip"></div>
         <strong class="more-title">เมนูเพิ่มเติม</strong>
-        <button type="button" class="more-item" data-mnav="hr">
+        <button type="button" class="more-item" data-mnav="hr" onclick="showMnav('hr')">
           <i data-lucide="calendar-heart"></i><span><b>ลา / โอที</b><em>ยื่นใบลา ขอโอที ดูสถานะอนุมัติ</em></span><i class="more-go" data-lucide="chevron-right"></i>
         </button>
-        <button type="button" class="more-item" data-mnav="profile">
+        <button type="button" class="more-item" data-mnav="profile" onclick="showMnav('profile')">
           <i data-lucide="user-round"></i><span><b>โปรไฟล์และตั้งค่า</b><em>ข้อมูลพนักงาน สิทธิ์การใช้งาน</em></span><i class="more-go" data-lucide="chevron-right"></i>
         </button>
         <a class="more-item" href="index.html">
@@ -734,7 +734,7 @@
         <button type="button" class="more-item danger" id="mobileHeaderLogoutBtn" hidden>
           <i data-lucide="log-out"></i><span><b>ออกจากระบบ</b><em>ออกจากบัญชีนี้บนเครื่องนี้</em></span>
         </button>
-        <button type="button" class="more-close" id="foMoreClose">ปิด</button>
+        <button type="button" class="more-close" id="foMoreClose" onclick="foCloseMore()">ปิด</button>
       </div>
     </div>
 
