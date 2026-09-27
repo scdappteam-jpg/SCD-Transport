@@ -308,8 +308,54 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
         })).filter(row => row.legacy_request_id && row.employee_id);
         await upsert("hr_ot_requests", "legacy_request_id", otRequests);
 
+        const employeeProfiles = Object.values(source.hr.employeeProfiles || {}).map(profile => ({
+            employee_id: asText(profile.employeeId),
+            nickname: asText(profile.nickname) || null,
+            email: asText(profile.email) || null,
+            department: asText(profile.department) || null,
+            position: asText(profile.position) || null,
+            employee_level: asText(profile.employeeLevel) || null,
+            supervisor_id: asText(profile.supervisorId) || null,
+            branch: asText(profile.branch) || null,
+            start_date: asText(profile.startDate) || null,
+            employment_type: asText(profile.employmentType) || null,
+            emergency_contact_name: asText(profile.emergencyContactName) || null,
+            emergency_contact_phone: asText(profile.emergencyContactPhone) || null,
+            assigned_location_ids: profile.assignedLocationIds || [],
+            created_at: asIso(profile.createdAt) || new Date().toISOString(),
+            updated_at: asIso(profile.updatedAt) || new Date().toISOString()
+        })).filter(row => row.employee_id);
+        await upsert("hr_employee_profiles", "employee_id", employeeProfiles);
+
+        const checkInLocations = (source.hr.checkInLocations || []).map(location => ({
+            legacy_location_id: asText(location.id),
+            name: asText(location.name),
+            latitude: asNumber(location.latitude),
+            longitude: asNumber(location.longitude),
+            radius_meters: asNumber(location.radiusMeters) || 300,
+            branch: asText(location.branch) || null,
+            active: location.active !== false,
+            created_at: asIso(location.createdAt) || new Date().toISOString(),
+            updated_at: asIso(location.updatedAt) || new Date().toISOString()
+        })).filter(row => row.legacy_location_id && row.name && row.latitude !== null && row.longitude !== null);
+        await upsert("hr_checkin_locations", "legacy_location_id", checkInLocations);
+
+        const corrections = (source.hr.attendanceCorrections || []).map(request => ({
+            legacy_request_id: asText(request.id),
+            employee_id: asText(request.employeeId),
+            target_date: asText(request.targetDate) || null,
+            requested_checkin: asText(request.requestedCheckIn) || null,
+            requested_checkout: asText(request.requestedCheckOut) || null,
+            reason: asText(request.reason),
+            status: asText(request.status, "pendingLead"),
+            approval_trail: request.trail || [],
+            requested_at: asIso(request.createdAt) || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        })).filter(row => row.legacy_request_id && row.employee_id && row.target_date && row.reason);
+        await upsert("hr_attendance_corrections", "legacy_request_id", corrections);
+
         lastSnapshotHash = snapshotHash;
-        return { jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult, leaveRequests: leaveRequests.length, otRequests: otRequests.length };
+        return { jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult, leaveRequests: leaveRequests.length, otRequests: otRequests.length, employeeProfiles: employeeProfiles.length, checkInLocations: checkInLocations.length, attendanceCorrections: corrections.length };
     }
 
     function schedule(db) {

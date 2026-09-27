@@ -285,6 +285,9 @@ function ensureDbShape(db) {
     db.hr ||= {};
     db.hr.leaveRequests ||= [];
     db.hr.otRequests ||= [];
+    db.hr.employeeProfiles ||= {};
+    db.hr.checkInLocations ||= [];
+    db.hr.attendanceCorrections ||= [];
     db.hr.settings ||= {};
     db.hr.settings.quotas ||= {
         sick: 30,
@@ -296,6 +299,10 @@ function ensureDbShape(db) {
         normal: 1.5,
         holidayWork: 2,
         holidayOt: 3
+    };
+    db.hr.settings.attendance ||= {
+        defaultRadiusMeters: 300,
+        enforceAssignedLocations: false
     };
     db.warehouseMaps ||= [];
     db.warehouseProfiles ||= [];
@@ -6066,8 +6073,67 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, {
             leaveRequests: db.hr.leaveRequests,
             otRequests: db.hr.otRequests,
-            settings: db.hr.settings
+            settings: db.hr.settings,
+            employeeProfiles: db.hr.employeeProfiles,
+            checkInLocations: db.hr.checkInLocations,
+            attendanceCorrections: db.hr.attendanceCorrections
         });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/profile") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const user = (db.users || []).find(item => item.id === payload.employeeId);
+        if (!user) return sendJson(res, 404, { error: "Employee not found" });
+        const profile = db.hr.employeeProfiles[user.id] || { employeeId: user.id, createdAt: nowIso() };
+        const text = value => String(value || "").trim().slice(0, 500);
+        Object.assign(profile, {
+            employeeId: user.id,
+            nickname: text(payload.nickname),
+            email: text(payload.email),
+            department: text(payload.department),
+            position: text(payload.position),
+            employeeLevel: text(payload.employeeLevel),
+            supervisorId: text(payload.supervisorId),
+            branch: text(payload.branch),
+            startDate: text(payload.startDate).slice(0, 10),
+            employmentType: text(payload.employmentType),
+            emergencyContactName: text(payload.emergencyContactName),
+            emergencyContactPhone: text(payload.emergencyContactPhone),
+            assignedLocationIds: Array.isArray(payload.assignedLocationIds) ? payload.assignedLocationIds.map(String).slice(0, 20) : [],
+            updatedAt: nowIso()
+        });
+        db.hr.employeeProfiles[user.id] = profile;
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, profile, employeeProfiles: db.hr.employeeProfiles });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/checkin-location") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const name = String(payload.name || "").trim().slice(0, 160);
+        const latitude = Number(payload.latitude);
+        const longitude = Number(payload.longitude);
+        const radiusMeters = Number(payload.radiusMeters || db.hr.settings.attendance.defaultRadiusMeters || 300);
+        if (!name || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || !Number.isFinite(radiusMeters) || radiusMeters < 20 || radiusMeters > 5000) return sendJson(res, 400, { error: "Invalid check-in location" });
+        let location = payload.id ? db.hr.checkInLocations.find(item => item.id === payload.id) : null;
+        if (!location) {
+            location = { id: `LOC-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, createdAt: nowIso() };
+            db.hr.checkInLocations.push(location);
+        }
+        Object.assign(location, { name, latitude, longitude, radiusMeters, active: payload.active !== false, branch: String(payload.branch || "").trim().slice(0, 160), updatedAt: nowIso() });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, location, checkInLocations: db.hr.checkInLocations });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/attendance-correction") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const user = (db.users || []).find(item => item.id === payload.employeeId);
+        if (!user) return sendJson(res, 404, { error: "Employee not found" });
+        const targetDate = String(payload.targetDate || "").slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || !String(payload.reason || "").trim()) return sendJson(res, 400, { error: "Target date and reason are required" });
+        const request = { id: `ATC-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, employeeId: user.id, targetDate, requestedCheckIn: String(payload.requestedCheckIn || "").slice(0, 5), requestedCheckOut: String(payload.requestedCheckOut || "").slice(0, 5), reason: String(payload.reason).trim().slice(0, 2e3), status: "pendingLead", createdAt: nowIso(), trail: [] };
+        db.hr.attendanceCorrections.unshift(request);
+        writeDb(db);
+        return sendJson(res, 201, { ok: true, request, attendanceCorrections: db.hr.attendanceCorrections });
     }
     if (req.method === "POST" && pathname === "/api/hr/leave") {
         const payload = await parseBody(req);
@@ -6230,6 +6296,25 @@ async function handleApi(req, res, pathname) {
         if (!user) return sendJson(res, 404, {
             error: "User not found"
         });
+        const profile = db.hr?.employeeProfiles?.[userId] || {};
+        const configuredLocations = (db.hr?.checkInLocations || []).filter(location => location.active !== false);
+        const assignedIds = Array.isArray(profile.assignedLocationIds) ? profile.assignedLocationIds : [];
+        const eligibleLocations = assignedIds.length ? configuredLocations.filter(location => assignedIds.includes(location.id)) : configuredLocations;
+        const latitude = Number(gpsLat);
+        const longitude = Number(gpsLon);
+        const distanceMeters = (aLat, aLon, bLat, bLon) => {
+            const radians = value => value * Math.PI / 180;
+            const dLat = radians(bLat - aLat);
+            const dLon = radians(bLon - aLon);
+            const start = Math.sin(dLat / 2) ** 2 + Math.cos(radians(aLat)) * Math.cos(radians(bLat)) * Math.sin(dLon / 2) ** 2;
+            return 6371e3 * 2 * Math.atan2(Math.sqrt(start), Math.sqrt(1 - start));
+        };
+        const nearestLocation = Number.isFinite(latitude) && Number.isFinite(longitude) && eligibleLocations.length ? eligibleLocations.map(location => ({ ...location, distanceMeters: distanceMeters(latitude, longitude, Number(location.latitude), Number(location.longitude)) })).sort((a, b) => a.distanceMeters - b.distanceMeters)[0] : null;
+        const insideAllowedRadius = nearestLocation ? nearestLocation.distanceMeters <= Number(nearestLocation.radiusMeters || db.hr.settings.attendance.defaultRadiusMeters || 300) : false;
+        if (db.hr?.settings?.attendance?.enforceAssignedLocations && (!nearestLocation || !insideAllowedRadius) && !simulation) return sendJson(res, 403, {
+            error: "อยู่นอกจุดเช็คอินที่กำหนด กรุณาส่งคำขอแก้ไขเวลาแทน",
+            nearestLocation: nearestLocation ? { id: nearestLocation.id, name: nearestLocation.name, distanceMeters: Math.round(nearestLocation.distanceMeters), radiusMeters: nearestLocation.radiusMeters } : null
+        });
         const isSimulation = simulation === true;
         if (isSimulation) {
             const simulationJob = findJob(db, String(testHouse || "").trim());
@@ -6268,6 +6353,10 @@ async function handleApi(req, res, pathname) {
             checkInPhoto: photoUrl,
             checkInLat: gpsLat || null,
             checkInLon: gpsLon || null,
+            checkInLocationId: nearestLocation?.id || null,
+            checkInLocationName: nearestLocation?.name || "",
+            checkInDistanceMeters: nearestLocation ? Math.round(nearestLocation.distanceMeters) : null,
+            attendanceStatus: nearestLocation ? (insideAllowedRadius ? "normal" : "outside_zone") : "location_not_configured",
             checkOutTime: null,
             checkOutPhoto: null,
             checkOutLat: null,
