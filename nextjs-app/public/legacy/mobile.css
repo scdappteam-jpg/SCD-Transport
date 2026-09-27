@@ -767,3 +767,15 @@ label{color:#64748B!important;font-weight:400!important}
 .pill.red{background:#fbebeb!important;color:#c62828!important}
 .pill.gray{background:#eef2f8!important;color:#64748b!important}
 .fo-label{display:block;font-size:11.5px;color:#64748b;margin:12px 0 5px;font-weight:400}
+
+/* ════════ REFRESH · POLISH · มือถือ ════════ */
+#toast{bottom:88px!important;right:12px!important;left:12px!important;max-width:none!important;z-index:150!important;
+  border-radius:12px!important;font-size:13px!important;padding:12px 14px!important}
+.mnav-panel{padding-bottom:16px!important}
+body:not(.mobile-locked) main{padding-bottom:96px!important}
+.fo-card{margin-bottom:12px!important}
+.fo-header{margin:12px 2px 14px!important}
+.mobile-panel button:not(.mwf-dot):not(.remove-row):not(.mini-add){min-height:44px!important;border-radius:11px!important;
+  font-size:13.5px!important;font-weight:400!important}
+.confirm-sheet-panel{padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
+.mobile-action-modal{padding:22px!important}

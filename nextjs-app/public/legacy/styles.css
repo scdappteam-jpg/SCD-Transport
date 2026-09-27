@@ -238,3 +238,72 @@ hr{border-color:var(--r-line)!important}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#CDD6E3;border-radius:99px}
 ::-webkit-scrollbar-track{background:transparent}
+
+/* ════════ REFRESH · POLISH — เมนูข้าง ปุ่ม บอร์ด และระยะห่าง ════════ */
+/* ── แถบเมนูข้าง: เต็มความสูงเสมอ เลื่อนเฉพาะรายการ ── */
+.app-shell{align-items:stretch!important}
+.sidebar{position:sticky!important;top:0!important;height:100dvh!important;
+  padding:14px 10px 12px!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
+.sidebar .brand{flex:0 0 auto;padding:2px 6px 12px!important;margin:0!important}
+.sidebar .brand strong{font-size:13.5px!important;font-weight:500!important;letter-spacing:0}
+.sidebar .brand span{font-size:10.5px!important;color:#7E93B5!important}
+.side-nav{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain;
+  padding:0 2px 6px!important;mask-image:linear-gradient(180deg,transparent 0,#000 10px,#000 calc(100% - 14px),transparent 100%)}
+.side-nav::-webkit-scrollbar{width:5px}
+.side-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:99px}
+.side-nav::-webkit-scrollbar-track{background:transparent}
+.sidebar .nav-group-label{margin:13px 0 4px!important;padding-left:12px!important}
+.sidebar .nav-group-label:first-child{margin-top:2px!important}
+.sidebar .nav-item{min-height:36px!important;padding:7px 12px!important;margin:1px 4px!important;gap:11px!important;
+  box-shadow:none!important;border:0!important;outline:0!important}
+.sidebar .nav-item.active{box-shadow:none!important;background:rgba(255,255,255,.13)!important}
+.sidebar .nav-item:focus,.sidebar .nav-item:focus-visible{outline:0!important;box-shadow:none!important}
+.sidebar .nav-item i,.sidebar .nav-item svg{width:17px!important;height:17px!important;flex:0 0 17px!important;stroke-width:1.8}
+.side-footer{flex:0 0 auto!important;margin-top:8px!important;padding-top:10px!important;
+  border-top:1px solid rgba(255,255,255,.09)!important;gap:6px!important}
+.side-footer .nav-item{margin:0 4px!important}
+/* ── ปุ่มชุดเดียวกันทั้งระบบ ── */
+.topbar button,.page button:not(.nav-item):not(.att-color-swatch):not(.cargo-zoom-btn):not(.mini-add):not(.remove-row):not(.qs-btn):not(.dock-x),
+.card button:not(.nav-item):not(.att-color-swatch):not(.cargo-zoom-btn):not(.mini-add):not(.remove-row):not(.qs-btn):not(.dock-x){
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;
+  min-height:38px!important;padding:0 15px!important;border-radius:9px!important;
+  font-size:12.5px!important;font-weight:400!important;line-height:1!important;
+  border:1px solid var(--r-line)!important;background:#fff!important;color:var(--r-ink2)!important;
+  box-shadow:none!important;cursor:pointer;transition:background .12s ease,border-color .12s ease}
+.topbar button:hover,.page button:not(.nav-item):hover,.card button:not(.nav-item):hover{background:#F4F7FC!important}
+.page button.primary,.card button.primary,button.primary,.att-modal-confirm,.cs-confirm-btn,
+#generateBillBtn,#markBilledBtn,.dock-btn:not(.ghost){
+  background:var(--r-pri)!important;border-color:var(--r-pri)!important;color:#fff!important}
+.page button.primary:hover,.card button.primary:hover,button.primary:hover{background:#163F92!important}
+.page button.danger,.card button.danger,button.danger{background:var(--r-red-s)!important;border-color:#F0CFCF!important;color:var(--r-red)!important}
+.page button.success,.card button.success,button.success{background:var(--r-grn)!important;border-color:var(--r-grn)!important;color:#fff!important}
+.page button i,.card button i,.topbar button i,.page button svg,.card button svg{width:15px!important;height:15px!important;flex:0 0 15px}
+/* ── บอร์ดไฟลท์: เลื่อนวน + กระพริบ ── */
+.fb-th,.fb-row{display:grid;grid-template-columns:11% 8% 9% 19% 6% 21% 15% 11%;align-items:center;gap:0}
+.fb-th{padding:12px 26px;font-size:11.5px;color:#6E86A8;letter-spacing:.08em;border-bottom:1px solid #16263F}
+.fb-body{flex:1;overflow:hidden;position:relative;padding:0 26px}
+.fb-body.scrolling .fb-track{animation-name:fbScroll;animation-timing-function:linear;animation-iteration-count:infinite}
+.fb-body.scrolling:hover .fb-track{animation-play-state:paused}
+@keyframes fbScroll{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+.fb-row{padding:13px 0;border-bottom:1px solid #101E33;cursor:pointer;font-size:15.5px}
+.fb-row:hover{background:rgba(255,255,255,.05)}
+.fb-row.fb-critical,.fb-row.fb-over{background:rgba(214,45,45,.14)}
+.fb-row.fb-warning{background:rgba(196,124,10,.12)}
+.fb-c{padding-right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:0}
+.fb-row.fb-critical .fb-dot,.fb-row.fb-over .fb-dot{animation:fbBlink 1.05s steps(1) infinite}
+.fb-row.fb-critical .fb-left,.fb-row.fb-over .fb-left{animation:fbBlink 1.05s steps(1) infinite}
+@keyframes fbBlink{0%,55%{opacity:1}56%,100%{opacity:.25}}
+.fb-count{margin-left:auto;color:#6E86A8}
+.fb-flip .fb-row{animation:fbFlip .42s ease}
+@keyframes fbFlip{from{opacity:.25;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.fb-wrap{min-height:660px}
+/* ── ระยะห่าง/ทับซ้อน ── */
+#toast{bottom:22px!important;right:22px!important;z-index:140!important;max-width:min(380px,calc(100vw - 44px))!important;
+  font-size:13px!important;border-radius:11px!important;padding:12px 15px!important;box-shadow:0 10px 30px rgba(15,27,45,.28)!important}
+.page{padding-bottom:28px}
+.card+.card,.metric-grid+.card,.card+.metric-grid{margin-top:14px}
+.card-head{gap:10px}
+.modal-close,.att-modal-box .modal-close,.dock-x{position:relative;z-index:2}
+.att-modal-box,.mobile-action-modal{padding-top:22px!important}
+.att-modal-title{padding-right:44px}
