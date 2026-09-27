@@ -14,9 +14,9 @@ const state = {
     offlineQueue: JSON.parse(localStorage.getItem("offlineQueue") || "[]")
 };
 
-const $ = selector =>document.querySelector(selector);
+const $ = selector => document.querySelector(selector);
 
-const $$ = selector =>Array.from(document.querySelectorAll(selector));
+const $$ = selector => Array.from(document.querySelectorAll(selector));
 
 const AUTH_CONFIG = window.SCD_AUTH_CONFIG || {
     defaultPassword: "1234",
@@ -56,14 +56,14 @@ function applyLanguage(root = document.body) {
     });
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(node =>{
+    nodes.forEach(node => {
         if (!i18nOriginalText.has(node)) i18nOriginalText.set(node, node.nodeValue);
         node.nodeValue = localizeText(i18nOriginalText.get(node));
     });
-    $$("[placeholder], [title], [aria-label]").forEach(element =>{
-        [ "placeholder", "title", "aria-label" ].forEach(attr =>{
+    $$("[placeholder], [title], [aria-label]").forEach(element => {
+        [ "placeholder", "title", "aria-label" ].forEach(attr => {
             if (!element.hasAttribute(attr)) return;
-            const key = `i18nOriginal${attr.replace(/-./g, match =>match[1].toUpperCase())}`;
+            const key = `i18nOriginal${attr.replace(/-./g, match => match[1].toUpperCase())}`;
             if (!element.dataset[key]) element.dataset[key] = element.getAttribute(attr);
             element.setAttribute(attr, localizeText(element.dataset[key]));
         });
@@ -92,7 +92,7 @@ function renderMobileAuthState() {
     if (headerLogout) headerLogout.hidden = !auth;
     if (password && !auth) password.value = "";
     if (auth && typeof showMnav === "function" && !document.body.dataset.mnav) {
-        setTimeout(() =>showMnav("home"), 250);
+        setTimeout(() => showMnav("home"), 250);
     }
 }
 
@@ -151,7 +151,7 @@ async function recoverCompletedRequest(path, payload) {
     if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) return null;
     const data = await res.json();
     const house = normalizeHouseBarcode(payload.houseNumber);
-    const job = (data.dashboard?.jobs || []).find(item =>item.houseNumber === house);
+    const job = (data.dashboard?.jobs || []).find(item => item.houseNumber === house);
     if (!job || !expectedStatuses.includes(job.status)) return null;
     state.dashboard = data.dashboard;
     state.users = data.users || state.users;
@@ -164,7 +164,8 @@ async function api(path, payload) {
         const res = await fetch(apiUrl(path), {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"},
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify(requestPayload)
         });
         const data = await res.json();
@@ -223,11 +224,11 @@ function render() {
     if (!state.dashboard) return;
     renderMobileLogin();
     const jobs = visibleDriverJobs();
-    $("#mobileOpenJobs").textContent = jobs.filter(job =>job.status !== "Billed").length;
-    $("#mobileBillingJobs").textContent = jobs.filter(job =>job.readyForBilling).length;
+    $("#mobileOpenJobs").textContent = jobs.filter(job => job.status !== "Billed").length;
+    $("#mobileBillingJobs").textContent = jobs.filter(job => job.readyForBilling).length;
     renderDriverJobSelect();
-    $("#mobileJobList").innerHTML = jobs.length ? jobs.map((job, index) =>foDriverJobCard(job, index)).join("") : `<article class="job"><div><strong>ยังไม่มีงานของคนขับคนนี้</strong><br><small>No assigned jobs for this driver</small></div></article>`;
-    $("#locationList").innerHTML = state.dashboard.locations.map(location =>`\n    <article class="location">\n      <strong>${location.id}</strong><br>\n      <small>${location.status}${location.currentHouseId ? ` · ${location.currentHouseId}` : ""}</small>\n    </article>\n  `).join("");
+    $("#mobileJobList").innerHTML = jobs.length ? jobs.map((job, index) => foDriverJobCard(job, index)).join("") : `<article class="job"><div><strong>ยังไม่มีงานของคนขับคนนี้</strong><br><small>No assigned jobs for this driver</small></div></article>`;
+    $("#locationList").innerHTML = state.dashboard.locations.map(location => `\n    <article class="location">\n      <strong>${location.id}</strong><br>\n      <small>${location.status}${location.currentHouseId ? ` · ${location.currentHouseId}` : ""}</small>\n    </article>\n  `).join("");
     renderBillingReadyList();
     updateInboundInfo();
     updateTerminalRequirements();
@@ -240,10 +241,10 @@ function render() {
 function renderBillingReadyList() {
     const list = $("#billingReadyList");
     if (!list || !state.dashboard) return;
-    const jobs = (state.dashboard.jobs || []).filter(job =>job.readyForBilling || [ "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "PendingBillingReview" ].includes(job.status));
-    list.innerHTML = jobs.length ? jobs.map(job =>`\n    <article class="job billing-pick"data-billing-house="${job.houseNumber}">\n      <div>\n        <strong>${job.houseNumber} · ${job.customerName || "-"}</strong><br>\n        <small>${job.status} · ${job.billingReviewStatus || "รอตรวจเอกสาร"} · ${job.flightTimeLabel || ""}</small>\n      </div>\n      <span class="badge">${job.amount || 0}</span>\n    </article>\n  `).join("") : `<article class="job"><div><strong>ยังไม่มีงานพร้อมวางบิล</strong><br><small>No ready billing jobs</small></div></article>`;
-    list.querySelectorAll("[data-billing-house]").forEach(item =>{
-        item.addEventListener("click", () =>{
+    const jobs = (state.dashboard.jobs || []).filter(job => job.readyForBilling || [ "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "PendingBillingReview" ].includes(job.status));
+    list.innerHTML = jobs.length ? jobs.map(job => `\n    <article class="job billing-pick" data-billing-house="${job.houseNumber}">\n      <div>\n        <strong>${job.houseNumber} · ${job.customerName || "-"}</strong><br>\n        <small>${job.status} · ${job.billingReviewStatus || "รอตรวจเอกสาร"} · ${job.flightTimeLabel || ""}</small>\n      </div>\n      <span class="badge">${job.amount || 0}</span>\n    </article>\n  `).join("") : `<article class="job"><div><strong>ยังไม่มีงานพร้อมวางบิล</strong><br><small>No ready billing jobs</small></div></article>`;
+    list.querySelectorAll("[data-billing-house]").forEach(item => {
+        item.addEventListener("click", () => {
             $("#billingHouse").value = item.dataset.billingHouse;
             state.billingUnlockedHouse = item.dataset.billingHouse;
             renderBillingGuide();
@@ -253,15 +254,15 @@ function renderBillingReadyList() {
 }
 
 function mobileUsers() {
-    return (state.users || []).filter(user =>user.status !== "Inactive");
+    return (state.users || []).filter(user => user.status !== "Inactive");
 }
 
 function driverUsers() {
-    return mobileUsers().filter(user =>user.role === "Driver");
+    return mobileUsers().filter(user => user.role === "Driver");
 }
 
 function currentUser() {
-    return mobileUsers().find(user =>user.id === state.currentUserId) || mobileUsers()[0];
+    return mobileUsers().find(user => user.id === state.currentUserId) || mobileUsers()[0];
 }
 
 function allowedMobileTabs(role) {
@@ -280,15 +281,15 @@ function visibleDriverJobs() {
     const user = currentUser();
     if (!user) return [];
     if (user.role !== "Driver") return state.dashboard?.jobs || [];
-    return (state.dashboard?.jobs || []).filter(job =>job.driverId === user.id && job.csConfirmed && job.cargoIssuedAt);
+    return (state.dashboard?.jobs || []).filter(job => job.driverId === user.id && job.csConfirmed && job.cargoIssuedAt);
 }
 
 function renderMobileLogin() {
     const select = $("#mobileUserSelect");
     if (!select) return;
     const users = mobileUsers();
-    select.innerHTML = users.map(user =>`<option value="${user.id}">${user.name}${user.vehiclePlate ? ` / ${user.vehiclePlate}` : ""} · ${user.role}</option>`).join("");
-    if (!users.some(user =>user.id === state.currentUserId)) {
+    select.innerHTML = users.map(user => `<option value="${user.id}">${user.name}${user.vehiclePlate ? ` / ${user.vehiclePlate}` : ""} · ${user.role}</option>`).join("");
+    if (!users.some(user => user.id === state.currentUserId)) {
         state.currentUserId = users[0]?.id || "";
     }
     select.value = state.currentUserId;
@@ -305,23 +306,23 @@ function renderDriverJobSelect() {
     const current = select.value;
     const groups = pickupGroups();
     const jobs = visibleDriverJobs();
-    select.innerHTML = [ `<option value="manual">กรอกเอง / Manual form</option>`, ...groups.filter(group =>group.jobs.length >1).map(group =>`<option value="group::${encodeURIComponent(group.key)}">กลุ่มรับงาน: ${group.customerName} · ${group.pickupLocation} (${group.jobs.length} งาน)</option>`), ...jobs.map(job =>`<option value="${job.houseNumber}">${job.houseNumber} · ${job.customerName}</option>`) ].join("");
-    const validValues = Array.from(select.options).map(option =>option.value);
+    select.innerHTML = [ `<option value="manual">กรอกเอง / Manual form</option>`, ...groups.filter(group => group.jobs.length > 1).map(group => `<option value="group::${encodeURIComponent(group.key)}">กลุ่มรับงาน: ${group.customerName} · ${group.pickupLocation} (${group.jobs.length} งาน)</option>`), ...jobs.map(job => `<option value="${job.houseNumber}">${job.houseNumber} · ${job.customerName}</option>`) ].join("");
+    const validValues = Array.from(select.options).map(option => option.value);
     select.value = validValues.includes(current) ? current : "";
     applyDriverJob(select.value);
 }
 
 function findJob(houseNumber) {
-    return visibleDriverJobs().find(job =>job.houseNumber === houseNumber || job.id === houseNumber);
+    return visibleDriverJobs().find(job => job.houseNumber === houseNumber || job.id === houseNumber);
 }
 
 function findAnyJob(houseNumber) {
     const normalized = normalizeHouseBarcode(houseNumber);
-    return state.dashboard?.jobs.find(job =>job.houseNumber === normalized || job.houseNumber === houseNumber || job.id === normalized || job.id === houseNumber);
+    return state.dashboard?.jobs.find(job => job.houseNumber === normalized || job.houseNumber === houseNumber || job.id === normalized || job.id === houseNumber);
 }
 
 function inboundWdChecklist() {
-    return $$(".inbound-wd-check:checked").map(input =>input.value);
+    return $$(".inbound-wd-check:checked").map(input => input.value);
 }
 
 function normalizeHouseBarcode(value) {
@@ -337,17 +338,17 @@ function terminalHouseValue() {
 }
 
 function stepUserName(userId) {
-    return state.users.find(user =>user.id === userId)?.name || userId || "-";
+    return state.users.find(user => user.id === userId)?.name || userId || "-";
 }
 
 function renderOutboundStepTrackers() {
     const job = findAnyJob(terminalHouseValue());
-    $$("#tab-outbound .step-tracker").forEach(container =>{
+    $$("#tab-outbound .step-tracker").forEach(container => {
         const step = job?.stepTracking?.[container.dataset.stepKey];
         const status = step?.status || "NotStarted";
         const statusLabel = status === "Completed" ? "เสร็จแล้ว" : status === "InProgress" ? "กำลังดำเนินการ" : "ยังไม่เริ่ม";
         const detail = step ? `${stepUserName(step.userId)}${step.durationMinutes ? ` · ${step.durationMinutes} นาที` : ""}` : "กดเริ่มงานเพื่อบันทึกผู้ทำและเวลา";
-        const controls = container.dataset.manual === "true" ? "" : `\n      <div class="step-tracker-actions">\n        <button type="button"class="step-start"data-step-action="start" ${status === "InProgress" || status === "Completed" ? "disabled" : ""}>เริ่มขั้นตอน</button>\n        <button type="button"class="step-finish"data-step-action="finish" ${status !== "InProgress" ? "disabled" : ""}>จบขั้นตอน</button>\n      </div>`;
+        const controls = container.dataset.manual === "true" ? "" : `\n      <div class="step-tracker-actions">\n        <button type="button" class="step-start" data-step-action="start" ${status === "InProgress" || status === "Completed" ? "disabled" : ""}>เริ่มขั้นตอน</button>\n        <button type="button" class="step-finish" data-step-action="finish" ${status !== "InProgress" ? "disabled" : ""}>จบขั้นตอน</button>\n      </div>`;
         container.className = `step-tracker ${status.toLowerCase()}`;
         container.innerHTML = `\n      <div class="step-tracker-state">\n        <span class="step-status-dot"></span>\n        <div><strong>${statusLabel}</strong><small>${detail}</small></div>\n      </div>\n      ${controls}`;
     });
@@ -374,10 +375,10 @@ const OUTBOUND_FLOW_STEPS = [ {
 function renderOutboundWorkflow() {
     const job = findAnyJob(terminalHouseValue());
     const unlocked = Boolean(job && state.outboundUnlockedHouse === job.houseNumber);
-    const nextStepIndex = unlocked ? OUTBOUND_FLOW_STEPS.findIndex(item =>job.stepTracking?.[item.key]?.status !== "Completed") : -1;
+    const nextStepIndex = unlocked ? OUTBOUND_FLOW_STEPS.findIndex(item => job.stepTracking?.[item.key]?.status !== "Completed") : -1;
     const summary = $("#outboundFlowSummary");
     if (summary) {
-        summary.innerHTML = OUTBOUND_FLOW_STEPS.map((item, index) =>{
+        summary.innerHTML = OUTBOUND_FLOW_STEPS.map((item, index) => {
             const status = unlocked ? job.stepTracking?.[item.key]?.status || "NotStarted" : "Locked";
             const isNext = index === nextStepIndex && status === "NotStarted";
             const statusLabel = status === "Completed" ? "เสร็จ" : status === "InProgress" ? "กำลังทำ" : status === "Locked" ? "รอสแกน" : isNext ? "ขั้นตอนถัดไป" : "ล็อก";
@@ -387,7 +388,7 @@ function renderOutboundWorkflow() {
     $("#outboundScanGate").hidden = unlocked;
     $("#openReturnProcessBtn").disabled = !unlocked;
     const details = $$("#tab-outbound .outbound-workflow-detail");
-    details.forEach(element =>{
+    details.forEach(element => {
         element.hidden = true;
     });
     if (!unlocked) return;
@@ -404,12 +405,12 @@ function renderOutboundWorkflow() {
     }
     const activeIndex = nextStepIndex;
     const visibleIndex = activeIndex < 0 ? OUTBOUND_FLOW_STEPS.length - 1 : activeIndex;
-    normalSections.forEach((section, index) =>{
+    normalSections.forEach((section, index) => {
         const isCurrent = index === visibleIndex;
         section.hidden = !isCurrent;
         if (!isCurrent) return;
         const stepStatus = job.stepTracking?.[OUTBOUND_FLOW_STEPS[index].key]?.status || "NotStarted";
-        section.querySelectorAll("input, select, textarea, button").forEach(control =>{
+        section.querySelectorAll("input, select, textarea, button").forEach(control => {
             if (control.closest(".step-tracker")) return;
             control.disabled = stepStatus !== "InProgress";
         });
@@ -438,7 +439,7 @@ async function ensureJobForScan(house, detail) {
     const existing = findAnyJob(house);
     if (existing) return existing.houseNumber;
     const ok = window.confirm(
-        `ไม่พบ House ${house} ในระบบ\n\nต้องการ "เพิ่มงานใหม่จากการสแกน"เพื่อทดลองกระบวนการเลยหรือไม่?\n(ข้อมูลลูกค้า/รายละเอียดเติมภายหลังได้ และงานจะเข้าคิวรอ CS ตามปกติ)`
+        `ไม่พบ House ${house} ในระบบ\n\nต้องการ "เพิ่มงานใหม่จากการสแกน" เพื่อทดลองกระบวนการเลยหรือไม่?\n(ข้อมูลลูกค้า/รายละเอียดเติมภายหลังได้ และงานจะเข้าคิวรอ CS ตามปกติ)`
     );
     if (!ok) return null;
     const data = await api("/api/admin/job", {
@@ -475,7 +476,7 @@ function renderPickupGuide() {
     if (routeStatus === "EnRouteToPickup") active = 2;
     if ([ "ArrivedAtPickup", "Loading" ].includes(routeStatus) || [ "ArrivedAtPickup", "Loading" ].includes(job?.status)) active = 3;
     if ([ "PickedUp", "ReturningWH3", "ArrivedWH3", "ReleasedForDock" ].includes(routeStatus) || [ "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(job?.status)) active = 4;
-    $("#tab-pickup .guided-mini-flow")?.querySelectorAll("span").forEach((item, index) =>{
+    $("#tab-pickup .guided-mini-flow")?.querySelectorAll("span").forEach((item, index) => {
         item.classList.toggle("active", index === Math.min(active, 4));
         item.classList.toggle("done", index < active || active === 5);
     });
@@ -485,7 +486,7 @@ function renderPickupGuide() {
 function renderPickupDriverActions() {
     const jobs = jobsFromSelection();
     const routeStatus = jobs[0]?.driverRouteStatus || "";
-    const allPickedUp = jobs.length && jobs.every(job =>[ "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(job.status));
+    const allPickedUp = jobs.length && jobs.every(job => [ "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(job.status));
     const returnActions = $("#driverReturnActions");
     if (returnActions) returnActions.hidden = !allPickedUp;
     if ($("#startPickupRouteBtn")) $("#startPickupRouteBtn").disabled = !jobs.length || [ "EnRouteToPickup", "ArrivedAtPickup", "Loading", "ReturningWH3", "ArrivedWH3", "ReleasedForDock" ].includes(routeStatus);
@@ -509,11 +510,11 @@ function renderInboundGuide() {
         "inbound-putaway": 3,
         "inbound-close": 4
     }[target] ?? 1;
-    $("#inboundFlowSummary")?.querySelectorAll("span").forEach((item, index) =>{
+    $("#inboundFlowSummary")?.querySelectorAll("span").forEach((item, index) => {
         item.classList.toggle("active", index === targetIndex);
         item.classList.toggle("done", index < targetIndex);
     });
-    $$("#tab-inbound [data-operation-target]").forEach(button =>{
+    $$("#tab-inbound [data-operation-target]").forEach(button => {
         const optionalMove = button.dataset.operationTarget === "inbound-move" && Boolean(job.locationId);
         button.disabled = button.dataset.operationTarget !== target && !optionalMove;
     });
@@ -529,11 +530,11 @@ function renderBillingGuide() {
     let active = 0;
     if ([ "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ].includes(job.status)) active = 1;
     if ([ "InvoiceDrafted", "InvoiceSent", "Billed" ].includes(job.status)) active = 2;
-    steps.forEach((step, index) =>{
+    steps.forEach((step, index) => {
         step.hidden = index !== active;
     });
     const labels = [ "ตรวจเอกสาร", "สร้าง Draft", "ส่งและปิด" ];
-    $("#billingFlowSummary").querySelectorAll("span").forEach((item, index) =>{
+    $("#billingFlowSummary").querySelectorAll("span").forEach((item, index) => {
         if (index === 0) return;
         item.classList.toggle("active", index - 1 === active);
         item.classList.toggle("done", index - 1 < active);
@@ -580,32 +581,33 @@ async function uploadScanImage(blob) {
     const res = await fetch(scanApiUrl(), {
         method: "POST",
         headers: {
-            "Content-Type": blob.type || "image/jpeg"},
+            "Content-Type": blob.type || "image/jpeg"
+        },
         body: blob
     });
-    const data = await res.json().catch(() =>({}));
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Scanner service unavailable");
     return Array.isArray(data.barcodes) ? data.barcodes : [];
 }
 
 async function compressImageFile(file, maxWidth = 1280) {
     if (!file.type.startsWith("image/")) return file;
-    const bitmap = await new Promise((resolve, reject) =>{
+    const bitmap = await new Promise((resolve, reject) => {
         const url = URL.createObjectURL(file);
         const img = new Image;
-        img.onload = () =>{
+        img.onload = () => {
             URL.revokeObjectURL(url);
             resolve(img);
         };
         img.onerror = reject;
         img.src = url;
     });
-    const scale = bitmap.naturalWidth >maxWidth ? maxWidth / bitmap.naturalWidth : 1;
+    const scale = bitmap.naturalWidth > maxWidth ? maxWidth / bitmap.naturalWidth : 1;
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(bitmap.naturalHeight * scale));
     canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return new Promise(resolve =>canvas.toBlob(resolve, "image/jpeg", .8));
+    return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .8));
 }
 
 async function handleScanFileUpload(file, options = {}) {
@@ -613,7 +615,7 @@ async function handleScanFileUpload(file, options = {}) {
     toast("กำลังถอดรหัสบาร์โค้ด… / Decoding barcode…");
     const blob = await compressImageFile(file);
     const barcodes = await uploadScanImage(blob);
-    const match = barcodes.map(normalizeHouseBarcode).find(code =>code && findAnyJob(code));
+    const match = barcodes.map(normalizeHouseBarcode).find(code => code && findAnyJob(code));
     if (!match) throw new Error("ไม่พบ Barcode ในรูป — ถ่ายให้ชัด/ใกล้ขึ้น / No barcode found in photo");
     if (options.onDetected) options.onDetected(match); else applyScannedHouse(match, "camera");
 }
@@ -636,14 +638,14 @@ function pickupGroups() {
         }
         map.get(key).jobs.push(job);
     }
-    return Array.from(map.values()).sort((a, b) =>b.jobs.length - a.jobs.length);
+    return Array.from(map.values()).sort((a, b) => b.jobs.length - a.jobs.length);
 }
 
 function jobsFromSelection(value = $("#driverJobSelect")?.value) {
     if (!value) return [];
     if (value.startsWith("group::")) {
         const key = decodeURIComponent(value.replace("group::", ""));
-        return pickupGroups().find(group =>group.key === key)?.jobs || [];
+        return pickupGroups().find(group => group.key === key)?.jobs || [];
     }
     const job = findJob(value);
     return job ? [ job ] : [];
@@ -675,7 +677,7 @@ function updatePickupFlowNotice(job = currentPickupJob()) {
 }
 
 function checkedPickupItems() {
-    return $$(".pickup-check:checked").map(input =>input.value);
+    return $$(".pickup-check:checked").map(input => input.value);
 }
 
 function validatePickupFlow({requireLoaded: requireLoaded = false} = {}) {
@@ -690,8 +692,8 @@ function validatePickupFlow({requireLoaded: requireLoaded = false} = {}) {
     if (requireLoaded && !hasSimulatedEvidence && !$("#productImages")?.files?.length) missing.push("แนบรูปสินค้าก่อนจบงาน");
     if (requireLoaded && !hasSimulatedEvidence && !$("#cargoImages")?.files?.length) missing.push("แนบรูปใบ Cargo Pickup Form ที่เซ็นแล้วก่อนจบงาน");
     if (requireLoaded && !hasSimulatedEvidence && !$("#doorClosedImages")?.files?.length) missing.push("แนบรูปปิดประตูตู้/ท้ายรถก่อนจบงาน (กฎ Audit)");
-    const _dests = pickupRowsFromInputs().map(row =>(row.destination || "").toUpperCase()).filter(Boolean);
-    const _nonWh3 = _dests.filter(d =>d !== "WH3");
+    const _dests = pickupRowsFromInputs().map(row => (row.destination || "").toUpperCase()).filter(Boolean);
+    const _nonWh3 = _dests.filter(d => d !== "WH3");
     if (_nonWh3.length) missing.push(`ตามกฎประชุม สินค้าต้องกลับเข้า WH3 ก่อนส่ง Terminal — พบปลายทาง ${[ ...new Set(_nonWh3) ].join(", ")} กรุณาเปลี่ยนเป็น WH3`);
     if (missing.length) throw new Error(missing.join(" / "));
 }
@@ -701,7 +703,7 @@ function toast(message) {
     el.textContent = localizeText(message);
     el.classList.add("show");
     window.clearTimeout(toast.timer);
-    toast.timer = window.setTimeout(() =>el.classList.remove("show"), 3e3);
+    toast.timer = window.setTimeout(() => el.classList.remove("show"), 3e3);
 }
 
 function showMobileActionModal(title, message) {
@@ -725,14 +727,14 @@ function addPickupItemRow(values = {}) {
     if (!list) return;
     const row = document.createElement("div");
     row.className = "pickup-item-row";
-    row.innerHTML = `\n    <input class="pickup-house"placeholder="House Number"value="${values.houseNumber || ""}">\n    <select class="pickup-destination">\n      <option value="WH3">WH3 เข้าคลัง</option>\n      <option value="TG">TG ส่งออก</option>\n      <option value="TGINT">TGINT ส่งออก</option>\n      <option value="BFS">BFS ส่งออก</option>\n    </select>\n    <input class="pickup-carton"placeholder="Carton/ชิ้น"value="${values.carton || ""}">\n    <button class="remove-row"type="button"aria-label="Remove row">×</button>\n  `;
+    row.innerHTML = `\n    <input class="pickup-house" placeholder="House Number" value="${values.houseNumber || ""}">\n    <select class="pickup-destination">\n      <option value="WH3">WH3 เข้าคลัง</option>\n      <option value="TG">TG ส่งออก</option>\n      <option value="TGINT">TGINT ส่งออก</option>\n      <option value="BFS">BFS ส่งออก</option>\n    </select>\n    <input class="pickup-carton" placeholder="Carton/ชิ้น" value="${values.carton || ""}">\n    <button class="remove-row" type="button" aria-label="Remove row">×</button>\n  `;
     list.appendChild(row);
     row.querySelector(".pickup-destination").value = values.destination || "WH3";
-    row.querySelector(".remove-row").addEventListener("click", () =>{
+    row.querySelector(".remove-row").addEventListener("click", () => {
         row.remove();
         syncPickupItemsText();
     });
-    row.querySelectorAll("input, select").forEach(input =>input.addEventListener("input", syncPickupItemsText));
+    row.querySelectorAll("input, select").forEach(input => input.addEventListener("input", syncPickupItemsText));
     syncPickupItemsText();
 }
 
@@ -740,14 +742,14 @@ function syncPickupItemsText() {
     const target = $("#driverPickupItems");
     if (!target) return "";
     const rows = pickupRowsFromInputs();
-    target.value = rows.map(row =>`${row.houseNumber},${row.destination},${row.carton}`).join("\n");
+    target.value = rows.map(row => `${row.houseNumber},${row.destination},${row.carton}`).join("\n");
     const endPlace = $("#driverEndPlace");
     if (endPlace) endPlace.value = computedEndPlaceFromRows(rows) || "คำนวณจากปลายทางของแต่ละ House";
     return target.value;
 }
 
 function pickupRowsFromInputs() {
-    return $$("#driverPickupItemRows .pickup-item-row").map(row =>{
+    return $$("#driverPickupItemRows .pickup-item-row").map(row => {
         const houseNumber = row.querySelector(".pickup-house").value.trim();
         const destination = row.querySelector(".pickup-destination").value;
         const carton = row.querySelector(".pickup-carton").value.trim();
@@ -760,7 +762,7 @@ function pickupRowsFromInputs() {
 }
 
 function computedEndPlaceFromRows(rows) {
-    const destinations = Array.from(new Set(rows.map(row =>row.destination).filter(Boolean)));
+    const destinations = Array.from(new Set(rows.map(row => row.destination).filter(Boolean)));
     if (!destinations.length) return "";
     return destinations.length === 1 ? destinations[0] : destinations.join(" / ");
 }
@@ -789,18 +791,18 @@ function applyDriverJob(houseNumber) {
         return;
     }
     const job = selectedJobs[0];
-    const isGroup = selectedJobs.length >1;
+    const isGroup = selectedJobs.length > 1;
     state.pickupStartTime = job.checkInAt || state.pickupStartTime;
     const summary = $("#driverGroupSummary");
     if (summary) {
         summary.hidden = !isGroup;
         if (isGroup) {
-            const destinations = Array.from(new Set(selectedJobs.map(item =>item.destination || item.routeType || "WH3"))).join(", ");
-            const pieces = selectedJobs.reduce((sum, item) =>sum + Number(item.pieceCount || 0), 0);
+            const destinations = Array.from(new Set(selectedJobs.map(item => item.destination || item.routeType || "WH3"))).join(", ");
+            const pieces = selectedJobs.reduce((sum, item) => sum + Number(item.pieceCount || 0), 0);
             summary.innerHTML = `\n        <strong>กลุ่มงานรับที่เดียวกัน ${selectedJobs.length} งาน</strong>\n        <span>${job.customerName} · ${job.pickupLocation || job.startPlace || "Customer warehouse"}</span>\n        <span>รวม ${pieces || "-"} ชิ้น · ปลายทาง ${destinations}</span>\n      `;
         }
     }
-    state.cargoLoaded = selectedJobs.every(item =>Boolean(item.loadedAt || [ "Loading", "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(item.status)));
+    state.cargoLoaded = selectedJobs.every(item => Boolean(item.loadedAt || [ "Loading", "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(item.status)));
     $("#loadCargoBtn")?.classList.toggle("loaded", state.cargoLoaded);
     if ($("#loadCargoBtn")) $("#loadCargoBtn").textContent = state.cargoLoaded ? "โหลดขึ้นรถแล้ว / Cargo loaded" : "โหลดสินค้าขึ้นรถ / Load Cargo";
     $("#driverHouse").value = job.houseNumber;
@@ -817,13 +819,14 @@ function applyDriverJob(houseNumber) {
     $("#driverStartPlace").readOnly = Boolean(job.adminPrepared || job.cargoFormMode === "AdminPrepared");
     $("#driverVehiclePlate").readOnly = Boolean(job.adminPrepared || job.cargoFormMode === "AdminPrepared");
     clearPickupItemRows();
-    const rows = selectedJobs.flatMap(item =>Array.isArray(item.pickupItems) && item.pickupItems.length ? item.pickupItems : [ {
+    const rows = selectedJobs.flatMap(item => Array.isArray(item.pickupItems) && item.pickupItems.length ? item.pickupItems : [ {
         houseNumber: item.houseNumber,
         destination: item.destination || item.routeType || "WH3",
-        carton: item.pieceCount || ""} ]);
-    rows.forEach(row =>addPickupItemRow(row));
+        carton: item.pieceCount || ""
+    } ]);
+    rows.forEach(row => addPickupItemRow(row));
     if (isGroup) {
-        $("#driverPieceCount").value = selectedJobs.reduce((sum, item) =>sum + Number(item.pieceCount || 0), 0) || "";
+        $("#driverPieceCount").value = selectedJobs.reduce((sum, item) => sum + Number(item.pieceCount || 0), 0) || "";
     }
     $("#driverEndPlace").value = computedEndPlace() || "คำนวณจากปลายทางของแต่ละ House";
     updatePickupFlowNotice(job);
@@ -841,11 +844,11 @@ function primaryHouseNumber() {
 
 function pickupHouseNumbers() {
     syncPickupItemsText();
-    return Array.from(new Set($("#driverPickupItems").value.split(/\r?\n/).map(line =>line.split(",")[0]?.trim()).filter(Boolean)));
+    return Array.from(new Set($("#driverPickupItems").value.split(/\r?\n/).map(line => line.split(",")[0]?.trim()).filter(Boolean)));
 }
 
 function pickupDestinations() {
-    return Array.from(new Set(pickupRowsFromInputs().map(row =>row.destination).filter(Boolean)));
+    return Array.from(new Set(pickupRowsFromInputs().map(row => row.destination).filter(Boolean)));
 }
 
 function computedEndPlace() {
@@ -853,8 +856,8 @@ function computedEndPlace() {
 }
 
 function showTab(tab) {
-    $$(".action-card").forEach(button =>button.classList.toggle("active", button.dataset.mobileTab === tab));
-    $$(".mobile-panel[id^='tab-']").forEach(panel =>panel.classList.toggle("active", panel.id === `tab-${tab}`));
+    $$(".action-card").forEach(button => button.classList.toggle("active", button.dataset.mobileTab === tab));
+    $$(".mobile-panel[id^='tab-']").forEach(panel => panel.classList.toggle("active", panel.id === `tab-${tab}`));
     if (tab === "attendance") initAttendanceTab();
 }
 
@@ -862,8 +865,8 @@ function applyRoleVisibility() {
     const user = currentUser();
     const allowed = allowedMobileTabs(user?.role);
     const scanCard = $("#smartScanCard");
-    if (scanCard) scanCard.hidden = ![ "pickup", "inbound", "outbound" ].some(tab =>allowed.includes(tab));
-    $$(".action-card").forEach(button =>{
+    if (scanCard) scanCard.hidden = ![ "pickup", "inbound", "outbound" ].some(tab => allowed.includes(tab));
+    $$(".action-card").forEach(button => {
         button.hidden = !allowed.includes(button.dataset.mobileTab);
     });
     const active = $(".action-card.active:not([hidden])")?.dataset.mobileTab;
@@ -874,21 +877,21 @@ function showOperation(target) {
     const button = $(`[data-operation-target="${target}"]`);
     const panel = button?.closest(".mobile-panel");
     if (!panel) return;
-    panel.querySelectorAll("[data-operation-target]").forEach(item =>{
+    panel.querySelectorAll("[data-operation-target]").forEach(item => {
         item.classList.toggle("active", item.dataset.operationTarget === target);
     });
-    panel.querySelectorAll("[data-operation-section]").forEach(section =>{
+    panel.querySelectorAll("[data-operation-section]").forEach(section => {
         section.classList.toggle("active", section.dataset.operationSection === target);
     });
 }
 
 function getGps() {
-    return new Promise(resolve =>{
+    return new Promise(resolve => {
         if (!navigator.geolocation) return resolve({});
-        navigator.geolocation.getCurrentPosition(pos =>resolve({
+        navigator.geolocation.getCurrentPosition(pos => resolve({
             gpsLat: pos.coords.latitude,
             gpsLong: pos.coords.longitude
-        }), () =>resolve({}), {
+        }), () => resolve({}), {
             enableHighAccuracy: true,
             timeout: 1e4,
             maximumAge: 0
@@ -900,11 +903,12 @@ function fileToCompressedBase64(input, maxWidth = 1280, quality = .72) {
     const file = input.files?.[0];
     if (!file) return Promise.resolve({
         base64: "",
-        mimeType: ""});
+        mimeType: ""
+    });
     if (file.type === "application/pdf") {
-        return new Promise((resolve, reject) =>{
+        return new Promise((resolve, reject) => {
             const reader = new FileReader;
-            reader.onload = () =>resolve({
+            reader.onload = () => resolve({
                 base64: reader.result,
                 mimeType: file.type
             });
@@ -912,11 +916,11 @@ function fileToCompressedBase64(input, maxWidth = 1280, quality = .72) {
             reader.readAsDataURL(file);
         });
     }
-    return new Promise((resolve, reject) =>{
+    return new Promise((resolve, reject) => {
         const img = new Image;
         const reader = new FileReader;
-        reader.onload = () =>{
-            img.onload = () =>{
+        reader.onload = () => {
+            img.onload = () => {
                 const scale = Math.min(1, maxWidth / img.width);
                 const canvas = document.createElement("canvas");
                 canvas.width = Math.round(img.width * scale);
@@ -924,7 +928,8 @@ function fileToCompressedBase64(input, maxWidth = 1280, quality = .72) {
                 canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
                 resolve({
                     base64: canvas.toDataURL("image/jpeg", quality),
-                    mimeType: "image/jpeg"});
+                    mimeType: "image/jpeg"
+                });
             };
             img.onerror = reject;
             img.src = reader.result;
@@ -976,15 +981,15 @@ function setupSignaturePad() {
     }
     canvas.addEventListener("mousedown", start);
     canvas.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", () =>drawing = false);
+    window.addEventListener("mouseup", () => drawing = false);
     canvas.addEventListener("touchstart", start, {
         passive: false
     });
     canvas.addEventListener("touchmove", move, {
         passive: false
     });
-    canvas.addEventListener("touchend", () =>drawing = false);
-    $("#clearSignature").addEventListener("click", () =>ctx.clearRect(0, 0, canvas.width, canvas.height));
+    canvas.addEventListener("touchend", () => drawing = false);
+    $("#clearSignature").addEventListener("click", () => ctx.clearRect(0, 0, canvas.width, canvas.height));
 }
 
 async function runAction(button, task) {
@@ -1009,12 +1014,13 @@ function updateTerminalRequirements() {
     const terminalNotes = {
         TG: "TG: booking, plate/bay confirm, original docs, weighing, X-Ray, loading.",
         TGINT: "TG Inter: tighter document tracking and Re-X-Ray monitoring.",
-        BFS: "BFS: watch queue/trailer risk, target unloading 30 minutes, group same-product multi-vehicle jobs."};
+        BFS: "BFS: watch queue/trailer risk, target unloading 30 minutes, group same-product multi-vehicle jobs."
+    };
     if ($("#terminalProfileNote")) $("#terminalProfileNote").textContent = terminalNotes[terminal] || terminalNotes.TG;
-    $$(".bfs-only-check").forEach(item =>{
+    $$(".bfs-only-check").forEach(item => {
         item.style.display = terminal === "BFS" ? "" : "none";
     });
-    $$(".tgint-only-check").forEach(item =>{
+    $$(".tgint-only-check").forEach(item => {
         item.style.display = terminal === "TGINT" ? "" : "none";
     });
     $("#lithiumDocLabel").textContent = job?.requiresLithiumDocs ? "เอกสารลิเธียม / Permit (Required)" : "เอกสารเพิ่มเติม / Optional document";
@@ -1045,33 +1051,34 @@ function updateTerminalRequirements() {
 }
 
 function bindEvents() {
-    $$(".action-card").forEach(button =>button.addEventListener("click", () =>showTab(button.dataset.mobileTab)));
-    $$("[data-operation-target]").forEach(button =>{
-        button.addEventListener("click", () =>showOperation(button.dataset.operationTarget));
+    $$(".action-card").forEach(button => button.addEventListener("click", () => showTab(button.dataset.mobileTab)));
+    $$("[data-operation-target]").forEach(button => {
+        button.addEventListener("click", () => showOperation(button.dataset.operationTarget));
     });
-    $("#addDriverPickupItem").addEventListener("click", () =>addPickupItemRow());
-    $("#driverJobSelect").addEventListener("change", event =>{
+    $("#addDriverPickupItem").addEventListener("click", () => addPickupItemRow());
+    $("#driverJobSelect").addEventListener("change", event => {
         state.pickupUnlockedSelection = "";
         applyDriverJob(event.target.value);
         renderPickupGuide();
     });
-    $("#openPickupWorkflowBtn").addEventListener("click", () =>{
+    $("#openPickupWorkflowBtn").addEventListener("click", () => {
         const selection = $("#driverJobSelect").value;
         if (!selection) return toast("กรุณาเลือกใบงานก่อน");
         state.pickupUnlockedSelection = selection;
         renderPickupGuide();
         $("#pickupWorkflowDetails").scrollIntoView({
             behavior: "smooth",
-            block: "start"});
+            block: "start"
+        });
     });
-    $("#scanHouse").addEventListener("input", () =>{
+    $("#scanHouse").addEventListener("input", () => {
         const normalized = normalizeHouseBarcode($("#scanHouse").value);
         if (normalized !== $("#scanHouse").value.trim() && normalized.length >= 8) {
             $("#scanHouse").value = normalized;
         }
         updateInboundInfo();
     });
-    $("#scanHouse").addEventListener("keydown", event =>{
+    $("#scanHouse").addEventListener("keydown", event => {
         if (event.key === "Enter") {
             event.preventDefault();
             try {
@@ -1081,14 +1088,14 @@ function bindEvents() {
             }
         }
     });
-    $("#confirmInboundHouseBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#confirmInboundHouseBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const typed = normalizeHouseBarcode($("#scanHouse").value);
         const ready = await ensureJobForScan(typed, null);
         if (ready) unlockInboundWorkflow(ready, "manual");
     }));
-    $("#cameraScanBtn").addEventListener("click", () =>{
+    $("#cameraScanBtn").addEventListener("click", () => {
         if (typeof openLiveScan === "function") {
-            openLiveScan(async (house, detail) =>{
+            openLiveScan(async (house, detail) => {
                 try {
                     const el = $("#scanHouse");
                     if (el) el.value = house;
@@ -1102,26 +1109,26 @@ function bindEvents() {
                     const ready = await ensureJobForScan(house, detail);
                     if (ready) unlockInboundWorkflow(ready, "camera");
                 } catch (err) {
-                    toast("เพิ่มงานไม่สำเร็จ: "+ (err?.message || "ลองใหม่"));
+                    toast("เพิ่มงานไม่สำเร็จ: " + (err?.message || "ลองใหม่"));
                 }
             });
         } else {
             $("#scanHouseFile")?.click();
         }
     });
-    $("#scanHouseFile")?.addEventListener("change", event =>{
+    $("#scanHouseFile")?.addEventListener("change", event => {
         const file = event.target.files?.[0];
         event.target.value = "";
-        if (file) runAction(event.currentTarget, () =>handleScanFileUpload(file));
+        if (file) runAction(event.currentTarget, () => handleScanFileUpload(file));
     });
     $("#mobileLoginBtn").addEventListener("click", submitMobileLogin);
-    $("#mobileLoginPassword").addEventListener("keydown", event =>{
+    $("#mobileLoginPassword").addEventListener("keydown", event => {
         if (event.key === "Enter") {
             event.preventDefault();
             submitMobileLogin();
         }
     });
-    const logoutMobile = () =>{
+    const logoutMobile = () => {
         localStorage.removeItem(MOBILE_AUTH_KEY);
         renderMobileAuthState();
         renderMobileLogin();
@@ -1129,20 +1136,20 @@ function bindEvents() {
     };
     $("#mobileLogoutBtn").addEventListener("click", logoutMobile);
     $("#mobileHeaderLogoutBtn")?.addEventListener("click", logoutMobile);
-    $("#mobileLanguageToggle").addEventListener("click", () =>{
+    $("#mobileLanguageToggle").addEventListener("click", () => {
         state.lang = state.lang === "th" ? "en" : "th";
         localStorage.setItem("smartLogisticsLang", state.lang);
         applyLanguage();
         toast(state.lang === "en" ? "English mode" : "แสดงภาษาไทย");
     });
-    $("#driverPickupCase").addEventListener("change", () =>updatePickupFlowNotice());
-    $("#driverCustomerName").addEventListener("input", () =>updatePickupFlowNotice());
+    $("#driverPickupCase").addEventListener("change", () => updatePickupFlowNotice());
+    $("#driverCustomerName").addEventListener("input", () => updatePickupFlowNotice());
     $("#terminalHouse").addEventListener("input", updateTerminalRequirements);
-    $("#terminalHouse").addEventListener("change", event =>{
+    $("#terminalHouse").addEventListener("change", event => {
         event.currentTarget.value = normalizeHouseBarcode(event.currentTarget.value);
         updateTerminalRequirements();
     });
-    $("#terminalHouse").addEventListener("keydown", event =>{
+    $("#terminalHouse").addEventListener("keydown", event => {
         if (event.key === "Enter") {
             event.preventDefault();
             try {
@@ -1152,12 +1159,12 @@ function bindEvents() {
             }
         }
     });
-    $("#confirmOutboundHouseBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#confirmOutboundHouseBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         unlockOutboundWorkflow($("#terminalHouse").value, "manual");
     }));
-    $("#outboundCameraScanBtn").addEventListener("click", () =>{
+    $("#outboundCameraScanBtn").addEventListener("click", () => {
         if (typeof openLiveScan === "function") {
-            openLiveScan((house, detail) =>{
+            openLiveScan((house, detail) => {
                 const el = $("#terminalHouse");
                 if (el) el.value = house;
                 if (detail?.mode === "dual" && detail.master) {
@@ -1173,34 +1180,34 @@ function bindEvents() {
             $("#outboundScanFile")?.click();
         }
     });
-    $("#outboundScanFile")?.addEventListener("change", event =>{
+    $("#outboundScanFile")?.addEventListener("change", event => {
         const file = event.target.files?.[0];
         event.target.value = "";
-        if (file) runAction(event.currentTarget, () =>handleScanFileUpload(file, {
-            onDetected: value =>unlockOutboundWorkflow(value, "camera")
+        if (file) runAction(event.currentTarget, () => handleScanFileUpload(file, {
+            onDetected: value => unlockOutboundWorkflow(value, "camera")
         }));
     });
-    $("#changeOutboundHouseBtn").addEventListener("click", () =>{
+    $("#changeOutboundHouseBtn").addEventListener("click", () => {
         state.outboundUnlockedHouse = "";
         state.outboundReturnMode = false;
         $("#terminalHouse").value = "";
         updateTerminalRequirements();
         $("#terminalHouse").focus();
     });
-    $("#openReturnProcessBtn").addEventListener("click", () =>{
+    $("#openReturnProcessBtn").addEventListener("click", () => {
         if (!state.outboundUnlockedHouse) return toast("กรุณาสแกน House ก่อนเปิดงานตีกลับ");
         state.outboundReturnMode = true;
         renderOutboundWorkflow();
     });
-    $("#backToOutboundFlowBtn").addEventListener("click", () =>{
+    $("#backToOutboundFlowBtn").addEventListener("click", () => {
         state.outboundReturnMode = false;
         renderOutboundWorkflow();
     });
-    $("#tab-outbound").addEventListener("click", event =>{
+    $("#tab-outbound").addEventListener("click", event => {
         const button = event.target.closest("[data-step-action]");
         if (!button) return;
         const tracker = button.closest(".step-tracker");
-        runAction(button, async () =>{
+        runAction(button, async () => {
             await api("/api/activity/step", {
                 houseNumber: terminalHouseValue(),
                 userId: state.currentUserId,
@@ -1211,24 +1218,24 @@ function bindEvents() {
             toast(button.dataset.stepAction === "start" ? "เริ่มจับเวลาขั้นตอนแล้ว" : "จบขั้นตอนและบันทึกเวลาแล้ว");
         });
     });
-    $("#outboundFoundScan").addEventListener("keydown", event =>{
+    $("#outboundFoundScan").addEventListener("keydown", event => {
         if (event.key === "Enter") {
             event.preventDefault();
             event.currentTarget.value = normalizeHouseBarcode(event.currentTarget.value);
             $("#locateGoodsBtn").click();
         }
     });
-    $("#moveLocationId").addEventListener("keydown", event =>{
+    $("#moveLocationId").addEventListener("keydown", event => {
         if (event.key === "Enter") {
             event.preventDefault();
             $("#moveLocationBtn").click();
         }
     });
     $("#closeMobileActionModal")?.addEventListener("click", closeMobileActionModal);
-    $("#mobileActionModal")?.addEventListener("click", event =>{
+    $("#mobileActionModal")?.addEventListener("click", event => {
         if (event.target.id === "mobileActionModal") closeMobileActionModal();
     });
-    $("#startPickupRouteBtn")?.addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#startPickupRouteBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         const gps = await getGps();
         await api("/api/pickup/route-start", {
             houseNumber: primaryHouseNumber(),
@@ -1239,7 +1246,7 @@ function bindEvents() {
         await refresh();
         toast("เริ่มรอบรับสินค้าแล้ว");
     }));
-    $("#checkInBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#checkInBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const gps = await getGps();
         state.pickupStartTime = (new Date).toISOString();
         await api("/api/pickup/checkin", {
@@ -1253,11 +1260,12 @@ function bindEvents() {
         await refresh();
         const timeLabel = new Date(state.pickupStartTime).toLocaleTimeString("th-TH", {
             hour: "2-digit",
-            minute: "2-digit"});
+            minute: "2-digit"
+        });
         showMobileActionModal("ถึงจุดรับสินค้าแล้ว", `บันทึกเวลา ${timeLabel} และ GPS แล้ว ขั้นตอนถัดไปคือสแกน House รับสินค้า`);
         toast("บันทึกถึงจุดรับสินค้าแล้ว");
     }));
-    $("#pausePickupBtn")?.addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#pausePickupBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         const gps = await getGps();
         await api("/api/pickup/pause", {
             houseNumber: primaryHouseNumber(),
@@ -1270,7 +1278,7 @@ function bindEvents() {
         });
         toast("Paused KPI timer / หยุดเวลา KPI แล้ว");
     }));
-    $("#resumePickupBtn")?.addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#resumePickupBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         const gps = await getGps();
         await api("/api/pickup/pause", {
             houseNumber: primaryHouseNumber(),
@@ -1283,7 +1291,7 @@ function bindEvents() {
         });
         toast("Resumed KPI timer / เริ่มนับเวลา KPI ต่อแล้ว");
     }));
-    $("#loadCargoBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#loadCargoBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         validatePickupFlow();
         const gps = await getGps();
         await api("/api/pickup/load", {
@@ -1303,13 +1311,13 @@ function bindEvents() {
         showMobileActionModal("โหลดสินค้าขึ้นรถแล้ว", `บันทึกปลายทาง ${computedEndPlace()} แล้ว ขั้นตอนถัดไปคือถ่ายรูปใบ Cargo/ลายเซ็น และกดจบงาน`);
         toast("โหลดสินค้าขึ้นรถแล้ว / Cargo loaded");
     }));
-    $("#simulatePickupEvidenceBtn")?.addEventListener("click", () =>{
+    $("#simulatePickupEvidenceBtn")?.addEventListener("click", () => {
         if (!isSimulatedPickupEvidenceEligible()) return alert("หลักฐานจำลองใช้ได้เฉพาะ House SIT ที่มอบหมายให้คนขับเท่านั้น");
         state.simulatedPickupEvidenceHouse = primaryHouseNumber();
         $("#simulatePickupEvidenceBtn").textContent = "สร้างหลักฐานจำลองแล้ว";
         toast("สร้างหลักฐานจำลองสำหรับ SIT แล้ว");
     });
-    $("#completePickupBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#completePickupBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         validatePickupFlow({
             requireLoaded: true
         });
@@ -1344,7 +1352,7 @@ function bindEvents() {
         showMobileActionModal("รับสินค้าครบแล้ว", "ระบบเปลี่ยนสถานะเป็น กำลังกลับ WH3 อัตโนมัติ และเริ่มติดตามการเดินทางกลับคลัง");
         toast("รับสินค้าแล้ว · กำลังกลับ WH3");
     }));
-    $("#arriveWh3Btn")?.addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#arriveWh3Btn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         const gps = await getGps();
         await api("/api/pickup/arrive-wh3", {
             houseNumber: primaryHouseNumber(),
@@ -1355,7 +1363,7 @@ function bindEvents() {
         await refresh();
         showMobileActionModal("ถึง WH3 แล้ว", "House เปลี่ยนเป็น รอใบตรวจปล่อย");
     }));
-    $("#releaseDocumentBtn")?.addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#releaseDocumentBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/pickup/release-document", {
             houseNumber: primaryHouseNumber(),
             houseNumbers: pickupHouseNumbers(),
@@ -1364,7 +1372,7 @@ function bindEvents() {
         await refresh();
         showMobileActionModal("ได้รับใบตรวจปล่อยแล้ว", "House ถูกส่งเข้าคิวรอเข้าล็อก โดยระบบเรียงตาม SLA คงเหลือ");
     }));
-    $("#twinScanBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#twinScanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/inbound/twin-scan", {
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
             locationId: $("#scanLocation").value.trim(),
@@ -1380,7 +1388,7 @@ function bindEvents() {
         });
         toast("ล็อกตำแหน่งสำเร็จ / Location locked");
     }));
-    $("#moveLocationBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#moveLocationBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const newLocationId = ($("#moveLocationId").value || $("#scanLocation").value).trim();
         if (!newLocationId) throw new Error("กรุณากรอก Location ใหม่");
         await api("/api/inbound/move-location", {
@@ -1391,7 +1399,7 @@ function bindEvents() {
         });
         toast("ย้าย Location สำเร็จ / Location moved");
     }));
-    $("#docCheckBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#docCheckBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const documentFiles = await filesToCompressedBase64($("#inboundDocFiles"));
         await api("/api/inbound/document-check", {
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
@@ -1402,14 +1410,15 @@ function bindEvents() {
         });
         toast($("#inboundDocStatus").value === "Missing" ? "พักงานรอ EI Confirm / Pending EI" : "ตรวจเอกสารแล้ว / Document checked");
     }));
-    $("#openInboundBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#openInboundBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/inbound/open", {
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
             userId: state.currentUserId,
-            eiConfirmed: $("#inboundDocStatus").value === "EIConfirmed"});
+            eiConfirmed: $("#inboundDocStatus").value === "EIConfirmed"
+        });
         toast("เปิดงานรับเข้าแล้ว / Inbound opened");
     }));
-    $("#houseScanBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#houseScanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/inbound/scan-house", {
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
             userId: state.currentUserId,
@@ -1419,7 +1428,7 @@ function bindEvents() {
         });
         toast($("#trackType").value === "Pair" ? "Track คู่: พร้อมส่ง Terminal / Ready for Terminal" : "Track เดี่ยว: เตรียมจัดเก็บ WH3 / Prepare putaway");
     }));
-    $("#closeInboundBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#closeInboundBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const evidenceFiles = await filesToCompressedBase64($("#inboundEvidenceFiles"));
         await api("/api/inbound/close", {
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
@@ -1428,22 +1437,23 @@ function bindEvents() {
         });
         toast("ปิดงานรับเข้าแล้ว / Inbound closed");
     }));
-    $("#validateDocBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#validateDocBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const job = findAnyJob(terminalHouseValue());
         if (job?.requiresLithiumDocs && !$("#lithiumDoc").files.length) {
             throw new Error("ต้องแนบเอกสารลิเธียม / Lithium document required");
         }
-        const checkedDocs = $$(".terminal-doc-check:checked").map(cb =>cb.value);
+        const checkedDocs = $$(".terminal-doc-check:checked").map(cb => cb.value);
         const requiredDocs = [ "permit", "cargo_transfer", "weigh_slip", "airline", "security" ];
-        const missingDocs = requiredDocs.filter(d =>!checkedDocs.includes(d));
-        if (missingDocs.length >0) {
+        const missingDocs = requiredDocs.filter(d => !checkedDocs.includes(d));
+        if (missingDocs.length > 0) {
             const labels = {
                 permit: "Permit",
                 cargo_transfer: "Cargo Transfer",
                 weigh_slip: "ใบชั่ง",
                 airline: "ใบ Airline",
-                security: "ใบ Security"};
-            throw new Error("ยังไม่ติ๊ก: "+ missingDocs.map(d =>labels[d]).join(", "));
+                security: "ใบ Security"
+            };
+            throw new Error("ยังไม่ติ๊ก: " + missingDocs.map(d => labels[d]).join(", "));
         }
         const doc = await fileToCompressedBase64($("#lithiumDoc"));
         await api("/api/outbound/validate", {
@@ -1454,7 +1464,7 @@ function bindEvents() {
         });
         toast("ตรวจเอกสารสำเร็จ / Validated");
     }));
-    $("#locateGoodsBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#locateGoodsBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const scannedHouse = normalizeHouseBarcode($("#outboundFoundScan").value || terminalHouseValue());
         if (!scannedHouse) throw new Error("กรุณาสแกนป้าย House ที่ตัวสินค้า");
         await api("/api/outbound/confirm-location", {
@@ -1464,7 +1474,7 @@ function bindEvents() {
         });
         toast("ยืนยันเจอสินค้าแล้ว / Goods found");
     }));
-    $("#pickingBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#pickingBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const job = findAnyJob(terminalHouseValue());
         if (job?.locationId && !job.outboundFoundAt) {
             throw new Error("ต้องไปที่ Location และสแกนป้าย House ก่อนเบิกสินค้า");
@@ -1478,7 +1488,7 @@ function bindEvents() {
         });
         toast("เบิกสินค้าแล้ว / Goods picked");
     }));
-    $("#eiApproveBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#eiApproveBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const proof = await fileToCompressedBase64($("#eiProofImage"));
         await api("/api/outbound/ei-approve", {
             houseNumber: terminalHouseValue(),
@@ -1488,9 +1498,9 @@ function bindEvents() {
         });
         toast("EI approve แล้ว / EI approved");
     }));
-    $("#wh3DispatchCheckBtn")?.addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#wh3DispatchCheckBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         const evidenceFiles = await filesToCompressedBase64($("#wh3DispatchEvidence"));
-        const checklist = $$(".wh3-dispatch-check:checked").map(item =>item.value);
+        const checklist = $$(".wh3-dispatch-check:checked").map(item => item.value);
         await api("/api/outbound/wh3-dispatch-check", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1501,7 +1511,7 @@ function bindEvents() {
         });
         toast("WH3 documents confirmed");
     }));
-    $("#aotBookingBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#aotBookingBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/aot-booking", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1514,7 +1524,7 @@ function bindEvents() {
         });
         toast("จองคิว AOT/Terminal แล้ว / Queue booked");
     }));
-    $("#aotApproveBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#aotApproveBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/aot-booking", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1527,7 +1537,7 @@ function bindEvents() {
         });
         toast("อนุมัติคิวแล้ว / Queue approved");
     }));
-    $("#loadBayBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#loadBayBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const image = await fileToCompressedBase64($("#preLoadPhoto"));
         await api("/api/outbound/load-bay", {
             houseNumber: terminalHouseValue(),
@@ -1538,7 +1548,7 @@ function bindEvents() {
         });
         toast("รวมของที่ Loading Bay แล้ว / Goods loaded");
     }));
-    $("#terminalArrivalBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#terminalArrivalBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/load-bay", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1546,7 +1556,7 @@ function bindEvents() {
         });
         toast("ส่งถึง Terminal แล้ว / Terminal arrived");
     }));
-    $("#terminalUnloadStartBtn")?.addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#terminalUnloadStartBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/weigh-start", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1554,7 +1564,7 @@ function bindEvents() {
         });
         toast("Unloading started");
     }));
-    $("#terminalUnloadDoneBtn")?.addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#terminalUnloadDoneBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/weight-dimension", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1563,7 +1573,7 @@ function bindEvents() {
         });
         toast("Unloading completed");
     }));
-    $("#weightDimensionBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#weightDimensionBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/weight-dimension", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1572,7 +1582,7 @@ function bindEvents() {
         });
         toast("บันทึกชั่งน้ำหนัก/Dimension แล้ว");
     }));
-    $("#xrayPassedBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#xrayPassedBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/xray", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1581,7 +1591,7 @@ function bindEvents() {
         });
         toast("X-Ray ผ่าน / Passed");
     }));
-    $("#rescanBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#rescanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/xray", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1590,7 +1600,7 @@ function bindEvents() {
         });
         toast("ส่ง Alert แล้ว / Alert sent");
     }));
-    $("#xrayHoldBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#xrayHoldBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/xray", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1600,7 +1610,7 @@ function bindEvents() {
         });
         toast("Hold ตามผลตรวจ / X-Ray hold");
     }));
-    $("#packingBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#packingBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/weight-dimension", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1610,7 +1620,7 @@ function bindEvents() {
         });
         toast("Packing / Consolidation แล้ว");
     }));
-    $("#loadingBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#loadingBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         if (!$("#trayNumber").value.trim()) throw new Error("กรุณากรอก Tray / Pallet / Lot Number");
         const image = await fileToCompressedBase64($("#loadingImage"));
         const image2 = await fileToCompressedBase64($("#loadingImage2"));
@@ -1621,7 +1631,7 @@ function bindEvents() {
             mimeType: image.mimeType,
             loadingImage2Base64: image2.base64,
             loadingImage2MimeType: image2.mimeType,
-            palletPhotos: palletPhotos.map(p =>({
+            palletPhotos: palletPhotos.map(p => ({
                 base64: p.base64,
                 mimeType: p.mimeType
             })),
@@ -1630,7 +1640,7 @@ function bindEvents() {
         });
         toast("อัปโหลด Loading Detail 2 ใบ เรียบร้อย / Uploaded");
     }));
-    $("#startReturnBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#startReturnBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/return", {
             houseNumber: terminalHouseValue(),
             userId: state.currentUserId,
@@ -1640,7 +1650,7 @@ function bindEvents() {
         });
         toast("เริ่มกระบวนการสินค้าตีกลับแล้ว");
     }));
-    $("#completeReturnBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#completeReturnBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const evidenceFiles = await filesToCompressedBase64($("#returnEvidenceFiles"));
         await api("/api/outbound/return", {
             houseNumber: terminalHouseValue(),
@@ -1652,15 +1662,15 @@ function bindEvents() {
         });
         toast("ยืนยันรับสินค้าตีกลับเรียบร้อยแล้ว");
     }));
-    $("#generateBillBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#generateBillBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const data = await api("/api/billing/generate", {
             houseNumber: $("#billingHouse").value.trim()
         });
         $("#invoiceId").value = data.bill.id;
-        $("#billingResult").innerHTML = `<strong>${data.bill.id}</strong><br>Draft · <a href="${assetUrl(data.bill.pdfUrl)}"target="_blank">Preview Invoice</a>`;
+        $("#billingResult").innerHTML = `<strong>${data.bill.id}</strong><br>Draft · <a href="${assetUrl(data.bill.pdfUrl)}" target="_blank">Preview Invoice</a>`;
         toast("สร้าง Draft แล้ว / Invoice draft created");
     }));
-    $("#reviewBillingBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#reviewBillingBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const data = await api("/api/billing/review", {
             houseNumber: $("#billingHouse").value.trim(),
             status: "Reviewed",
@@ -1669,7 +1679,7 @@ function bindEvents() {
         $("#billingResult").innerHTML = `<strong>${data.job.houseNumber}</strong><br>เอกสารพร้อมวางบิล / Documents reviewed`;
         toast("เอกสารพร้อมวางบิล / Reviewed");
     }));
-    $("#holdBillingBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#holdBillingBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const data = await api("/api/billing/review", {
             houseNumber: $("#billingHouse").value.trim(),
             status: "Hold",
@@ -1678,14 +1688,14 @@ function bindEvents() {
         $("#billingResult").innerHTML = `<strong>${data.job.houseNumber}</strong><br>พักรายการไว้ตรวจเอกสารเพิ่ม / Pending review`;
         toast("พักรายการแล้ว / Hold");
     }));
-    $("#sendInvoiceBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#sendInvoiceBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const data = await api("/api/billing/send-email", {
             invoiceId: $("#invoiceId").value.trim()
         });
         $("#billingResult").innerHTML = `<strong>${data.bill.id}</strong><br>${data.bill.status} · ${data.bill.billingEmail}`;
         toast("ส่งอีเมลแล้ว / Sent");
     }));
-    $("#markBilledBtn").addEventListener("click", event =>runAction(event.currentTarget, async () =>{
+    $("#markBilledBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const data = await api("/api/billing/mark-billed", {
             invoiceId: $("#invoiceId").value.trim()
         });
@@ -1694,11 +1704,11 @@ function bindEvents() {
     }));
 }
 
-if ("serviceWorker"in navigator) {
+if ("serviceWorker" in navigator) {
     if ([ "localhost", "127.0.0.1" ].includes(location.hostname)) {
-        navigator.serviceWorker.getRegistrations().then(registrations =>registrations.forEach(registration =>registration.unregister())).catch(() =>{});
+        navigator.serviceWorker.getRegistrations().then(registrations => registrations.forEach(registration => registration.unregister())).catch(() => {});
     } else {
-        navigator.serviceWorker.register("sw.js").catch(() =>{});
+        navigator.serviceWorker.register("sw.js").catch(() => {});
     }
 }
 
@@ -1732,7 +1742,7 @@ function initAttendanceTab() {
     loadAttendanceZones();
     setupAttendanceGps();
     $("#attStartCameraBtn").addEventListener("click", startAttCamera);
-    $("#attPhotoFile")?.addEventListener("change", event =>{
+    $("#attPhotoFile")?.addEventListener("change", event => {
         const file = event.target.files?.[0];
         event.target.value = "";
         if (file) handleAttPhotoFile(file);
@@ -1748,7 +1758,7 @@ function simulatedCheckinJob() {
     if (user?.role !== "Driver") return null;
     const selected = currentPickupJob();
     if (/^SIT(?:UI)?[-A-Z0-9]/i.test(String(selected?.houseNumber || ""))) return selected;
-    return (state.dashboard?.jobs || []).find(job =>job.driverId === user.id && /^SIT(?:UI)?[-A-Z0-9]/i.test(String(job?.houseNumber || ""))) || null;
+    return (state.dashboard?.jobs || []).find(job => job.driverId === user.id && /^SIT(?:UI)?[-A-Z0-9]/i.test(String(job?.houseNumber || ""))) || null;
 }
 
 function isSimulatedCheckinEligible() {
@@ -1781,7 +1791,7 @@ async function loadAttendanceStatus() {
     if (!user) return;
     try {
         const res = await api("/api/attendance/today");
-        const record = (res.records || []).find(r =>r.userId === user.id && !r.checkOutTime);
+        const record = (res.records || []).find(r => r.userId === user.id && !r.checkOutTime);
         attState.currentRecord = record || null;
         renderAttendanceStatus(record);
     } catch (e) {}
@@ -1806,11 +1816,11 @@ function renderAttendanceStatus(record) {
             const name = $("#attCardName");
             if (name) name.textContent = record.userName || "";
             const timeEl = $("#attCardTime");
-            if (timeEl) timeEl.textContent = "เช็คอิน: "+ formatBangkokMobile(record.checkInTime);
+            if (timeEl) timeEl.textContent = "เช็คอิน: " + formatBangkokMobile(record.checkInTime);
             const zoneEl = $("#attCardZone");
-            if (zoneEl) zoneEl.textContent = (record.isSimulation ? "ข้อมูลทดสอบ" : "") + (record.zone ? (record.isSimulation ? " · " : "") + "โซน: "+ record.zone : "") + (record.jobType ? "งาน: "+ record.jobType : "");
+            if (zoneEl) zoneEl.textContent = (record.isSimulation ? "ข้อมูลทดสอบ" : "") + (record.zone ? (record.isSimulation ? " · " : "") + "โซน: " + record.zone : "") + (record.jobType ? "  งาน: " + record.jobType : "");
             const gpsEl = $("#attCardGps");
-            if (gpsEl && record.checkInLat) gpsEl.textContent = "GPS: "+ record.checkInLat.toFixed(5) + ", "+ record.checkInLon.toFixed(5);
+            if (gpsEl && record.checkInLat) gpsEl.textContent = "GPS: " + record.checkInLat.toFixed(5) + ", " + record.checkInLon.toFixed(5);
         }
         if (selectors) selectors.hidden = true;
         if (checkinBtn) checkinBtn.hidden = true;
@@ -1832,7 +1842,7 @@ async function loadAttendanceZones() {
     try {
         const res = await api("/api/warehouse/zones");
         const zones = res.zones || [];
-        select.innerHTML = '<option value="">— เลือกโซน —</option>'+ zones.map(z =>'<option value="'+ escapeHtmlMobile(z.name) + '">'+ escapeHtmlMobile(z.name) + "</option>").join("");
+        select.innerHTML = '<option value="">— เลือกโซน —</option>' + zones.map(z => '<option value="' + escapeHtmlMobile(z.name) + '">' + escapeHtmlMobile(z.name) + "</option>").join("");
     } catch (e) {}
 }
 
@@ -1843,13 +1853,13 @@ function setupAttendanceGps() {
         if (gpsText) gpsText.textContent = "ไม่รองรับ GPS";
         return;
     }
-    navigator.geolocation.getCurrentPosition(pos =>{
+    navigator.geolocation.getCurrentPosition(pos => {
         attState.gpsLat = pos.coords.latitude;
         attState.gpsLon = pos.coords.longitude;
-        if (gpsText) gpsText.textContent = pos.coords.latitude.toFixed(5) + ", "+ pos.coords.longitude.toFixed(5);
+        if (gpsText) gpsText.textContent = pos.coords.latitude.toFixed(5) + ", " + pos.coords.longitude.toFixed(5);
         if (gpsIcon) gpsIcon.textContent = "✓";
-    }, err =>{
-        if (gpsText) gpsText.textContent = "ไม่สามารถระบุตำแหน่ง: "+ err.message;
+    }, err => {
+        if (gpsText) gpsText.textContent = "ไม่สามารถระบุตำแหน่ง: " + err.message;
         if (gpsIcon) gpsIcon.textContent = "⚠";
     }, {
         enableHighAccuracy: true,
@@ -1864,10 +1874,10 @@ function startAttCamera() {
 
 function refreshGpsForAtt() {
     if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(pos =>{
+    navigator.geolocation.getCurrentPosition(pos => {
         attState.gpsLat = pos.coords.latitude;
         attState.gpsLon = pos.coords.longitude;
-    }, () =>{}, {
+    }, () => {}, {
         enableHighAccuracy: true,
         timeout: 8e3
     });
@@ -1882,7 +1892,7 @@ function handleAttPhotoFile(file) {
     if (!file.type.startsWith("image/")) return alert("กรุณาเลือกรูปภาพ / Please choose an image");
     const url = URL.createObjectURL(file);
     const img = new Image;
-    img.onload = () =>{
+    img.onload = () => {
         URL.revokeObjectURL(url);
         const scale = Math.min(1, 1280 / (img.naturalWidth || 1280));
         const W = Math.round((img.naturalWidth || 480) * scale);
@@ -1902,10 +1912,10 @@ function handleAttPhotoFile(file) {
             second: "2-digit",
             hour12: false
         }).format(now);
-        const gpsStr = attState.gpsLat && attState.gpsLon ? attState.gpsLat.toFixed(5) + ", "+ attState.gpsLon.toFixed(5) : "GPS: ไม่ได้รับอนุญาต";
+        const gpsStr = attState.gpsLat && attState.gpsLon ? attState.gpsLat.toFixed(5) + ", " + attState.gpsLon.toFixed(5) : "GPS: ไม่ได้รับอนุญาต";
         const user = typeof currentUser === "function" ? currentUser() : null;
         const nameStr = user ? user.name : "";
-        const zoneStr = ($("#attZoneSelect")?.value ? "โซน: "+ $("#attZoneSelect").value : "") + ($("#attJobTypeSelect")?.value ? ""+ $("#attJobTypeSelect").value : "");
+        const zoneStr = ($("#attZoneSelect")?.value ? "โซน: " + $("#attZoneSelect").value : "") + ($("#attJobTypeSelect")?.value ? "  " + $("#attJobTypeSelect").value : "");
         const lines = [ nameStr, timeStr, gpsStr, zoneStr ].filter(Boolean);
         const fontSize = Math.max(14, Math.round(W * .035));
         const pad = Math.round(fontSize * .5);
@@ -1913,9 +1923,9 @@ function handleAttPhotoFile(file) {
         const boxH = lines.length * lineH + pad * 2;
         ctx.fillStyle = "rgba(0,0,0,0.58)";
         ctx.fillRect(0, H - boxH, W, boxH);
-        ctx.font = "bold "+ fontSize + "px 'Helvetica Neue', Arial, sans-serif";
+        ctx.font = "bold " + fontSize + "px 'Helvetica Neue', Arial, sans-serif";
         ctx.textBaseline = "top";
-        lines.forEach((line, i) =>{
+        lines.forEach((line, i) => {
             const y = H - boxH + pad + i * lineH;
             ctx.fillStyle = "rgba(0,0,0,0.5)";
             ctx.fillText(line, pad + 1, y + 1);
@@ -1924,14 +1934,14 @@ function handleAttPhotoFile(file) {
         });
         attState.photoBase64 = canvas.toDataURL("image/jpeg", .82).split(",")[1];
         if (preview) {
-            preview.src = "data:image/jpeg;base64,"+ attState.photoBase64;
+            preview.src = "data:image/jpeg;base64," + attState.photoBase64;
             preview.hidden = false;
         }
         if (startBtn) startBtn.hidden = true;
         if (retakeBtn) retakeBtn.hidden = false;
         refreshGpsForAtt();
     };
-    img.onerror = () =>{
+    img.onerror = () => {
         URL.revokeObjectURL(url);
         alert("ไม่สามารถอ่านรูปภาพได้ / Cannot read image");
     };
@@ -1979,10 +1989,10 @@ async function submitAttCheckin() {
         attState.currentRecord = res.record;
         renderAttendanceStatus(res.record);
         loadMyAttTasks();
-        showAttResult("✓ เช็คอินสำเร็จ เวลา "+ formatBangkokMobile(res.record.checkInTime), false);
+        showAttResult("✓ เช็คอินสำเร็จ เวลา " + formatBangkokMobile(res.record.checkInTime), false);
     } catch (err) {
         const msg = err.message || "เกิดข้อผิดพลาด";
-        showAttResult("✕ "+ msg, true);
+        showAttResult("✕ " + msg, true);
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -2019,10 +2029,10 @@ async function submitSimulatedAttCheckin() {
         attState.gpsLon = simulatedGps.gpsLon;
         renderAttendanceStatus(res.record);
         loadMyAttTasks();
-        showAttResult("เช็คอินจำลองสำเร็จ — ใช้ทดสอบ Flow ของ "+ job.houseNumber, false);
+        showAttResult("เช็คอินจำลองสำเร็จ — ใช้ทดสอบ Flow ของ " + job.houseNumber, false);
         toast("เช็คอินจำลองสำเร็จ");
     } catch (err) {
-        showAttResult("✕ "+ (err.message || "เช็คอินจำลองไม่สำเร็จ"), true);
+        showAttResult("✕ " + (err.message || "เช็คอินจำลองไม่สำเร็จ"), true);
     } finally {
         if (button) {
             button.disabled = false;
@@ -2046,7 +2056,7 @@ async function submitAttCheckout() {
     }
     try {
         refreshGpsForAtt();
-        await new Promise(r =>setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 500));
         const res = await api("/api/attendance/checkout", {
             userId: user.id,
             photo: attState.photoBase64,
@@ -2056,9 +2066,9 @@ async function submitAttCheckout() {
         attState.currentRecord = null;
         attState.photoBase64 = null;
         renderAttendanceStatus(null);
-        showAttResult("เช็คเอาต์สำเร็จ เวลา "+ formatBangkokMobile(res.record.checkOutTime), false);
+        showAttResult("เช็คเอาต์สำเร็จ เวลา " + formatBangkokMobile(res.record.checkOutTime), false);
     } catch (err) {
-        showAttResult("✕ "+ (err.message || "เกิดข้อผิดพลาด"), true);
+        showAttResult("✕ " + (err.message || "เกิดข้อผิดพลาด"), true);
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -2071,9 +2081,9 @@ function showAttResult(msg, isError) {
     const el = $("#attResult");
     if (!el) return;
     el.textContent = msg;
-    el.className = "result "+ (isError ? "error" : "success");
+    el.className = "result " + (isError ? "error" : "success");
     el.hidden = false;
-    setTimeout(() =>{
+    setTimeout(() => {
         el.hidden = true;
     }, 5e3);
 }
@@ -2087,7 +2097,8 @@ function formatBangkokMobile(iso) {
             minute: "2-digit",
             second: "2-digit",
             day: "2-digit",
-            month: "short"}).format(new Date(iso));
+            month: "short"
+        }).format(new Date(iso));
     } catch (e) {
         return iso;
     }
@@ -2103,13 +2114,13 @@ async function loadMyAttTasks() {
     const container = $("#attMyTasks");
     if (!container) return;
     try {
-        const res = await api("/api/taskgroups/my?userId="+ encodeURIComponent(user.id), null, "GET");
+        const res = await api("/api/taskgroups/my?userId=" + encodeURIComponent(user.id), null, "GET");
         const groups = res.groups || [];
         if (!groups.length) {
             container.innerHTML = `<div class="att-no-tasks">ยังไม่มีงานที่ได้รับมอบหมาย</div>`;
             return;
         }
-        container.innerHTML = groups.map(g =>`\n      <div class="att-my-task-card"style="border-left:4px solid ${g.color || "#2563eb"}">\n        <div class="att-my-task-name">${escapeHtmlMobile(g.name)}</div>\n        <div class="att-my-task-meta">\n          ${g.zone ? ""+ escapeHtmlMobile(g.zone) + "" : ""}${g.type || ""}\n          <span class="att-my-task-team">${g.assignedUsers.length} คน</span>\n        </div>\n        <button class="att-my-complete-btn"onclick="completeMyTask('${g.id}')">✓ งานเสร็จแล้ว</button>\n      </div>`).join("");
+        container.innerHTML = groups.map(g => `\n      <div class="att-my-task-card" style="border-left:4px solid ${g.color || "#2563eb"}">\n        <div class="att-my-task-name">${escapeHtmlMobile(g.name)}</div>\n        <div class="att-my-task-meta">\n          ${g.zone ? "" + escapeHtmlMobile(g.zone) + "  " : ""}${g.type || ""}\n          <span class="att-my-task-team">${g.assignedUsers.length} คน</span>\n        </div>\n        <button class="att-my-complete-btn" onclick="completeMyTask('${g.id}')">✓ งานเสร็จแล้ว</button>\n      </div>`).join("");
     } catch (e) {
         container.innerHTML = `<div style="font-size:12px;color:red">โหลดไม่ได้: ${escapeHtmlMobile(e.message)}</div>`;
     }
@@ -2126,7 +2137,7 @@ async function completeMyTask(groupId) {
         showAttResult("✓ รายงานเสร็จงานแล้ว — หัวหน้าได้รับแจ้งเตือนแล้ว", false);
         setTimeout(loadMyAttTasks, 600);
     } catch (err) {
-        showAttResult("✕ "+ (err.message || "เกิดข้อผิดพลาด"), true);
+        showAttResult("✕ " + (err.message || "เกิดข้อผิดพลาด"), true);
     }
 }
 
@@ -2141,17 +2152,17 @@ function showConfirmSheet(title, desc, onOk) {
     sheet.hidden = false;
     const okBtn = document.getElementById("confirmSheetOk");
     const cancelBtn = document.getElementById("confirmSheetCancel");
-    const close = () =>{
+    const close = () => {
         sheet.hidden = true;
         okBtn.onclick = null;
         cancelBtn.onclick = null;
     };
-    okBtn.onclick = () =>{
+    okBtn.onclick = () => {
         close();
         onOk();
     };
     cancelBtn.onclick = close;
-    sheet.onclick = e =>{
+    sheet.onclick = e => {
         if (e.target === sheet) close();
     };
 }
@@ -2164,13 +2175,13 @@ function showConfirmSheet(title, desc, onOk) {
     let cur = 1;
     let booted = false;
     function render() {
-        steps.forEach(s =>{
+        steps.forEach(s => {
             s.hidden = Number(s.dataset.mstep) !== cur;
         });
-        stepper.innerHTML = labels.map((l, i) =>{
+        stepper.innerHTML = labels.map((l, i) => {
             const n = i + 1;
             const cls = n === cur ? "active" : n < cur ? "done" : "";
-            return `<button type="button"class="mwf-dot ${cls}"data-goto="${n}"><span>${n < cur ? "✓" : n}</span><small>${l}</small></button>`;
+            return `<button type="button" class="mwf-dot ${cls}" data-goto="${n}"><span>${n < cur ? "✓" : n}</span><small>${l}</small></button>`;
         }).join("");
         const prev = document.getElementById("mwfPrev");
         const next = document.getElementById("mwfNext");
@@ -2178,22 +2189,23 @@ function showConfirmSheet(title, desc, onOk) {
         if (next) next.style.display = cur === steps.length ? "none" : "";
         if (booted) stepper.scrollIntoView({
             behavior: "smooth",
-            block: "start"});
+            block: "start"
+        });
         booted = true;
     }
-    document.getElementById("mwfPrev")?.addEventListener("click", () =>{
-        if (cur >1) {
+    document.getElementById("mwfPrev")?.addEventListener("click", () => {
+        if (cur > 1) {
             cur -= 1;
             render();
         }
     });
-    document.getElementById("mwfNext")?.addEventListener("click", () =>{
+    document.getElementById("mwfNext")?.addEventListener("click", () => {
         if (cur < steps.length) {
             cur += 1;
             render();
         }
     });
-    stepper.addEventListener("click", e =>{
+    stepper.addEventListener("click", e => {
         const b = e.target.closest("[data-goto]");
         if (b) {
             cur = Number(b.dataset.goto);
@@ -2204,18 +2216,18 @@ function showConfirmSheet(title, desc, onOk) {
 })();
 
 (function initConfirmGates() {
-    const gate = (id, title, desc) =>{
+    const gate = (id, title, desc) => {
         const btn = document.getElementById(id);
         if (!btn) return;
         let passed = false;
-        btn.addEventListener("click", e =>{
+        btn.addEventListener("click", e => {
             if (passed) {
                 passed = false;
                 return;
             }
             e.preventDefault();
             e.stopImmediatePropagation();
-            showConfirmSheet(title, desc, () =>{
+            showConfirmSheet(title, desc, () => {
                 passed = true;
                 btn.click();
             });
@@ -2235,7 +2247,7 @@ var foState = {
 
 function foMyRecordToday() {
     const user = currentUser();
-    return (foState.attToday || []).find(r =>r.userId === user?.id) || null;
+    return (foState.attToday || []).find(r => r.userId === user?.id) || null;
 }
 
 async function foLoadAttToday(force) {
@@ -2251,16 +2263,16 @@ async function foLoadAttToday(force) {
 function showMnav(nav) {
     foState.nav = nav;
     document.body.dataset.mnav = nav;
-    document.querySelectorAll("#foBottomNav button").forEach(b =>b.classList.toggle("active", b.dataset.mnav === nav));
-    document.querySelectorAll(".mnav-panel").forEach(pn =>{
+    document.querySelectorAll("#foBottomNav button").forEach(b => b.classList.toggle("active", b.dataset.mnav === nav));
+    document.querySelectorAll(".mnav-panel").forEach(pn => {
         pn.hidden = pn.id !== `mnav-${nav}`;
     });
     const workEls = document.querySelectorAll(".hero-card, .action-grid, .mobile-panel");
-    workEls.forEach(el =>{
+    workEls.forEach(el => {
         el.style.display = nav === "work" ? "" : "none";
     });
     if (nav === "work") {
-        document.querySelectorAll(".mobile-panel").forEach(el =>{
+        document.querySelectorAll(".mobile-panel").forEach(el => {
             el.style.display = "";
         });
     }
@@ -2317,7 +2329,7 @@ function foDriverJobCard(job, index = 0) {
     const riskActive = [ "DueToday", "Warning", "Urgent", "Critical", "Breached" ].includes(flightRisk);
     const flightRiskLine = riskActive ? `<div class="ez-flight-risk ${[ "Critical", "Breached" ].includes(flightRisk) ? "danger" : ""}">${escapeHtmlMobile(flightRisk)}${job.mustNotMissFlight ? " · C/K NO-MISS" : ""}<br><small>ถึงสนามบินก่อน ${escapeHtmlMobile(formatBangkokMobile(job.effectiveAirportDueAt || ""))}</small></div>` : "";
     const houseToken = encodeURIComponent(job.houseNumber || "");
-    return `\n    <article class="ez-driver-job"data-house="${escapeHtmlMobile(job.houseNumber || "")}">\n      <div class="ez-job-strip">\n        <span class="ez-direction">${direction}</span>\n        <div class="ez-job-title">\n          <small>หมายเลขใบขนสินค้า</small>\n          <strong>${escapeHtmlMobile(job.houseNumber || "-")}</strong>\n        </div>\n        <span class="ez-status-pill ${meta.tone}">${escapeHtmlMobile(meta.th)}<em>${escapeHtmlMobile(meta.en)}</em></span>\n      </div>\n      <div class="ez-job-airline">\n        <span>Booking Airline</span>\n        <b>${escapeHtmlMobile(job.flightNo || "TBC")}</b>\n        <small>ตรวจสอบแล้ว</small>\n        <small>ได้รับแล้ว</small>\n      </div>\n      ${flightRiskLine}\n      <dl class="ez-job-details">\n        <div><dt>คลังสินค้า</dt><dd>${escapeHtmlMobile(job.terminalDestination || job.destination || "-")}</dd></div>\n        <div><dt>เข้าพื้นที่คลังก่อนเวลา</dt><dd class="${job.redFlag ? "danger" : ""}">${escapeHtmlMobile(flightDate)}</dd></div>\n        <div><dt>Pass CP</dt><dd>${escapeHtmlMobile(formatBangkokMobile(job.updatedAt || job.createdAt || ""))}</dd></div>\n        <div><dt>ทะเบียนรถ</dt><dd>${escapeHtmlMobile(plate)}</dd></div>\n        <div><dt>หมายเลขช่องรับสินค้า</dt><dd>${escapeHtmlMobile(bay)}</dd></div>\n        <div><dt>จำนวนหีบห่อทั้งหมด</dt><dd>${escapeHtmlMobile(String(pieces))}</dd></div>\n        <div><dt>น้ำหนักรวมหีบห่อ</dt><dd>${escapeHtmlMobile(String(weight))}</dd></div>\n        <div><dt>ประเภทสินค้า</dt><dd>${escapeHtmlMobile(job.productType || "-")}</dd></div>\n      </dl>\n      <div class="ez-job-actions">\n        <button type="button"onclick="foFocusDriverJob('${houseToken}')">ดูรายละเอียดงาน</button>\n        ${isRejected ? `<button type="button"class="requeue"onclick="foOpenRequeue('${houseToken}')">รีคิว / Re-Queue</button>` : ""}\n      </div>\n    </article>`;
+    return `\n    <article class="ez-driver-job" data-house="${escapeHtmlMobile(job.houseNumber || "")}">\n      <div class="ez-job-strip">\n        <span class="ez-direction">${direction}</span>\n        <div class="ez-job-title">\n          <small>หมายเลขใบขนสินค้า</small>\n          <strong>${escapeHtmlMobile(job.houseNumber || "-")}</strong>\n        </div>\n        <span class="ez-status-pill ${meta.tone}">${escapeHtmlMobile(meta.th)}<em>${escapeHtmlMobile(meta.en)}</em></span>\n      </div>\n      <div class="ez-job-airline">\n        <span>Booking Airline</span>\n        <b>${escapeHtmlMobile(job.flightNo || "TBC")}</b>\n        <small>ตรวจสอบแล้ว</small>\n        <small>ได้รับแล้ว</small>\n      </div>\n      ${flightRiskLine}\n      <dl class="ez-job-details">\n        <div><dt>คลังสินค้า</dt><dd>${escapeHtmlMobile(job.terminalDestination || job.destination || "-")}</dd></div>\n        <div><dt>เข้าพื้นที่คลังก่อนเวลา</dt><dd class="${job.redFlag ? "danger" : ""}">${escapeHtmlMobile(flightDate)}</dd></div>\n        <div><dt>Pass CP</dt><dd>${escapeHtmlMobile(formatBangkokMobile(job.updatedAt || job.createdAt || ""))}</dd></div>\n        <div><dt>ทะเบียนรถ</dt><dd>${escapeHtmlMobile(plate)}</dd></div>\n        <div><dt>หมายเลขช่องรับสินค้า</dt><dd>${escapeHtmlMobile(bay)}</dd></div>\n        <div><dt>จำนวนหีบห่อทั้งหมด</dt><dd>${escapeHtmlMobile(String(pieces))}</dd></div>\n        <div><dt>น้ำหนักรวมหีบห่อ</dt><dd>${escapeHtmlMobile(String(weight))}</dd></div>\n        <div><dt>ประเภทสินค้า</dt><dd>${escapeHtmlMobile(job.productType || "-")}</dd></div>\n      </dl>\n      <div class="ez-job-actions">\n        <button type="button" onclick="foFocusDriverJob('${houseToken}')">ดูรายละเอียดงาน</button>\n        ${isRejected ? `<button type="button" class="requeue" onclick="foOpenRequeue('${houseToken}')">รีคิว / Re-Queue</button>` : ""}\n      </div>\n    </article>`;
 }
 
 function foFocusDriverJob(houseToken) {
@@ -2341,7 +2353,7 @@ async function renderMDock() {
     const box = $("#foDockCard");
     if (!box) return;
     const user = currentUser();
-    const jobs = visibleDriverJobs().filter(j =>![ "Billed", "Completed" ].includes(j.status));
+    const jobs = visibleDriverJobs().filter(j => ![ "Billed", "Completed" ].includes(j.status));
     const house = state.inboundUnlockedHouse || state.outboundUnlockedHouse || (jobs[0] && jobs[0].houseNumber) || "";
     const plate = user?.vehiclePlate || "";
     if (!house && !plate) { box.hidden = true; return; }
@@ -2350,7 +2362,7 @@ async function renderMDock() {
         const qs = new URLSearchParams();
         if (house) qs.set("houseNumber", house);
         if (plate) qs.set("vehiclePlate", plate);
-        const res = await fetch(apiUrl("/api/dock/my?"+ qs.toString()));
+        const res = await fetch(apiUrl("/api/dock/my?" + qs.toString()));
         if (!res.ok) throw new Error("no dock");
         data = await res.json();
     } catch (e) { box.hidden = true; return; }
@@ -2364,7 +2376,7 @@ async function renderMDock() {
           <div class="fo-dock-sub">${escapeHtmlMobile(data.bay.houseNumber || house)} · ${escapeHtmlMobile(data.bay.pieceCount || "-")} ชิ้น</div>
           <div class="fo-dock-kv"><span>ช่องเก็บปลายทาง</span><b>${escapeHtmlMobile(data.bay.locationId || "รอระบุ")}</b></div>
           <div class="fo-dock-kv"><span>จัดช่องเมื่อ</span><b>${data.bay.assignedAt ? formatBangkokMobile(data.bay.assignedAt).slice(-8, -3) : "-"}</b></div>
-          <button type="button"class="fo-primary-btn"onclick="renderMDock()">รีเฟรชสถานะ</button>`;
+          <button type="button" class="fo-primary-btn" onclick="renderMDock()">รีเฟรชสถานะ</button>`;
         return;
     }
     if (data.queue) {
@@ -2373,9 +2385,10 @@ async function renderMDock() {
         box.innerHTML = `
           <div class="fo-dock-lbl">อยู่ในคิวรอช่องเทียบท่า</div>
           <div class="fo-dock-no">คิวที่ ${data.queue.position}</div>
-          <div class="fo-dock-sub">${escapeHtmlMobile(data.queue.houseNumber)} · รออีก ${data.ahead} คัน</div>${data.queue.suggestedBayId ? `<div class="fo-dock-kv"><span>ช่องที่ระบบเสนอ</span><b>${escapeHtmlMobile(data.queue.suggestedBayId)}</b></div>` : ""}
+          <div class="fo-dock-sub">${escapeHtmlMobile(data.queue.houseNumber)} · รออีก ${data.ahead} คัน</div>
+          ${data.queue.suggestedBayId ? `<div class="fo-dock-kv"><span>ช่องที่ระบบเสนอ</span><b>${escapeHtmlMobile(data.queue.suggestedBayId)}</b></div>` : ""}
           <div class="fo-dock-kv"><span>ท่าว่างตอนนี้</span><b>${data.summary?.available ?? "-"} ท่า</b></div>
-          <button type="button"class="fo-primary-btn outline"onclick="renderMDock()">รีเฟรชสถานะ</button>`;
+          <button type="button" class="fo-primary-btn outline" onclick="renderMDock()">รีเฟรชสถานะ</button>`;
         return;
     }
     box.hidden = false;
@@ -2383,7 +2396,7 @@ async function renderMDock() {
     box.innerHTML = `
       <div class="fo-dock-lbl">ยังไม่ได้จองช่องเทียบท่า</div>
       <div class="fo-dock-sub">House ${escapeHtmlMobile(house || "-")} · ท่าว่าง ${data.summary?.available ?? "-"} ท่า</div>
-      <button type="button"class="fo-primary-btn"onclick="mobileJoinDockQueue('${escapeHtmlMobile(house)}')">แจ้งว่าถึงหน้าคลังแล้ว</button>`;
+      <button type="button" class="fo-primary-btn" onclick="mobileJoinDockQueue('${escapeHtmlMobile(house)}')">แจ้งว่าถึงหน้าคลังแล้ว</button>`;
 }
 
 async function mobileJoinDockQueue(house) {
@@ -2402,13 +2415,13 @@ async function mobileJoinDockQueue(house) {
 
 /* ══════════ บอร์ดไฟลท์ด่วน (มือถือ) ══════════ */
 function mobileFlightRows() {
-    const jobs = (state.dashboard?.jobs || []).filter(j =>![ "Billed", "InvoiceSent", "Completed" ].includes(j.status));
+    const jobs = (state.dashboard?.jobs || []).filter(j => ![ "Billed", "InvoiceSent", "Completed" ].includes(j.status));
     const now = Date.now();
-    return jobs.map(j =>{
+    return jobs.map(j => {
         const due = j.effectiveAirportDueAt || j.airportDueAt || j.flightTime || "";
         const ms = due ? new Date(due).getTime() : NaN;
         return { j, min: isNaN(ms) ? null : (ms - now) / 6e4 };
-    }).filter(r =>r.min !== null && r.min < 12 * 60).sort((a, b) =>a.min - b.min).slice(0, 6);
+    }).filter(r => r.min !== null && r.min < 12 * 60).sort((a, b) => a.min - b.min).slice(0, 6);
 }
 
 function renderMFlight() {
@@ -2416,17 +2429,18 @@ function renderMFlight() {
     if (!box) return;
     const rows = mobileFlightRows();
     if (!rows.length) { box.hidden = true; return; }
-    const tier = m =>m < 0 ? "cr" : m < 120 ? "cr" : m < 240 ? "wn" : "ok";
-    const lbl = m =>{
-        if (m < 0) return "เลย "+ Math.abs(Math.round(m)) + "น.";
+    const tier = m => m < 0 ? "cr" : m < 120 ? "cr" : m < 240 ? "wn" : "ok";
+    const lbl = m => {
+        if (m < 0) return "เลย " + Math.abs(Math.round(m)) + " น.";
         const h = Math.floor(m / 60), mm = Math.round(m % 60);
-        return h >0 ? h + ":"+ String(mm).padStart(2, "0") : mm + "น.";
+        return h > 0 ? h + ":" + String(mm).padStart(2, "0") : mm + " น.";
     };
-    const crit = rows.filter(r =>r.min < 120).length;
+    const crit = rows.filter(r => r.min < 120).length;
     box.hidden = false;
     box.className = "fo-card fo-flight-card";
     box.innerHTML = `
-      <div class="fo-fl-head"><b>งานด่วนวันนี้</b><span>${crit ? crit + "งานเร่งด่วน" : "ไม่มีงานเร่งด่วน"}</span></div>${rows.map(r =>`
+      <div class="fo-fl-head"><b>งานด่วนวันนี้</b><span>${crit ? crit + " งานเร่งด่วน" : "ไม่มีงานเร่งด่วน"}</span></div>
+      ${rows.map(r => `
         <div class="fo-fl-row ${tier(r.min)}">
           <span class="f">${escapeHtmlMobile(r.j.flightNo || "—")}</span>
           <span class="h">${escapeHtmlMobile(r.j.houseNumber)} · ${escapeHtmlMobile(r.j.destAirport || r.j.destination || "-")}</span>
@@ -2458,18 +2472,18 @@ async function renderMHome() {
     if (card) {
         const gpsIn = rec && rec.checkInLat ? `${Number(rec.checkInLat).toFixed(4)}, ${Number(rec.checkInLon).toFixed(4)}` : "ไม่มีพิกัด";
         const gpsOut = rec && rec.checkOutLat ? `${Number(rec.checkOutLat).toFixed(4)}, ${Number(rec.checkOutLon).toFixed(4)}` : "";
-        card.innerHTML = !rec ? `\n      <div class="fo-ci-status"><strong>ยังไม่ได้เช็คอินวันนี้</strong><span>เริ่มงานด้วยการเช็คอิน พร้อมรูปถ่ายและ GPS</span></div>\n      <button type="button"class="fo-primary-btn big"onclick="foGoCheckin()">เช็คอินเริ่มงาน</button>` : `\n      <div class="fo-ci-status">\n        <strong>${rec.checkOutTime ? "จบวันทำงานแล้ว" : "กำลังปฏิบัติงาน"} ${foUntaggedBadge(rec)}</strong>\n        <div class="fo-ci-grid">\n          <div><small>เริ่มงาน</small><b>${formatBangkokMobile(rec.checkInTime).slice(-8, -3) || "-"}</b><span>${gpsIn}</span></div>\n          <div><small>เลิกงาน</small><b>${rec.checkOutTime ? formatBangkokMobile(rec.checkOutTime).slice(-8, -3) : "—"}</b>${gpsOut ? `<span>${gpsOut}</span>` : ""}</div>\n        </div>\n      </div>\n      ${!rec.checkOutTime ? `<button type="button"class="fo-primary-btn big outline"onclick="foGoCheckin()">เช็คเอาท์เลิกงาน</button>` : ""}`;
+        card.innerHTML = !rec ? `\n      <div class="fo-ci-status"><strong>ยังไม่ได้เช็คอินวันนี้</strong><span>เริ่มงานด้วยการเช็คอิน พร้อมรูปถ่ายและ GPS</span></div>\n      <button type="button" class="fo-primary-btn big" onclick="foGoCheckin()">เช็คอินเริ่มงาน</button>` : `\n      <div class="fo-ci-status">\n        <strong>${rec.checkOutTime ? "จบวันทำงานแล้ว" : "กำลังปฏิบัติงาน"} ${foUntaggedBadge(rec)}</strong>\n        <div class="fo-ci-grid">\n          <div><small>เริ่มงาน</small><b>${formatBangkokMobile(rec.checkInTime).slice(-8, -3) || "-"}</b><span>${gpsIn}</span></div>\n          <div><small>เลิกงาน</small><b>${rec.checkOutTime ? formatBangkokMobile(rec.checkOutTime).slice(-8, -3) : "—"}</b>${gpsOut ? `<span>${gpsOut}</span>` : ""}</div>\n        </div>\n      </div>\n      ${!rec.checkOutTime ? `<button type="button" class="fo-primary-btn big outline" onclick="foGoCheckin()">เช็คเอาท์เลิกงาน</button>` : ""}`;
     }
     const allDriverJobs = visibleDriverJobs();
-    const runningJobs = allDriverJobs.filter(j =>![ "Billed", "Completed", "PassCPOut" ].includes(j.status));
-    const completedJobs = allDriverJobs.filter(j =>[ "Billed", "Completed", "PassCPOut" ].includes(j.status));
-    const cancelledJobs = allDriverJobs.filter(j =>[ "Cancelled", "Rejected" ].includes(j.status));
-    const jobs = runningJobs.filter(j =>![ "Cancelled", "Rejected" ].includes(j.status));
+    const runningJobs = allDriverJobs.filter(j => ![ "Billed", "Completed", "PassCPOut" ].includes(j.status));
+    const completedJobs = allDriverJobs.filter(j => [ "Billed", "Completed", "PassCPOut" ].includes(j.status));
+    const cancelledJobs = allDriverJobs.filter(j => [ "Cancelled", "Rejected" ].includes(j.status));
+    const jobs = runningJobs.filter(j => ![ "Cancelled", "Rejected" ].includes(j.status));
     const next = jobs[0];
     const jc = $("#foNextJobCard");
     if (jc) {
         jc.classList.add("ez-driver-home-card");
-        jc.innerHTML = `\n      <div class="ez-summary-head">\n        <div><strong>สรุปคิว</strong><span>ข้อมูลวันนี้ ${formatBangkokMobile((new Date).toISOString())}</span></div>\n        <button type="button"class="ez-refresh-btn"onclick="refresh()">↻ รีเฟรช</button>\n      </div>\n      <div class="ez-summary-tiles">\n        <button type="button"class="active"onclick="showMnav('work')"><span></span><b>${runningJobs.length}</b><small>กำลังดำเนินการ</small></button>\n        <button type="button"onclick="showMnav('map')"><span></span><b>${completedJobs.length}</b><small>เสร็จสิ้น</small></button>\n        <button type="button"onclick="showMnav('work')"><span>✕</span><b>${cancelledJobs.length}</b><small>ยกเลิก</small></button>\n        <button type="button"onclick="showMnav('work')"><span>▦</span><b>${allDriverJobs.length}</b><small>ทั้งหมด</small></button>\n      </div>\n      <div class="ez-queue-title"><strong>จำนวนคิวทั้งหมด: ${allDriverJobs.length}</strong><span>กำลังดำเนินการ (${runningJobs.length}) · เสร็จสิ้น (${completedJobs.length}) · ยกเลิก (${cancelledJobs.length})</span></div>\n      <div class="ez-driver-tabs"role="tablist">\n        <button type="button"class="active">กำลังดำเนินการ (${runningJobs.length})</button>\n        <button type="button"onclick="showMnav('map')">เสร็จสิ้น (${completedJobs.length})</button>\n        <button type="button"onclick="showMnav('work')">ยกเลิก (${cancelledJobs.length})</button>\n        <button type="button"onclick="showMnav('work')">ทั้งหมด (${allDriverJobs.length})</button>\n      </div>\n      ${next ? foDriverJobCard(next) : `<div class="fo-empty">ไม่มีงานค้างของคนขับคนนี้</div>`}`;
+        jc.innerHTML = `\n      <div class="ez-summary-head">\n        <div><strong>สรุปคิว</strong><span>ข้อมูลวันนี้ ${formatBangkokMobile((new Date).toISOString())}</span></div>\n        <button type="button" class="ez-refresh-btn" onclick="refresh()">↻ รีเฟรช</button>\n      </div>\n      <div class="ez-summary-tiles">\n        <button type="button" class="active" onclick="showMnav('work')"><span></span><b>${runningJobs.length}</b><small>กำลังดำเนินการ</small></button>\n        <button type="button" onclick="showMnav('map')"><span></span><b>${completedJobs.length}</b><small>เสร็จสิ้น</small></button>\n        <button type="button" onclick="showMnav('work')"><span>✕</span><b>${cancelledJobs.length}</b><small>ยกเลิก</small></button>\n        <button type="button" onclick="showMnav('work')"><span>▦</span><b>${allDriverJobs.length}</b><small>ทั้งหมด</small></button>\n      </div>\n      <div class="ez-queue-title"><strong>จำนวนคิวทั้งหมด: ${allDriverJobs.length}</strong><span>กำลังดำเนินการ (${runningJobs.length}) · เสร็จสิ้น (${completedJobs.length}) · ยกเลิก (${cancelledJobs.length})</span></div>\n      <div class="ez-driver-tabs" role="tablist">\n        <button type="button" class="active">กำลังดำเนินการ (${runningJobs.length})</button>\n        <button type="button" onclick="showMnav('map')">เสร็จสิ้น (${completedJobs.length})</button>\n        <button type="button" onclick="showMnav('work')">ยกเลิก (${cancelledJobs.length})</button>\n        <button type="button" onclick="showMnav('work')">ทั้งหมด (${allDriverJobs.length})</button>\n      </div>\n      ${next ? foDriverJobCard(next) : `<div class="fo-empty">ไม่มีงานค้างของคนขับคนนี้</div>`}`;
     }
     renderMDock();
     renderMFlight();
@@ -2479,23 +2493,26 @@ async function renderMHome() {
         if (rec?.checkInTime) events.push({
             t: rec.checkInTime,
             label: "เช็คอินเริ่มงาน",
-            icon: ""});
-        visibleDriverJobs().forEach(j =>{
+            icon: ""
+        });
+        visibleDriverJobs().forEach(j => {
             if (j.updatedAt && String(j.updatedAt).slice(0, 10) === (new Date).toISOString().slice(0, 10)) {
                 events.push({
                     t: j.updatedAt,
                     label: `${j.houseNumber} · ${j.status}`,
-                    icon: ""});
+                    icon: ""
+                });
             }
         });
         if (rec?.checkOutTime) events.push({
             t: rec.checkOutTime,
             label: "เช็คเอาท์เลิกงาน",
-            icon: ""});
-        events.sort((a, b) =>String(a.t).localeCompare(String(b.t)));
+            icon: ""
+        });
+        events.sort((a, b) => String(a.t).localeCompare(String(b.t)));
         const sub = $("#foTimelineSub");
         if (sub) sub.textContent = `${events.length} เหตุการณ์`;
-        tl.innerHTML = events.length ? events.slice(-8).map(e =>`\n      <div class="fo-tl-row"><span>${e.icon}</span><b>${formatBangkokMobile(e.t).slice(-8, -3)}</b><em>${e.label}</em></div>`).join("") : `<div class="fo-empty">ยังไม่มีกิจกรรมวันนี้</div>`;
+        tl.innerHTML = events.length ? events.slice(-8).map(e => `\n      <div class="fo-tl-row"><span>${e.icon}</span><b>${formatBangkokMobile(e.t).slice(-8, -3)}</b><em>${e.label}</em></div>`).join("") : `<div class="fo-empty">ยังไม่มีกิจกรรมวันนี้</div>`;
     }
 }
 
@@ -2511,9 +2528,9 @@ async function renderMMap(force) {
     if (!map) return;
     const user = currentUser();
     const isAdmin = [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ].includes(user?.role);
-    const records = (foState.attToday || []).filter(r =>isAdmin || r.userId === user?.id);
+    const records = (foState.attToday || []).filter(r => isAdmin || r.userId === user?.id);
     const points = [];
-    records.forEach(r =>{
+    records.forEach(r => {
         if (r.checkInLat != null && r.checkInLon != null) points.push({
             type: "in",
             lat: +r.checkInLat,
@@ -2532,25 +2549,25 @@ async function renderMMap(force) {
     const sub = $("#foMapListSub");
     if (sub) sub.textContent = `${points.length} จุด · ${records.length} คน`;
     if (!points.length) {
-        map.innerHTML = `<div class="fo-empty"style="padding:40px 16px"><strong>ยังไม่มีพิกัดวันนี้</strong><br><small>เช็คอินเพื่อบันทึกจุดเริ่มต้น</small></div>`;
+        map.innerHTML = `<div class="fo-empty" style="padding:40px 16px"><strong>ยังไม่มีพิกัดวันนี้</strong><br><small>เช็คอินเพื่อบันทึกจุดเริ่มต้น</small></div>`;
         if (list) list.innerHTML = "";
         return;
     }
-    const minLat = Math.min(...points.map(p =>p.lat)), maxLat = Math.max(...points.map(p =>p.lat));
-    const minLon = Math.min(...points.map(p =>p.lon)), maxLon = Math.max(...points.map(p =>p.lon));
+    const minLat = Math.min(...points.map(p => p.lat)), maxLat = Math.max(...points.map(p => p.lat));
+    const minLon = Math.min(...points.map(p => p.lon)), maxLon = Math.max(...points.map(p => p.lon));
     const latSpan = Math.max(5e-4, maxLat - minLat), lonSpan = Math.max(5e-4, maxLon - minLon);
-    const project = p =>({
+    const project = p => ({
         x: 10 + (p.lon - minLon) / lonSpan * 80,
         y: 85 - (p.lat - minLat) / latSpan * 70
     });
-    map.innerHTML = `<div class="fo-map-grid"></div>` + points.map((p, i) =>{
+    map.innerHTML = `<div class="fo-map-grid"></div>` + points.map((p, i) => {
         const pos = project(p);
-        const initials = (p.rec.userName || "?").split(/\s+/).map(x =>x[0]).join("").slice(0, 2).toUpperCase();
-        return `<button type="button"class="fo-map-pin ${p.type} ${p.rec.taskGroupId ? "" : "untagged"}"\n      style="left:${pos.x.toFixed(1)}%;top:${pos.y.toFixed(1)}%"onclick="foOpenMapSheet(${i})">\n      <span>${p.type === "out" ? "OUT" : initials}</span></button>`;
+        const initials = (p.rec.userName || "?").split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase();
+        return `<button type="button" class="fo-map-pin ${p.type} ${p.rec.taskGroupId ? "" : "untagged"}"\n      style="left:${pos.x.toFixed(1)}%;top:${pos.y.toFixed(1)}%" onclick="foOpenMapSheet(${i})">\n      <span>${p.type === "out" ? "OUT" : initials}</span></button>`;
     }).join("");
     foState._mapPoints = points;
     if (list) {
-        list.innerHTML = points.map((p, i) =>`\n      <button type="button"class="fo-point-row"onclick="foOpenMapSheet(${i})">\n        <span class="ct-att-dot ${p.type === "out" ? "out" : "on"}"></span>\n        <b>${p.rec.userName || "-"}</b>\n        <em>${p.type === "out" ? "สิ้นสุด" : "เริ่มงาน"} ${formatBangkokMobile(p.time).slice(-8, -3)}</em>\n      </button>`).join("");
+        list.innerHTML = points.map((p, i) => `\n      <button type="button" class="fo-point-row" onclick="foOpenMapSheet(${i})">\n        <span class="ct-att-dot ${p.type === "out" ? "out" : "on"}"></span>\n        <b>${p.rec.userName || "-"}</b>\n        <em>${p.type === "out" ? "สิ้นสุด" : "เริ่มงาน"} ${formatBangkokMobile(p.time).slice(-8, -3)}</em>\n      </button>`).join("");
     }
 }
 
@@ -2560,9 +2577,9 @@ function foOpenMapSheet(idx) {
     const sheet = $("#mapSheet");
     const body = $("#mapSheetBody");
     if (!sheet || !body) return;
-    body.innerHTML = `\n    <strong>${p.rec.userName || "-"} ${foUntaggedBadge(p.rec)}</strong>\n    <p>${p.type === "out" ? "จุดสิ้นสุดงาน" : "จุดเริ่มงาน"} · ${formatBangkokMobile(p.time)}</p>\n    <p>${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}${p.rec.zone ? ` · โซน ${p.rec.zone}` : ""}${p.rec.jobType ? ` · ${p.rec.jobType}` : ""}</p>\n    <div class="confirm-sheet-actions">\n      <button type="button"onclick="document.getElementById('mapSheet').hidden=true"style="background:#f1f5f9;border:none;color:#475569">ปิด</button>\n      <button type="button"onclick="window.open('https://maps.google.com/?q=${p.lat},${p.lon}','_blank')"style="background:#0b4ea2;border:none;color:#fff">เปิด Google Maps</button>\n    </div>`;
+    body.innerHTML = `\n    <strong>${p.rec.userName || "-"} ${foUntaggedBadge(p.rec)}</strong>\n    <p>${p.type === "out" ? "จุดสิ้นสุดงาน" : "จุดเริ่มงาน"} · ${formatBangkokMobile(p.time)}</p>\n    <p>${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}${p.rec.zone ? ` · โซน ${p.rec.zone}` : ""}${p.rec.jobType ? ` · ${p.rec.jobType}` : ""}</p>\n    <div class="confirm-sheet-actions">\n      <button type="button" onclick="document.getElementById('mapSheet').hidden=true" style="background:#f1f5f9;border:none;color:#475569">ปิด</button>\n      <button type="button" onclick="window.open('https://maps.google.com/?q=${p.lat},${p.lon}','_blank')" style="background:#0b4ea2;border:none;color:#fff">เปิด Google Maps</button>\n    </div>`;
     sheet.hidden = false;
-    sheet.onclick = e =>{
+    sheet.onclick = e => {
         if (e.target === sheet) sheet.hidden = true;
     };
 }
@@ -2571,7 +2588,7 @@ function renderMDocs() {
     const sel = $("#foDocJobSelect");
     if (!sel) return;
     const jobs = visibleDriverJobs();
-    sel.innerHTML = jobs.length ? jobs.map(j =>`<option value="${j.houseNumber}">${j.houseNumber} · ${(j.customerName || "").slice(0, 24)}</option>`).join("") : `<option value="">ไม่มีงานของฉัน</option>`;
+    sel.innerHTML = jobs.length ? jobs.map(j => `<option value="${j.houseNumber}">${j.houseNumber} · ${(j.customerName || "").slice(0, 24)}</option>`).join("") : `<option value="">ไม่มีงานของฉัน</option>`;
 }
 
 async function foUploadDocs() {
@@ -2589,9 +2606,9 @@ async function foUploadDocs() {
     let ok = 0;
     for (const f of files) {
         try {
-            const b64 = await new Promise((res, rej) =>{
+            const b64 = await new Promise((res, rej) => {
                 const r = new FileReader;
-                r.onload = e =>res(e.target.result);
+                r.onload = e => res(e.target.result);
                 r.onerror = rej;
                 r.readAsDataURL(f);
             });
@@ -2637,9 +2654,9 @@ function switchMHr(tab) {
 async function renderMHr(force) {
     var user = currentUser();
     if (!user) return;
-    if (force || !mhrState.data || Date.now() - mhrState.at >60000) {
+    if (force || !mhrState.data || Date.now() - mhrState.at > 60000) {
         try {
-            var res = await fetch(apiUrl("/api/hr/bootstrap?viewerId="+ encodeURIComponent(user.id)));
+            var res = await fetch(apiUrl("/api/hr/bootstrap?viewerId=" + encodeURIComponent(user.id)));
             mhrState.data = res.ok ? await res.json() : null;
             mhrState.at = Date.now();
         } catch (e) { mhrState.data = null; }
@@ -2667,7 +2684,7 @@ function renderMHrQuota() {
     var items = [ [ "sick", "ลาป่วย" ], [ "personal", "ลากิจ" ], [ "vacation", "พักร้อน" ] ];
     box.innerHTML = items.map(function (it) {
         var left = Math.max(0, Number(q[it[0]] || 0) - mhrUsedDays(it[0]));
-        return '<div><b>'+ left + '</b><span>'+ it[1] + 'คงเหลือ</span></div>';
+        return '<div><b>' + left + '</b><span>' + it[1] + 'คงเหลือ</span></div>';
     }).join("");
 }
 
@@ -2680,18 +2697,18 @@ function renderMHrBody() {
 }
 
 function renderMHrLeaveForm(box) {
-    box.innerHTML = '<div class="fo-card">'+
-      '<label class="fo-label">ประเภทการลา</label>'+
-      '<select id="mhrLeaveType"class="fo-select">'+
-        MHR_LEAVE_TYPES.map(function (t) { return '<option value="'+ t[0] + '">'+ t[1] + '</option>'; }).join("") +
-      '</select>'+
-      '<label class="fo-label">วันที่เริ่ม</label><input id="mhrLeaveStart"type="date"class="fo-select"value="'+ mhrToday() + '">'+
-      '<label class="fo-label">วันที่สิ้นสุด</label><input id="mhrLeaveEnd"type="date"class="fo-select"value="'+ mhrToday() + '">'+
-      '<label class="fo-label">ช่วงเวลา</label>'+
-      '<div class="mhr-seg"id="mhrLeavePart"><button type="button"class="on"data-part="full">เต็มวัน</button>'+
-      '<button type="button"data-part="morning">ครึ่งเช้า</button><button type="button"data-part="afternoon">ครึ่งบ่าย</button></div>'+
-      '<label class="fo-label">เหตุผล</label><textarea id="mhrLeaveReason"class="fo-select"rows="3"placeholder="เช่น เป็นไข้ พบแพทย์แล้ว"></textarea>'+
-      '<button type="button"class="fo-primary-btn"onclick="submitMHrLeave()">ส่งใบลา</button>'+
+    box.innerHTML = '<div class="fo-card">' +
+      '<label class="fo-label">ประเภทการลา</label>' +
+      '<select id="mhrLeaveType" class="fo-select">' +
+        MHR_LEAVE_TYPES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join("") +
+      '</select>' +
+      '<label class="fo-label">วันที่เริ่ม</label><input id="mhrLeaveStart" type="date" class="fo-select" value="' + mhrToday() + '">' +
+      '<label class="fo-label">วันที่สิ้นสุด</label><input id="mhrLeaveEnd" type="date" class="fo-select" value="' + mhrToday() + '">' +
+      '<label class="fo-label">ช่วงเวลา</label>' +
+      '<div class="mhr-seg" id="mhrLeavePart"><button type="button" class="on" data-part="full">เต็มวัน</button>' +
+      '<button type="button" data-part="morning">ครึ่งเช้า</button><button type="button" data-part="afternoon">ครึ่งบ่าย</button></div>' +
+      '<label class="fo-label">เหตุผล</label><textarea id="mhrLeaveReason" class="fo-select" rows="3" placeholder="เช่น เป็นไข้ พบแพทย์แล้ว"></textarea>' +
+      '<button type="button" class="fo-primary-btn" onclick="submitMHrLeave()">ส่งใบลา</button>' +
       '<div class="mhr-note">ใบลาจะถูกส่งให้หัวหน้าอนุมัติก่อน แล้วจึงส่งต่อผู้บริหาร</div></div>';
     var seg = document.getElementById("mhrLeavePart");
     if (seg) seg.querySelectorAll("button").forEach(function (b) {
@@ -2703,34 +2720,34 @@ function renderMHrLeaveForm(box) {
 }
 
 function renderMHrOtForm(box) {
-    box.innerHTML = '<div class="fo-card">'+
-      '<label class="fo-label">วันที่ทำโอที</label><input id="mhrOtDate"type="date"class="fo-select"value="'+ mhrToday() + '">'+
-      '<div class="mhr-row"><div><label class="fo-label">เวลาเริ่ม</label><input id="mhrOtStart"type="time"class="fo-select"value="18:00"></div>'+
-      '<div><label class="fo-label">เวลาสิ้นสุด</label><input id="mhrOtEnd"type="time"class="fo-select"value="21:00"></div></div>'+
-      '<label class="fo-label">งาน / กลุ่มงาน</label><input id="mhrOtRef"class="fo-select"placeholder="เช่น โหลดสินค้า CX706">'+
-      '<label class="fo-label">เหตุผล</label><textarea id="mhrOtReason"class="fo-select"rows="2"placeholder="เช่น ของเข้าคลังเย็น ต้องเคลียร์ให้ทันไฟลท์"></textarea>'+
-      '<button type="button"class="fo-primary-btn"onclick="submitMHrOt()">ส่งใบขอโอที</button>'+
+    box.innerHTML = '<div class="fo-card">' +
+      '<label class="fo-label">วันที่ทำโอที</label><input id="mhrOtDate" type="date" class="fo-select" value="' + mhrToday() + '">' +
+      '<div class="mhr-row"><div><label class="fo-label">เวลาเริ่ม</label><input id="mhrOtStart" type="time" class="fo-select" value="18:00"></div>' +
+      '<div><label class="fo-label">เวลาสิ้นสุด</label><input id="mhrOtEnd" type="time" class="fo-select" value="21:00"></div></div>' +
+      '<label class="fo-label">งาน / กลุ่มงาน</label><input id="mhrOtRef" class="fo-select" placeholder="เช่น โหลดสินค้า CX706">' +
+      '<label class="fo-label">เหตุผล</label><textarea id="mhrOtReason" class="fo-select" rows="2" placeholder="เช่น ของเข้าคลังเย็น ต้องเคลียร์ให้ทันไฟลท์"></textarea>' +
+      '<button type="button" class="fo-primary-btn" onclick="submitMHrOt()">ส่งใบขอโอที</button>' +
       '<div class="mhr-note">ต้องได้รับอนุมัติก่อนทำโอที · ชั่วโมงจริงคิดจากเวลาเช็คอิน–เช็คเอาต์</div></div>';
 }
 
 function renderMHrHistory(box) {
     var leaves = mhrMine(mhrState.data?.leaveRequests).map(function (r) {
         return { kind: "ลา", title: (MHR_LEAVE_TYPES.find(function (t) { return t[0] === r.type; }) || [ "", "ลา" ])[1],
-                 sub: r.startDate + (r.endDate && r.endDate !== r.startDate ? " – "+ r.endDate : "") + " · "+ (r.days || 1) + "วัน",
+                 sub: r.startDate + (r.endDate && r.endDate !== r.startDate ? " – " + r.endDate : "") + " · " + (r.days || 1) + " วัน",
                  status: r.status, at: r.createdAt || r.startDate };
     });
     var ots = mhrMine(mhrState.data?.otRequests).map(function (r) {
-        return { kind: "โอที", title: "โอที "+ (r.requestedHours || 0) + "ชม.",
-                 sub: r.date + " · "+ (r.startTime || "") + "–"+ (r.endTime || "") + (r.workRef ? " · "+ r.workRef : ""),
+        return { kind: "โอที", title: "โอที " + (r.requestedHours || 0) + " ชม.",
+                 sub: r.date + " · " + (r.startTime || "") + "–" + (r.endTime || "") + (r.workRef ? " · " + r.workRef : ""),
                  status: r.status, at: r.createdAt || r.date };
     });
     var all = leaves.concat(ots).sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
     box.innerHTML = all.length
-        ? '<div class="fo-card mhr-list">'+ all.map(function (r) {
+        ? '<div class="fo-card mhr-list">' + all.map(function (r) {
             var st = MHR_STATUS[r.status] || [ r.status, "gray" ];
-            return '<div class="mhr-item"><div class="mhr-ic '+ (r.kind === "ลา" ? "lv" : "ot") + '">'+ (r.kind === "ลา" ? "ล" : "O") + '</div>'+
-              '<div class="mhr-it"><b>'+ escapeHtmlMobile(r.title) + '</b><span>'+ escapeHtmlMobile(r.sub) + '</span></div>'+
-              '<span class="pill '+ st[1] + '">'+ st[0] + '</span></div>';
+            return '<div class="mhr-item"><div class="mhr-ic ' + (r.kind === "ลา" ? "lv" : "ot") + '">' + (r.kind === "ลา" ? "ล" : "O") + '</div>' +
+              '<div class="mhr-it"><b>' + escapeHtmlMobile(r.title) + '</b><span>' + escapeHtmlMobile(r.sub) + '</span></div>' +
+              '<span class="pill ' + st[1] + '">' + st[0] + '</span></div>';
           }).join("") + '</div>'
         : '<div class="fo-card"><div class="fo-empty">ยังไม่มีประวัติการลาหรือโอที</div></div>';
 }
@@ -2771,7 +2788,8 @@ async function submitMHrOt() {
             employeeId: user.id, requesterId: user.id, date: date,
             startTime: s, endTime: e2, requestedHours: Math.round(hours * 10) / 10,
             workRef: document.getElementById("mhrOtRef")?.value.trim() || "งานปฏิบัติการ",
-            reason: document.getElementById("mhrOtReason")?.value.trim() || "-"});
+            reason: document.getElementById("mhrOtReason")?.value.trim() || "-"
+        });
         mhrState.at = Date.now();
         toast("ส่งใบขอโอทีแล้ว รอหัวหน้าอนุมัติ");
         switchMHr("history");
@@ -2782,7 +2800,7 @@ async function renderMProfile() {
     const user = currentUser();
     const card = $("#foProfileCard");
     if (card && user) {
-        const initials = (user.name || "?").split(/\s+/).map(x =>x[0]).join("").slice(0, 2).toUpperCase();
+        const initials = (user.name || "?").split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase();
         card.innerHTML = `\n      <div class="fo-avatar">${initials}</div>\n      <div class="fo-profile-info">\n        <strong>${user.name || "-"}</strong>\n        <span>${user.role || "-"}${user.vehiclePlate ? ` · ทะเบียน ${user.vehiclePlate}` : ""}</span>\n        <small>ID: ${user.id}</small>\n      </div>`;
     }
     const hist = $("#foAttHistory");
@@ -2790,8 +2808,8 @@ async function renderMProfile() {
         try {
             const res = await fetch(`${API_BASE}/api/attendance/all`);
             const data = await res.json();
-            const mine = (data.records || []).filter(r =>r.userId === user.id).sort((a, b) =>String(b.date).localeCompare(String(a.date))).slice(0, 7);
-            hist.innerHTML = mine.length ? mine.map(r =>`\n        <div class="fo-att-row">\n          <b>${r.date}</b>\n          <span>${formatBangkokMobile(r.checkInTime).slice(-8, -3)} → ${r.checkOutTime ? formatBangkokMobile(r.checkOutTime).slice(-8, -3) : "ทำงานอยู่"}</span>\n          ${r.checkInLat ? `<a href="https://maps.google.com/?q=${r.checkInLat},${r.checkInLon}"target="_blank"rel="noopener"></a>` : ""}\n        </div>`).join("") : `<div class="fo-empty">ยังไม่มีประวัติ</div>`;
+            const mine = (data.records || []).filter(r => r.userId === user.id).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 7);
+            hist.innerHTML = mine.length ? mine.map(r => `\n        <div class="fo-att-row">\n          <b>${r.date}</b>\n          <span>${formatBangkokMobile(r.checkInTime).slice(-8, -3)} → ${r.checkOutTime ? formatBangkokMobile(r.checkOutTime).slice(-8, -3) : "ทำงานอยู่"}</span>\n          ${r.checkInLat ? `<a href="https://maps.google.com/?q=${r.checkInLat},${r.checkInLon}" target="_blank" rel="noopener"></a>` : ""}\n        </div>`).join("") : `<div class="fo-empty">ยังไม่มีประวัติ</div>`;
         } catch (e) {
             hist.innerHTML = `<div class="fo-empty">โหลดไม่สำเร็จ</div>`;
         }
@@ -2810,7 +2828,7 @@ function smartScanShowResult(message) {
 function smartScanGoTab(tab) {
     if (typeof showMnav === "function" && document.body.dataset.mnav !== "work") showMnav("work");
     showTab(tab);
-    setTimeout(() =>$(`#tab-${tab}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+    setTimeout(() => $(`#tab-${tab}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
 }
 
 async function smartScanRoute(house, detail) {
@@ -2845,7 +2863,7 @@ async function smartScanRoute(house, detail) {
         smartScanGoTab("pickup");
         const sel = $("#driverJobSelect");
         if (sel) {
-            const opt = Array.from(sel.options).find(o =>`${o.value} ${o.textContent}`.includes(job.houseNumber));
+            const opt = Array.from(sel.options).find(o => `${o.value} ${o.textContent}`.includes(job.houseNumber));
             if (opt) {
                 sel.value = opt.value;
                 sel.dispatchEvent(new Event("change"));
@@ -2874,10 +2892,10 @@ async function smartScanRoute(house, detail) {
 (function bindSmartScan() {
     const btn = document.getElementById("smartScanBtn");
     if (!btn) return;
-    btn.addEventListener("click", () =>{
+    btn.addEventListener("click", () => {
         if (typeof openLiveScan !== "function") return toast("ตัวสแกนยังไม่พร้อม — ต่ออินเทอร์เน็ตครั้งแรกก่อน");
-        openLiveScan((house, detail) =>{
-            smartScanRoute(house, detail).catch(error =>toast(error.message || "สแกนไม่สำเร็จ"));
+        openLiveScan((house, detail) => {
+            smartScanRoute(house, detail).catch(error => toast(error.message || "สแกนไม่สำเร็จ"));
         });
     });
 })();
@@ -2885,16 +2903,16 @@ async function smartScanRoute(house, detail) {
 (function initFieldOpsNav() {
     const nav = document.getElementById("foBottomNav");
     if (!nav) return;
-    nav.addEventListener("click", e =>{
+    nav.addEventListener("click", e => {
         const btn = e.target.closest("[data-mnav]");
         if (btn) showMnav(btn.dataset.mnav);
     });
     document.getElementById("foDocUploadBtn")?.addEventListener("click", foUploadDocs);
-    document.getElementById("foLogoutBtn")?.addEventListener("click", () =>{
+    document.getElementById("foLogoutBtn")?.addEventListener("click", () => {
         localStorage.removeItem(MOBILE_AUTH_KEY);
         location.reload();
     });
-    setTimeout(() =>{
+    setTimeout(() => {
         if (currentUser()) showMnav("home");
     }, 600);
     if (window.lucide?.createIcons) {
