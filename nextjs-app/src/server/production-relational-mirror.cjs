@@ -84,11 +84,11 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
         for (const attachment of attachments) {
             const jobId = jobIds.get(asText(attachment.houseNumber));
             const filePath = localAttachmentFile(attachment);
-            if (!jobId || !filePath || !fs.existsSync(filePath)) {
+            if (!jobId || !filePath || !fs.existsSync(/* turbopackIgnore: true */ filePath)) {
                 skipped++;
                 continue;
             }
-            const content = fs.readFileSync(filePath);
+            const content = fs.readFileSync(/* turbopackIgnore: true */ filePath);
             const createdAt = asIso(attachment.createdAt) || new Date().toISOString();
             const date = new Date(createdAt);
             const extension = path.extname(filePath).toLowerCase() || ".bin";

@@ -2183,7 +2183,7 @@ async function processImportFeedDirectory() {
     const db = readDb();
     db.integrations ||= {};
     db.integrations.importedFeedHashes ||= {};
-    const files = fs.readdirSync(IMPORT_FEED_DIR).filter(name => /\.(csv|xlsx)$/i.test(name));
+    const files = fs.readdirSync(/* turbopackIgnore: true */ IMPORT_FEED_DIR).filter(name => /\.(csv|xlsx)$/i.test(name));
     const summary = {
         checked: files.length,
         importedFiles: 0,
@@ -2253,7 +2253,7 @@ function saveBase64File(db, {houseNumber: houseNumber, fileType: fileType, base6
     const content = Buffer.from(clean, "base64");
     if (content.length > 10 * 1024 * 1024) throw new Error("ไฟล์มีขนาดเกิน 10 MB");
     const fileId = `FILE-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
-    const folder = path.join(STORAGE_DIR, houseNumber || "unassigned");
+    const folder = path.join(/* turbopackIgnore: true */ STORAGE_DIR, houseNumber || "unassigned");
     fs.mkdirSync(folder, {
         recursive: true
     });
@@ -6848,7 +6848,7 @@ async function streamSupabaseAttachment(res, pathname) {
 async function serveStatic(req, res, pathname) {
     if (pathname.startsWith("/storage/")) {
         const relative = decodeURIComponent(pathname.replace("/storage/", ""));
-        const filePath = path.normalize(path.join(STORAGE_DIR, relative));
+        const filePath = path.normalize(path.join(/* turbopackIgnore: true */ STORAGE_DIR, relative));
         if (!filePath.startsWith(STORAGE_DIR)) return sendJson(res, 403, {
             error: "Forbidden"
         });
@@ -6901,8 +6901,8 @@ let serverProto = "http";
 if (ENABLE_HTTPS) {
     try {
         server = https.createServer({
-            key: fs.readFileSync(HTTPS_KEY_FILE),
-            cert: fs.readFileSync(HTTPS_CERT_FILE)
+            key: fs.readFileSync(/* turbopackIgnore: true */ HTTPS_KEY_FILE),
+            cert: fs.readFileSync(/* turbopackIgnore: true */ HTTPS_CERT_FILE)
         }, requestHandler);
         serverProto = "https";
         console.log("[https] certificate พร้อม — รันแบบ HTTPS (เปิดกล้องบนมือถือได้) / serving HTTPS");
