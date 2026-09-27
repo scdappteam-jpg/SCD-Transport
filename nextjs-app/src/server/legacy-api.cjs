@@ -6187,6 +6187,19 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, { ok: true, location, checkInLocations: db.hr.checkInLocations });
     }
+    if (req.method === "POST" && pathname === "/api/hr/attendance-settings") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const actor = (db.users || []).find(user => user.id === payload.actorId);
+        if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น" });
+        const defaultRadiusMeters = Number(payload.defaultRadiusMeters);
+        if (!Number.isFinite(defaultRadiusMeters) || defaultRadiusMeters < 20 || defaultRadiusMeters > 5000) return sendJson(res, 400, { error: "รัศมีต้องอยู่ระหว่าง 20 ถึง 5,000 เมตร" });
+        const enforceAssignedLocations = payload.enforceAssignedLocations === true;
+        if (enforceAssignedLocations && !(db.hr.checkInLocations || []).some(location => location.active !== false)) return sendJson(res, 409, { error: "ต้องสร้างจุดเช็กอินอย่างน้อย 1 จุดก่อนเปิดบังคับ GPS" });
+        db.hr.settings.attendance = { defaultRadiusMeters, enforceAssignedLocations };
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, settings: db.hr.settings });
+    }
     if (req.method === "POST" && pathname === "/api/hr/attendance-correction") {
         const payload = await parseBody(req);
         const db = readDb();

@@ -6942,6 +6942,11 @@ function renderHrCoreSetup() {
         </div>
         <button type="button" class="primary-button" onclick="saveHrCheckinLocation()">เพิ่มจุดเช็กอิน</button>
         <div id="hrLocationList" class="hr-calendar-list">${locationRows}</div>
+        <div class="hr-form-grid">
+          <label>รัศมีเริ่มต้น (เมตร)<input id="hrAttendanceDefaultRadius" type="number" min="20" max="5000" value="${safeHtml(state.hrSettings.attendance?.defaultRadiusMeters || 300)}"></label>
+          <label><span>บังคับ GPS ตามจุดที่กำหนด</span><select id="hrAttendanceEnforce"><option value="false" ${state.hrSettings.attendance?.enforceAssignedLocations ? "" : "selected"}>ยังไม่บังคับ</option><option value="true" ${state.hrSettings.attendance?.enforceAssignedLocations ? "selected" : ""}>บังคับเมื่ออยู่นอกจุด</option></select></label>
+        </div>
+        <button type="button" class="ghost-button" onclick="saveHrAttendanceSettings()">บันทึกนโยบายเช็กอิน</button>
       </section>`;
 }
 
@@ -6980,6 +6985,15 @@ async function saveHrCheckinLocation() {
         renderHrCoreSetup();
         toast("เพิ่มจุดเช็กอินแล้ว");
     } catch (error) { toast(error.message || "เพิ่มจุดเช็กอินไม่สำเร็จ"); }
+}
+
+async function saveHrAttendanceSettings() {
+    try {
+        const data = await api("/api/hr/attendance-settings", { actorId: currentWebUser()?.id || "", defaultRadiusMeters: $("#hrAttendanceDefaultRadius").value, enforceAssignedLocations: $("#hrAttendanceEnforce").value === "true" });
+        state.hrSettings = data.settings || state.hrSettings;
+        renderHrCoreSetup();
+        toast("บันทึกนโยบายเช็กอินแล้ว");
+    } catch (error) { toast(error.message || "บันทึกนโยบายเช็กอินไม่สำเร็จ"); }
 }
 
 async function renderHR() {
