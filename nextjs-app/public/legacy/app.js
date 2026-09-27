@@ -6665,13 +6665,16 @@ function hrOtHours(startTime, endTime) {
 }
 
 function updateHrEmployeeSelects() {
-    const options = hrEmployees().map(user => `<option value="${safeHtml(user.id)}">${safeHtml(user.name || user.id)} · ${safeHtml(staffRoleLabel(user.role))}${user.vehiclePlate ? ` · ${safeHtml(user.vehiclePlate)}` : ""}</option>`).join("");
+    const viewer = currentWebUser();
+    const selectableEmployees = hrCanManageCore() ? hrEmployees() : hrEmployees().filter(user => user.id === viewer?.id);
+    const options = selectableEmployees.map(user => `<option value="${safeHtml(user.id)}">${safeHtml(user.name || user.id)} · ${safeHtml(staffRoleLabel(user.role))}${user.vehiclePlate ? ` · ${safeHtml(user.vehiclePlate)}` : ""}</option>`).join("");
     [ "#hrLeaveEmployee", "#hrOtEmployee", "#hrAttendanceEmployee" ].forEach(selector => {
         const select = $(selector);
         if (!select) return;
         const previous = select.value;
         select.innerHTML = options || `<option value="">ไม่พบพนักงาน</option>`;
         if ([ ...select.options ].some(option => option.value === previous)) select.value = previous;
+        else if (viewer?.id && [ ...select.options ].some(option => option.value === viewer.id)) select.value = viewer.id;
     });
     if ($("#hrLeaveStart") && !$("#hrLeaveStart").value) $("#hrLeaveStart").value = dateInputValue();
     if ($("#hrLeaveEnd") && !$("#hrLeaveEnd").value) $("#hrLeaveEnd").value = dateInputValue();
@@ -6690,7 +6693,7 @@ function switchHrForm(mode) {
 async function submitHrAttendanceCorrection(event) {
     event?.preventDefault();
     try {
-        const data = await api("/api/hr/attendance-correction", { employeeId: $("#hrAttendanceEmployee")?.value || currentWebUser()?.id || "", targetDate: $("#hrCorrectionDate")?.value || dateInputValue(), requestedCheckIn: $("#hrCorrectionCheckIn")?.value || "", requestedCheckOut: $("#hrCorrectionCheckOut")?.value || "", reason: $("#hrCorrectionReason")?.value.trim() || "" });
+        const data = await api("/api/hr/attendance-correction", { employeeId: $("#hrAttendanceEmployee")?.value || currentWebUser()?.id || "", requesterId: currentWebUser()?.id || "", targetDate: $("#hrCorrectionDate")?.value || dateInputValue(), requestedCheckIn: $("#hrCorrectionCheckIn")?.value || "", requestedCheckOut: $("#hrCorrectionCheckOut")?.value || "", reason: $("#hrCorrectionReason")?.value.trim() || "" });
         applyHrData(data);
         $("#hrCorrectionReason").value = "";
         renderHR();
@@ -6708,7 +6711,7 @@ async function submitHrLeave(event) {
     const days = hrRequestDays(startDate, endDate, part);
     try {
         const data = await api("/api/hr/leave", {
-            employeeId, type, part, startDate, endDate, days,
+            employeeId, requesterId: currentWebUser()?.id || "", type, part, startDate, endDate, days,
             reason: $("#hrLeaveReason")?.value.trim() || "-",
             remainingQuotaAtSubmit: hrQuotaRemaining(employeeId, type)
         });
@@ -6729,7 +6732,7 @@ async function submitHrOt(event) {
     const requestedHours = hrOtHours(startTime, endTime);
     try {
         const data = await api("/api/hr/ot", {
-            employeeId, date: $("#hrOtDate")?.value || dateInputValue(), startTime, endTime, requestedHours,
+            employeeId, requesterId: currentWebUser()?.id || "", date: $("#hrOtDate")?.value || dateInputValue(), startTime, endTime, requestedHours,
             workRef: $("#hrOtWorkRef")?.value.trim() || "งานปฏิบัติการ",
             reason: $("#hrOtReason")?.value.trim() || "-"
         });

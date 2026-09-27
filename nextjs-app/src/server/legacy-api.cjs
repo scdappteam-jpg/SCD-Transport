@@ -723,6 +723,20 @@ function applyApprovedAttendanceCorrection(db, request) {
     record.correctionAppliedAt = nowIso();
 }
 
+function hrViewerCanAccessEmployee(db, viewer, employeeId) {
+    if (!viewer) return false;
+    if ([ "Admin", "Executive" ].includes(viewer.role)) return true;
+    if (viewer.id === employeeId) return true;
+    return db.hr?.employeeProfiles?.[employeeId]?.supervisorId === viewer.id;
+}
+
+function hrRequireSelfServiceActor(db, payload, employeeId) {
+    const actor = (db.users || []).find(user => user.id === payload.requesterId);
+    if (!actor) return { error: "ไม่พบผู้ยื่นคำขอ" };
+    if (actor.id !== employeeId && ![ "Admin", "Executive" ].includes(actor.role)) return { error: "ยื่นคำขอแทนได้เฉพาะผู้ดูแลระบบหรือผู้บริหาร" };
+    return { actor };
+}
+
 const LOAD_PLAN_ROUNDS = String(process.env.LOAD_PLAN_ROUNDS || "08:00,12:00,16:00").split(",").map(value => value.trim()).filter(Boolean);
 
 const TERMINAL_PROFILES = {
@@ -6115,14 +6129,17 @@ async function handleApi(req, res, pathname) {
     if (req.method === "GET" && pathname === "/api/hr/bootstrap") {
         const db = readDb();
         const viewerId = new URL(req.url, "http://localhost").searchParams.get("viewerId") || "";
+        const viewer = (db.users || []).find(user => user.id === viewerId);
+        const visibleEmployee = employeeId => !viewerId || hrViewerCanAccessEmployee(db, viewer, employeeId);
+        const visibleProfiles = Object.fromEntries(Object.entries(db.hr.employeeProfiles || {}).filter(([ employeeId ]) => visibleEmployee(employeeId)));
         const notifications = (db.notifications || []).filter(item => item.module === "HR" && (!viewerId || (item.targetUserIds || []).includes(viewerId))).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))).slice(0, 30);
         return sendJson(res, 200, {
-            leaveRequests: db.hr.leaveRequests,
-            otRequests: db.hr.otRequests,
+            leaveRequests: (db.hr.leaveRequests || []).filter(request => visibleEmployee(request.employeeId)),
+            otRequests: (db.hr.otRequests || []).filter(request => visibleEmployee(request.employeeId)),
             settings: db.hr.settings,
-            employeeProfiles: db.hr.employeeProfiles,
+            employeeProfiles: visibleProfiles,
             checkInLocations: db.hr.checkInLocations,
-            attendanceCorrections: db.hr.attendanceCorrections,
+            attendanceCorrections: (db.hr.attendanceCorrections || []).filter(request => visibleEmployee(request.employeeId)),
             notifications
         });
     }
@@ -6175,6 +6192,8 @@ async function handleApi(req, res, pathname) {
         const db = readDb();
         const user = (db.users || []).find(item => item.id === payload.employeeId);
         if (!user) return sendJson(res, 404, { error: "Employee not found" });
+        const permission = hrRequireSelfServiceActor(db, payload, user.id);
+        if (permission.error) return sendJson(res, 403, { error: permission.error });
         const targetDate = String(payload.targetDate || "").slice(0, 10);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || !String(payload.reason || "").trim()) return sendJson(res, 400, { error: "Target date and reason are required" });
         const request = { id: `ATC-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, employeeId: user.id, targetDate, requestedCheckIn: String(payload.requestedCheckIn || "").slice(0, 5), requestedCheckOut: String(payload.requestedCheckOut || "").slice(0, 5), reason: String(payload.reason).trim().slice(0, 2e3), status: "pendingLead", createdAt: nowIso(), trail: [] };
@@ -6188,6 +6207,8 @@ async function handleApi(req, res, pathname) {
         const db = readDb();
         const user = (db.users || []).find(item => item.id === payload.employeeId);
         if (!user) return sendJson(res, 404, { error: "Employee not found" });
+        const permission = hrRequireSelfServiceActor(db, payload, user.id);
+        if (permission.error) return sendJson(res, 403, { error: permission.error });
         const startDate = String(payload.startDate || "").slice(0, 10);
         const endDate = String(payload.endDate || startDate).slice(0, 10);
         const part = [ "full", "am", "pm" ].includes(payload.part) ? payload.part : "full";
@@ -6219,6 +6240,8 @@ async function handleApi(req, res, pathname) {
         const db = readDb();
         const user = (db.users || []).find(item => item.id === payload.employeeId);
         if (!user) return sendJson(res, 404, { error: "Employee not found" });
+        const permission = hrRequireSelfServiceActor(db, payload, user.id);
+        if (permission.error) return sendJson(res, 403, { error: permission.error });
         const date = String(payload.date || "").slice(0, 10);
         const startTime = String(payload.startTime || "");
         const endTime = String(payload.endTime || "");
