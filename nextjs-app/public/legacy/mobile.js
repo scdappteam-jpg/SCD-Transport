@@ -2280,6 +2280,7 @@ function showMnav(nav) {
     if (nav === "map") renderMMap();
     if (nav === "docs") renderMDocs();
     if (nav === "profile") renderMProfile();
+    if (nav === "hr") renderMHr();
     window.scrollTo({
         top: 0
     });
@@ -2628,6 +2629,171 @@ async function foUploadDocs() {
     if (result) result.innerHTML = `<span class="${ok === files.length ? "ok" : "warn"}">✅ อัปโหลดสำเร็จ ${ok}/${files.length} ไฟล์ → ${house}</span>`;
     const fileEl = $("#foDocFile");
     if (fileEl) fileEl.value = "";
+}
+
+
+/* ══════════ ลา / โอที (มือถือ) ══════════ */
+var mhrState = { tab: "leave", data: null, at: 0 };
+var MHR_LEAVE_TYPES = [ [ "sick", "ลาป่วย" ], [ "personal", "ลากิจ" ], [ "vacation", "ลาพักร้อน" ], [ "other", "ลาอื่น ๆ" ] ];
+var MHR_STATUS = {
+    pendingLead: [ "รอหัวหน้า", "amber" ], pendingExecutive: [ "รอผู้บริหาร", "amber" ],
+    approved: [ "อนุมัติแล้ว", "green" ], rejected: [ "ไม่อนุมัติ", "red" ],
+    cancelled: [ "ยกเลิก", "gray" ], closed: [ "ปิดยอดแล้ว", "gray" ], done: [ "ทำแล้ว", "green" ]
+};
+
+function mhrToday() { return new Date().toISOString().slice(0, 10); }
+
+function switchMHr(tab) {
+    mhrState.tab = tab;
+    document.querySelectorAll("[data-mhr]").forEach(function (b) {
+        b.classList.toggle("on", b.dataset.mhr === tab);
+    });
+    renderMHrBody();
+}
+
+async function renderMHr(force) {
+    var user = currentUser();
+    if (!user) return;
+    if (force || !mhrState.data || Date.now() - mhrState.at > 60000) {
+        try {
+            var res = await fetch(apiUrl("/api/hr/bootstrap?viewerId=" + encodeURIComponent(user.id)));
+            mhrState.data = res.ok ? await res.json() : null;
+            mhrState.at = Date.now();
+        } catch (e) { mhrState.data = null; }
+    }
+    renderMHrQuota();
+    renderMHrBody();
+    if (window.lucide?.createIcons) { try { lucide.createIcons(); } catch (e) {} }
+}
+
+function mhrMine(list) {
+    var id = currentUser()?.id;
+    return (list || []).filter(function (r) { return r.employeeId === id; });
+}
+
+function mhrUsedDays(type) {
+    return mhrMine(mhrState.data?.leaveRequests).filter(function (r) {
+        return r.type === type && [ "approved", "pendingLead", "pendingExecutive" ].includes(r.status);
+    }).reduce(function (s, r) { return s + Number(r.days || 0); }, 0);
+}
+
+function renderMHrQuota() {
+    var box = $("#mhrQuota");
+    if (!box) return;
+    var q = (mhrState.data?.settings?.leaveQuota) || { sick: 30, personal: 6, vacation: 6 };
+    var items = [ [ "sick", "ลาป่วย" ], [ "personal", "ลากิจ" ], [ "vacation", "พักร้อน" ] ];
+    box.innerHTML = items.map(function (it) {
+        var left = Math.max(0, Number(q[it[0]] || 0) - mhrUsedDays(it[0]));
+        return '<div><b>' + left + '</b><span>' + it[1] + 'คงเหลือ</span></div>';
+    }).join("");
+}
+
+function renderMHrBody() {
+    var box = $("#mhrBody");
+    if (!box) return;
+    if (mhrState.tab === "history") return renderMHrHistory(box);
+    if (mhrState.tab === "ot") return renderMHrOtForm(box);
+    renderMHrLeaveForm(box);
+}
+
+function renderMHrLeaveForm(box) {
+    box.innerHTML = '<div class="fo-card">' +
+      '<label class="fo-label">ประเภทการลา</label>' +
+      '<select id="mhrLeaveType" class="fo-select">' +
+        MHR_LEAVE_TYPES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join("") +
+      '</select>' +
+      '<label class="fo-label">วันที่เริ่ม</label><input id="mhrLeaveStart" type="date" class="fo-select" value="' + mhrToday() + '">' +
+      '<label class="fo-label">วันที่สิ้นสุด</label><input id="mhrLeaveEnd" type="date" class="fo-select" value="' + mhrToday() + '">' +
+      '<label class="fo-label">ช่วงเวลา</label>' +
+      '<div class="mhr-seg" id="mhrLeavePart"><button type="button" class="on" data-part="full">เต็มวัน</button>' +
+      '<button type="button" data-part="morning">ครึ่งเช้า</button><button type="button" data-part="afternoon">ครึ่งบ่าย</button></div>' +
+      '<label class="fo-label">เหตุผล</label><textarea id="mhrLeaveReason" class="fo-select" rows="3" placeholder="เช่น เป็นไข้ พบแพทย์แล้ว"></textarea>' +
+      '<button type="button" class="fo-primary-btn" onclick="submitMHrLeave()">ส่งใบลา</button>' +
+      '<div class="mhr-note">ใบลาจะถูกส่งให้หัวหน้าอนุมัติก่อน แล้วจึงส่งต่อผู้บริหาร</div></div>';
+    var seg = document.getElementById("mhrLeavePart");
+    if (seg) seg.querySelectorAll("button").forEach(function (b) {
+        b.onclick = function () {
+            seg.querySelectorAll("button").forEach(function (x) { x.classList.remove("on"); });
+            b.classList.add("on");
+        };
+    });
+}
+
+function renderMHrOtForm(box) {
+    box.innerHTML = '<div class="fo-card">' +
+      '<label class="fo-label">วันที่ทำโอที</label><input id="mhrOtDate" type="date" class="fo-select" value="' + mhrToday() + '">' +
+      '<div class="mhr-row"><div><label class="fo-label">เวลาเริ่ม</label><input id="mhrOtStart" type="time" class="fo-select" value="18:00"></div>' +
+      '<div><label class="fo-label">เวลาสิ้นสุด</label><input id="mhrOtEnd" type="time" class="fo-select" value="21:00"></div></div>' +
+      '<label class="fo-label">งาน / กลุ่มงาน</label><input id="mhrOtRef" class="fo-select" placeholder="เช่น โหลดสินค้า CX706">' +
+      '<label class="fo-label">เหตุผล</label><textarea id="mhrOtReason" class="fo-select" rows="2" placeholder="เช่น ของเข้าคลังเย็น ต้องเคลียร์ให้ทันไฟลท์"></textarea>' +
+      '<button type="button" class="fo-primary-btn" onclick="submitMHrOt()">ส่งใบขอโอที</button>' +
+      '<div class="mhr-note">ต้องได้รับอนุมัติก่อนทำโอที · ชั่วโมงจริงคิดจากเวลาเช็คอิน–เช็คเอาต์</div></div>';
+}
+
+function renderMHrHistory(box) {
+    var leaves = mhrMine(mhrState.data?.leaveRequests).map(function (r) {
+        return { kind: "ลา", title: (MHR_LEAVE_TYPES.find(function (t) { return t[0] === r.type; }) || [ "", "ลา" ])[1],
+                 sub: r.startDate + (r.endDate && r.endDate !== r.startDate ? " – " + r.endDate : "") + " · " + (r.days || 1) + " วัน",
+                 status: r.status, at: r.createdAt || r.startDate };
+    });
+    var ots = mhrMine(mhrState.data?.otRequests).map(function (r) {
+        return { kind: "โอที", title: "โอที " + (r.requestedHours || 0) + " ชม.",
+                 sub: r.date + " · " + (r.startTime || "") + "–" + (r.endTime || "") + (r.workRef ? " · " + r.workRef : ""),
+                 status: r.status, at: r.createdAt || r.date };
+    });
+    var all = leaves.concat(ots).sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+    box.innerHTML = all.length
+        ? '<div class="fo-card mhr-list">' + all.map(function (r) {
+            var st = MHR_STATUS[r.status] || [ r.status, "gray" ];
+            return '<div class="mhr-item"><div class="mhr-ic ' + (r.kind === "ลา" ? "lv" : "ot") + '">' + (r.kind === "ลา" ? "ล" : "O") + '</div>' +
+              '<div class="mhr-it"><b>' + escapeHtmlMobile(r.title) + '</b><span>' + escapeHtmlMobile(r.sub) + '</span></div>' +
+              '<span class="pill ' + st[1] + '">' + st[0] + '</span></div>';
+          }).join("") + '</div>'
+        : '<div class="fo-card"><div class="fo-empty">ยังไม่มีประวัติการลาหรือโอที</div></div>';
+}
+
+async function submitMHrLeave() {
+    var user = currentUser();
+    if (!user) return;
+    var type = document.getElementById("mhrLeaveType")?.value || "personal";
+    var start = document.getElementById("mhrLeaveStart")?.value || mhrToday();
+    var end = document.getElementById("mhrLeaveEnd")?.value || start;
+    var part = document.querySelector("#mhrLeavePart button.on")?.dataset.part || "full";
+    var reason = document.getElementById("mhrLeaveReason")?.value.trim() || "-";
+    if (end < start) return toast("วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม");
+    var days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 864e5) + 1);
+    if (part !== "full" && days === 1) days = 0.5;
+    try {
+        mhrState.data = await api("/api/hr/leave", {
+            employeeId: user.id, requesterId: user.id, type: type, part: part,
+            startDate: start, endDate: end, days: days, reason: reason
+        });
+        mhrState.at = Date.now();
+        toast("ส่งใบลาแล้ว รอหัวหน้าอนุมัติ");
+        switchMHr("history");
+        renderMHrQuota();
+    } catch (e) { toast(e.message || "ส่งใบลาไม่สำเร็จ"); }
+}
+
+async function submitMHrOt() {
+    var user = currentUser();
+    if (!user) return;
+    var date = document.getElementById("mhrOtDate")?.value || mhrToday();
+    var s = document.getElementById("mhrOtStart")?.value || "18:00";
+    var e2 = document.getElementById("mhrOtEnd")?.value || "21:00";
+    var hours = Math.max(0, (Number(e2.slice(0, 2)) * 60 + Number(e2.slice(3, 5)) - Number(s.slice(0, 2)) * 60 - Number(s.slice(3, 5))) / 60);
+    if (!hours) return toast("เวลาสิ้นสุดต้องหลังเวลาเริ่ม");
+    try {
+        mhrState.data = await api("/api/hr/ot", {
+            employeeId: user.id, requesterId: user.id, date: date,
+            startTime: s, endTime: e2, requestedHours: Math.round(hours * 10) / 10,
+            workRef: document.getElementById("mhrOtRef")?.value.trim() || "งานปฏิบัติการ",
+            reason: document.getElementById("mhrOtReason")?.value.trim() || "-"
+        });
+        mhrState.at = Date.now();
+        toast("ส่งใบขอโอทีแล้ว รอหัวหน้าอนุมัติ");
+        switchMHr("history");
+    } catch (e) { toast(e.message || "ส่งใบขอโอทีไม่สำเร็จ"); }
 }
 
 async function renderMProfile() {

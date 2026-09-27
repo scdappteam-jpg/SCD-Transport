@@ -683,6 +683,20 @@
       </section>
 
       
+      <section class="mnav-panel" id="mnav-hr" hidden>
+        <div class="fo-header">
+          <div><small>งานบุคคล</small><h1>ลา / โอที</h1></div>
+          <button type="button" class="fo-mini-btn" onclick="renderMHr(true)">รีเฟรช</button>
+        </div>
+        <div class="mhr-tabs">
+          <button type="button" class="on" data-mhr="leave" onclick="switchMHr('leave')">ขอลา</button>
+          <button type="button" data-mhr="ot" onclick="switchMHr('ot')">ขอโอที</button>
+          <button type="button" data-mhr="history" onclick="switchMHr('history')">ประวัติ</button>
+        </div>
+        <div id="mhrQuota" class="mhr-quota"></div>
+        <div id="mhrBody"></div>
+      </section>
+
       <section class="mnav-panel" id="mnav-profile" hidden>
         <div class="fo-header"><div><small>บัญชีของฉัน</small><h1>โปรไฟล์</h1></div></div>
         <div class="fo-card fo-profile-card" id="foProfileCard"></div>
@@ -700,7 +714,8 @@
       <button type="button" data-mnav="docs"><i data-lucide="bell"></i><small>แจ้งเตือน</small></button>
       <button type="button" data-mnav="work" class="fo-search-tab"><i data-lucide="search"></i><small>ค้นหาติดตาม</small></button>
       <button type="button" data-mnav="map"><i data-lucide="package-check"></i><small>ประวัติย้อนหลัง</small></button>
-      <button type="button" data-mnav="profile"><i data-lucide="settings"></i><small>ตั้งค่า</small></button>
+      <button type="button" data-mnav="hr"><i data-lucide="calendar-heart"></i><small>ลา/โอที</small></button>
+        <button type="button" data-mnav="profile"><i data-lucide="settings"></i><small>ตั้งค่า</small></button>
     </nav>
 
     

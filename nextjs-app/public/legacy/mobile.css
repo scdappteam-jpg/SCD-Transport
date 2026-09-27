@@ -737,3 +737,33 @@ label{color:#64748B!important;font-weight:400!important}
 /* แถวรายการ */
 .job,.location,.result,.fo-att-row,.fo-point-row{border-radius:12px!important;font-size:13.5px!important}
 .step-note{border-radius:12px!important}
+
+/* ══ ลา/โอที มือถือ ══ */
+.mhr-tabs{display:flex;gap:7px;margin:0 2px 12px}
+.mhr-tabs button{flex:1;min-height:42px!important;border-radius:11px!important;border:1px solid var(--m-line,#e5e9f0)!important;
+  background:#fff!important;color:#4a5a72!important;font-size:13px!important;font-weight:400!important}
+.mhr-tabs button.on{background:#0b1a30!important;color:#fff!important;border-color:#0b1a30!important}
+.mhr-quota{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.mhr-quota div{background:#fff;border:1px solid var(--m-line,#e5e9f0);border-radius:12px;padding:11px;text-align:center}
+.mhr-quota b{display:block;font-size:20px;font-weight:500;color:#1b4db1}
+.mhr-quota span{display:block;font-size:10px;color:#8494aa}
+.mhr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mhr-seg{display:flex;gap:6px;margin-bottom:4px}
+.mhr-seg button{flex:1;min-height:42px!important;border-radius:10px!important;border:1px solid var(--m-line,#e5e9f0)!important;
+  background:#fff!important;color:#4a5a72!important;font-size:12.5px!important;font-weight:400!important}
+.mhr-seg button.on{background:#1b4db1!important;color:#fff!important;border-color:#1b4db1!important}
+.mhr-note{margin-top:11px;background:#f4f6fa;border-radius:10px;padding:10px 12px;font-size:11.5px!important;color:#5a6b85}
+.mhr-list{padding:4px 14px!important}
+.mhr-item{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #f1f4f9}
+.mhr-item:last-child{border-bottom:0}
+.mhr-ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:13px;flex:0 0 34px;font-weight:500}
+.mhr-ic.lv{background:#e9f0fd;color:#1b4db1}
+.mhr-ic.ot{background:#efeafb;color:#5b35b5}
+.mhr-it{flex:1;min-width:0}
+.mhr-it b{display:block;font-size:13.5px}
+.mhr-it span{display:block;font-size:11px;color:#8494aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill.amber{background:#fcf3e3!important;color:#b26b00!important}
+.pill.green{background:#e6f6ed!important;color:#0f8a4d!important}
+.pill.red{background:#fbebeb!important;color:#c62828!important}
+.pill.gray{background:#eef2f8!important;color:#64748b!important}
+.fo-label{display:block;font-size:11.5px;color:#64748b;margin:12px 0 5px;font-weight:400}
