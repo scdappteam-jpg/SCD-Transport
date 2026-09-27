@@ -149,7 +149,8 @@
   --r-navy:#0B1A30;--r-rad:12px;--r-rad-s:9px;
   --r-sh:0 1px 2px rgba(15,27,45,.05);--r-sh2:0 6px 22px rgba(15,27,45,.10);
 }
-body{background:var(--r-bg)!important;color:var(--r-ink)!important;font-weight:300!important;
+body:not(.web-locked):not(.mobile-locked){background:var(--r-bg)!important}
+body{color:var(--r-ink)!important;font-weight:300!important;
   -webkit-font-smoothing:antialiased;letter-spacing:0!important}
 b,strong,h1,h2,h3,h4{font-weight:500!important}
 /* ── เมนูข้าง ── */
@@ -191,7 +192,9 @@ b,strong,h1,h2,h3,h4{font-weight:500!important}
 .metric-card.info{border-top-color:var(--r-pri)!important}
 /* ── ปุ่ม ── */
 button,.btn,.att-action-btn,.fo-primary-btn,.cs-confirm-btn{font-family:inherit!important;letter-spacing:0!important}
-.topbar button,.card button:not(.dock-btn):not(.dock-x),.page button:not(.dock-btn):not(.dock-x):not(.nav-item){
+.topbar button,
+.card button:not(.dock-btn):not(.dock-x):not(.att-color-swatch):not(.cargo-zoom-btn):not(.mini-add):not(.remove-row):not(.qs-btn),
+.page button:not(.dock-btn):not(.dock-x):not(.nav-item):not(.att-color-swatch):not(.cargo-zoom-btn):not(.mini-add):not(.remove-row):not(.qs-btn){
   border-radius:var(--r-rad-s)!important;font-size:12.5px!important;font-weight:400!important;min-height:38px}
 button.primary,.btn.primary,.att-modal-confirm,.cs-confirm-btn{background:var(--r-pri)!important;border-color:var(--r-pri)!important;color:#fff!important}
 button.ghost,.btn.ghost,.att-action-btn{background:var(--r-card)!important;border:1px solid var(--r-line)!important;color:var(--r-ink2)!important}
@@ -199,7 +202,8 @@ button:disabled{opacity:.5!important}
 /* ── ตาราง ── */
 table{border-collapse:collapse!important;font-size:12.5px!important}
 table thead th{text-align:left!important;font-size:11px!important;font-weight:400!important;color:var(--r-mut)!important;
-  background:transparent!important;padding:0 10px 9px!important;border-bottom:1px solid var(--r-line)!important;white-space:nowrap}
+  padding:0 10px 9px!important;border-bottom:1px solid var(--r-line)!important;white-space:nowrap}
+.import-preview-table th,.file-preview-box th{background:#EEF3FB!important;padding:9px 10px!important}
 table tbody td{padding:11px 10px!important;border-bottom:1px solid var(--r-line2)!important;color:var(--r-ink)!important;vertical-align:middle}
 table tbody tr:last-child td{border-bottom:0!important}
 table tbody tr:hover td{background:#F8FAFD!important}
