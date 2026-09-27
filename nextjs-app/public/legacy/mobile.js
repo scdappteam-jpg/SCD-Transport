@@ -2264,6 +2264,9 @@ function showMnav(nav) {
     foState.nav = nav;
     document.body.dataset.mnav = nav;
     document.querySelectorAll("#foBottomNav button").forEach(b => b.classList.toggle("active", b.dataset.mnav === nav));
+    const moreBtn = document.getElementById("foMoreBtn");
+    if (moreBtn) moreBtn.classList.toggle("active", nav === "hr" || nav === "profile");
+    foCloseMore();
     document.querySelectorAll(".mnav-panel").forEach(pn => {
         pn.hidden = pn.id !== `mnav-${nav}`;
     });
@@ -2900,12 +2903,34 @@ async function smartScanRoute(house, detail) {
     });
 })();
 
+function foOpenMore() {
+    const sheet = document.getElementById("moreSheet");
+    if (!sheet) return;
+    sheet.hidden = false;
+    requestAnimationFrame(() => sheet.classList.add("open"));
+    try { if (window.lucide) lucide.createIcons(); } catch (e) {}
+}
+
+function foCloseMore() {
+    const sheet = document.getElementById("moreSheet");
+    if (!sheet || sheet.hidden) return;
+    sheet.classList.remove("open");
+    setTimeout(() => { sheet.hidden = true; }, 200);
+}
+
 (function initFieldOpsNav() {
     const nav = document.getElementById("foBottomNav");
     if (!nav) return;
     nav.addEventListener("click", e => {
         const btn = e.target.closest("[data-mnav]");
-        if (btn) showMnav(btn.dataset.mnav);
+        if (btn) { showMnav(btn.dataset.mnav); return; }
+        if (e.target.closest("#foMoreBtn")) foOpenMore();
+    });
+    document.getElementById("foMoreClose")?.addEventListener("click", foCloseMore);
+    document.getElementById("moreSheet")?.addEventListener("click", e => {
+        if (e.target.id === "moreSheet") { foCloseMore(); return; }
+        const item = e.target.closest("[data-mnav]");
+        if (item) showMnav(item.dataset.mnav);
     });
     document.getElementById("foDocUploadBtn")?.addEventListener("click", foUploadDocs);
     document.getElementById("foLogoutBtn")?.addEventListener("click", () => {

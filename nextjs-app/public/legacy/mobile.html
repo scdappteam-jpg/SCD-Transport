@@ -14,14 +14,15 @@
   </head>
   <body class="mobile-locked">
     <header class="mobile-header">
-      <div>
-        <strong>S.C.D.TRANSPORT</strong>
-        <span>Field Operation · งานภาคสนาม</span>
+      <div class="mh-brand">
+        <span class="mh-mark">SCD</span>
+        <div class="mh-name">
+          <strong>S.C.D.TRANSPORT</strong>
+          <span>Field Operation · งานภาคสนาม</span>
+        </div>
       </div>
       <div class="mobile-header-actions">
         <button id="mobileLanguageToggle" type="button">TH</button>
-        <a href="index.html">Web</a>
-        <button id="mobileHeaderLogoutBtn" class="mobile-header-logout" type="button" hidden>Logout</button>
       </div>
     </header>
 
@@ -63,7 +64,7 @@
 
       <section class="smart-scan-card" id="smartScanCard">
         <button id="smartScanBtn" type="button">
-          <span>&#128247;</span>
+          <span class="ss-icon"><i data-lucide="scan-line"></i></span>
           <b>สแกนเลย — ปุ่มเดียวจบ</b>
           <small>ระบบพาไปขั้นตอนถัดไปให้อัตโนมัติ</small>
         </button>
@@ -712,11 +713,30 @@
     <nav class="fo-bottomnav" id="foBottomNav" aria-label="เมนูหลัก">
       <button type="button" data-mnav="home" class="active"><i data-lucide="home"></i><small>หน้าหลัก</small></button>
       <button type="button" data-mnav="docs"><i data-lucide="bell"></i><small>แจ้งเตือน</small></button>
-      <button type="button" data-mnav="work" class="fo-search-tab"><i data-lucide="search"></i><small>ค้นหาติดตาม</small></button>
-      <button type="button" data-mnav="map"><i data-lucide="package-check"></i><small>ประวัติย้อนหลัง</small></button>
-      <button type="button" data-mnav="hr"><i data-lucide="calendar-heart"></i><small>ลา/โอที</small></button>
-        <button type="button" data-mnav="profile"><i data-lucide="settings"></i><small>ตั้งค่า</small></button>
+      <button type="button" data-mnav="work" class="fo-search-tab" aria-label="สแกน / ค้นหางาน"><i data-lucide="scan-line"></i><small>สแกนงาน</small></button>
+      <button type="button" data-mnav="map"><i data-lucide="history"></i><small>ประวัติ</small></button>
+      <button type="button" id="foMoreBtn"><i data-lucide="menu"></i><small>เพิ่มเติม</small></button>
     </nav>
+
+    <div id="moreSheet" class="more-sheet" hidden>
+      <div class="more-panel" role="dialog" aria-modal="true" aria-label="เมนูเพิ่มเติม">
+        <div class="more-grip"></div>
+        <strong class="more-title">เมนูเพิ่มเติม</strong>
+        <button type="button" class="more-item" data-mnav="hr">
+          <i data-lucide="calendar-heart"></i><span><b>ลา / โอที</b><em>ยื่นใบลา ขอโอที ดูสถานะอนุมัติ</em></span><i class="more-go" data-lucide="chevron-right"></i>
+        </button>
+        <button type="button" class="more-item" data-mnav="profile">
+          <i data-lucide="user-round"></i><span><b>โปรไฟล์และตั้งค่า</b><em>ข้อมูลพนักงาน สิทธิ์การใช้งาน</em></span><i class="more-go" data-lucide="chevron-right"></i>
+        </button>
+        <a class="more-item" href="index.html">
+          <i data-lucide="monitor"></i><span><b>เปิดหน้าเว็บ</b><em>ใช้งานเวอร์ชันจอใหญ่</em></span><i class="more-go" data-lucide="chevron-right"></i>
+        </a>
+        <button type="button" class="more-item danger" id="mobileHeaderLogoutBtn" hidden>
+          <i data-lucide="log-out"></i><span><b>ออกจากระบบ</b><em>ออกจากบัญชีนี้บนเครื่องนี้</em></span>
+        </button>
+        <button type="button" class="more-close" id="foMoreClose">ปิด</button>
+      </div>
+    </div>
 
     
     <div id="mapSheet" class="confirm-sheet" hidden>
