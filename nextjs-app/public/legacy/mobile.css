@@ -779,3 +779,33 @@ body:not(.mobile-locked) main{padding-bottom:96px!important}
   font-size:13.5px!important;font-weight:400!important}
 .confirm-sheet-panel{padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
 .mobile-action-modal{padding:22px!important}
+
+/* ════════ MOBILE SPACING · FINAL — ระยะตามต้นแบบ ════════ */
+body:not(.mobile-locked) main{padding:0 14px 96px!important;max-width:520px;margin:0 auto}
+.mnav-panel,.mobile-panel{padding-left:0!important;padding-right:0!important}
+.mobile-panel{padding:16px!important;border-radius:16px!important;margin-bottom:12px!important}
+.fo-header{margin:14px 2px 14px!important}
+.fo-header h1{font-size:23px!important;line-height:1.25!important}
+.fo-card{padding:16px!important;border-radius:16px!important;margin-bottom:12px!important}
+.fo-card-head{margin-bottom:12px!important}
+.fo-card-head strong{font-size:14px!important}
+.fo-card-head span{font-size:11.5px!important;color:#8494AA!important}
+.msec,.fo-section-label{margin:16px 2px 9px!important;font-size:12px!important;color:#7A889D!important}
+.fo-primary-btn,.mbtn{height:50px!important;min-height:50px!important;border-radius:13px!important;
+  font-size:15px!important;margin-top:12px!important}
+.fo-btn-row{gap:10px!important;margin-top:12px!important}
+.fo-mini-btn{min-height:36px!important;padding:0 13px!important;border-radius:10px!important;font-size:12px!important}
+.mhr-tabs,.mtab{margin:0 0 12px!important}
+.mhr-quota{margin-bottom:14px!important}
+.mfld,.mhr-row{margin-bottom:12px!important}
+.smart-scan-card{margin:14px 0!important;padding:16px!important}
+.ss-hints{margin-top:11px!important}
+.fo-bottomnav{padding:8px 6px calc(10px + env(safe-area-inset-bottom))!important}
+.fo-bottomnav button{min-height:52px!important;gap:3px!important}
+.job,.location,.result{padding:14px!important;margin-bottom:10px!important}
+.mlist,.fo-timeline{border-radius:16px!important}
+.mli{padding:14px!important}
+.status-strip{gap:10px!important;margin-top:14px!important}
+.hero-card{padding:16px!important;border-radius:16px!important}
+.action-grid{gap:10px!important;margin:14px 0!important}
+.action-card{min-height:92px!important;border-radius:16px!important}

@@ -341,3 +341,101 @@ body.sidebar-collapsed .app-shell{background:var(--r-navy)!important}
 .scd-ask-a .primary{background:var(--r-pri);border-color:var(--r-pri);color:#fff}
 @media (max-width:1200px){.fb-th,.fb-row{grid-template-columns:19% 22% 9% 9% 9% 6% 0 17% 9%!important}
   .fb-th span:nth-child(7),.fb-row .fb-st{display:none}}
+
+/* ════════════ LOGIN · FINAL — ให้ตรงต้นแบบ ════════════ */
+.login-screen{
+  position:fixed!important;inset:0!important;z-index:1000!important;
+  display:grid!important;place-items:center!important;padding:28px!important;overflow:auto!important;
+  background:
+    radial-gradient(1100px 600px at 12% 8%,rgba(58,124,224,.30),transparent 60%),
+    radial-gradient(900px 700px at 92% 92%,rgba(23,71,152,.45),transparent 62%),
+    linear-gradient(140deg,#071A33 0%,#0E2A55 46%,#123B79 100%)!important}
+.login-shell{
+  position:relative!important;width:min(1060px,100%)!important;max-height:none!important;
+  min-height:min(600px,calc(100vh - 56px))!important;
+  display:grid!important;grid-template-columns:1.06fr .94fr!important;gap:0!important;
+  align-items:stretch!important;border-radius:22px!important;overflow:hidden!important;
+  background:#fff!important;box-shadow:0 40px 90px rgba(3,14,32,.45)!important}
+/* ── แผงซ้าย: ไล่สีเต็มครึ่งจอ ── */
+.login-brand{
+  position:relative!important;display:flex!important;flex-direction:column!important;
+  align-items:flex-start!important;justify-content:flex-start!important;text-align:left!important;
+  gap:0!important;min-height:0!important;padding:52px 48px!important;color:#fff!important;overflow:hidden!important;
+  background:linear-gradient(152deg,#071A33 0%,#10315F 48%,#1B4DB1 100%)!important}
+.login-brand::before{
+  content:"";position:absolute!important;right:-120px!important;top:-120px!important;
+  width:340px!important;height:340px!important;border-radius:50%!important;
+  border:56px solid rgba(255,255,255,.045)!important}
+.login-brand::after{
+  content:"";position:absolute;left:-90px;bottom:-110px;width:260px;height:260px;border-radius:50%;
+  border:44px solid rgba(255,255,255,.035)}
+.lb-top{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+.login-logo{width:52px!important;height:52px!important;border-radius:15px!important;
+  display:grid!important;place-items:center!important;font-size:14px!important;font-weight:500!important;
+  background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.18)!important;flex:0 0 52px!important}
+.login-brand .lb-name strong{font-size:15px!important;font-weight:500!important;line-height:1.3!important;
+  color:#fff!important;white-space:normal!important}
+.login-brand .lb-name span{display:block!important;margin-top:2px!important;font-size:11.5px!important;
+  font-weight:300!important;color:#9DB6DC!important}
+.lb-hero{position:relative;z-index:1;margin-top:52px}
+.lb-hero h2{font-size:34px!important;font-weight:400!important;line-height:1.32!important;letter-spacing:-.2px;color:#fff}
+.lb-hero p{margin-top:14px!important;font-size:14px!important;font-weight:300!important;line-height:1.85!important;
+  color:#BACDEB!important;max-width:400px}
+.lb-steps{display:flex!important;align-items:center!important;gap:9px!important;margin-top:30px!important;
+  position:relative;z-index:1;flex-wrap:wrap}
+.lb-steps span{background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.14)!important;
+  padding:8px 17px!important;border-radius:999px!important;font-size:12.5px!important;font-weight:300!important;color:#fff}
+.lb-steps i{width:16px;height:1px;background:rgba(255,255,255,.28);display:block}
+.lb-foot{position:relative;z-index:1;margin-top:auto;padding-top:38px;display:flex;gap:34px;flex-wrap:wrap}
+.lb-foot b{display:block;font-size:14.5px;font-weight:500;color:#fff}
+.lb-foot span{display:block;font-size:11px;font-weight:300;color:#8FA9D3;margin-top:2px}
+/* ── แผงขวา: ฟอร์ม ── */
+.login-panel{
+  display:flex!important;flex-direction:column!important;justify-content:center!important;
+  width:100%!important;max-width:none!important;margin:0!important;justify-self:stretch!important;
+  gap:0!important;padding:52px 52px!important;border:0!important;border-radius:0!important;
+  background:#fff!important;box-shadow:none!important;overflow-y:auto!important}
+.login-panel p{margin:0!important;font-size:12.5px!important;font-weight:400!important;color:#0F8A4D!important;letter-spacing:.2px}
+.login-panel h1{margin:5px 0 26px!important;font-size:31px!important;font-weight:500!important;line-height:1.2!important;color:#0F1B2D}
+.login-panel label{display:block!important;margin:0 0 6px!important;font-size:11.5px!important;
+  font-weight:400!important;color:#64748B!important}
+.login-panel select,.login-panel input{width:100%!important;min-height:48px!important;
+  border:1px solid #E5E9F0!important;border-radius:11px!important;padding:0 14px!important;
+  font-family:inherit!important;font-size:14px!important;color:#0F1B2D!important;background:#F7F9FC!important;
+  margin-bottom:16px!important;appearance:auto}
+.login-panel select:focus,.login-panel input:focus{outline:0!important;border-color:#1B4DB1!important;
+  background:#fff!important;box-shadow:0 0 0 3px rgba(27,77,177,.12)!important}
+.login-panel button#webLoginBtn{width:100%!important;min-height:52px!important;margin-top:4px!important;
+  border:0!important;border-radius:12px!important;background:#1B4DB1!important;color:#fff!important;
+  font-size:15px!important;font-weight:500!important;cursor:pointer;
+  box-shadow:0 10px 24px rgba(27,77,177,.28)!important;transition:background .14s ease,transform .14s ease}
+.login-panel button#webLoginBtn:hover{background:#163F92!important;transform:translateY(-1px)}
+.quick-start-label,.login-panel .quick-start-label{position:relative;text-align:center;
+  margin:30px 0 14px!important;font-size:11.5px!important;color:#94A3B8!important;font-weight:300!important}
+.quick-start-label::before,.quick-start-label::after{content:"";position:absolute;top:50%;width:calc(50% - 62px);height:1px;background:#E5E9F0}
+.quick-start-label::before{left:0}.quick-start-label::after{right:0}
+.quick-start-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:9px!important}
+.qs-btn{min-height:44px!important;border:1px solid #E5E9F0!important;border-radius:11px!important;
+  background:#fff!important;color:#33415C!important;font-size:12.5px!important;font-weight:400!important;
+  box-shadow:none!important;cursor:pointer;transition:background .12s ease,border-color .12s ease}
+.qs-btn:hover{background:#F4F7FC!important;border-color:#CBD5E1!important}
+.login-status{font-size:11.5px!important;color:#64748B!important;min-height:16px;margin-top:10px}
+/* ── จอแคบ: เรียงบนล่าง ── */
+@media (max-width:920px){
+  .login-screen{padding:16px!important;place-items:start center!important}
+  .login-shell{grid-template-columns:1fr!important;min-height:0!important;width:min(520px,100%)!important;margin:16px 0!important}
+  .login-brand{padding:30px 26px!important}
+  .login-brand::before,.login-brand::after{display:none}
+  .lb-hero{margin-top:26px}
+  .lb-hero h2{font-size:25px!important}
+  .lb-hero p{font-size:13px!important;margin-top:10px!important}
+  .lb-steps{margin-top:20px!important}
+  .lb-foot{padding-top:24px;gap:22px}
+  .lb-foot b{font-size:13px}
+  .login-panel{padding:30px 26px 34px!important}
+  .login-panel h1{font-size:26px!important;margin-bottom:20px!important}
+}
+@media (max-width:520px){
+  .lb-foot div:nth-child(3){display:none}
+  .quick-start-grid{grid-template-columns:repeat(2,1fr)!important}
+}
