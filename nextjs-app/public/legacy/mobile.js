@@ -160,12 +160,13 @@ async function recoverCompletedRequest(path, payload) {
 
 async function api(path, payload) {
     try {
+        const requestPayload = payload && typeof payload === "object" && !Array.isArray(payload) && !payload.userId ? { ...payload, userId: state.currentUserId || "" } : payload;
         const res = await fetch(apiUrl(path), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(requestPayload)
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Request failed");

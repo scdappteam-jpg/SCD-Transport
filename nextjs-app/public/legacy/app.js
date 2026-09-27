@@ -568,7 +568,10 @@ async function api(path, payload, method) {
                 "Content-Type": "application/json"
             }
         };
-        if (m !== "GET" && m !== "HEAD") opts.body = JSON.stringify(payload);
+        if (m !== "GET" && m !== "HEAD") {
+            const requestPayload = payload && typeof payload === "object" && !Array.isArray(payload) && !payload.userId ? { ...payload, userId: currentWebUser()?.id || "" } : payload;
+            opts.body = JSON.stringify(requestPayload);
+        }
         const res = await fetch(apiUrl(path), opts);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Request failed");

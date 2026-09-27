@@ -739,6 +739,11 @@ function hrRequireSelfServiceActor(db, payload, employeeId) {
     return { actor };
 }
 
+function requireBillingActor(db, payload) {
+    const actor = (db.users || []).find(user => user.id === payload.userId);
+    return actor && [ "Billing", "Admin", "Executive" ].includes(actor.role) ? actor : null;
+}
+
 const LOAD_PLAN_ROUNDS = String(process.env.LOAD_PLAN_ROUNDS || "08:00,12:00,16:00").split(",").map(value => value.trim()).filter(Boolean);
 
 const TERMINAL_PROFILES = {
@@ -4602,6 +4607,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/review-batch") {
         const payload = await parseBody(req);
+        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
         const jobs = findPayloadJobs(db, payload);
         if (!jobs.length) return sendJson(res, 404, {
             error: "No matching billing jobs"
@@ -4633,6 +4639,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/generate-batch") {
         const payload = await parseBody(req);
+        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
         const jobs = findPayloadJobs(db, payload);
         if (!jobs.length) return sendJson(res, 404, {
             error: "No matching billing jobs"
@@ -4680,6 +4687,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/generate") {
         const payload = await parseBody(req);
+        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -4721,6 +4729,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/review") {
         const payload = await parseBody(req);
+        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -4754,6 +4763,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/send-email") {
         const payload = await parseBody(req);
+        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
         const bill = db.billing.find(item => item.id === payload.invoiceId);
         if (!bill) return sendJson(res, 404, {
             error: "Invoice not found"
@@ -4789,6 +4799,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/mark-billed") {
         const payload = await parseBody(req);
+        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
         const bill = db.billing.find(item => item.id === payload.invoiceId);
         if (!bill) return sendJson(res, 404, {
             error: "Invoice not found"
