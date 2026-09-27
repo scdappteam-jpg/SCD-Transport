@@ -369,8 +369,22 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
         }))).filter(row => row.legacy_notification_id && row.recipient_user_id && row.title && row.body);
         await upsert("hr_in_app_notifications", "legacy_notification_id", hrNotifications);
 
+        const payrollProfiles = Object.values(source.hr.payrollProfiles || {}).map(profile => ({
+            employee_id: asText(profile.employeeId), base_salary: asNumber(profile.baseSalary) || 0,
+            fixed_allowance: asNumber(profile.fixedAllowance) || 0, fixed_deduction: asNumber(profile.fixedDeduction) || 0,
+            bank_name: asText(profile.bankName) || null, bank_account_last4: asText(profile.bankAccountLast4) || null,
+            updated_at: asIso(profile.updatedAt) || new Date().toISOString(), updated_by: asText(profile.updatedBy) || null
+        })).filter(row => row.employee_id);
+        await upsert("hr_payroll_profiles", "employee_id", payrollProfiles);
+        const payrollRuns = (source.hr.payrollRuns || []).map(run => ({
+            legacy_run_id: asText(run.id), period_start: asText(run.periodStart), period_end: asText(run.periodEnd),
+            status: asText(run.status, "draft"), rows: run.rows || [], created_at: asIso(run.createdAt) || new Date().toISOString(),
+            created_by: asText(run.createdBy) || null, updated_at: new Date().toISOString()
+        })).filter(row => row.legacy_run_id && row.period_start && row.period_end);
+        await upsert("hr_payroll_runs", "legacy_run_id", payrollRuns);
+
         lastSnapshotHash = snapshotHash;
-        return { jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult, leaveRequests: leaveRequests.length, otRequests: otRequests.length, employeeProfiles: employeeProfiles.length, checkInLocations: checkInLocations.length, attendanceCorrections: corrections.length, hrNotifications: hrNotifications.length };
+        return { jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult, leaveRequests: leaveRequests.length, otRequests: otRequests.length, employeeProfiles: employeeProfiles.length, checkInLocations: checkInLocations.length, attendanceCorrections: corrections.length, hrNotifications: hrNotifications.length, payrollProfiles: payrollProfiles.length, payrollRuns: payrollRuns.length };
     }
 
     function schedule(db) {

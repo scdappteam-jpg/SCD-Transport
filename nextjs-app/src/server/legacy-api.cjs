@@ -288,6 +288,8 @@ function ensureDbShape(db) {
     db.hr.employeeProfiles ||= {};
     db.hr.checkInLocations ||= [];
     db.hr.attendanceCorrections ||= [];
+    db.hr.payrollProfiles ||= {};
+    db.hr.payrollRuns ||= [];
     db.hr.settings ||= {};
     db.hr.settings.quotas ||= {
         sick: 30,
@@ -6140,6 +6142,8 @@ async function handleApi(req, res, pathname) {
             employeeProfiles: visibleProfiles,
             checkInLocations: db.hr.checkInLocations,
             attendanceCorrections: (db.hr.attendanceCorrections || []).filter(request => visibleEmployee(request.employeeId)),
+            payrollProfiles: viewer && [ "Admin", "Executive" ].includes(viewer.role) ? db.hr.payrollProfiles : {},
+            payrollRuns: viewer && [ "Admin", "Executive" ].includes(viewer.role) ? db.hr.payrollRuns.slice(0, 24) : [],
             notifications
         });
     }
@@ -6199,6 +6203,36 @@ async function handleApi(req, res, pathname) {
         db.hr.settings.attendance = { defaultRadiusMeters, enforceAssignedLocations };
         writeDb(db);
         return sendJson(res, 200, { ok: true, settings: db.hr.settings });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/payroll-profile") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const actor = (db.users || []).find(user => user.id === payload.actorId);
+        const employee = (db.users || []).find(user => user.id === payload.employeeId);
+        if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น" });
+        if (!employee) return sendJson(res, 404, { error: "Employee not found" });
+        const amount = value => { const number = Number(value || 0); return Number.isFinite(number) && number >= 0 ? number : null; };
+        const baseSalary = amount(payload.baseSalary);
+        if (baseSalary === null) return sendJson(res, 400, { error: "ฐานเงินเดือนต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป" });
+        db.hr.payrollProfiles[employee.id] = { employeeId: employee.id, baseSalary, fixedAllowance: amount(payload.fixedAllowance) || 0, fixedDeduction: amount(payload.fixedDeduction) || 0, bankName: String(payload.bankName || "").trim().slice(0, 120), bankAccountLast4: String(payload.bankAccountLast4 || "").replace(/\D/g, "").slice(-4), updatedAt: nowIso(), updatedBy: actor.id };
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, payrollProfiles: db.hr.payrollProfiles });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/payroll-run") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const actor = (db.users || []).find(user => user.id === payload.actorId);
+        if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น" });
+        const periodStart = String(payload.periodStart || "").slice(0, 10), periodEnd = String(payload.periodEnd || "").slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart) || !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd) || periodEnd < periodStart) return sendJson(res, 400, { error: "ระบุช่วงรอบจ่ายไม่ถูกต้อง" });
+        const rows = Object.values(db.hr.payrollProfiles).map(profile => {
+            const otHours = (db.hr.otRequests || []).filter(request => request.employeeId === profile.employeeId && request.status === "closed" && request.date >= periodStart && request.date <= periodEnd).reduce((sum, request) => sum + Number(request.paidHours || 0), 0);
+            return { employeeId: profile.employeeId, baseSalary: profile.baseSalary, fixedAllowance: profile.fixedAllowance, fixedDeduction: profile.fixedDeduction, otHours, otAmount: 0, grossPay: profile.baseSalary + profile.fixedAllowance, netPay: profile.baseSalary + profile.fixedAllowance - profile.fixedDeduction };
+        });
+        const run = { id: `PAY-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, periodStart, periodEnd, status: "draft", rows, createdAt: nowIso(), createdBy: actor.id };
+        db.hr.payrollRuns.unshift(run);
+        writeDb(db);
+        return sendJson(res, 201, { ok: true, run, payrollRuns: db.hr.payrollRuns });
     }
     if (req.method === "POST" && pathname === "/api/hr/attendance-correction") {
         const payload = await parseBody(req);

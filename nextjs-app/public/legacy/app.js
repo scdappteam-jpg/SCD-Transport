@@ -104,6 +104,8 @@ const state = {
     hrEmployeeProfiles: {},
     hrCheckInLocations: [],
     hrAttendanceCorrections: [],
+    hrPayrollProfiles: {},
+    hrPayrollRuns: [],
     hrProfileEmployeeId: "",
     hrSettings: {
         quotas: {
@@ -6620,6 +6622,8 @@ function applyHrData(data) {
     state.hrCheckInLocations = Array.isArray(data?.checkInLocations) ? data.checkInLocations : [];
     state.hrAttendanceCorrections = Array.isArray(data?.attendanceCorrections) ? data.attendanceCorrections : [];
     state.hrNotifications = Array.isArray(data?.notifications) ? data.notifications : [];
+    state.hrPayrollProfiles = data?.payrollProfiles || {};
+    state.hrPayrollRuns = Array.isArray(data?.payrollRuns) ? data.payrollRuns : [];
 }
 
 async function loadHrData() {
@@ -6911,6 +6915,7 @@ function renderHrCoreSetup() {
     const employeeId = employees.some(user => user.id === state.hrProfileEmployeeId) ? state.hrProfileEmployeeId : employees[0]?.id || "";
     state.hrProfileEmployeeId = employeeId;
     const profile = state.hrEmployeeProfiles[employeeId] || {};
+    const payroll = state.hrPayrollProfiles[employeeId] || {};
     const assignments = new Set(profile.assignedLocationIds || []);
     const locationRows = state.hrCheckInLocations.length ? state.hrCheckInLocations.map(location => `<article class="hr-calendar-item ${location.active === false ? "amber" : "green"}"><div><strong>${safeHtml(location.name)}</strong><span>${safeHtml(location.branch || "ไม่ระบุสาขา")} · ${safeHtml(location.latitude)}, ${safeHtml(location.longitude)} · รัศมี ${safeHtml(location.radiusMeters)} ม.</span></div><b>${location.active === false ? "ปิดใช้" : "ใช้งาน"}</b></article>`).join("") : `<p class="empty-state compact">ยังไม่มีจุดเช็กอิน — ระบบยังไม่บังคับรัศมี</p>`;
     container.innerHTML = `
@@ -6930,6 +6935,14 @@ function renderHrCoreSetup() {
         </div>
         <label>จุดเช็กอินที่อนุญาต<select id="hrProfileLocations" multiple size="${Math.min(4, Math.max(2, state.hrCheckInLocations.length || 2))}">${state.hrCheckInLocations.map(location => `<option value="${safeHtml(location.id)}" ${assignments.has(location.id) ? "selected" : ""}>${safeHtml(location.name)} (${safeHtml(location.radiusMeters)} ม.)</option>`).join("")}</select></label>
         <button type="button" class="primary-button" onclick="saveHrProfile()">บันทึกโปรไฟล์พนักงาน</button>
+        <div class="hr-form-grid">
+          <label>ฐานเงินเดือน<input id="hrPayrollBaseSalary" type="number" min="0" step="0.01" value="${safeHtml(payroll.baseSalary || "")}"></label>
+          <label>ค่าเพิ่มประจำ<input id="hrPayrollAllowance" type="number" min="0" step="0.01" value="${safeHtml(payroll.fixedAllowance || "")}"></label>
+          <label>รายการหักประจำ<input id="hrPayrollDeduction" type="number" min="0" step="0.01" value="${safeHtml(payroll.fixedDeduction || "")}"></label>
+          <label>ธนาคาร<input id="hrPayrollBankName" value="${safeHtml(payroll.bankName || "")}"></label>
+          <label>เลขบัญชี 4 ตัวท้าย<input id="hrPayrollBankLast4" inputmode="numeric" maxlength="4" value="${safeHtml(payroll.bankAccountLast4 || "")}"></label>
+        </div>
+        <button type="button" class="ghost-button" onclick="saveHrPayrollProfile()">บันทึกข้อมูลเงินเดือน</button>
       </section>
       <section class="card hr-request-card">
         <div class="card-head"><div><h2>จุดเช็กอิน / Check-in Locations</h2><p>กำหนดพิกัดและรัศมีที่พนักงานต้องอยู่ภายในก่อนเปิดใช้การบังคับ GPS</p></div></div>
@@ -6970,6 +6983,15 @@ async function saveHrProfile() {
         renderHrCoreSetup();
         toast("บันทึกโปรไฟล์พนักงานแล้ว");
     } catch (error) { toast(error.message || "บันทึกโปรไฟล์ไม่สำเร็จ"); }
+}
+
+async function saveHrPayrollProfile() {
+    try {
+        const data = await api("/api/hr/payroll-profile", { actorId: currentWebUser()?.id || "", employeeId: state.hrProfileEmployeeId, baseSalary: $("#hrPayrollBaseSalary").value, fixedAllowance: $("#hrPayrollAllowance").value, fixedDeduction: $("#hrPayrollDeduction").value, bankName: $("#hrPayrollBankName").value, bankAccountLast4: $("#hrPayrollBankLast4").value });
+        state.hrPayrollProfiles = data.payrollProfiles || state.hrPayrollProfiles;
+        renderHrCoreSetup();
+        toast("บันทึกข้อมูลเงินเดือนแล้ว");
+    } catch (error) { toast(error.message || "บันทึกข้อมูลเงินเดือนไม่สำเร็จ"); }
 }
 
 async function saveHrCheckinLocation() {
@@ -7041,6 +7063,19 @@ async function closeHrMonth() {
     } catch (error) {
         toast(error.message || "ปิดรอบ OT ไม่สำเร็จ");
     }
+}
+
+async function createHrPayrollRun() {
+    if (!hrCanManageCore()) return toast("เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น");
+    const periodStart = prompt("วันเริ่มรอบจ่าย (YYYY-MM-DD)", `${dateInputValue().slice(0, 8)}01`);
+    if (!periodStart) return;
+    const periodEnd = prompt("วันสิ้นสุดรอบจ่าย (YYYY-MM-DD)", dateInputValue());
+    if (!periodEnd) return;
+    try {
+        const data = await api("/api/hr/payroll-run", { actorId: currentWebUser()?.id || "", periodStart, periodEnd });
+        state.hrPayrollRuns = data.payrollRuns || state.hrPayrollRuns;
+        toast(`สร้างรอบเงินเดือนแบบร่างแล้ว ${data.run?.rows?.length || 0} คน`);
+    } catch (error) { toast(error.message || "สร้างรอบเงินเดือนไม่สำเร็จ"); }
 }
 
 function setStaffVehicleVisibility() {
