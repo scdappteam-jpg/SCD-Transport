@@ -101,6 +101,10 @@ const state = {
     hrFormMode: "leave",
     leaveRequests: [],
     otRequests: [],
+    hrEmployeeProfiles: {},
+    hrCheckInLocations: [],
+    hrAttendanceCorrections: [],
+    hrProfileEmployeeId: "",
     hrSettings: {
         quotas: {
             sick: 30,
@@ -6612,6 +6616,9 @@ function applyHrData(data) {
     state.leaveRequests = Array.isArray(data?.leaveRequests) ? data.leaveRequests : [];
     state.otRequests = Array.isArray(data?.otRequests) ? data.otRequests : [];
     if (data?.settings?.quotas && data?.settings?.otRates) state.hrSettings = data.settings;
+    state.hrEmployeeProfiles = data?.employeeProfiles || {};
+    state.hrCheckInLocations = Array.isArray(data?.checkInLocations) ? data.checkInLocations : [];
+    state.hrAttendanceCorrections = Array.isArray(data?.attendanceCorrections) ? data.attendanceCorrections : [];
 }
 
 async function loadHrData() {
@@ -6842,6 +6849,97 @@ function renderHrSettings() {
     $("#hrSettingsPanel").innerHTML = `\n    <div class="hr-policy-grid">\n      ${Object.entries(HR_LEAVE_TYPES).map(([type, meta]) => `\n        <article class="hr-policy ${meta.tone}">\n          <strong>${safeHtml(meta.th)} / ${safeHtml(meta.en)}</strong>\n          <span>โควตา ${safeHtml(q[type] || 0)} วัน</span>\n          <small>${safeHtml(meta.rule)}</small>\n        </article>`).join("")}\n    </div>\n    <div class="hr-rate-grid">\n      <article><span>OT วันปกติ</span><strong>x${r.normal}</strong></article>\n      <article><span>ทำงานวันหยุด</span><strong>x${r.holidayWork}</strong></article>\n      <article><span>OT วันหยุด</span><strong>x${r.holidayOt}</strong></article>\n    </div>\n    <p class="hr-note">กฎ OT: ต้องขอล่วงหน้าและอนุมัติก่อนทำงาน ระบบจ่ายตามชั่วโมงจริง แต่ไม่เกินชั่วโมงที่อนุมัติ</p>`;
 }
 
+function hrCanManageCore() {
+    return [ "Admin", "Executive", "WH3_TeamLeader" ].includes(currentWebUser()?.role);
+}
+
+function selectHrProfile(employeeId) {
+    state.hrProfileEmployeeId = employeeId;
+    renderHrCoreSetup();
+}
+
+function renderHrCoreSetup() {
+    const container = $("#hrCoreSetup");
+    if (!container) return;
+    if (!hrCanManageCore()) {
+        container.innerHTML = `<section class="card"><h2>ข้อมูล HR ส่วนกลาง</h2><p>โปรไฟล์พนักงานและจุดเช็กอินจัดการโดยผู้ดูแลระบบ</p></section>`;
+        return;
+    }
+    const employees = hrEmployees();
+    const employeeId = employees.some(user => user.id === state.hrProfileEmployeeId) ? state.hrProfileEmployeeId : employees[0]?.id || "";
+    state.hrProfileEmployeeId = employeeId;
+    const profile = state.hrEmployeeProfiles[employeeId] || {};
+    const assignments = new Set(profile.assignedLocationIds || []);
+    const locationRows = state.hrCheckInLocations.length ? state.hrCheckInLocations.map(location => `<article class="hr-calendar-item ${location.active === false ? "amber" : "green"}"><div><strong>${safeHtml(location.name)}</strong><span>${safeHtml(location.branch || "ไม่ระบุสาขา")} · ${safeHtml(location.latitude)}, ${safeHtml(location.longitude)} · รัศมี ${safeHtml(location.radiusMeters)} ม.</span></div><b>${location.active === false ? "ปิดใช้" : "ใช้งาน"}</b></article>`).join("") : `<p class="empty-state compact">ยังไม่มีจุดเช็กอิน — ระบบยังไม่บังคับรัศมี</p>`;
+    container.innerHTML = `
+      <section class="card hr-request-card">
+        <div class="card-head"><div><h2>โปรไฟล์พนักงาน / Employee Profile</h2><p>ข้อมูลปฏิบัติงานสำหรับผูกหัวหน้างาน สาขา และจุดเช็กอิน</p></div></div>
+        <label>พนักงาน<select onchange="selectHrProfile(this.value)">${employees.map(user => `<option value="${safeHtml(user.id)}" ${user.id === employeeId ? "selected" : ""}>${safeHtml(user.name)} · ${safeHtml(user.code || user.id)}</option>`).join("")}</select></label>
+        <div class="hr-form-grid">
+          <label>ชื่อเล่น<input id="hrProfileNickname" value="${safeHtml(profile.nickname || "")}"></label>
+          <label>อีเมล<input id="hrProfileEmail" type="email" value="${safeHtml(profile.email || "")}"></label>
+          <label>แผนก<input id="hrProfileDepartment" value="${safeHtml(profile.department || "")}" placeholder="เช่น Transport"></label>
+          <label>ตำแหน่ง<input id="hrProfilePosition" value="${safeHtml(profile.position || "")}"></label>
+          <label>ระดับพนักงาน<input id="hrProfileLevel" value="${safeHtml(profile.employeeLevel || "")}" placeholder="Employee / Supervisor"></label>
+          <label>หัวหน้างาน<select id="hrProfileSupervisor"><option value="">ไม่ระบุ</option>${employees.filter(user => user.id !== employeeId).map(user => `<option value="${safeHtml(user.id)}" ${profile.supervisorId === user.id ? "selected" : ""}>${safeHtml(user.name)}</option>`).join("")}</select></label>
+          <label>สาขา<input id="hrProfileBranch" value="${safeHtml(profile.branch || "")}" placeholder="เช่น WH3"></label>
+          <label>วันเริ่มงาน<input id="hrProfileStartDate" type="date" value="${safeHtml(profile.startDate || "")}"></label>
+          <label>ประเภทการจ้าง<input id="hrProfileEmploymentType" value="${safeHtml(profile.employmentType || "")}" placeholder="ประจำ / รายวัน"></label>
+        </div>
+        <label>จุดเช็กอินที่อนุญาต<select id="hrProfileLocations" multiple size="${Math.min(4, Math.max(2, state.hrCheckInLocations.length || 2))}">${state.hrCheckInLocations.map(location => `<option value="${safeHtml(location.id)}" ${assignments.has(location.id) ? "selected" : ""}>${safeHtml(location.name)} (${safeHtml(location.radiusMeters)} ม.)</option>`).join("")}</select></label>
+        <button type="button" class="primary-button" onclick="saveHrProfile()">บันทึกโปรไฟล์พนักงาน</button>
+      </section>
+      <section class="card hr-request-card">
+        <div class="card-head"><div><h2>จุดเช็กอิน / Check-in Locations</h2><p>กำหนดพิกัดและรัศมีที่พนักงานต้องอยู่ภายในก่อนเปิดใช้การบังคับ GPS</p></div></div>
+        <div class="hr-form-grid">
+          <label>ชื่อจุด<input id="hrLocationName" placeholder="เช่น WH3"></label>
+          <label>สาขา/หน่วยงาน<input id="hrLocationBranch" placeholder="เช่น สุวรรณภูมิ"></label>
+          <label>Latitude<input id="hrLocationLatitude" type="number" step="any" placeholder="13.6900"></label>
+          <label>Longitude<input id="hrLocationLongitude" type="number" step="any" placeholder="100.7501"></label>
+          <label>รัศมี (เมตร)<input id="hrLocationRadius" type="number" min="20" max="5000" value="${safeHtml(state.hrSettings.attendance?.defaultRadiusMeters || 300)}"></label>
+        </div>
+        <button type="button" class="primary-button" onclick="saveHrCheckinLocation()">เพิ่มจุดเช็กอิน</button>
+        <div id="hrLocationList" class="hr-calendar-list">${locationRows}</div>
+      </section>`;
+}
+
+async function saveHrProfile() {
+    try {
+        const assignedLocationIds = [ ...$("#hrProfileLocations")?.selectedOptions || [] ].map(option => option.value);
+        const data = await api("/api/hr/profile", {
+            employeeId: state.hrProfileEmployeeId,
+            nickname: $("#hrProfileNickname").value,
+            email: $("#hrProfileEmail").value,
+            department: $("#hrProfileDepartment").value,
+            position: $("#hrProfilePosition").value,
+            employeeLevel: $("#hrProfileLevel").value,
+            supervisorId: $("#hrProfileSupervisor").value,
+            branch: $("#hrProfileBranch").value,
+            startDate: $("#hrProfileStartDate").value,
+            employmentType: $("#hrProfileEmploymentType").value,
+            assignedLocationIds
+        });
+        state.hrEmployeeProfiles = data.employeeProfiles || state.hrEmployeeProfiles;
+        renderHrCoreSetup();
+        toast("บันทึกโปรไฟล์พนักงานแล้ว");
+    } catch (error) { toast(error.message || "บันทึกโปรไฟล์ไม่สำเร็จ"); }
+}
+
+async function saveHrCheckinLocation() {
+    try {
+        const data = await api("/api/hr/checkin-location", {
+            name: $("#hrLocationName").value,
+            branch: $("#hrLocationBranch").value,
+            latitude: $("#hrLocationLatitude").value,
+            longitude: $("#hrLocationLongitude").value,
+            radiusMeters: $("#hrLocationRadius").value
+        });
+        state.hrCheckInLocations = data.checkInLocations || state.hrCheckInLocations;
+        renderHrCoreSetup();
+        toast("เพิ่มจุดเช็กอินแล้ว");
+    } catch (error) { toast(error.message || "เพิ่มจุดเช็กอินไม่สำเร็จ"); }
+}
+
 async function renderHR() {
     if (!$("#hrKpiGrid")) return;
     try {
@@ -6857,6 +6955,7 @@ async function renderHR() {
     renderHrApprovalQueue();
     renderHrCalendar();
     renderHrSettings();
+    renderHrCoreSetup();
     if (window.lucide) window.lucide.createIcons();
 }
 
