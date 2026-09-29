@@ -2936,14 +2936,14 @@ function foCloseMore() {
     const nav = document.getElementById("foBottomNav");
     if (!nav) return;
     nav.addEventListener("click", e => {
-        const btn = e.target.closest("[data-mnav]");
+        const btn = e.target.closest("button[data-mnav],a[data-mnav]");
         if (btn) { showMnav(btn.dataset.mnav); return; }
         if (e.target.closest("#foMoreBtn")) foOpenMore();
     });
     document.getElementById("foMoreClose")?.addEventListener("click", foCloseMore);
     document.getElementById("moreSheet")?.addEventListener("click", e => {
         if (e.target.id === "moreSheet") { foCloseMore(); return; }
-        const item = e.target.closest("[data-mnav]");
+        const item = e.target.closest("button[data-mnav],a[data-mnav]");
         if (item) showMnav(item.dataset.mnav);
     });
     document.getElementById("foDocUploadBtn")?.addEventListener("click", foUploadDocs);
