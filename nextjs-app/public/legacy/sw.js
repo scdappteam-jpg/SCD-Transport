@@ -1,4 +1,4 @@
-const CACHE_NAME = "smart-logistics-v175";
+const CACHE_NAME = "smart-logistics-v176";
 
 const ASSETS = [ "./", "./index.html", "./mobile.html", "./styles.css", "./mobile.css", "./config.js", "./demo-data.js", "./app.js", "./mobile.js", "./manifest.json", "./icon.svg" ];
 

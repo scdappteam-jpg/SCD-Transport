@@ -495,3 +495,8 @@ body.sidebar-collapsed .app-shell{background:var(--r-navy)!important}
 /* คำบรรยายย่อยสีเทาอ่อน */
 .dock-kpi em,.hr-rep-kpi em,.hr-rep-none,.route-box span{color:#5C6B82!important}
 .exec-health-ring span{color:#0B2350!important}
+
+/* ════════ CONTRAST · FIX · ROUND 2 — จุดที่โผล่เฉพาะตอนมีข้อมูลจริง ════════ */
+.clickable-row small,.clickable-row em,.clickable-row .sub{color:#5C6B82!important}
+.ak-col-count{color:#3A2405!important}
+.ak-col-head .ak-col-count,.ak-col .ak-col-count{color:#3A2405!important}
