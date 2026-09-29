@@ -268,6 +268,104 @@ function addHoursIso(hours) {
     return new Date(Date.now() + hours * 60 * 60 * 1e3).toISOString();
 }
 
+/* ══════════ งานบริการรายวัน (เตรียมวางบิล) ══════════ */
+const SERVICE_RATE_DEFAULTS = {
+    open: 50,           // เปิดตรวจ บาท/ชิ้น
+    strap: 90,          // รัดสายรัด บาท/ชิ้น
+    wrap: 350,          // พันฟิล์ม บาท/ชิ้น
+    cable: 500,         // สลิงเหล็ก บาท/ชิ้น
+    wrappingUnit: 160,  // Google wrapping บาท/หน่วย
+    pallet120x100: 162, // พาเลทค้างคลัง บาท/ใบ/รอบ
+    pallet120x80: 152,
+    loadBFS: 0.6,       // งานโหลด บาท/กก.
+    loadTG: 0.9,
+    loadINTER: 0.9
+};
+
+const SERVICE_TYPES = {
+    inspect: "เปิดตรวจ",
+    wrapping: "Wrapping",
+    stock: "พาเลทค้างคลัง",
+    load: "งานโหลด"
+};
+
+function serviceRates(db) {
+    db.serviceRates ||= {};
+    for (const key of Object.keys(SERVICE_RATE_DEFAULTS)) {
+        if (typeof db.serviceRates[key] !== "number") db.serviceRates[key] = SERVICE_RATE_DEFAULTS[key];
+    }
+    return db.serviceRates;
+}
+
+function serviceAmount(rates, rec) {
+    const n = v => Number(v || 0);
+    if (rec.type === "inspect") {
+        return n(rec.openQty) * rates.open + n(rec.strapQty) * rates.strap
+             + n(rec.wrapQty) * rates.wrap + n(rec.cableQty) * rates.cable;
+    }
+    if (rec.type === "wrapping") return n(rec.qty) * rates.wrappingUnit;
+    if (rec.type === "stock") {
+        const rate = rec.palletSize === "120*80" ? rates.pallet120x80 : rates.pallet120x100;
+        return n(rec.qty) * rate;
+    }
+    if (rec.type === "load") {
+        const rate = rec.station === "BFS" ? rates.loadBFS : (rec.station === "TG" ? rates.loadTG : rates.loadINTER);
+        return n(rec.weightKg) * rate;
+    }
+    return 0;
+}
+
+function serviceNormalize(db, rec) {
+    const out = { ...rec };
+    // ยอดถูกล็อกไว้ตอนบันทึก — แก้ตารางเรทภายหลังจะไม่ย้อนไปเปลี่ยนบิลเก่า
+    out.amount = typeof rec.amount === "number"
+        ? rec.amount
+        : Math.round(serviceAmount(serviceRates(db), rec) * 100) / 100;
+    out.typeLabel = SERVICE_TYPES[rec.type] || rec.type;
+    return out;
+}
+
+function serviceFiltered(db, query) {
+    const from = query.from || "";
+    const to = query.to || "";
+    const type = query.type || "";
+    const customer = String(query.customer || "").trim().toLowerCase();
+    return (db.serviceRecords || []).filter(rec => {
+        if (from && String(rec.date || "") < from) return false;
+        if (to && String(rec.date || "") > to) return false;
+        if (type && rec.type !== type) return false;
+        if (customer && !String(rec.customerName || "").toLowerCase().includes(customer)) return false;
+        return true;
+    }).map(rec => serviceNormalize(db, rec));
+}
+
+function serviceSummary(rows) {
+    const byCustomer = {};
+    const byDay = {};
+    const byType = { inspect: 0, wrapping: 0, stock: 0, load: 0 };
+    let total = 0;
+    for (const r of rows) {
+        const cust = r.customerName || "(ไม่ระบุลูกค้า)";
+        byCustomer[cust] ||= { customerName: cust, inspect: 0, wrapping: 0, stock: 0, load: 0, total: 0, count: 0 };
+        byCustomer[cust][r.type] = (byCustomer[cust][r.type] || 0) + r.amount;
+        byCustomer[cust].total += r.amount;
+        byCustomer[cust].count += 1;
+        byDay[r.date] ||= { date: r.date, inspect: 0, wrapping: 0, stock: 0, load: 0, total: 0 };
+        byDay[r.date][r.type] = (byDay[r.date][r.type] || 0) + r.amount;
+        byDay[r.date].total += r.amount;
+        byType[r.type] = (byType[r.type] || 0) + r.amount;
+        total += r.amount;
+    }
+    const round = o => { for (const k of Object.keys(o)) if (typeof o[k] === "number") o[k] = Math.round(o[k] * 100) / 100; return o; };
+    return {
+        byCustomer: Object.values(byCustomer).map(round).sort((a, b) => b.total - a.total),
+        byDay: Object.values(byDay).map(round).sort((a, b) => String(a.date).localeCompare(String(b.date))),
+        byType: round(byType),
+        total: Math.round(total * 100) / 100,
+        count: rows.length
+    };
+}
+
 const DEFAULT_DOCK_BAYS = [ {
     id: "D1",
     name: "ท่า 1",
@@ -402,6 +500,8 @@ function ensureDbShape(db) {
     db.attendance ||= [];
     db.taskGroups ||= [];
     db.notifications ||= [];
+    db.serviceRecords ||= [];
+    serviceRates(db);
     db.dock ||= {};
     db.dock.bays ||= DEFAULT_DOCK_BAYS.map(bay => ({ ...bay }));
     db.dock.queue ||= [];
@@ -3172,6 +3272,131 @@ async function handleApi(req, res, pathname) {
 
         return sendJson(res, 400, { error: "action ต้องเป็น add / update / delete / reset" });
     }
+    /* ══════════ งานบริการรายวัน / เตรียมวางบิล ══════════ */
+    if (req.method === "POST" && pathname === "/api/service/rates") {
+        const payload = await parseBody(req);
+        if (payload.action === "save") {
+            const role = String(payload.role || "");
+            if (![ "Admin", "Executive", "Billing" ].includes(role)) {
+                return sendJson(res, 403, { error: "เฉพาะ Admin / Executive / Billing แก้ตารางเรทได้" });
+            }
+            const rates = serviceRates(db);
+            for (const key of Object.keys(SERVICE_RATE_DEFAULTS)) {
+                if (payload.rates && payload.rates[key] !== undefined && payload.rates[key] !== "") {
+                    const value = Number(payload.rates[key]);
+                    if (!isFinite(value) || value < 0) return sendJson(res, 400, { error: `เรท ${key} ไม่ถูกต้อง` });
+                    rates[key] = value;
+                }
+            }
+            logActivity(db, { activityType: "ServiceRatesUpdated", actor: payload.actor || "", detail: JSON.stringify(rates) });
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, rates });
+        }
+        return sendJson(res, 200, { ok: true, rates: serviceRates(db), types: SERVICE_TYPES });
+    }
+
+    if (req.method === "POST" && pathname === "/api/service/record") {
+        const payload = await parseBody(req);
+        const type = String(payload.type || "");
+        if (!SERVICE_TYPES[type]) return sendJson(res, 400, { error: "ประเภทงานไม่ถูกต้อง" });
+        const date = String(payload.date || "").slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return sendJson(res, 400, { error: "ต้องระบุวันที่ (YYYY-MM-DD)" });
+
+        const houseNumber = String(payload.houseNumber || "").trim();
+        const job = houseNumber ? findJob(db, houseNumber) : null;
+        const rec = {
+            id: `SVC-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+            type, date,
+            houseNumber,
+            mawbNumber: String(payload.mawbNumber || job?.mawbNumber || "").trim(),
+            customerName: String(payload.customerName || job?.customerName || "").trim(),
+            destination: String(payload.destination || job?.destAirport || job?.destination || "").trim(),
+            packageType: String(payload.packageType || "").trim(),
+            station: String(payload.station || "").trim().toUpperCase(),
+            palletSize: String(payload.palletSize || "").trim(),
+            unit: String(payload.unit || "").trim(),
+            qty: Number(payload.qty || 0),
+            weightKg: Number(payload.weightKg || 0),
+            openQty: Number(payload.openQty || 0),
+            strapQty: Number(payload.strapQty || 0),
+            wrapQty: Number(payload.wrapQty || 0),
+            cableQty: Number(payload.cableQty || 0),
+            note: String(payload.note || "").trim(),
+            createdBy: String(payload.actor || payload.createdBy || "").trim(),
+            createdAt: nowIso(),
+            billed: false
+        };
+        if (type === "load" && ![ "BFS", "TG", "INTER" ].includes(rec.station)) {
+            return sendJson(res, 400, { error: "งานโหลดต้องเลือกสถานี BFS / TG / INTER" });
+        }
+        if (type === "stock" && ![ "120*100", "120*80" ].includes(rec.palletSize)) {
+            return sendJson(res, 400, { error: "พาเลทค้างคลังต้องเลือกขนาด 120*100 หรือ 120*80" });
+        }
+        const ratesNow = serviceRates(db);
+        rec.amount = Math.round(serviceAmount(ratesNow, rec) * 100) / 100;
+        rec.rateSnapshot = { ...ratesNow };
+        const normalized = serviceNormalize(db, rec);
+        if (!normalized.amount) return sendJson(res, 400, { error: "ยอดเงินเป็น 0 — ตรวจจำนวนที่กรอกอีกครั้ง" });
+        db.serviceRecords.push(rec);
+        logActivity(db, { houseNumber, activityType: "ServiceRecorded", actor: rec.createdBy, detail: `${SERVICE_TYPES[type]} ${normalized.amount} บาท` });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, record: normalized });
+    }
+
+    if (req.method === "POST" && pathname === "/api/service/list") {
+        const payload = await parseBody(req);
+        const rows = serviceFiltered(db, payload);
+        return sendJson(res, 200, {
+            ok: true,
+            rates: serviceRates(db),
+            records: rows.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.createdAt).localeCompare(String(a.createdAt))),
+            summary: serviceSummary(rows)
+        });
+    }
+
+    if (req.method === "POST" && pathname === "/api/service/remove") {
+        const payload = await parseBody(req);
+        const id = String(payload.id || "");
+        const index = (db.serviceRecords || []).findIndex(rec => rec.id === id);
+        if (index < 0) return sendJson(res, 404, { error: "ไม่พบรายการนี้" });
+        const [ removed ] = db.serviceRecords.splice(index, 1);
+        logActivity(db, { houseNumber: removed.houseNumber || "", activityType: "ServiceRemoved", actor: payload.actor || "", detail: removed.id });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true });
+    }
+
+    if (req.method === "POST" && pathname === "/api/service/to-billing") {
+        const payload = await parseBody(req);
+        const role = String(payload.role || "");
+        if (![ "Admin", "Executive", "Billing" ].includes(role)) {
+            return sendJson(res, 403, { error: "เฉพาะ Admin / Executive / Billing ออกใบแจ้งหนี้ได้" });
+        }
+        const rows = serviceFiltered(db, payload).filter(rec => !rec.billed);
+        if (!rows.length) return sendJson(res, 400, { error: "ไม่มีรายการที่ยังไม่ได้วางบิลในช่วงนี้" });
+        const summary = serviceSummary(rows);
+        const created = [];
+        db.billing ||= [];
+        for (const group of summary.byCustomer) {
+            const bill = {
+                id: `INV-${(new Date).getFullYear()}-${String(db.billing.length + 1).padStart(4, "0")}`,
+                customerName: group.customerName,
+                amount: group.total,
+                period: `${payload.from || ""} ถึง ${payload.to || ""}`,
+                detail: `เปิดตรวจ ${group.inspect} / Wrapping ${group.wrapping} / พาเลท ${group.stock} / โหลด ${group.load}`,
+                source: "service",
+                status: "Draft",
+                createdAt: nowIso()
+            };
+            db.billing.push(bill);
+            created.push(bill);
+        }
+        const ids = new Set(rows.map(r => r.id));
+        for (const rec of db.serviceRecords) if (ids.has(rec.id)) rec.billed = true;
+        logActivity(db, { activityType: "ServiceBilled", actor: payload.actor || "", detail: `${created.length} ใบ / ${summary.total} บาท` });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, bills: created, summary });
+    }
+
     if (req.method === "GET" && pathname === "/api/dock/board") {
         return sendJson(res, 200, { ok: true, ...dockBoard(db) });
     }

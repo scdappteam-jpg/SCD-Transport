@@ -500,3 +500,42 @@ body.sidebar-collapsed .app-shell{background:var(--r-navy)!important}
 .clickable-row small,.clickable-row em,.clickable-row .sub{color:#5C6B82!important}
 .ak-col-count{color:#3A2405!important}
 .ak-col-head .ak-col-count,.ak-col .ak-col-count{color:#3A2405!important}
+
+/* ════════ SERVICE · BILLING — หน้างานบริการ/เตรียมวางบิล ════════ */
+.svc-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.svc-kpi{background:#fff;border:1px solid var(--r-line);border-radius:12px;padding:14px 16px}
+.svc-kpi b{display:block;font-size:21px;font-weight:500;color:var(--r-ink)}
+.svc-kpi em{display:block;font-style:normal;font-size:11.5px;color:#5C6B82;margin-top:3px}
+.svc-kpi.total{background:linear-gradient(140deg,#123B79,#1B4DB1);border:0}
+.svc-kpi.total b,.svc-kpi.total em{color:#fff}
+.svc-filter-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.svc-filter-row label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#5C6B82}
+.svc-filter-row input,.svc-filter-row select{min-height:38px;border:1px solid var(--r-line);border-radius:9px;padding:0 10px;font-family:inherit;font-size:13px}
+.svc-hint{font-size:11.5px;color:#5C6B82}
+.svc-tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.svc-tab{min-height:36px!important;padding:0 16px!important;border:1px solid var(--r-line)!important;border-radius:999px!important;
+  background:#fff!important;color:#33415C!important;font-size:12.5px!important}
+.svc-tab.active{background:#1B4DB1!important;color:#fff!important;border-color:#1B4DB1!important}
+.svc-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}
+.svc-form-grid label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#5C6B82}
+.svc-form-grid input,.svc-form-grid select{min-height:40px;border:1px solid var(--r-line);border-radius:9px;padding:0 10px;font-family:inherit;font-size:13px}
+.svc-rate{align-self:center;font-size:11.5px;color:#5C6B82;background:#F2F6FC;border-radius:8px;padding:8px 12px}
+.svc-save{min-height:42px!important}
+.svc-table{display:grid;gap:6px}
+.svc-tr{display:grid;grid-template-columns:96px 130px 1.1fr 1.2fr 1.4fr 110px 60px;gap:10px;align-items:center;
+  padding:10px 12px;border:1px solid #EDF1F7;border-radius:10px;background:#fff;font-size:12.5px}
+.svc-tr em{display:block;font-style:normal;font-size:11px;color:#5C6B82}
+.svc-th{background:#F2F6FC;border-color:#E1E9F5;font-weight:500;color:#33415C}
+.svc-tr.svc-sum,.svc-th.svc-sum{grid-template-columns:1.6fr repeat(5,minmax(0,1fr))}
+.svc-strong{font-weight:500;color:#123B79;text-align:right}
+.svc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:#94A3B8}
+.svc-dot.inspect{background:#1B4DB1}.svc-dot.wrapping{background:#0F7A52}
+.svc-dot.stock{background:#9A5B06}.svc-dot.load{background:#6D28D9}
+.svc-del{min-height:30px!important;padding:0 10px!important;border-radius:8px!important;font-size:11.5px!important;
+  border:1px solid #F3C9C4!important;background:#FDECEA!important;color:#A3302A!important}
+.svc-rate-editor{border:1px solid #C7D7F2!important;background:#F7FAFF!important}
+@media (max-width:1100px){
+  .svc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .svc-tr,.svc-th{grid-template-columns:1fr 1fr;row-gap:4px}
+  .svc-strong{text-align:left}
+}

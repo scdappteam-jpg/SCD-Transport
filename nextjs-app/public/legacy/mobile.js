@@ -2284,6 +2284,7 @@ function showMnav(nav) {
     if (nav === "docs") renderMDocs();
     if (nav === "profile") renderMProfile();
     if (nav === "hr") renderMHr();
+    if (nav === "service") renderMService();
     window.scrollTo({
         top: 0
     });
@@ -2960,3 +2961,107 @@ function foCloseMore() {
         } catch (e) {}
     }
 })();
+
+
+/* ══════════ บันทึกงานบริการหน้างาน (เตรียมวางบิล) ══════════ */
+var msvcType = "inspect";
+var msvcRates = null;
+
+async function renderMService() {
+    var box = document.getElementById("msvcBody");
+    if (!box) return;
+    box.innerHTML = '<div class="fo-card"><div class="fo-loading">กำลังโหลด...</div></div>';
+    try {
+        if (!msvcRates) {
+            var res = await fetch(API_BASE + "/api/service/rates", {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({})
+            });
+            var data = await res.json();
+            msvcRates = data.rates || {};
+        }
+        box.innerHTML = msvcHtml();
+        if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
+    } catch (e) {
+        box.innerHTML = '<div class="fo-card"><div class="fo-empty">โหลดเรทไม่สำเร็จ ลองใหม่อีกครั้ง</div></div>';
+    }
+}
+
+function msvcHtml() {
+    var r = msvcRates || {};
+    var today = new Date().toISOString().slice(0, 10);
+    var tabs = [ [ "inspect", "เปิดตรวจ" ], [ "wrapping", "พันฟิล์ม" ], [ "stock", "พาเลท" ], [ "load", "โหลด" ] ];
+    var fields = "";
+    if (msvcType === "inspect") {
+        fields = msvcNum("msvcOpen", "OPEN (ชิ้น)") + msvcNum("msvcStrap", "STRAP (ชิ้น)") +
+                 msvcNum("msvcWrap", "WRAP (ชิ้น)") + msvcNum("msvcCable", "STEEL CABLE (ชิ้น)") +
+                 '<div class="msvc-rate">เรท ' + r.open + " / " + r.strap + " / " + r.wrap + " / " + r.cable + " บาทต่อชิ้น</div>";
+    } else if (msvcType === "wrapping") {
+        fields = msvcNum("msvcQty", "จำนวน", 1) +
+                 '<label class="fo-label">หน่วย</label><select class="fo-select" id="msvcUnit"><option>PLT</option><option>W/CS</option><option>CTN</option></select>' +
+                 '<div class="msvc-rate">เรท ' + r.wrappingUnit + " บาท/หน่วย</div>";
+    } else if (msvcType === "stock") {
+        fields = msvcNum("msvcQty", "จำนวนพาเลท", 1) +
+                 '<label class="fo-label">ขนาดพาเลท</label><select class="fo-select" id="msvcPallet"><option value="120*100">120*100</option><option value="120*80">120*80</option></select>' +
+                 '<div class="msvc-rate">เรท ' + r.pallet120x100 + " / " + r.pallet120x80 + " บาทต่อใบ</div>";
+    } else {
+        fields = '<label class="fo-label">สถานี</label><select class="fo-select" id="msvcStation"><option>BFS</option><option>TG</option><option>INTER</option></select>' +
+                 msvcNum("msvcWeight", "น้ำหนัก (กก.)") +
+                 '<div class="msvc-rate">เรท BFS ' + r.loadBFS + " · TG " + r.loadTG + " · INTER " + r.loadINTER + " บาท/กก.</div>";
+    }
+    return '<div class="fo-card"><div class="msvc-tabs">' +
+        tabs.map(function (t) {
+            return '<button type="button" class="msvc-tab' + (msvcType === t[0] ? " active" : "") + '" onclick="msvcSetType(\'' + t[0] + '\')">' + t[1] + '</button>';
+        }).join("") + '</div>' +
+        '<label class="fo-label">วันที่</label><input class="fo-select" type="date" id="msvcDate" value="' + today + '">' +
+        '<label class="fo-label">House (ใบงาน)</label><input class="fo-select" type="text" id="msvcHouse" placeholder="สแกนหรือพิมพ์เลข House">' +
+        fields +
+        '<button type="button" class="fo-primary-btn" onclick="msvcSave()">บันทึกรายการ</button></div>' +
+        '<div class="fo-card"><div class="fo-card-head"><strong>รายการที่บันทึกวันนี้</strong></div><div id="msvcToday"><div class="fo-empty">ยังไม่มีรายการ</div></div></div>';
+}
+
+function msvcNum(id, label, def) {
+    return '<label class="fo-label">' + label + '</label><input class="fo-select" type="number" min="0" inputmode="decimal" id="' + id + '" value="' + (def === undefined ? 0 : def) + '">';
+}
+
+function msvcSetType(t) { msvcType = t; renderMService(); }
+
+async function msvcSave() {
+    var v = function (id) { var el = document.getElementById(id); return el ? el.value : ""; };
+    var user = currentUser() || {};
+    var body = {
+        type: msvcType, date: v("msvcDate"), houseNumber: v("msvcHouse"),
+        openQty: v("msvcOpen"), strapQty: v("msvcStrap"), wrapQty: v("msvcWrap"), cableQty: v("msvcCable"),
+        qty: v("msvcQty"), unit: v("msvcUnit"), palletSize: v("msvcPallet"),
+        station: v("msvcStation"), weightKg: v("msvcWeight"),
+        actor: user.name || "", role: user.role || ""
+    };
+    try {
+        var res = await fetch(API_BASE + "/api/service/record", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+        toast("บันทึกแล้ว " + Number(data.record.amount).toLocaleString("th-TH") + " บาท");
+        msvcLoadToday();
+    } catch (e) { toast(e.message || "บันทึกไม่สำเร็จ"); }
+}
+
+async function msvcLoadToday() {
+    var box = document.getElementById("msvcToday");
+    if (!box) return;
+    var today = new Date().toISOString().slice(0, 10);
+    try {
+        var res = await fetch(API_BASE + "/api/service/list", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ from: today, to: today })
+        });
+        var data = await res.json();
+        var rows = data.records || [];
+        box.innerHTML = rows.length ? rows.slice(0, 20).map(function (r) {
+            return '<div class="fo-att-row"><b>' + escapeHtmlMobile(r.typeLabel) + '</b><span>' +
+                escapeHtmlMobile(r.houseNumber || "-") + '</span><em>' +
+                Number(r.amount).toLocaleString("th-TH") + ' ฿</em></div>';
+        }).join("") + '<div class="msvc-total">รวมวันนี้ ' + Number(data.summary.total).toLocaleString("th-TH") + ' บาท</div>'
+            : '<div class="fo-empty">ยังไม่มีรายการ</div>';
+    } catch (e) { box.innerHTML = '<div class="fo-empty">โหลดรายการไม่สำเร็จ</div>'; }
+}

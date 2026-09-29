@@ -976,3 +976,12 @@ body[data-mnav="hr"] .smart-scan-card,body[data-mnav="profile"] .smart-scan-card
 .fo-empty,.fo-loading,.fo-header small,.msec,.fo-section-label,.fo-card-head span,
 .fo-profile-info small,.fo-map-legend,.fo-ci-grid small,.fo-att-row span,.fo-point-row em{color:#5C6B82!important}
 [style*="color:#94a3b8"],[style*="color:#cbd5e1"]{color:#64748B!important}
+
+/* ════════ SERVICE · MOBILE ════════ */
+.msvc-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.msvc-tab{flex:1 1 auto;min-height:36px!important;padding:0 12px!important;border:1px solid #E5EAF1!important;
+  border-radius:999px!important;background:#fff!important;color:#33415C!important;font-size:12px!important;width:auto!important}
+.msvc-tab.active{background:#1B4DB1!important;color:#fff!important;border-color:#1B4DB1!important}
+.msvc-rate{margin:10px 0 2px;padding:9px 12px;border-radius:10px;background:#F2F6FC;color:#5C6B82;font-size:11.5px}
+.msvc-total{margin-top:10px;padding-top:10px;border-top:1px solid #EEF2F7;font-size:13px;font-weight:500;color:#123B79;text-align:right}
+#msvcToday .fo-att-row em{font-style:normal;font-weight:500;color:#123B79}

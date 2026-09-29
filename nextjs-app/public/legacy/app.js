@@ -276,19 +276,19 @@ function currentWebUser() {
 
 function allowedWebViews(role) {
     if (role === "Driver" || role === "WH_Staff") return [ "dashboard", "hr", "flight-board", "dock" ];
-    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-status", "attendance", "hr", "flight-board", "dock" ];
-    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr", "flight-board", "dock" ];
+    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-status", "attendance", "hr", "flight-board", "dock", "service" ];
+    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr", "flight-board", "dock", "service" ];
     if (role === "EI_Customer") return [ "dashboard", "orders" ];
     if (role === "Check_House") return [ "dashboard", "orders", "alerts" ];
     if (role === "Terminal") return [ "dashboard", "orders", "alerts", "flight-board", "dock" ];
     // Billing works in the Field Ops workspace, but only the Billing panel is
     // exposed below.  Without this entry, the account can see its KPI cards
     // but has no UI path to review, draft, send, or close an invoice.
-    if (role === "Billing") return [ "dashboard", "orders", "mobile", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr" ];
+    if (role === "Billing") return [ "dashboard", "orders", "mobile", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr", "service" ];
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
     if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
-    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock" ];
+    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock", "service" ];
     return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock" ];
 }
 
@@ -819,6 +819,7 @@ function setView(view) {
     if (view === "hr") renderHR();
     if (view === "flight-board") renderFlightBoard();
     if (view === "dock") renderDockBoard();
+    if (view === "service") renderServiceBilling();
     if (view === "mobile" && currentWebUser()?.role === "Billing") showRolePanel("Billing");
     renderLpWidget();
 }
@@ -11526,4 +11527,280 @@ function showAttWebNotif(title, body) {
             body: body
         });
     }
+}
+
+
+/* ════════════════ งานบริการรายวัน / เตรียมวางบิล ════════════════ */
+var svcFilter = { from: "", to: "", type: "", customer: "" };
+var svcData = { records: [], summary: null, rates: null };
+var svcFormType = "inspect";
+
+function svcMonthRange() {
+    var now = new Date();
+    var first = new Date(now.getFullYear(), now.getMonth(), 1);
+    var last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    var fmt = function (d) { return d.toISOString().slice(0, 10); };
+    return { from: fmt(first), to: fmt(last) };
+}
+
+async function renderServiceBilling() {
+    var box = $("#view-service");
+    if (!box) return;
+    if (!svcFilter.from) { var r = svcMonthRange(); svcFilter.from = r.from; svcFilter.to = r.to; }
+    box.innerHTML = '<div class="card"><div class="fo-loading">กำลังโหลดข้อมูล...</div></div>';
+    try {
+        var res = await fetch(API_BASE + "/api/service/list", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(svcFilter)
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || "โหลดข้อมูลไม่สำเร็จ");
+        svcData = data;
+        box.innerHTML = svcHtml(data);
+        if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
+    } catch (err) {
+        box.innerHTML = '<div class="card"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ' + safeHtml(err.message) + '</div></div>';
+    }
+}
+
+function svcMoney(v) { return Number(v || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+function svcHtml(data) {
+    var s = data.summary || { byCustomer: [], byDay: [], byType: {}, total: 0, count: 0 };
+    var rates = data.rates || {};
+    var typeTabs = [ [ "inspect", "เปิดตรวจ" ], [ "wrapping", "Wrapping" ], [ "stock", "พาเลทค้างคลัง" ], [ "load", "งานโหลด" ] ];
+
+    var kpis = '<div class="svc-kpis">' +
+        '<div class="svc-kpi"><b>' + svcMoney(s.byType.inspect) + '</b><em>เปิดตรวจ</em></div>' +
+        '<div class="svc-kpi"><b>' + svcMoney(s.byType.wrapping) + '</b><em>Wrapping</em></div>' +
+        '<div class="svc-kpi"><b>' + svcMoney(s.byType.stock) + '</b><em>พาเลทค้างคลัง</em></div>' +
+        '<div class="svc-kpi"><b>' + svcMoney(s.byType.load) + '</b><em>งานโหลด</em></div>' +
+        '<div class="svc-kpi total"><b>' + svcMoney(s.total) + '</b><em>รวมทั้งช่วง (' + s.count + ' รายการ)</em></div></div>';
+
+    var filters = '<div class="card svc-filter"><div class="section-head"><h2>ช่วงข้อมูล</h2></div>' +
+        '<div class="svc-filter-row">' +
+        '<label>ตั้งแต่<input type="date" id="svcFrom" value="' + safeHtml(svcFilter.from) + '"></label>' +
+        '<label>ถึง<input type="date" id="svcTo" value="' + safeHtml(svcFilter.to) + '"></label>' +
+        '<label>ประเภทงาน<select id="svcType"><option value="">ทั้งหมด</option>' +
+        typeTabs.map(function (t) { return '<option value="' + t[0] + '"' + (svcFilter.type === t[0] ? " selected" : "") + '>' + t[1] + '</option>'; }).join("") +
+        '</select></label>' +
+        '<label>ลูกค้า<input type="text" id="svcCustomer" placeholder="พิมพ์บางส่วนได้" value="' + safeHtml(svcFilter.customer) + '"></label>' +
+        '<button type="button" class="primary" onclick="svcApplyFilter()">ดูข้อมูล</button>' +
+        '<button type="button" onclick="svcExportExcel()">ส่งออก Excel</button>' +
+        '<button type="button" onclick="svcOpenRates()">ตารางเรท</button>' +
+        '<button type="button" onclick="svcSendToBilling()">ส่งเข้าใบแจ้งหนี้</button>' +
+        '</div></div>';
+
+    var form = '<div class="card svc-form"><div class="section-head"><h2>บันทึกงานวันนี้</h2>' +
+        '<span class="svc-hint">เลือกประเภทงาน กรอกจำนวน ระบบคูณเรทให้อัตโนมัติ</span></div>' +
+        '<div class="svc-tabs">' + typeTabs.map(function (t) {
+            return '<button type="button" class="svc-tab' + (svcFormType === t[0] ? " active" : "") + '" onclick="svcSetType(\'' + t[0] + '\')">' + t[1] + '</button>';
+        }).join("") + '</div>' + svcFormFields(rates) + '</div>';
+
+    var rows = (data.records || []).slice(0, 200);
+    var table = '<div class="card"><div class="section-head"><h2>รายการที่บันทึกไว้</h2>' +
+        '<span class="svc-hint">แสดง ' + rows.length + ' จาก ' + (data.records || []).length + ' รายการ</span></div>' +
+        '<div class="svc-table"><div class="svc-tr svc-th"><span>วันที่</span><span>ประเภท</span><span>House / MAWB</span>' +
+        '<span>ลูกค้า</span><span>รายละเอียด</span><span>ยอดเงิน</span><span></span></div>' +
+        (rows.length ? rows.map(svcRowHtml).join("") : '<div class="empty-state">ยังไม่มีรายการในช่วงนี้</div>') +
+        '</div></div>';
+
+    var byCust = '<div class="card"><div class="section-head"><h2>สรุปรายลูกค้า</h2></div>' +
+        '<div class="svc-table"><div class="svc-tr svc-th svc-sum"><span>ลูกค้า</span><span>เปิดตรวจ</span><span>Wrapping</span>' +
+        '<span>พาเลท</span><span>โหลด</span><span>รวม</span></div>' +
+        (s.byCustomer.length ? s.byCustomer.map(function (c) {
+            return '<div class="svc-tr svc-sum"><span><b>' + safeHtml(c.customerName) + '</b></span><span>' + svcMoney(c.inspect) + '</span>' +
+                '<span>' + svcMoney(c.wrapping) + '</span><span>' + svcMoney(c.stock) + '</span><span>' + svcMoney(c.load) + '</span>' +
+                '<span class="svc-strong">' + svcMoney(c.total) + '</span></div>';
+        }).join("") : '<div class="empty-state">ยังไม่มีข้อมูล</div>') + '</div></div>';
+
+    return kpis + filters + form + byCust + table;
+}
+
+function svcRowHtml(r) {
+    var detail = "";
+    if (r.type === "inspect") detail = "OPEN " + (r.openQty || 0) + " · STRAP " + (r.strapQty || 0) + " · WRAP " + (r.wrapQty || 0) + " · CABLE " + (r.cableQty || 0);
+    if (r.type === "wrapping") detail = (r.qty || 0) + " " + (r.unit || "หน่วย");
+    if (r.type === "stock") detail = (r.qty || 0) + " พาเลท · " + (r.palletSize || "");
+    if (r.type === "load") detail = (r.weightKg || 0) + " กก. · " + (r.station || "");
+    return '<div class="svc-tr"><span>' + safeHtml(r.date) + '</span><span><i class="svc-dot ' + r.type + '"></i>' + safeHtml(r.typeLabel) + '</span>' +
+        '<span>' + safeHtml(r.houseNumber || "-") + '<em>' + safeHtml(r.mawbNumber || "") + '</em></span>' +
+        '<span>' + safeHtml(r.customerName || "-") + '</span><span>' + safeHtml(detail) + '</span>' +
+        '<span class="svc-strong">' + svcMoney(r.amount) + '</span>' +
+        '<span><button type="button" class="svc-del" onclick="svcRemove(\'' + safeHtml(r.id) + '\')">ลบ</button></span></div>';
+}
+
+function svcFormFields(rates) {
+    var today = new Date().toISOString().slice(0, 10);
+    var common = '<label>วันที่<input type="date" id="svcFDate" value="' + today + '"></label>' +
+        '<label>House (ใบงาน)<input type="text" id="svcFHouse" list="svcJobList" placeholder="พิมพ์หรือเลือกจากใบงาน" onchange="svcFillFromJob()"></label>' +
+        '<label>ลูกค้า<input type="text" id="svcFCustomer" placeholder="เติมอัตโนมัติจากใบงาน"></label>';
+    var jobs = (state.jobs || []).slice(0, 400);
+    var datalist = '<datalist id="svcJobList">' + jobs.map(function (j) {
+        return '<option value="' + safeHtml(j.houseNumber) + '">' + safeHtml(j.customerName || "") + '</option>';
+    }).join("") + '</datalist>';
+
+    var fields = "";
+    if (svcFormType === "inspect") {
+        fields = '<label>OPEN (ชิ้น)<input type="number" min="0" id="svcFOpen" value="0"></label>' +
+            '<label>STRAP (ชิ้น)<input type="number" min="0" id="svcFStrap" value="0"></label>' +
+            '<label>WRAP (ชิ้น)<input type="number" min="0" id="svcFWrap" value="0"></label>' +
+            '<label>STEEL CABLE (ชิ้น)<input type="number" min="0" id="svcFCable" value="0"></label>' +
+            '<span class="svc-rate">เรท: OPEN ' + rates.open + ' · STRAP ' + rates.strap + ' · WRAP ' + rates.wrap + ' · CABLE ' + rates.cable + '</span>';
+    } else if (svcFormType === "wrapping") {
+        fields = '<label>จำนวน<input type="number" min="0" id="svcFQty" value="1"></label>' +
+            '<label>หน่วย<select id="svcFUnit"><option>PLT</option><option>W/CS</option><option>CTN</option></select></label>' +
+            '<span class="svc-rate">เรท: ' + rates.wrappingUnit + " บาท/หน่วย" + '</span>';
+    } else if (svcFormType === "stock") {
+        fields = '<label>จำนวนพาเลท<input type="number" min="0" id="svcFQty" value="1"></label>' +
+            '<label>ขนาดพาเลท<select id="svcFPallet"><option value="120*100">120*100</option><option value="120*80">120*80</option></select></label>' +
+            '<span class="svc-rate">เรท: 120*100 = ' + rates.pallet120x100 + ' · 120*80 = ' + rates.pallet120x80 + ' บาท/ใบ</span>';
+    } else {
+        fields = '<label>สถานี<select id="svcFStation"><option>BFS</option><option>TG</option><option>INTER</option></select></label>' +
+            '<label>น้ำหนัก (กก.)<input type="number" min="0" step="0.01" id="svcFWeight" value="0"></label>' +
+            '<span class="svc-rate">เรท: BFS ' + rates.loadBFS + ' · TG ' + rates.loadTG + ' · INTER ' + rates.loadINTER + ' บาท/กก.</span>';
+    }
+    return '<div class="svc-form-grid">' + common + fields +
+        '<button type="button" class="primary svc-save" onclick="svcSaveRecord()">บันทึกรายการ</button></div>' + datalist;
+}
+
+function svcConfirm(message) { return window.confirm(message); }
+
+function svcSetType(type) { svcFormType = type; renderServiceBilling(); }
+
+function svcFillFromJob() {
+    var house = ($("#svcFHouse") || {}).value || "";
+    var job = (state.jobs || []).find(function (j) { return j.houseNumber === house; });
+    if (job && $("#svcFCustomer")) $("#svcFCustomer").value = job.customerName || "";
+}
+
+function svcApplyFilter() {
+    svcFilter.from = ($("#svcFrom") || {}).value || "";
+    svcFilter.to = ($("#svcTo") || {}).value || "";
+    svcFilter.type = ($("#svcType") || {}).value || "";
+    svcFilter.customer = ($("#svcCustomer") || {}).value || "";
+    renderServiceBilling();
+}
+
+async function svcSaveRecord() {
+    var val = function (id) { var el = $("#" + id); return el ? el.value : ""; };
+    var body = {
+        type: svcFormType,
+        date: val("svcFDate"),
+        houseNumber: val("svcFHouse"),
+        customerName: val("svcFCustomer"),
+        openQty: val("svcFOpen"), strapQty: val("svcFStrap"), wrapQty: val("svcFWrap"), cableQty: val("svcFCable"),
+        qty: val("svcFQty"), unit: val("svcFUnit"), palletSize: val("svcFPallet"),
+        station: val("svcFStation"), weightKg: val("svcFWeight"),
+        actor: (currentWebUser() || {}).name || "", role: (currentWebUser() || {}).role || ""
+    };
+    try {
+        var res = await fetch(API_BASE + "/api/service/record", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+        toast("บันทึกแล้ว " + svcMoney(data.record.amount) + " บาท");
+        renderServiceBilling();
+    } catch (err) { toast(err.message || "บันทึกไม่สำเร็จ"); }
+}
+
+async function svcRemove(id) {
+    if (!svcConfirm("ลบรายการนี้? ยอดในสรุปวางบิลจะถูกหักออกทันที")) return;
+    try {
+        var res = await fetch(API_BASE + "/api/service/remove", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: id, actor: (currentWebUser() || {}).name || "" })
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || "ลบไม่สำเร็จ");
+        toast("ลบแล้ว");
+        renderServiceBilling();
+    } catch (err) { toast(err.message || "ลบไม่สำเร็จ"); }
+}
+
+async function svcSendToBilling() {
+    if (!svcConfirm("ส่งเข้าใบแจ้งหนี้? ระบบจะรวมยอดตามลูกค้าและสร้างใบแจ้งหนี้ฉบับร่าง")) return;
+    try {
+        var body = Object.assign({}, svcFilter, {
+            actor: (currentWebUser() || {}).name || "",
+            role: (currentWebUser() || {}).role || ""
+        });
+        var res = await fetch(API_BASE + "/api/service/to-billing", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || "ส่งไม่สำเร็จ");
+        toast("สร้างใบแจ้งหนี้ " + data.bills.length + " ใบ รวม " + svcMoney(data.summary.total) + " บาท");
+        renderServiceBilling();
+    } catch (err) { toast(err.message || "ส่งไม่สำเร็จ"); }
+}
+
+function svcExportExcel() {
+    var rows = svcData.records || [];
+    if (!rows.length) return toast("ไม่มีข้อมูลให้ส่งออก");
+    var s = svcData.summary;
+    var head = [ "วันที่", "ประเภทงาน", "House", "MAWB", "ลูกค้า", "ปลายทาง", "รายละเอียด", "ยอดเงิน (บาท)" ];
+    var detailOf = function (r) {
+        if (r.type === "inspect") return "OPEN " + r.openQty + " / STRAP " + r.strapQty + " / WRAP " + r.wrapQty + " / CABLE " + r.cableQty;
+        if (r.type === "wrapping") return r.qty + " " + (r.unit || "");
+        if (r.type === "stock") return r.qty + " พาเลท " + (r.palletSize || "");
+        return r.weightKg + " กก. " + (r.station || "");
+    };
+    var title = "สรุปเตรียมวางบิล " + (svcFilter.from || "") + " ถึง " + (svcFilter.to || "");
+    var tbl = '<table border="1"><tr><td colspan="8">' + title + '</td></tr><tr>' +
+        head.map(function (h) { return "<th>" + h + "</th>"; }).join("") + "</tr>" +
+        rows.map(function (r) {
+            return "<tr><td>" + r.date + "</td><td>" + r.typeLabel + "</td><td>" + (r.houseNumber || "") + "</td><td>" +
+                (r.mawbNumber || "") + "</td><td>" + (r.customerName || "") + "</td><td>" + (r.destination || "") +
+                "</td><td>" + detailOf(r) + "</td><td>" + r.amount + "</td></tr>";
+        }).join("") +
+        '<tr><td colspan="7"><b>รวมทั้งช่วง</b></td><td><b>' + s.total + "</b></td></tr>" +
+        '<tr><td colspan="8"></td></tr><tr><td colspan="8"><b>สรุปรายลูกค้า</b></td></tr>' +
+        "<tr><th>ลูกค้า</th><th>เปิดตรวจ</th><th>Wrapping</th><th>พาเลทค้างคลัง</th><th>งานโหลด</th><th colspan=\"3\">รวม</th></tr>" +
+        s.byCustomer.map(function (c) {
+            return "<tr><td>" + c.customerName + "</td><td>" + c.inspect + "</td><td>" + c.wrapping + "</td><td>" +
+                c.stock + "</td><td>" + c.load + '</td><td colspan="3">' + c.total + "</td></tr>";
+        }).join("") + "</table>";
+    var blob = new Blob([ "﻿<html><head><meta charset='utf-8'></head><body>" + tbl + "</body></html>" ],
+        { type: "application/vnd.ms-excel;charset=utf-8" });
+    hrDownload(blob, "เตรียมวางบิล-" + (svcFilter.from || "") + ".xls");
+}
+
+async function svcOpenRates() {
+    var rates = svcData.rates || {};
+    var fields = [
+        [ "open", "เปิดตรวจ OPEN (บาท/ชิ้น)" ], [ "strap", "STRAP (บาท/ชิ้น)" ],
+        [ "wrap", "WRAP (บาท/ชิ้น)" ], [ "cable", "STEEL CABLE (บาท/ชิ้น)" ],
+        [ "wrappingUnit", "Wrapping (บาท/หน่วย)" ],
+        [ "pallet120x100", "พาเลท 120*100 (บาท/ใบ)" ], [ "pallet120x80", "พาเลท 120*80 (บาท/ใบ)" ],
+        [ "loadBFS", "โหลด BFS (บาท/กก.)" ], [ "loadTG", "โหลด TG (บาท/กก.)" ], [ "loadINTER", "โหลด INTER (บาท/กก.)" ]
+    ];
+    var box = $("#view-service");
+    box.insertAdjacentHTML("afterbegin", '<div class="card svc-rate-editor" id="svcRateEditor">' +
+        '<div class="section-head"><h2>ตารางเรทค่าบริการ</h2><span class="svc-hint">แก้แล้วกดบันทึก ระบบจะใช้เรทใหม่กับรายการที่บันทึกหลังจากนี้</span></div>' +
+        '<div class="svc-form-grid">' + fields.map(function (f) {
+            return '<label>' + f[1] + '<input type="number" step="0.01" min="0" id="svcRate_' + f[0] + '" value="' + (rates[f[0]] || 0) + '"></label>';
+        }).join("") +
+        '<button type="button" class="primary" onclick="svcSaveRates()">บันทึกเรท</button>' +
+        '<button type="button" onclick="document.getElementById(\'svcRateEditor\').remove()">ปิด</button></div></div>');
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function svcSaveRates() {
+    var keys = [ "open", "strap", "wrap", "cable", "wrappingUnit", "pallet120x100", "pallet120x80", "loadBFS", "loadTG", "loadINTER" ];
+    var rates = {};
+    keys.forEach(function (k) { var el = $("#svcRate_" + k); if (el) rates[k] = el.value; });
+    try {
+        var res = await fetch(API_BASE + "/api/service/rates", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "save", rates: rates,
+                actor: (currentWebUser() || {}).name || "",
+                role: (currentWebUser() || {}).role || "" })
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || "บันทึกเรทไม่สำเร็จ");
+        toast("บันทึกเรทใหม่แล้ว");
+        renderServiceBilling();
+    } catch (err) { toast(err.message || "บันทึกเรทไม่สำเร็จ"); }
 }
