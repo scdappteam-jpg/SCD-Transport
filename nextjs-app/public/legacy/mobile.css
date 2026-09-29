@@ -964,3 +964,15 @@ body[data-mnav="hr"] .smart-scan-card,body[data-mnav="profile"] .smart-scan-card
 .more-sheet[hidden]{display:none!important}
 .more-panel{transform:none!important;animation:moreUp .2s ease-out}
 @keyframes moreUp{from{transform:translateY(24px)}to{transform:translateY(0)}}
+
+/* ════════ CONTRAST · FIX (มือถือ) ════════ */
+/* การ์ดโมดูลที่เลือกอยู่: เคยเป็นตัวขาวบนฟ้าอ่อน = มองไม่เห็น */
+.action-grid .action-card.active{background:#E9F1FD!important;border-color:#1B4DB1!important;color:#123B79!important}
+.action-grid .action-card.active b,.action-grid .action-card.active span{color:#123B79!important}
+.action-grid .action-card.active small{color:#41618F!important}
+/* ป้ายสถานะสีเหลือง: ตัวขาวบนเหลืองอ่านไม่ออก */
+.ez-status-pill.amber,.ez-status-pill.amber em{color:#4A2B02!important}
+/* ตัวหนังสือรองสีเทาอ่อนเกิน */
+.fo-empty,.fo-loading,.fo-header small,.msec,.fo-section-label,.fo-card-head span,
+.fo-profile-info small,.fo-map-legend,.fo-ci-grid small,.fo-att-row span,.fo-point-row em{color:#5C6B82!important}
+[style*="color:#94a3b8"],[style*="color:#cbd5e1"]{color:#64748B!important}

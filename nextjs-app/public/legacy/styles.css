@@ -477,3 +477,21 @@ body.sidebar-collapsed .app-shell{background:var(--r-navy)!important}
   .document-matrix-row{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)!important}
   .document-matrix-row>span:nth-child(3){grid-column:1 / -1}
 }
+
+/* ════════ CONTRAST · FIX — ตัวหนังสือต้องอ่านออกทุกพื้นหลัง ════════ */
+/* สีที่เขียนติดมากับ HTML (inline style) — จางเกินบนพื้นอ่อน */
+[style*="color:#22c55e"],[style*="color:#16a34a"],[style*="color: #22c55e"]{color:#15803D!important}
+[style*="color:#10b981"],[style*="color:#059669"],[style*="color: #10b981"]{color:#0F7A52!important}
+[style*="color:#f59e0b"],[style*="color:#fbbf24"],[style*="color: #f59e0b"]{color:#9A5B06!important}
+[style*="color:#d97706"]{color:#8A4B05!important}
+[style*="color:#94a3b8"],[style*="color:#a0aec0"],[style*="color:#cbd5e1"],[style*="color: #94a3b8"]{color:#64748B!important}
+/* ลิงก์/ตัวเลขสถานะ */
+.ct-sec-link{color:#0F7A52!important}
+.wh-catalog-info span{color:#15803D!important}
+/* แท็บที่เลือกอยู่: เคยเป็นตัวขาวบนพื้นอ่อน */
+.dim-tabs button.active{background:#1B4DB1!important;color:#fff!important;border-color:#1B4DB1!important}
+/* ปุ่มเตือนสีส้ม: ตัวขาวบนส้มอ่อนอ่านยาก → ส้มเข้ม */
+.cargo-issue-banner button{background:#B45309!important;color:#fff!important;border-color:#B45309!important}
+/* คำบรรยายย่อยสีเทาอ่อน */
+.dock-kpi em,.hr-rep-kpi em,.hr-rep-none,.route-box span{color:#5C6B82!important}
+.exec-health-ring span{color:#0B2350!important}
