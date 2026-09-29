@@ -957,3 +957,10 @@ body[data-mnav="hr"] .smart-scan-card,body[data-mnav="profile"] .smart-scan-card
 /* ชื่อบริษัทบนหัวจอไม่ต้องโดนตัดเร็วเกินไป */
 .mobile-header .mh-name strong{font-size:13.5px!important}
 @media (max-width:360px){.mobile-header .mh-name span{display:none!important}}
+
+/* ════════ MOBILE FIX · ROUND 3 ════════ */
+/* เปิดแล้วต้องเห็นทันที ไม่พึ่ง class .open (เคยค้างโปร่งใส 0% จนกดอะไรไม่ได้) */
+.more-sheet{opacity:1!important;transition:none!important}
+.more-sheet[hidden]{display:none!important}
+.more-panel{transform:none!important;animation:moreUp .2s ease-out}
+@keyframes moreUp{from{transform:translateY(24px)}to{transform:translateY(0)}}

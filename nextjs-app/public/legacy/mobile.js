@@ -2420,11 +2420,20 @@ async function mobileJoinDockQueue(house) {
 function mobileFlightRows() {
     const jobs = (state.dashboard?.jobs || []).filter(j => ![ "Billed", "InvoiceSent", "Completed" ].includes(j.status));
     const now = Date.now();
+    const pickDue = j => {
+        const list = [ j.effectiveAirportDueAt, j.airportDueAt, j.flightTime, j.closeTime ];
+        for (let i = 0; i < list.length; i++) {
+            if (!list[i]) continue;
+            const t = new Date(list[i]).getTime();
+            if (!isNaN(t) && new Date(t).getFullYear() >= 2020) return t;
+        }
+        return null;
+    };
     return jobs.map(j => {
-        const due = j.effectiveAirportDueAt || j.airportDueAt || j.flightTime || "";
-        const ms = due ? new Date(due).getTime() : NaN;
-        return { j, min: isNaN(ms) ? null : (ms - now) / 6e4 };
-    }).filter(r => r.min !== null && r.min < 12 * 60).sort((a, b) => a.min - b.min).slice(0, 6);
+        const t = pickDue(j);
+        return { j, min: t === null ? null : (t - now) / 6e4 };
+    }).filter(r => r.min !== null && r.min < 12 * 60 && r.min > -24 * 60)
+      .sort((a, b) => a.min - b.min).slice(0, 6);
 }
 
 function renderMFlight() {
@@ -2434,9 +2443,9 @@ function renderMFlight() {
     if (!rows.length) { box.hidden = true; return; }
     const tier = m => m < 0 ? "cr" : m < 120 ? "cr" : m < 240 ? "wn" : "ok";
     const lbl = m => {
-        if (m < 0) return "เลย " + Math.abs(Math.round(m)) + " น.";
-        const h = Math.floor(m / 60), mm = Math.round(m % 60);
-        return h > 0 ? h + ":" + String(mm).padStart(2, "0") : mm + " น.";
+        const abs = Math.abs(m), hh = Math.floor(abs / 60), mm = Math.round(abs % 60);
+        const txt = hh >= 24 ? Math.floor(hh / 24) + " วัน" : (hh > 0 ? hh + " ชม. " + mm + " น." : mm + " น.");
+        return m < 0 ? "เลย " + txt : txt;
     };
     const crit = rows.filter(r => r.min < 120).length;
     box.hidden = false;
@@ -2907,7 +2916,12 @@ function foOpenMore() {
     const sheet = document.getElementById("moreSheet");
     if (!sheet) return;
     sheet.hidden = false;
-    requestAnimationFrame(() => sheet.classList.add("open"));
+    sheet.classList.add("open");
+    sheet.style.opacity = "1";
+    if (!foOpenMore._back) {
+        foOpenMore._back = true;
+        window.addEventListener("popstate", foCloseMore);
+    }
     try { if (window.lucide) lucide.createIcons(); } catch (e) {}
 }
 
