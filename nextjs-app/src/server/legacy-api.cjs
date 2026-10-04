@@ -1186,6 +1186,32 @@ function deriveFlightSla(job, referenceTime = Date.now()) {
     const slaHoursBeforeFlight = 14;
     const slaProfile = "WH3_14H";
     if (!etdUsable) {
+        // ยังไม่รู้เที่ยวบิน แต่ถ้ามีเวลาปิดรับ (CLOSE) ก็ใช้คำนวณกำหนดส่งได้
+        const cutoffMs = new Date(job.cargoCutoffAt || "").getTime();
+        const cutoffUsable = !isNaN(cutoffMs) && new Date(cutoffMs).getUTCFullYear() >= 2000;
+        if (cutoffUsable) {
+            const cutoffOnlyDueMs = cutoffMs - 36e5;
+            const mins = Math.round((cutoffOnlyDueMs - referenceTime) / 6e4);
+            const reached = WH3_RECEIVED_STATUSES.has(job.status) || Boolean(job.wh3ReceivedAt);
+            let status = "OnTrack";
+            if (reached) status = "WH3Received";
+            else if (mins < 0) status = "Breached";
+            else if (mins <= 120) status = "Critical";
+            else if (mins <= 240) status = "Urgent";
+            else if (bangkokDate(new Date(cutoffOnlyDueMs).toISOString()) === bangkokDate(new Date(referenceTime).toISOString())) status = "DueToday";
+            return {
+                flightNumberDigits: digits || null,
+                slaProfile: "CARGO_CUTOFF",
+                slaHoursBeforeFlight,
+                mustNotMissFlight,
+                airportDueAt: new Date(cutoffOnlyDueMs).toISOString(),
+                effectiveAirportDueAt: new Date(cutoffOnlyDueMs).toISOString(),
+                wh3DueAt: new Date(cutoffOnlyDueMs).toISOString(),
+                minutesToAirportDue: mins,
+                flightRiskStatus: status,
+                flightRiskReason: "ใช้เวลาปิดรับสินค้า (CLOSE) คำนวณแทน เพราะยังไม่มีเที่ยวบิน"
+            };
+        }
         return {
             flightNumberDigits: digits || null,
             slaProfile,
@@ -1469,7 +1495,8 @@ function upsertJob(db, payload) {
         customerId: customer.id,
         customerName: customer.name,
         flightNo: payload.flightNo || job.flightNo || "TBC",
-        flightTime: payload.flightTime || job.flightTime || addHoursIso(8),
+        // ไม่มีเวลาบินจริง = ปล่อยว่าง (เดิมเติมเวลาปัจจุบัน +8 ชม. ทำให้ทุกงานกลายเป็นงานด่วนปลอม)
+        flightTime: payload.flightTime || job.flightTime || "",
         status: payload.status || job.status || "Pending",
         driverId: payload.driverId ?? job.driverId ?? "",
         booking: payload.booking || job.booking || "",
@@ -1522,6 +1549,8 @@ function upsertJob(db, payload) {
         edocInv: payload.edocInv ?? job.edocInv ?? "",
         readyTime: payload.readyTime || job.readyTime || "",
         closeTime: payload.closeTime || job.closeTime || "",
+        // เวลาปิดรับสินค้าของสายการบิน ใช้คำนวณกำหนดส่งเมื่อยังไม่รู้เที่ยวบิน
+        cargoCutoffAt: payload.cargoCutoffAt || job.cargoCutoffAt || "",
         pickupPhone: payload.pickupPhone || job.pickupPhone || "",
         contactPerson: payload.contactPerson || job.contactPerson || "",
         carrier: payload.carrier || job.carrier || "",
@@ -2137,8 +2166,12 @@ function importPickupXlsxRows(db, rows) {
             carrier: S(map.carrier),
             ownerCode: S(map.owner),
             refsNo: S(map.refs),
+            flightNo: S(map.flt),
+            mawbNumber: xlsxNumStr(r[map.mawb]),
             readyTime: xlsxUtcIso(r[map.ready]),
             closeTime: xlsxUtcIso(r[map.close]),
+            // CLOSE = เวลาปิดรับของสายการบิน ใช้เป็นกำหนดส่งได้แม้ยังไม่รู้เที่ยวบิน
+            cargoCutoffAt: xlsxUtcIso(r[map.close]),
             pickupDate: typeof r[map.ready] === "number" && r[map.ready] > 60 ? xlsxSerialToDate(r[map.ready]).toISOString().slice(0, 10) : "",
             status: existing ? existing.status : "Pending",
             adminPrepared: existing ? Boolean(existing.adminPrepared) : true,
@@ -2327,7 +2360,8 @@ function importGlobalConsolRows(db, csvText) {
                 consigneeName: h.consignee,
                 destAirport: s.dest || h.dest,
                 flightNo: s.flight,
-                flightTime: flightDateTime || addHoursIso(8),
+                // ไม่มีเที่ยวบินในไฟล์ = ปล่อยว่าง ห้ามเดาเวลาเอง ไม่งั้นงานจะกลายเป็นงานด่วนปลอม
+                flightTime: flightDateTime || "",
                 mawbNumber: s.mawb,
                 icNumber: s.ic,
                 pieceCount: h.pcs,
