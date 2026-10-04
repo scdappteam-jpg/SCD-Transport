@@ -289,7 +289,7 @@ function allowedWebViews(role) {
     // operate the Transport workflow after confirmation.
     if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
     if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock", "service" ];
-    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock" ];
+    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
 }
 
 function applyWebRoleVisibility() {
@@ -438,6 +438,10 @@ const pageCopy = {
     dock: {
         breadcrumb: "ปฏิบัติการ / Dock Booking",
         title: "ช่องเทียบท่า WH3"
+    },
+    service: {
+        breadcrumb: "การเงิน / Service Billing",
+        title: "งานบริการรายวัน · เตรียมวางบิล"
     },
     mobile: {
         breadcrumb: "Field Ops",
