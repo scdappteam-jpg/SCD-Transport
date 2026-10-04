@@ -6373,7 +6373,18 @@ function orderMatchesFilter(job, filter = state.orderFilter) {
     if (filter === "today") return jobDateKey(job) === today;
     if (filter === "pending") return [ "st-gray", "st-amber" ].includes(statusClass(job.status)) || [ "Pending", "PickupStarted" ].includes(job.status);
     if (filter === "overdue") return Boolean(job.redFlag) || statusClass(job.status) === "st-red";
+    if (filter === "stale") return orderIsStale(job);
     return true;
+}
+
+var orderStaleDays = 7;
+
+function orderIsStale(job) {
+    if (![ "Pending", "PickupStarted", "Assigned" ].includes(job.status)) return false;
+    var key = job.workDate || job.pickupDate || job.createdAt || "";
+    var at = new Date(key).getTime();
+    if (isNaN(at)) return false;
+    return at < Date.now() - orderStaleDays * 864e5;
 }
 
 function orderFilterCounts() {
@@ -6382,6 +6393,7 @@ function orderFilterCounts() {
         today: jobs.filter(job => orderMatchesFilter(job, "today")).length,
         pending: jobs.filter(job => orderMatchesFilter(job, "pending")).length,
         overdue: jobs.filter(job => orderMatchesFilter(job, "overdue")).length,
+        stale: jobs.filter(orderIsStale).length,
         all: jobs.length
     };
 }
@@ -6390,6 +6402,9 @@ function renderOrderAlertSummary() {
     const el = $("#orderAlertSummary");
     if (!el || !state.dashboard) return;
     const jobs = state.dashboard.jobs || [];
+    const staleEl = $("#orderFilterStale");
+    const staleJobs = jobs.filter(orderIsStale);
+    if (staleEl) staleEl.textContent = staleJobs.length;
     const now = Date.now();
     const reXrayJobs = jobs.filter(j => j.requiresRescan || j.status === "ReXRayRequired" || j.status === "XRayHold");
     const urgentJobs = jobs.filter(j => {
@@ -6400,6 +6415,13 @@ function renderOrderAlertSummary() {
     });
     const pendingEI = jobs.filter(j => j.status === "PendingEI" || j.inboundDocStatus === "Missing");
     let html = "";
+    if (state.orderFilter === "stale" && staleJobs.length) {
+        var role = (currentWebUser() || {}).role || "";
+        var canClose = [ "Admin", "Executive" ].includes(role);
+        html += '<div class="stale-banner"><div><b>งานค้างเกิน ' + orderStaleDays + ' วัน · ' + staleJobs.length + ' ใบ</b>' +
+            '<span>ส่วนใหญ่มาจากไฟล์ที่ import เข้ามาแล้วไม่มีใครรับงานต่อ ปิดทิ้งเพื่อให้คิวงานจริงอ่านง่ายขึ้นได้</span></div>' +
+            (canClose ? '<button type="button" onclick="closeStaleJobs()">ปิดงานค้างทั้งหมด</button>' : '') + '</div>';
+    }
     if (reXrayJobs.length) html += `<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="state.orderFilter='overdue';renderOrderCards()">\n    <span style="font-size:18px"></span>\n    <div><div style="font-weight:800;color:#dc2626;font-size:12px">Re-X-Ray Required — ${reXrayJobs.length} งาน</div>\n    <div style="font-size:11px;color:#ef4444">${reXrayJobs.map(j => j.houseNumber).join(", ")}</div></div>\n  </div>`;
     if (urgentJobs.length) html += `<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="state.orderFilter='overdue';renderOrderCards()">\n    <span style="font-size:18px">⏰</span>\n    <div><div style="font-weight:800;color:#d97706;font-size:12px">บินภายใน 4 ชั่วโมง — ${urgentJobs.length} งาน</div>\n    <div style="font-size:11px;color:#b45309">${urgentJobs.map(j => j.houseNumber).join(", ")}</div></div>\n  </div>`;
     if (pendingEI.length) html += `<div style="background:#fefce8;border:1.5px solid #fde047;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="state.orderFilter='overdue';renderOrderCards()">\n    <span style="font-size:18px"></span>\n    <div><div style="font-weight:800;color:#a16207;font-size:12px">รอ Confirm EI — ${pendingEI.length} งาน</div>\n    <div style="font-size:11px;color:#a16207">${pendingEI.map(j => j.houseNumber).join(", ")}</div></div>\n  </div>`;
@@ -11803,4 +11825,34 @@ async function svcSaveRates() {
         toast("บันทึกเรทใหม่แล้ว");
         renderServiceBilling();
     } catch (err) { toast(err.message || "บันทึกเรทไม่สำเร็จ"); }
+}
+
+
+/* ══════════ ปิดงานค้างเป็นชุด (Admin / ผู้บริหาร) ══════════ */
+async function closeStaleJobs() {
+    var user = currentWebUser();
+    if (!user) return toast("กรุณาเข้าสู่ระบบใหม่");
+    var jobs = (state.dashboard && state.dashboard.jobs || []).filter(orderIsStale);
+    if (!jobs.length) return toast("ไม่มีงานค้างให้ปิด");
+    var answer = await scdPrompt({
+        title: "ปิดงานค้างทั้งหมด",
+        note: "งานที่ค้างเกินจำนวนวันที่กำหนดและยังไม่เริ่มทำ จะถูกเปลี่ยนเป็นสถานะ ยกเลิก พร้อมล้างแจ้งเตือนของงานนั้น",
+        label: "ปิดงานที่ค้างเกินกี่วัน",
+        value: String(orderStaleDays),
+        type: "number",
+        okText: "ปิดงานค้าง"
+    });
+    if (answer === null) return;
+    var days = Math.max(1, Number(answer) || orderStaleDays);
+    try {
+        var res = await fetch(apiUrl("/api/admin/close-stale-jobs"), {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user.id, days: days })
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || "ปิดงานค้างไม่สำเร็จ");
+        toast("ปิดงานค้างแล้ว " + data.closed + " ใบ");
+        await refresh();
+        renderAll();
+    } catch (err) { toast(err.message || "ปิดงานค้างไม่สำเร็จ"); }
 }

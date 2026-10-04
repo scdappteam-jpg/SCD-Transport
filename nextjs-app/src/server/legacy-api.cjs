@@ -1175,11 +1175,17 @@ function isNoMissFlight(flightNo) {
 function deriveFlightSla(job, referenceTime = Date.now()) {
     const flightNo = String(job.flightNo || "").trim().toUpperCase();
     const digits = flightNumberDigits(flightNo);
-    const etdMs = new Date(job.flightTime).getTime();
+    // new Date(null) = 0 (ไม่ใช่ NaN) งานที่ไม่มีเวลาบินจึงเคยกลายเป็นกำหนดส่งปี 1969
+    // และถูกนับว่า "เลยกำหนด" ตลอดไป — ต้องกันค่าที่ใช้ไม่ได้ตั้งแต่ตรงนี้
+    const rawEtd = job.flightTime;
+    const etdMs = (rawEtd === null || rawEtd === undefined || rawEtd === "")
+        ? NaN
+        : new Date(rawEtd).getTime();
+    const etdUsable = !isNaN(etdMs) && new Date(etdMs).getUTCFullYear() >= 2000;
     const mustNotMissFlight = isNoMissFlight(flightNo);
     const slaHoursBeforeFlight = 14;
     const slaProfile = "WH3_14H";
-    if (isNaN(etdMs)) {
+    if (!etdUsable) {
         return {
             flightNumberDigits: digits || null,
             slaProfile,
@@ -1189,7 +1195,7 @@ function deriveFlightSla(job, referenceTime = Date.now()) {
             effectiveAirportDueAt: "",
             minutesToAirportDue: null,
             flightRiskStatus: "Unclassified",
-            flightRiskReason: "Flight number or ETD is not usable for SLA calculation"
+            flightRiskReason: "ยังไม่มีเวลาบิน (ETD) ที่ใช้คำนวณกำหนดส่งได้"
         };
     }
     const slaDueMs = etdMs - slaHoursBeforeFlight * 36e5;
@@ -3272,6 +3278,40 @@ async function handleApi(req, res, pathname) {
 
         return sendJson(res, 400, { error: "action ต้องเป็น add / update / delete / reset" });
     }
+    if (req.method === "POST" && pathname === "/api/admin/close-stale-jobs") {
+        const payload = await parseBody(req);
+        const actor = (db.users || []).find(user => user.id === payload.userId);
+        if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) {
+            return sendJson(res, 403, { error: "เฉพาะ Admin / ผู้บริหาร เท่านั้นที่ปิดงานค้างได้" });
+        }
+        const days = Math.max(1, Number(payload.days || 7));
+        const cutoff = Date.now() - days * 864e5;
+        const openStatuses = new Set([ "Pending", "PickupStarted", "Assigned" ]);
+        const closed = [];
+        for (const job of db.jobs || []) {
+            if (!openStatuses.has(job.status)) continue;
+            const key = job.workDate || job.pickupDate || job.createdAt || "";
+            const at = new Date(key).getTime();
+            if (isNaN(at) || at >= cutoff) continue;
+            job.status = "Cancelled";
+            job.cancelReason = `ปิดอัตโนมัติ: ค้างเกิน ${days} วัน`;
+            job.cancelledAt = nowIso();
+            job.cancelledBy = actor.name || actor.id;
+            job.redFlag = false;
+            job.flightRiskStatus = "Cancelled";
+            job.flightRiskAlertKey = "";
+            job.updatedAt = nowIso();
+            closed.push(job.houseNumber);
+        }
+        if (closed.length) {
+            const closedSet = new Set(closed);
+            db.alerts = (db.alerts || []).filter(alert => !closedSet.has(alert.houseNumber));
+            logActivity(db, { activityType: "StaleJobsClosed", actor: actor.name || actor.id, detail: `${closed.length} ใบงาน (ค้างเกิน ${days} วัน)` });
+            writeDb(db);
+        }
+        return sendJson(res, 200, { ok: true, closed: closed.length, days, houseNumbers: closed.slice(0, 50) });
+    }
+
     /* ══════════ งานบริการรายวัน / เตรียมวางบิล ══════════ */
     if (req.method === "POST" && pathname === "/api/service/rates") {
         const payload = await parseBody(req);

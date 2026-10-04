@@ -539,3 +539,11 @@ body.sidebar-collapsed .app-shell{background:var(--r-navy)!important}
   .svc-tr,.svc-th{grid-template-columns:1fr 1fr;row-gap:4px}
   .svc-strong{text-align:left}
 }
+
+/* ════════ STALE · QUEUE — แถบงานค้างในหน้าใบงาน ════════ */
+.stale-banner{display:flex;align-items:center;gap:12px;justify-content:space-between;
+  padding:12px 14px;margin-bottom:8px;border:1px solid #F0D9A8;border-radius:11px;background:#FFFaF0}
+.stale-banner b{display:block;font-size:12.5px;font-weight:500;color:#8A4B05}
+.stale-banner span{display:block;font-size:11.5px;color:#8A6230;margin-top:3px;line-height:1.5}
+.stale-banner button{flex:0 0 auto;min-height:36px!important;padding:0 14px!important;border-radius:9px!important;
+  border:1px solid #D9A441!important;background:#fff!important;color:#8A4B05!important;font-size:12.5px!important}
