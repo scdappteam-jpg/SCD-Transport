@@ -11674,7 +11674,7 @@ function svcFormFields(rates) {
     var common = '<label>วันที่<input type="date" id="svcFDate" value="' + today + '"></label>' +
         '<label>House (ใบงาน)<input type="text" id="svcFHouse" list="svcJobList" placeholder="พิมพ์หรือเลือกจากใบงาน" onchange="svcFillFromJob()"></label>' +
         '<label>ลูกค้า<input type="text" id="svcFCustomer" placeholder="เติมอัตโนมัติจากใบงาน"></label>';
-    var jobs = (state.jobs || []).slice(0, 400);
+    var jobs = svcJobPool().slice(0, 400);
     var datalist = '<datalist id="svcJobList">' + jobs.map(function (j) {
         return '<option value="' + safeHtml(j.houseNumber) + '">' + safeHtml(j.customerName || "") + '</option>';
     }).join("") + '</datalist>';
@@ -11707,9 +11707,14 @@ function svcConfirm(message) { return window.confirm(message); }
 
 function svcSetType(type) { svcFormType = type; renderServiceBilling(); }
 
+function svcJobPool() {
+    // ใบงานอยู่ใน state.dashboard.jobs ไม่ใช่ state.jobs
+    return (state.dashboard && state.dashboard.jobs) || state.jobs || [];
+}
+
 function svcFillFromJob() {
     var house = ($("#svcFHouse") || {}).value || "";
-    var job = (state.jobs || []).find(function (j) { return j.houseNumber === house; });
+    var job = svcJobPool().find(function (j) { return j.houseNumber === house; });
     if (job && $("#svcFCustomer")) $("#svcFCustomer").value = job.customerName || "";
 }
 
