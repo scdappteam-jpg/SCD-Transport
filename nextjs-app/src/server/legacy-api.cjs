@@ -3348,6 +3348,30 @@ async function handleApi(req, res, pathname) {
 
         return sendJson(res, 400, { error: "action ต้องเป็น add / update / delete / reset" });
     }
+    if (req.method === "POST" && pathname === "/api/billing/remove-draft") {
+        const payload = await parseBody(req);
+        const actor = (db.users || []).find(user => user.id === payload.userId);
+        if (!actor || ![ "Admin", "Executive", "Billing" ].includes(actor.role)) {
+            return sendJson(res, 403, { error: "เฉพาะ Admin / ผู้บริหาร / Billing เท่านั้นที่ลบใบแจ้งหนี้ร่างได้" });
+        }
+        const id = String(payload.id || "");
+        const bill = (db.billing || []).find(item => item.id === id);
+        if (!bill) return sendJson(res, 404, { error: "ไม่พบใบแจ้งหนี้นี้" });
+        if (bill.status && ![ "Draft", "Reviewed" ].includes(bill.status)) {
+            return sendJson(res, 400, { error: "ลบได้เฉพาะใบแจ้งหนี้ที่ยังเป็นร่าง/รอตรวจ" });
+        }
+        db.billing = db.billing.filter(item => item.id !== id);
+        // ปลดล็อกรายการงานบริการที่ผูกกับใบนี้ ให้กลับมาวางบิลใหม่ได้
+        if (bill.source === "service") {
+            for (const rec of db.serviceRecords || []) {
+                if (rec.billed && bill.customerName && rec.customerName === bill.customerName) rec.billed = false;
+            }
+        }
+        logActivity(db, { activityType: "BillingDraftRemoved", actor: actor.name || actor.id, detail: id });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, removed: id });
+    }
+
     if (req.method === "POST" && pathname === "/api/admin/close-stale-jobs") {
         const payload = await parseBody(req);
         const actor = (db.users || []).find(user => user.id === payload.userId);
