@@ -98,6 +98,8 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
     try {
       await legacyApi.flushSupabasePersistence();
     } catch (error) {
+      // ถึงตรงนี้แปลว่าเขียนฐานข้อมูลหลัก (app_state) ไม่สำเร็จจริง ๆ
+      // ส่วนตารางสำเนา (relational mirror) ถูกดักไว้ในฝั่ง legacy-api แล้ว ไม่ทำให้คำสั่งล้ม
       const message = error instanceof Error ? error.message : "Unknown Supabase persistence error";
       return Response.json({
         ok: false,

@@ -631,9 +631,23 @@ function scheduleSupabasePersist(db) {
     dbPersistPromise = dbPersistPromise.catch(() => {}).then(() => persistDbToSupabase(snapshot));
 }
 
+let lastMirrorError = null;
+
+function mirrorHealth() {
+    return lastMirrorError;
+}
+
 async function flushSupabasePersistence() {
+    // ข้อมูลหลักอยู่ที่ตาราง app_state — ต้องเขียนสำเร็จเท่านั้น
     await dbPersistPromise;
-    await relationalMirror.flush();
+    // ตารางสำเนา (relational mirror) เป็นของรอง ถ้าซิงก์ไม่ได้ต้องไม่ทำให้คำสั่งทั้งคำสั่งล้มเหลว
+    try {
+        await relationalMirror.flush();
+        lastMirrorError = null;
+    } catch (err) {
+        lastMirrorError = { at: nowIso(), message: String((err && err.message) || err).slice(0, 300) };
+        console.error("[mirror] ข้ามการซิงก์ตารางสำเนา:", lastMirrorError.message);
+    }
 }
 
 function readDbFromFile() {
@@ -3016,7 +3030,8 @@ async function handleApi(req, res, pathname) {
                 provider: "supabase",
                 table: SUPABASE_STATE_TABLE,
                 id: SUPABASE_STATE_ID,
-                loaded: Boolean(dbCache)
+                loaded: Boolean(dbCache),
+                mirrorError: mirrorHealth()
             } : null,
             runtime: summarizeDb(db),
             bundled: bundled ? summarizeDb(bundled) : null,
@@ -7650,6 +7665,7 @@ if (require.main === module) {
 
 module.exports = {
     handleApi: handleApi,
+    mirrorHealth: mirrorHealth,
     loadDbFromSupabase: loadDbFromSupabase,
     flushSupabasePersistence: flushSupabasePersistence,
     serveStatic: serveStatic
