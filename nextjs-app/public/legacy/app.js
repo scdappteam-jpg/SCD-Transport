@@ -11878,3 +11878,49 @@ async function closeStaleJobs() {
         renderAll();
     } catch (err) { toast(err.message || "ปิดงานค้างไม่สำเร็จ"); }
 }
+
+
+/* ══════════ แถบเตือนเมื่อข้อมูลยังไม่ถูกซิงก์ขึ้นฐานข้อมูลกลาง ══════════ */
+async function dbSyncBanner() {
+    try {
+        const res = await fetch(apiUrl("/api/admin/db-health"), { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const sync = data.sync || {};
+        let bar = document.getElementById("dbSyncBar");
+        if (sync.ok !== false) { if (bar) bar.remove(); return; }
+        if (!bar) {
+            bar = document.createElement("div");
+            bar.id = "dbSyncBar";
+            bar.className = "db-sync-bar";
+            document.body.appendChild(bar);
+        }
+        const role = (currentWebUser() || {}).role || "";
+        const canRetry = [ "Admin", "Executive" ].includes(role);
+        bar.innerHTML = '<b>ข้อมูลยังไม่ได้ซิงก์ขึ้นฐานข้อมูลกลาง</b>' +
+            '<span>' + safeHtml(sync.hint || "ระบบยังใช้งานได้ตามปกติ ข้อมูลถูกเก็บไว้แล้วและจะซิงก์ให้อัตโนมัติเมื่อเชื่อมต่อได้") + '</span>' +
+            (canRetry ? '<button type="button" onclick="dbRetrySync()">ลองซิงก์ใหม่</button>' : "") +
+            '<button type="button" class="ghost" onclick="document.getElementById(\'dbSyncBar\').remove()">ปิด</button>';
+    } catch (e) {}
+}
+
+async function dbRetrySync() {
+    const user = currentWebUser();
+    if (!user) return;
+    try {
+        const res = await fetch(apiUrl("/api/admin/db-retry-sync"), {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user.id })
+        });
+        const data = await res.json();
+        if (data.sync && data.sync.ok) {
+            toast("ซิงก์ข้อมูลขึ้นฐานข้อมูลกลางสำเร็จแล้ว");
+            document.getElementById("dbSyncBar")?.remove();
+        } else {
+            toast(data.sync?.hint || data.error || "ยังซิงก์ไม่สำเร็จ");
+        }
+    } catch (e) { toast("ยังซิงก์ไม่สำเร็จ"); }
+}
+
+setInterval(dbSyncBanner, 60000);
+setTimeout(dbSyncBanner, 4000);

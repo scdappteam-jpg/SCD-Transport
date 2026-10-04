@@ -40,7 +40,8 @@ const IMPORT_INTERVAL_MS = Number(process.env.IMPORT_INTERVAL_MS || 2 * 60 * 60 
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "";
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY
+    || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_API_KEY || process.env.SUPABASE_ANON_KEY || "";
 
 const SUPABASE_STATE_TABLE = process.env.SUPABASE_STATE_TABLE || "app_state";
 
@@ -623,12 +624,88 @@ async function persistDbToSupabase(db) {
     });
 }
 
+const supabaseHealth = {
+    ok: true,
+    lastSuccessAt: null,
+    lastErrorAt: null,
+    lastError: null,
+    hint: "",
+    pendingWrites: 0,
+    retrying: false
+};
+
+let pendingSnapshot = null;
+let retryTimer = null;
+
+function describeSupabaseError(message) {
+    const text = String(message || "");
+    if (/PGRST303|JWT issued at future|JWT expired/i.test(text)) {
+        return "กุญแจ Supabase ใช้ไม่ได้ (เวลาออกบัตรไม่ตรงกับนาฬิกาเซิร์ฟเวอร์) — ต้องสร้างคีย์ใหม่แล้วใส่ใน Render";
+    }
+    if (/401|403|Invalid API key/i.test(text)) return "กุญแจ Supabase ไม่ถูกต้องหรือหมดสิทธิ์ — ตรวจค่าใน Render Environment";
+    if (/fetch failed|ENOTFOUND|ECONNREFUSED|timeout/i.test(text)) return "ต่อ Supabase ไม่ได้ชั่วคราว — ระบบจะลองใหม่ให้เอง";
+    return "ซิงก์ข้อมูลขึ้นฐานข้อมูลกลางไม่สำเร็จ";
+}
+
+function markSupabaseOk() {
+    supabaseHealth.ok = true;
+    supabaseHealth.lastSuccessAt = nowIso();
+    supabaseHealth.lastError = null;
+    supabaseHealth.hint = "";
+    supabaseHealth.pendingWrites = 0;
+}
+
+function markSupabaseFailed(err) {
+    supabaseHealth.ok = false;
+    supabaseHealth.lastErrorAt = nowIso();
+    supabaseHealth.lastError = String((err && err.message) || err).slice(0, 300);
+    supabaseHealth.hint = describeSupabaseError(supabaseHealth.lastError);
+}
+
+function queueRetry() {
+    if (retryTimer || !pendingSnapshot) return;
+    retryTimer = setTimeout(async () => {
+        retryTimer = null;
+        await retrySupabasePersist();
+    }, 60000);
+    if (typeof retryTimer.unref === "function") retryTimer.unref();
+}
+
+async function retrySupabasePersist() {
+    if (!pendingSnapshot || supabaseHealth.retrying) return supabaseHealth;
+    supabaseHealth.retrying = true;
+    const snapshot = pendingSnapshot;
+    try {
+        await persistDbToSupabase(snapshot);
+        if (pendingSnapshot === snapshot) pendingSnapshot = null;
+        markSupabaseOk();
+    } catch (err) {
+        markSupabaseFailed(err);
+        supabaseHealth.pendingWrites += 0;
+        queueRetry();
+    } finally {
+        supabaseHealth.retrying = false;
+    }
+    return supabaseHealth;
+}
+
 function scheduleSupabasePersist(db) {
     if (!supabaseEnabled()) return;
-    // Start the write immediately. A delayed timer can be discarded when a
-    // serverless instance is recycled just after an import response is sent.
+    // เขียนทันที (ตัวตั้งเวลาอาจหายถ้าเครื่องถูกรีไซเคิลหลังตอบ response)
     const snapshot = sanitizedClone(db);
-    dbPersistPromise = dbPersistPromise.catch(() => {}).then(() => persistDbToSupabase(snapshot));
+    pendingSnapshot = snapshot;
+    dbPersistPromise = dbPersistPromise.catch(() => {}).then(async () => {
+        try {
+            await persistDbToSupabase(snapshot);
+            if (pendingSnapshot === snapshot) pendingSnapshot = null;
+            markSupabaseOk();
+        } catch (err) {
+            // ข้อมูลยังอยู่ในเครื่องและในหน่วยความจำ ไม่หาย — เข้าคิวลองใหม่ ไม่ขวางผู้ใช้
+            markSupabaseFailed(err);
+            supabaseHealth.pendingWrites = 1;
+            queueRetry();
+        }
+    });
 }
 
 let lastMirrorError = null;
@@ -638,9 +715,13 @@ function mirrorHealth() {
 }
 
 async function flushSupabasePersistence() {
-    // ข้อมูลหลักอยู่ที่ตาราง app_state — ต้องเขียนสำเร็จเท่านั้น
-    await dbPersistPromise;
-    // ตารางสำเนา (relational mirror) เป็นของรอง ถ้าซิงก์ไม่ได้ต้องไม่ทำให้คำสั่งทั้งคำสั่งล้มเหลว
+    // งานเขียนทั้งหมดถูกดักไว้แล้วภายใน (ข้อมูลเก็บลงเครื่อง + เข้าคิวลองใหม่)
+    // จึงไม่โยน error ออกไปทำให้คำสั่งของผู้ใช้กลายเป็น 503 อีกต่อไป
+    try {
+        await dbPersistPromise;
+    } catch (err) {
+        markSupabaseFailed(err);
+    }
     try {
         await relationalMirror.flush();
         lastMirrorError = null;
@@ -3021,6 +3102,39 @@ async function handleApi(req, res, pathname) {
             });
         }
     }
+    if (req.method === "GET" && pathname === "/api/admin/db-health") {
+        return sendJson(res, 200, {
+            ok: true,
+            sharedDatabase: supabaseEnabled() ? {
+                provider: "supabase",
+                table: SUPABASE_STATE_TABLE,
+                id: SUPABASE_STATE_ID,
+                loaded: Boolean(dbCache)
+            } : null,
+            sync: {
+                ok: supabaseHealth.ok,
+                lastSuccessAt: supabaseHealth.lastSuccessAt,
+                lastErrorAt: supabaseHealth.lastErrorAt,
+                lastError: supabaseHealth.lastError,
+                hint: supabaseHealth.hint,
+                pendingWrites: supabaseHealth.pendingWrites
+            },
+            mirror: mirrorHealth(),
+            runtime: summarizeDb(db)
+        });
+    }
+
+    if (req.method === "POST" && pathname === "/api/admin/db-retry-sync") {
+        const payload = await parseBody(req);
+        const actor = (db.users || []).find(user => user.id === payload.userId);
+        if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) {
+            return sendJson(res, 403, { error: "เฉพาะ Admin / ผู้บริหาร เท่านั้นที่สั่งซิงก์ใหม่ได้" });
+        }
+        if (!pendingSnapshot) scheduleSupabasePersist(db);
+        const health = await retrySupabasePersist();
+        return sendJson(res, 200, { ok: true, sync: { ok: health.ok, lastError: health.lastError, hint: health.hint } });
+    }
+
     if (req.method === "GET" && pathname === "/api/admin/db-info") {
         const bundled = readBundledDb();
         return sendJson(res, 200, {

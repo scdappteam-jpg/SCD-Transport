@@ -96,6 +96,8 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
   // previously failed write must not make status/read endpoints unavailable.
   if (!["GET", "HEAD"].includes(request.method)) {
     try {
+      // flushSupabasePersistence จัดการความล้มเหลวเองแล้ว (เก็บลงเครื่อง + เข้าคิวลองใหม่)
+      // ตรงนี้เหลือไว้กันกรณีผิดปกติจริง ๆ เท่านั้น
       await legacyApi.flushSupabasePersistence();
     } catch (error) {
       // ถึงตรงนี้แปลว่าเขียนฐานข้อมูลหลัก (app_state) ไม่สำเร็จจริง ๆ
