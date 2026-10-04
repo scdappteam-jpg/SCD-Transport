@@ -2397,10 +2397,14 @@ async function renderMDock() {
     }
     box.hidden = false;
     box.className = "fo-card fo-dock-card none";
-    box.innerHTML = `
+    // ไม่มีงานที่ถือครองอยู่ = ยังจองช่องไม่ได้ ต้องบอกให้ชัด ไม่ใช่ปล่อยให้กดแล้วเด้ง error
+    box.innerHTML = house ? `
       <div class="fo-dock-lbl">ยังไม่ได้จองช่องเทียบท่า</div>
-      <div class="fo-dock-sub">House ${escapeHtmlMobile(house || "-")} · ท่าว่าง ${data.summary?.available ?? "-"} ท่า</div>
-      <button type="button" class="fo-primary-btn" onclick="mobileJoinDockQueue('${escapeHtmlMobile(house)}')">แจ้งว่าถึงหน้าคลังแล้ว</button>`;
+      <div class="fo-dock-sub">House ${escapeHtmlMobile(house)} · ท่าว่าง ${data.summary?.available ?? "-"} ท่า</div>
+      <button type="button" class="fo-primary-btn" onclick="mobileJoinDockQueue('${escapeHtmlMobile(house)}')">แจ้งว่าถึงหน้าคลังแล้ว</button>` : `
+      <div class="fo-dock-lbl">ยังจองช่องเทียบท่าไม่ได้</div>
+      <div class="fo-dock-sub">ต้องมีใบงานที่มอบหมายให้คุณก่อน · ท่าว่างตอนนี้ ${data.summary?.available ?? "-"} ท่า</div>
+      <button type="button" class="fo-primary-btn outline" onclick="showMnav('work')">ไปหน้างานของฉัน</button>`;
 }
 
 async function mobileJoinDockQueue(house) {
