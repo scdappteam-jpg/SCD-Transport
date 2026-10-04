@@ -3010,7 +3010,11 @@ async function handleApi(req, res, pathname) {
             attachments: (db.attachments || []).length,
             importChanges: (db.importChanges || []).length,
             importHistory: (db.importHistory || []).length,
-            alerts: (db.alerts || []).length
+            alerts: (db.alerts || []).length,
+            taskGroups: (db.taskGroups || []).length,
+            notifications: (db.notifications || []).length,
+            dockQueue: (db.dock?.queue || []).length,
+            serviceRecords: payload.includeServiceRecords ? (db.serviceRecords || []).length : 0
         };
         db.jobs = [];
         db.billing = [];
@@ -3020,8 +3024,40 @@ async function handleApi(req, res, pathname) {
         db.importChanges = [];
         db.importHistory = [];
         db.alerts = [];
+        db.taskGroups = [];
+        db.notifications = [];
+
+        // คืนช่องเก็บของในคลังให้ว่าง (ผังคลังยังอยู่ครบ ลบเฉพาะของที่ผูกกับงานเก่า)
+        let freedLocations = 0;
+        for (const loc of db.warehouseMap?.locations || []) {
+            if (Array.isArray(loc.occupiedBy) && loc.occupiedBy.length) {
+                loc.occupiedBy = [];
+                freedLocations += 1;
+            }
+            if (loc.status && loc.status !== "Available") loc.status = "Available";
+        }
+        removed.freedLocations = freedLocations;
+
+        // คืนช่องเทียบท่าให้ว่างทั้งหมด
+        db.dock ||= {};
+        db.dock.queue = [];
+        db.dock.log = [];
+        for (const bay of db.dock.bays || []) {
+            if (bay.status !== "Closed") bay.status = "Available";
+            delete bay.houseNumber;
+            delete bay.vehiclePlate;
+            delete bay.driverName;
+            delete bay.assignedAt;
+        }
+
+        // งานบริการ/เตรียมวางบิล ลบเฉพาะเมื่อสั่งมาเท่านั้น (ตารางเรทไม่ถูกแตะ)
+        if (payload.includeServiceRecords) db.serviceRecords = [];
+
         db.integrations ||= {};
         db.integrations.importedFeedHashes = {};
+        // สำคัญ: ล้างลายนิ้วมือไฟล์จากอีเมล ไม่งั้นส่งไฟล์ชุดเดิมเข้ามาใหม่ระบบจะมองว่าซ้ำและไม่ import
+        db.integrations.n8nEmailHashes = {};
+        db.integrations.n8nEmail = null;
         db.integrations.lastFeedRun = {
             checked: 0,
             importedFiles: 0,

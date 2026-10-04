@@ -10622,12 +10622,25 @@ async function adminResetAllJobs() {
     const user = currentWebUser();
     if (user?.role !== "Admin") return toast("เฉพาะ Admin เท่านั้นที่ล้างงานได้", "error");
     const totalNow = (state.dashboard?.jobs || []).length;
-    if (!window.confirm(`ล้างงานทั้งหมด ${totalNow} งาน + ใบแจ้งหนี้ + แผนโหลด + ประวัติ Import ออกจากระบบถาวร?\n\nผู้ใช้ / ลูกค้า / ผังคลัง / HR จะยังอยู่ครบ`)) return;
+    const svcNow = (svcData && svcData.records || []).length;
+    if (!window.confirm(
+        "ล้างข้อมูลงานทั้งหมดเพื่อเริ่มนับใหม่?\n\n" +
+        "จะถูกลบถาวร: ใบงาน " + totalNow + " ใบ · ใบแจ้งหนี้ · แผนโหลด · ประวัติ import · " +
+        "แจ้งเตือน · กลุ่มงาน · คิวช่องเทียบท่า\n" +
+        "จะถูกคืนค่าให้ว่าง: ช่องเก็บของในคลัง · ช่องเทียบท่า · ลายนิ้วมือไฟล์จากอีเมล (เพื่อให้ส่งไฟล์เดิมเข้ามาใหม่ได้)\n\n" +
+        "ยังอยู่ครบ: ผู้ใช้ · ลูกค้า · ผังคลัง · HR · ตารางเรทค่าบริการ")) return;
+    let includeServiceRecords = false;
+    if (svcNow) {
+        includeServiceRecords = window.confirm(
+            "ลบรายการงานบริการที่บันทึกไว้ " + svcNow + " รายการด้วยไหม?\n\n" +
+            "ตกลง = ลบด้วย (เริ่มนับยอดวางบิลใหม่ทั้งหมด)\n" +
+            "ยกเลิก = เก็บไว้ (ตารางเรทและยอดที่บันทึกไว้ยังอยู่)");
+    }
     const word = await scdPrompt({ title: "ยืนยันการล้างข้อมูล", note: "การล้างข้อมูลย้อนกลับไม่ได้", label: "พิมพ์ RESET (ตัวใหญ่) เพื่อยืนยัน", okText: "ล้างข้อมูล" });
     if (word !== "RESET") return toast("ยกเลิก — ไม่ได้ล้างข้อมูล");
     try {
-        const data = await api("/api/admin/reset-jobs", { confirm: "RESET_ALL_JOBS", userId: user.id });
-        toast(`ล้างแล้ว ${data.removedJobs} งาน — ระบบพร้อมรับข้อมูลชุดใหม่`);
+        const data = await api("/api/admin/reset-jobs", { confirm: "RESET_ALL_JOBS", userId: user.id, includeServiceRecords: includeServiceRecords });
+        toast(`ล้างแล้ว ${data.removedJobs} งาน · คืนช่องคลัง ${(data.removed && data.removed.freedLocations) || 0} ช่อง — พร้อมรับไฟล์ชุดใหม่`);
         if (data.dashboard) state.dashboard = data.dashboard;
         renderAll();
     } catch (e) {
