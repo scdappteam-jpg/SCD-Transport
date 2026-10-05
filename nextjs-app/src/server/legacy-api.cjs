@@ -49,6 +49,11 @@ const SUPABASE_STATE_ID = process.env.SUPABASE_STATE_ID || "scd-transport";
 
 const RELATIONAL_MIRROR_ENABLED = String(process.env.RELATIONAL_MIRROR_ENABLED || "true").toLowerCase() !== "false";
 
+const SERVER_AUTH_REQUIRED = String(process.env.SCD_SERVER_AUTH_REQUIRED || "false").toLowerCase() === "true";
+
+let SERVER_PASSWORD_HASHES = {};
+try { SERVER_PASSWORD_HASHES = JSON.parse(process.env.SCD_AUTH_PASSWORD_HASHES || "{}"); } catch (_) { SERVER_PASSWORD_HASHES = {}; }
+
 const SCAN_SERVICE_URL = process.env.SCAN_SERVICE_URL || "http://localhost:5000/scan";
 
 const CARTRACK_BASE_URL = (process.env.CARTRACK_BASE_URL || "").replace(/\/$/, "");
@@ -501,6 +506,7 @@ function ensureDbShape(db) {
     db.attendance ||= [];
     db.taskGroups ||= [];
     db.notifications ||= [];
+    db.authSessions ||= [];
     db.serviceRecords ||= [];
     serviceRates(db);
     db.dock ||= {};
@@ -982,6 +988,22 @@ function parseBody(req) {
 
 function nowIso() {
     return (new Date).toISOString();
+}
+
+function serverPasswordMatches(password, encoded) {
+    const [ algorithm, salt, expected ] = String(encoded || "").split("$");
+    if (algorithm !== "scrypt" || !salt || !expected) return false;
+    const actual = crypto.scryptSync(String(password || ""), Buffer.from(salt, "base64"), 64).toString("base64");
+    const expectedBuffer = Buffer.from(expected, "base64"), actualBuffer = Buffer.from(actual, "base64");
+    return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+function sessionUser(db, req) {
+    const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    if (!token) return null;
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const session = (db.authSessions || []).find(item => item.tokenHash === hash && new Date(item.expiresAt).getTime() > Date.now());
+    return session ? (db.users || []).find(user => user.id === session.userId) || null : null;
 }
 
 function formatBangkok(iso) {
@@ -3061,6 +3083,17 @@ async function handleApi(req, res, pathname) {
         } ];
         writeDb(db);
     }
+    if (req.method === "POST" && pathname === "/api/auth/login") {
+        const payload = await parseBody(req);
+        const user = (db.users || []).find(item => item.id === payload.userId && item.status !== "Inactive");
+        if (!user || !serverPasswordMatches(payload.password, SERVER_PASSWORD_HASHES[user.id])) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        const token = crypto.randomBytes(32).toString("base64url");
+        db.authSessions = (db.authSessions || []).filter(item => new Date(item.expiresAt).getTime() > Date.now()).slice(-200);
+        db.authSessions.push({ id: `SES-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, userId: user.id, tokenHash: crypto.createHash("sha256").update(token).digest("hex"), createdAt: nowIso(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1e3).toISOString() });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
+    }
+    if (SERVER_AUTH_REQUIRED && ![ "/api/bootstrap", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
     if (req.method === "GET" && pathname === "/api/bootstrap") {
         return sendJson(res, 200, {
             users: db.users,

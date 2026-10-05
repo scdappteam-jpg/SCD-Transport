@@ -176,6 +176,7 @@ const AUTH_CONFIG = window.SCD_AUTH_CONFIG || {
 const WEB_AUTH_KEY = "scdTransportWebAuth";
 
 const WEB_AUTH_USER_KEY = "scdTransportWebUser";
+const WEB_SESSION_TOKEN_KEY = "scdTransportWebSession";
 
 const configuredApiBase = window.SMART_LOGISTICS_API_BASE || "";
 
@@ -580,6 +581,8 @@ async function api(path, payload, method) {
                 "Content-Type": "application/json"
             }
         };
+        const sessionToken = localStorage.getItem(WEB_SESSION_TOKEN_KEY);
+        if (sessionToken) opts.headers.Authorization = `Bearer ${sessionToken}`;
         if (m !== "GET" && m !== "HEAD") {
             const requestPayload = payload && typeof payload === "object" && !Array.isArray(payload) && !payload.userId ? { ...payload, userId: currentWebUser()?.id || "" } : payload;
             opts.body = JSON.stringify(requestPayload);
@@ -8660,6 +8663,7 @@ function bindEvents() {
     $("#logoutBtn").addEventListener("click", () => {
         localStorage.removeItem(WEB_AUTH_KEY);
         localStorage.removeItem(WEB_AUTH_USER_KEY);
+        localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
         $("#webLoginPassword").value = "";
         renderWebLogin();
         toast("ออกจากระบบแล้ว");

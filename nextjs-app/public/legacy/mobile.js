@@ -25,6 +25,7 @@ const AUTH_CONFIG = window.SCD_AUTH_CONFIG || {
 };
 
 const MOBILE_AUTH_KEY = "scdTransportMobileAuth";
+const MOBILE_SESSION_TOKEN_KEY = "scdTransportMobileSession";
 
 const configuredApiBase = window.SMART_LOGISTICS_API_BASE || "";
 
@@ -161,11 +162,12 @@ async function recoverCompletedRequest(path, payload) {
 async function api(path, payload) {
     try {
         const requestPayload = payload && typeof payload === "object" && !Array.isArray(payload) && !payload.userId ? { ...payload, userId: state.currentUserId || "" } : payload;
+        const headers = { "Content-Type": "application/json" };
+        const sessionToken = localStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
+        if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
         const res = await fetch(apiUrl(path), {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers,
             body: JSON.stringify(requestPayload)
         });
         const data = await res.json();
@@ -1130,6 +1132,7 @@ function bindEvents() {
     });
     const logoutMobile = () => {
         localStorage.removeItem(MOBILE_AUTH_KEY);
+        localStorage.removeItem(MOBILE_SESSION_TOKEN_KEY);
         renderMobileAuthState();
         renderMobileLogin();
         toast("ออกจากระบบแล้ว / Logged out");

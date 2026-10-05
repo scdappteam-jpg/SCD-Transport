@@ -18,7 +18,8 @@ export const legacyViewRoutes = {
   settings: "settings",
   "outbound-open": "outbound-open",
   attendance: "attendance",
-  "cs-queue": "cs-queue"
+  "cs-queue": "cs-queue",
+  service: "service"
 } as const;
 
 export const compatibilityRedirects = {
