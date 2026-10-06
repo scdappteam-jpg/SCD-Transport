@@ -182,6 +182,21 @@ const configuredApiBase = window.SMART_LOGISTICS_API_BASE || "";
 
 const API_BASE = configuredApiBase || "";
 
+// Some legacy screens call fetch() directly rather than the api() helper.
+// Attach the session consistently so turning on server authentication cannot
+// leave a hidden screen unauthenticated.
+const nativeWebFetch = window.fetch.bind(window);
+window.fetch = (input, init = {}) => {
+    const requestUrl = typeof input === "string" ? input : input?.url || "";
+    const apiPrefix = API_BASE ? `${API_BASE}/api/` : "/api/";
+    if (!requestUrl.startsWith(apiPrefix)) return nativeWebFetch(input, init);
+    const token = localStorage.getItem(WEB_SESSION_TOKEN_KEY);
+    if (!token) return nativeWebFetch(input, init);
+    const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+    if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+    return nativeWebFetch(input, { ...init, headers });
+};
+
 function initializeIcons() {
     const navIcons = {
         dashboard: "layout-dashboard",
@@ -354,7 +369,21 @@ function quickLogin(userId) {
     submitWebLogin();
 }
 
-function submitWebLogin() {
+async function establishWebLogin(userId, token = "") {
+    localStorage.setItem(WEB_AUTH_KEY, "ok");
+    localStorage.setItem(WEB_AUTH_USER_KEY, userId);
+    if (token) localStorage.setItem(WEB_SESSION_TOKEN_KEY, token);
+    else localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
+    await refresh();
+    renderWebLogin();
+    renderAll();
+    applyWebRoleVisibility();
+    applyRequestedWebView();
+    renderWebSessionUser();
+    toast("เข้าสู่ระบบ S.C.D.TRANSPORT แล้ว");
+}
+
+async function submitWebLogin() {
     const userId = $("#webLoginUser")?.value || "";
     const password = $("#webLoginPassword")?.value.trim();
     const message = $("#webLoginMessage");
@@ -363,20 +392,32 @@ function submitWebLogin() {
         $("#webLoginUser")?.focus();
         return;
     }
-    if (password !== passwordForUser(userId)) {
-        if (message) message.textContent = "รหัสผ่านไม่ถูกต้อง";
+    if (message) message.textContent = "กำลังตรวจสอบรหัสผ่าน...";
+    try {
+        const res = await fetch(apiUrl("/api/auth/login"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.token) {
+            if (message) message.textContent = "";
+            await establishWebLogin(userId, data.token);
+            return;
+        }
+        // Preserve access only until Render has per-user hashes configured.
+        // This branch is intentionally limited to the migration response.
+        if (data.code === "SERVER_AUTH_NOT_CONFIGURED") {
+            if (password !== passwordForUser(userId)) throw new Error("รหัสผ่านไม่ถูกต้อง");
+            if (message) message.textContent = "";
+            await establishWebLogin(userId);
+            return;
+        }
+        throw new Error(data.error || "เข้าสู่ระบบไม่สำเร็จ");
+    } catch (error) {
+        if (message) message.textContent = error.message || "เข้าสู่ระบบไม่สำเร็จ";
         $("#webLoginPassword")?.focus();
-        return;
     }
-    localStorage.setItem(WEB_AUTH_KEY, "ok");
-    localStorage.setItem(WEB_AUTH_USER_KEY, userId);
-    if (message) message.textContent = "";
-    renderWebLogin();
-    renderAll();
-    applyWebRoleVisibility();
-    applyRequestedWebView();
-    renderWebSessionUser();
-    toast("เข้าสู่ระบบ S.C.D.TRANSPORT แล้ว");
 }
 
 function setMobileMenu(open) {
@@ -10300,7 +10341,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
         renderWebLogin();
         try {
-            const res = await fetch(apiUrl("/api/bootstrap"), {
+            const res = await fetch(apiUrl("/api/auth/users"), {
                 cache: "no-store"
             });
             if (res.ok) {

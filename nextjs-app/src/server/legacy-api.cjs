@@ -887,7 +887,7 @@ function sendJson(res, status, payload) {
         "Cache-Control": "no-store",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type"
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
     });
     res.end(body);
 }
@@ -996,6 +996,19 @@ function serverPasswordMatches(password, encoded) {
     const actual = crypto.scryptSync(String(password || ""), Buffer.from(salt, "base64"), 64).toString("base64");
     const expectedBuffer = Buffer.from(expected, "base64"), actualBuffer = Buffer.from(actual, "base64");
     return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+// Never send password fields back to a browser.  This is deliberately kept
+// close to the session helpers so every authentication endpoint uses the same
+// safe representation of a user.
+function publicUser(user) {
+    if (!user) return null;
+    const { password, passwordHash, ...safeUser } = user;
+    return safeUser;
+}
+
+function publicUsers(db) {
+    return (db.users || []).map(publicUser);
 }
 
 function sessionUser(db, req) {
@@ -3088,9 +3101,19 @@ async function handleApi(req, res, pathname) {
         } ];
         writeDb(db);
     }
+    if (req.method === "GET" && pathname === "/api/auth/users") {
+        return sendJson(res, 200, { users: publicUsers(db) });
+    }
     if (req.method === "POST" && pathname === "/api/auth/login") {
         const payload = await parseBody(req);
         const user = (db.users || []).find(item => item.id === payload.userId && item.status !== "Inactive");
+        // The UI can fall back to the legacy login only while this explicit
+        // migration setting is missing.  Once hashes are configured (and the
+        // required flag is enabled) no password is ever checked in a browser.
+        if (user && !SERVER_PASSWORD_HASHES[user.id]) return sendJson(res, 503, {
+            error: "ยังไม่ได้ตั้งค่ารหัสผ่านฝั่งเซิร์ฟเวอร์",
+            code: "SERVER_AUTH_NOT_CONFIGURED"
+        });
         if (!user || !serverPasswordMatches(payload.password, SERVER_PASSWORD_HASHES[user.id])) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
         const token = crypto.randomBytes(32).toString("base64url");
         db.authSessions = (db.authSessions || []).filter(item => new Date(item.expiresAt).getTime() > Date.now()).slice(-200);
@@ -3098,10 +3121,10 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
     }
-    if (SERVER_AUTH_REQUIRED && ![ "/api/bootstrap", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
     if (req.method === "GET" && pathname === "/api/bootstrap") {
         return sendJson(res, 200, {
-            users: db.users,
+            users: publicUsers(db),
             customers: db.customers,
             dashboard: buildDashboard(db)
         });
@@ -5778,8 +5801,8 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
-            user: user,
-            users: db.users,
+            user: publicUser(user),
+            users: publicUsers(db),
             dashboard: buildDashboard(db)
         });
     }
