@@ -10324,6 +10324,8 @@ const attDash = {
 };
 
 var _csQueueData = [];
+var _csQueuePage = 1;
+const CS_QUEUE_PAGE_SIZE = 50;
 
 async function renderCsQueue() {
     const wrap = $("#view-cs-queue");
@@ -10354,6 +10356,7 @@ function csQueueFilterChange() {
     _csQueueFilters.q = document.getElementById("csSearchInput")?.value || "";
     _csQueueFilters.from = document.getElementById("csDateFrom")?.value || "";
     _csQueueFilters.to = document.getElementById("csDateTo")?.value || "";
+    _csQueuePage = 1;
     _renderCsQueueList();
 }
 
@@ -10367,11 +10370,13 @@ function csQueueClearFilters() {
         const el = document.getElementById(id);
         if (el) el.value = "";
     });
+    _csQueuePage = 1;
     _renderCsQueueList();
 }
 
 async function csSwitchTab(tab) {
     _csQueueTab = tab;
+    _csQueuePage = 1;
     document.querySelectorAll(".cs-tab").forEach(b => b.classList.toggle("active", b.dataset.cstab === tab));
     const lbl = document.getElementById("csDateLabel");
     if (lbl) lbl.textContent = tab === "history" ? "วันที่ยืนยัน" : "วันที่รับ";
@@ -10435,6 +10440,24 @@ function csSelectDateGroup(btn) {
     onCsJobCheck();
 }
 
+function csQueueGoToPage(page) {
+    _csQueuePage = Math.max(1, Number(page) || 1);
+    _renderCsQueueList();
+    document.getElementById("csQueueList")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function csQueuePaginationHtml(total, page, pageSize) {
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (totalPages <= 1) return "";
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(total, page * pageSize);
+    const windowStart = Math.max(1, Math.min(page - 2, totalPages - 4));
+    const windowEnd = Math.min(totalPages, windowStart + 4);
+    const pages = [];
+    for (let p = windowStart; p <= windowEnd; p += 1) pages.push(`<button type="button" onclick="csQueueGoToPage(${p})" ${p === page ? "disabled" : ""} style="min-width:34px;height:34px;border:1px solid ${p === page ? "#0b4ea2" : "var(--border)"};border-radius:8px;background:${p === page ? "#0b4ea2" : "#fff"};color:${p === page ? "#fff" : "var(--text)"};font-weight:700;cursor:${p === page ? "default" : "pointer"}">${p}</button>`);
+    return `<nav aria-label="หน้ารายการคิวงาน" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 2px 4px"><span style="font-size:12px;color:var(--text-muted)">แสดง ${start}–${end} จาก ${total} งาน</span><div style="display:flex;align-items:center;gap:6px"><button type="button" onclick="csQueueGoToPage(${page - 1})" ${page <= 1 ? "disabled" : ""} style="height:34px;padding:0 11px;border:1px solid var(--border);border-radius:8px;background:#fff;font-weight:600;cursor:pointer">ก่อนหน้า</button>${windowStart > 1 ? `<span style="color:var(--text-muted)">…</span>` : ""}${pages.join("")}${windowEnd < totalPages ? `<span style="color:var(--text-muted)">…</span>` : ""}<button type="button" onclick="csQueueGoToPage(${page + 1})" ${page >= totalPages ? "disabled" : ""} style="height:34px;padding:0 11px;border:1px solid var(--border);border-radius:8px;background:#fff;font-weight:600;cursor:pointer">ถัดไป</button></div></nav>`;
+}
+
 function _renderCsQueueHtml() {
     const wrap = $("#view-cs-queue");
     if (!wrap) return;
@@ -10455,12 +10478,15 @@ function _renderCsQueueList() {
     if (historyTab) historyTab.textContent = "ประวัติส่งต่อเปิดใบงาน";
     if (_csQueueTab === "history") return _renderCsHistoryTable(listEl);
     const jobs = _csApplyFilters(_csQueueData, _csJobDate);
+    const totalPages = Math.max(1, Math.ceil(jobs.length / CS_QUEUE_PAGE_SIZE));
+    _csQueuePage = Math.min(_csQueuePage, totalPages);
+    const pageJobs = jobs.slice((_csQueuePage - 1) * CS_QUEUE_PAGE_SIZE, _csQueuePage * CS_QUEUE_PAGE_SIZE);
     const totalPieces = jobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0);
     const summary = document.getElementById("csQueueSummary");
     const filtered = jobs.length !== _csQueueData.length;
     if (summary) summary.textContent = `รอ CS อนุมัติ ${jobs.length}${filtered ? " / " + _csQueueData.length : ""} งาน · ${totalPieces} ชิ้น — Transport ติดตามการอนุมัติก่อนเปิดใบงาน`;
     const byCustomer = {};
-    jobs.forEach(j => {
+    pageJobs.forEach(j => {
         const key = j.customerName || "ไม่ระบุลูกค้า";
         (byCustomer[key] ||= []).push(j);
     });
@@ -10476,7 +10502,7 @@ function _renderCsQueueList() {
             const gkey = `${safeCust}_${di}`;
             return `\n          <div class="cs-date-group" data-gkey="${gkey}">\n            <div class="cs-date-head">\n              <span>${safeHtml(date)} <em>· ${dJobs.length} HAWB · ${dJobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0)} ชิ้น · 1 Invoice</em></span>\n              <button type="button" class="cs-group-select" onclick="csSelectDateGroup(this)">เลือกทั้งกลุ่ม</button>\n            </div>\n            <div class="cs-jobs-list">\n              ${dJobs.map(j => `\n                <label class="cs-job-row" data-house="${safeHtml(j.houseNumber)}">\n                  <input type="checkbox" class="cs-job-check" value="${safeHtml(j.houseNumber)}" onchange="onCsJobCheck()">\n                  <div class="cs-job-info">\n                    <strong>${safeHtml(j.houseNumber)}</strong>\n                    <span>${safeHtml(j.destAirport || j.flightNo || "-")} · ${safeHtml(j.pieceCount || "-")} ชิ้น</span>\n                  </div>\n                  <div class="cs-job-meta">\n                    <span class="cs-status-badge pending">${safeHtml(j.manualExtra ? "Manual extra" : "Pending CS")}</span>\n                    <small>${safeHtml([ j.evidenceChannel || "", j.planRound || "" ].filter(Boolean).join(" / ") || "Need approval")}</small>\n                  </div>\n                </label>`).join("")}\n            </div>\n            <div class="cs-confirm-bar">\n              <div style="flex:1;display:flex;flex-direction:column;gap:6px">\n                <div style="font-size:11px;font-weight:600;color:#075985">โทรยืนยันแล้ว — Invoice ของกลุ่มวันนี้:</div>\n                <div style="display:flex;gap:8px;flex-wrap:wrap">\n                  <input type="text" class="cs-invoice-input" placeholder="เลข Invoice (เช่น INV-2026-0001)" id="csInvoice-${gkey}">\n                  <input type="text" class="cs-invoice-input" style="max-width:150px" placeholder="ชื่อผู้ติดต่อ" id="csContact-${gkey}">\n                  <select class="cs-invoice-input" style="max-width:130px" id="csEvidenceChannel-${gkey}">\n                    <option value="Line">Line</option>\n                    <option value="Email">Email</option>\n                    <option value="Phone">Phone</option>\n                  </select>\n                  <input type="text" class="cs-invoice-input" style="max-width:220px" placeholder="หลักฐาน/หมายเหตุ" id="csEvidenceNote-${gkey}">\n                  <input type="file" class="cs-evidence-file" accept="image/*,application/pdf" multiple id="csEvidenceFiles-${gkey}">\n                  <button class="cs-confirm-btn" onclick="submitCsConfirm('${gkey}')">✓ Confirm</button>\n                </div>\n              </div>\n            </div>\n          </div>`;
         }).join("")}\n      </div>`;
-    }).join("");
+    }).join("") + csQueuePaginationHtml(jobs.length, _csQueuePage, CS_QUEUE_PAGE_SIZE);
     onCsJobCheck();
 }
 
