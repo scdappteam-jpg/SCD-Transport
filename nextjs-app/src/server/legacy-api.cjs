@@ -2856,12 +2856,15 @@ async function createAlert(db, message, severity = "warning") {
     };
     db.alerts.push(alert);
     if (process.env.LINE_WEBHOOK_URL) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         try {
             await fetch(process.env.LINE_WEBHOOK_URL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
+                signal: controller.signal,
                 body: JSON.stringify({
                     message: message
                 })
@@ -2869,7 +2872,9 @@ async function createAlert(db, message, severity = "warning") {
             alert.sent = true;
         } catch (error) {
             alert.sent = false;
-            alert.error = error.message;
+            alert.error = error.name === "AbortError" ? "LINE webhook timeout (5s)" : error.message;
+        } finally {
+            clearTimeout(timeout);
         }
     }
     return alert;
