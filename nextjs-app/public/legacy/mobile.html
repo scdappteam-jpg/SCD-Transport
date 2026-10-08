@@ -3,8 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="theme-color" content="#0b4ea2">
+    <meta name="theme-color" content="#143d77">
     <title>S.C.D.TRANSPORT Mobile</title>
+    <meta name="description" content="ระบบติดตามงานขนส่งสินค้าทางอากาศครบวงจรของ S.C.D.TRANSPORT ตั้งแต่รับสินค้า เข้าคลัง WH3 ส่ง Terminal จนถึงวางบิล">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="S.C.D.TRANSPORT">
+    <meta property="og:title" content="S.C.D.TRANSPORT · งานภาคสนาม">
+    <meta property="og:description" content="ระบบติดตามงานขนส่งสินค้าทางอากาศครบวงจรของ S.C.D.TRANSPORT ตั้งแต่รับสินค้า เข้าคลัง WH3 ส่ง Terminal จนถึงวางบิล">
+    <meta property="og:image" content="apple-touch-icon.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="icon" href="icon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,7 +54,7 @@
             <button id="mobileLoginBtn" type="button">เข้าสู่ระบบ / Sign In</button>
             <button id="mobileLogoutBtn" type="button" class="logout-inline" hidden>ออกจากระบบ / Logout</button>
             <div id="mobileLoginStatus" class="login-status" role="status"></div>
-            <div class="quick-start-wrap">
+            <div class="quick-start-wrap" id="quickStartWrap" hidden>
               <div class="quick-start-label">เข้าด่วน (Demo)</div>
               <div class="quick-start-grid">
                 <button class="qs-btn qs-driver" type="button" onclick="quickMobileLogin('u_driver_01')">Driver A</button>
@@ -130,7 +138,7 @@
         </div>
         <button id="openPickupWorkflowBtn" type="button">เปิดใบงานนี้ / Open Job</button>
         <div id="pickupWorkflowDetails" class="guided-workflow-details" hidden>
-        <input id="driverHouse" type="hidden" value="H-1001">
+        <input id="driverHouse" type="hidden" value="">
         <div class="mwf-stepper" id="mwfStepper"></div>
         <div class="mwf-step" data-mstep="1">
         <label>ประเภทงาน / Pickup Case</label>
@@ -516,7 +524,7 @@
         <section class="billing-step">
           <h3>1. Review</h3>
           <label>House Number</label>
-          <input id="billingHouse" autocomplete="off" value="H-1001">
+          <input id="billingHouse" autocomplete="off" placeholder="สแกนหรือพิมพ์เลข House">
           <label>ตรวจเอกสาร / Document review</label>
           <textarea id="billingReviewNote" rows="3" placeholder="ใบชั่งน้ำหนัก / Cargo Transfer / Loading Detail / เอกสารหน้างาน"></textarea>
           <div class="button-row two">

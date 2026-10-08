@@ -559,3 +559,56 @@ body.sidebar-collapsed .app-shell{background:var(--r-navy)!important}
   border:0!important;background:#fff!important;color:#4A2B02!important;font-size:12px!important}
 .db-sync-bar button.ghost{background:rgba(255,255,255,.18)!important;color:#fff!important}
 @media (max-width:720px){.db-sync-bar{flex-wrap:wrap;bottom:12px}}
+
+/* ════════ QA ROUND 1 — ความปลอดภัยและการเข้าถึง ════════ */
+/* เดิมเมนูข้างถูกลบ focus ring ทิ้ง ทำให้ผู้ใช้คีย์บอร์ดมองไม่เห็นว่าอยู่ตรงไหน */
+.sidebar .nav-item:focus-visible{
+  outline:2px solid #7FB0FF!important;outline-offset:-2px!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)!important;border-radius:10px}
+.sidebar .nav-item:focus:not(:focus-visible){outline:0!important}
+/* ตารางตั้งค่าความจุโซน */
+.zct-box{max-width:620px;width:min(620px,92vw)}
+.zct-list{display:grid;gap:10px;max-height:min(58vh,440px);overflow:auto;margin:4px 0 12px;padding-right:4px}
+.zct-row{display:grid;grid-template-columns:1.1fr .9fr .9fr 1.2fr;gap:10px;align-items:end;
+  padding:10px 12px;border:1px solid var(--r-line);border-radius:10px;background:#fff}
+.zct-row b{font-size:13px;font-weight:500;color:var(--r-ink)}
+.zct-row label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#5C6B82}
+.zct-row .zct-input{min-height:36px;border:1px solid var(--r-line);border-radius:8px;padding:0 10px;font-family:inherit;font-size:13px}
+.zct-used{font-size:11.5px;color:#5C6B82}
+@media (max-width:720px){.zct-row{grid-template-columns:1fr 1fr}}
+
+/* ════════ QA ROUND 3 — การเข้าถึง ════════ */
+/* ลิงก์ข้ามเมนู: ซ่อนไว้จนกว่าจะกด Tab */
+.skip-link{position:absolute;left:12px;top:-60px;z-index:4000;padding:10px 16px;border-radius:0 0 10px 10px;
+  background:#1B4DB1;color:#fff;font-size:13px;text-decoration:none;transition:top .15s ease}
+.skip-link:focus{top:0}
+/* กรอบโฟกัสมาตรฐานของทั้งระบบ — เห็นชัดเฉพาะตอนใช้คีย์บอร์ด */
+a:focus-visible,button:focus-visible,[role="button"]:focus-visible,
+input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid #1B4DB1!important;outline-offset:2px!important;border-radius:6px}
+.sidebar a:focus-visible,.sidebar button:focus-visible,.sidebar [role="button"]:focus-visible{
+  outline-color:#7FB0FF!important;outline-offset:-2px!important}
+/* ปุ่มต้องรู้สึกว่าถูกกด */
+button:active:not(:disabled),[role="button"]:active{transform:scale(.985)}
+button:disabled,[aria-disabled="true"]{cursor:not-allowed!important}
+/* แถว/การ์ดที่กดได้ ต้องดูออกว่ากดได้ */
+[role="button"][tabindex="0"]{cursor:pointer}
+
+/* ════════ QA ROUND 4 — ประสบการณ์ใช้งาน ════════ */
+/* empty state แบบมีทางออก */
+.empty-state{display:grid;gap:6px;justify-items:center;text-align:center;padding:22px 16px;color:#5C6B82;font-size:13px}
+.empty-state b{font-size:14px;font-weight:500;color:var(--r-ink)}
+.empty-state span{font-size:12.5px;color:#5C6B82}
+.empty-action{margin-top:6px;min-height:36px!important;padding:0 16px!important;border-radius:9px!important;
+  border:1px solid #C7D7F2!important;background:#fff!important;color:#1B4DB1!important;font-size:12.5px!important}
+/* ปุ่มโหลดเพิ่มในรายการใบงาน */
+.order-more{width:100%;min-height:42px!important;margin-top:8px;border-radius:10px!important;
+  border:1px dashed #C7D7F2!important;background:#F7FAFF!important;color:#1B4DB1!important;font-size:12.5px!important}
+.order-more-end{padding:10px;text-align:center;font-size:11.5px;color:#5C6B82}
+/* สถานะกำลังโหลด */
+.loading-state{display:flex;align-items:center;justify-content:center;gap:10px;padding:26px;color:#5C6B82;font-size:13px}
+.loading-dot{width:9px;height:9px;border-radius:50%;background:#1B4DB1;animation:loadingPulse 1s ease-in-out infinite}
+@keyframes loadingPulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+/* ข้อความผิดพลาดใต้ช่องกรอก */
+.field-error{display:block;margin-top:4px;font-size:11.5px;color:#C0392B}
+input.has-error,select.has-error,textarea.has-error{border-color:#E0A6A0!important;background:#FDF6F5!important}

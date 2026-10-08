@@ -985,3 +985,25 @@ body[data-mnav="hr"] .smart-scan-card,body[data-mnav="profile"] .smart-scan-card
 .msvc-rate{margin:10px 0 2px;padding:9px 12px;border-radius:10px;background:#F2F6FC;color:#5C6B82;font-size:11.5px}
 .msvc-total{margin-top:10px;padding-top:10px;border-top:1px solid #EEF2F7;font-size:13px;font-weight:500;color:#123B79;text-align:right}
 #msvcToday .fo-att-row em{font-style:normal;font-weight:500;color:#123B79}
+
+/* ════════ QA ROUND 1 — ปุ่มท้ายฟอร์มต้องไม่ถูกแถบเมนูล่างบัง ════════ */
+body:not(.mobile-locked) main{padding-bottom:calc(var(--ms-nav) + 56px)!important}
+.mnav-panel:last-child,.mobile-panel:last-child{margin-bottom:calc(var(--ms-nav) + 16px)}
+.mnav-panel .fo-primary-btn:last-child,.mobile-panel>button:last-child,
+#mnav-hr .fo-primary-btn,#msvcBody .fo-primary-btn{scroll-margin-bottom:calc(var(--ms-nav) + 24px)}
+
+/* ════════ QA ROUND 3 — การเข้าถึงบนมือถือ ════════ */
+/* ขนาดตัวอักษรหลักเป็น rem เพื่อให้ขยายตามการตั้งค่าของเครื่อง */
+body:not(.mobile-locked){font-size:1rem!important}
+body:not(.mobile-locked) .fo-card-head strong,
+body:not(.mobile-locked) .fo-header h1{font-size:1.15rem!important;line-height:1.35}
+body:not(.mobile-locked) .fo-primary-btn,
+body:not(.mobile-locked) .mbtn{font-size:1rem!important}
+body:not(.mobile-locked) .fo-label,
+body:not(.mobile-locked) .fo-card-head span{font-size:.85rem!important}
+.fo-bottomnav button small{font-size:.75rem!important}
+/* กรอบโฟกัสสำหรับแป้นพิมพ์ภายนอก/สวิตช์ช่วยเหลือ */
+a:focus-visible,button:focus-visible,[role="button"]:focus-visible,
+input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:2px solid #1B4DB1!important;outline-offset:2px!important}
+button:active:not(:disabled){transform:scale(.985)}

@@ -63,7 +63,7 @@ const state = {
         dateTo: localStorage.getItem("dashboardDateTo") || dateOffsetValue(0),
         status: localStorage.getItem("dashboardStatusFilter") || "All"
     },
-    selectedHouse: "H-1001",
+    selectedHouse: "",
     adminQueueGroups: [],
     autoGroupSearch: "",
     groupingTab: "inbound",
@@ -6452,6 +6452,16 @@ function orderVisibleJobs() {
     });
 }
 
+var orderPageSize = 60;
+
+function orderShowMore() {
+    orderPageSize += 60;
+    renderOrderCards();
+    toast("แสดงเพิ่มอีก 60 ใบ");
+}
+
+function orderResetPaging() { orderPageSize = 60; }
+
 function renderOrderCards() {
     renderOrderFilterCounts();
     renderOrderAlertSummary();
@@ -6461,12 +6471,19 @@ function renderOrderCards() {
     }
     if (!jobs.length) {
         state.selectedHouse = "";
-        $("#orderCards").innerHTML = `<div class="empty-state compact">${localizeText("ไม่พบงานตามตัวกรองนี้ / No orders in this filter")}</div>`;
+        // empty state ต้องบอกทางออก ไม่ใช่แค่บอกว่าไม่มีข้อมูล
+        $("#orderCards").innerHTML = `<div class="empty-state compact">
+            <b>ไม่พบงานตามตัวกรองนี้</b>
+            <span>ลองเปลี่ยนตัวกรองด้านบน หรือดูงานทั้งหมด</span>
+            <button type="button" class="empty-action" onclick="state.orderFilter='all';localStorage.setItem('smartLogisticsOrderFilter','all');renderOrderCards()">ดูงานทั้งหมด</button>
+        </div>`;
         renderTimeline();
         applyLanguage();
         return;
     }
-    $("#orderCards").innerHTML = jobs.map(job => {
+    // แสดงทีละชุดเพื่อไม่ให้หน้าหนักเกินไปเมื่อมีงานหลายพันใบ
+    const shown = jobs.slice(0, orderPageSize);
+    $("#orderCards").innerHTML = shown.map(job => {
         const now = Date.now();
         const ftMs = job.flightTime ? new Date(job.flightTime).getTime() : 0;
         const diffH = ftMs ? (ftMs - now) / 36e5 : 99;
@@ -6479,6 +6496,14 @@ function renderOrderCards() {
         const cardBorder = isReXray || isMissed ? "border-left:3px solid #ef4444" : isUrgent ? "border-left:3px solid #f59e0b" : "";
         return `<button class="order-card ${job.houseNumber === state.selectedHouse ? "active" : ""}" type="button" data-house="${job.houseNumber}" style="${cardBorder}">\n      <span class="cube">□</span>\n      <strong>${job.houseNumber}</strong>\n      <small>${job.customerName || "-"} / ${job.flightTimeLabel || "-"}</small>\n      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0">\n        <span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span>\n        ${urgentBadge}\n        ${!job.csConfirmed ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">รอ CS</span>' : ""}\n        ${(state.loadPlan?.rows || []).some(r => r.houseNumber === job.houseNumber) ? '<span style="background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">LP</span>' : ""}\n      </div>\n    </button>`;
     }).join("");
+    if (jobs.length > shown.length) {
+        $("#orderCards").insertAdjacentHTML("beforeend",
+            '<button type="button" class="order-more" onclick="orderShowMore()">' +
+            'แสดงเพิ่ม · เหลืออีก ' + (jobs.length - shown.length).toLocaleString("th-TH") + ' ใบ</button>');
+    } else if (jobs.length > 60) {
+        $("#orderCards").insertAdjacentHTML("beforeend",
+            '<div class="order-more-end">แสดงครบ ' + jobs.length.toLocaleString("th-TH") + ' ใบแล้ว</div>');
+    }
     $$(".order-card").forEach(card => {
         card.addEventListener("click", () => {
             state.selectedHouse = card.dataset.house;
@@ -8495,6 +8520,7 @@ function bindEvents() {
         button.addEventListener("click", () => {
             state.orderFilter = button.dataset.orderFilter;
             localStorage.setItem("smartLogisticsOrderFilter", state.orderFilter);
+            orderResetPaging();
             renderOrderCards();
             toast(`แสดงงาน: ${button.querySelector("span")?.textContent || state.orderFilter}`);
         });
@@ -11513,7 +11539,7 @@ function updateNotifBtn() {
 }
 
 async function requestAttNotifPermission() {
-    if (!("Notification" in window)) return alert("เบราว์เซอร์ไม่รองรับ");
+    if (!("Notification" in window)) return toast("เบราว์เซอร์ไม่รองรับ");
     const result = await Notification.requestPermission();
     updateNotifBtn();
     if (result === "granted") {
@@ -11586,7 +11612,7 @@ async function renderServiceBilling() {
     var box = $("#view-service");
     if (!box) return;
     if (!svcFilter.from) { var r = svcMonthRange(); svcFilter.from = r.from; svcFilter.to = r.to; }
-    box.innerHTML = '<div class="card"><div class="fo-loading">กำลังโหลดข้อมูล...</div></div>';
+    box.innerHTML = '<div class="card"><div class="loading-state"><span class="loading-dot"></span>กำลังโหลดข้อมูลงานบริการ...</div></div>';
     try {
         var res = await fetch(API_BASE + "/api/service/list", {
             method: "POST", headers: { "Content-Type": "application/json" },
@@ -11726,8 +11752,41 @@ function svcApplyFilter() {
     renderServiceBilling();
 }
 
+function svcFieldError(id, message) {
+    var el = $("#" + id);
+    if (!el) return;
+    var holder = el.closest("label") || el.parentElement;
+    if (!holder) return;
+    var old = holder.querySelector(".field-error");
+    if (old) old.remove();
+    if (!message) { el.classList.remove("has-error"); return; }
+    el.classList.add("has-error");
+    var span = document.createElement("span");
+    span.className = "field-error";
+    span.textContent = message;
+    holder.appendChild(span);
+    el.focus();
+}
+
+function svcClearFieldErrors() {
+    document.querySelectorAll("#view-service .field-error").forEach(function (e) { e.remove(); });
+    document.querySelectorAll("#view-service .has-error").forEach(function (e) { e.classList.remove("has-error"); });
+}
+
 async function svcSaveRecord() {
     var val = function (id) { var el = $("#" + id); return el ? el.value : ""; };
+    svcClearFieldErrors();
+    // ตรวจก่อนส่ง แล้วชี้ไปที่ช่องที่ผิดโดยตรง
+    if (!val("svcFDate")) return svcFieldError("svcFDate", "กรุณาเลือกวันที่");
+    if (svcFormType === "load" && !val("svcFStation")) return svcFieldError("svcFStation", "กรุณาเลือกสถานี");
+    if (svcFormType === "stock" && !val("svcFPallet")) return svcFieldError("svcFPallet", "กรุณาเลือกขนาดพาเลท");
+    if (svcFormType === "inspect") {
+        var sum = [ "svcFOpen", "svcFStrap", "svcFWrap", "svcFCable" ].reduce(function (s, id) { return s + (Number(val(id)) || 0); }, 0);
+        if (!sum) return svcFieldError("svcFOpen", "กรอกจำนวนอย่างน้อย 1 ช่อง");
+    }
+    if (svcFormType === "wrapping" && !(Number(val("svcFQty")) > 0)) return svcFieldError("svcFQty", "กรอกจำนวนให้มากกว่า 0");
+    if (svcFormType === "stock" && !(Number(val("svcFQty")) > 0)) return svcFieldError("svcFQty", "กรอกจำนวนพาเลทให้มากกว่า 0");
+    if (svcFormType === "load" && !(Number(val("svcFWeight")) > 0)) return svcFieldError("svcFWeight", "กรอกน้ำหนักให้มากกว่า 0");
     var body = {
         type: svcFormType,
         date: val("svcFDate"),
@@ -11924,3 +11983,173 @@ async function dbRetrySync() {
 
 setInterval(dbSyncBanner, 60000);
 setTimeout(dbSyncBanner, 4000);
+
+
+/* ══════════ ปุ่มเข้าด่วน: เปิดเฉพาะโหมดทดสอบ (?demo=1) ══════════ */
+function initQuickStartVisibility() {
+    var wrap = document.getElementById("quickStartWrap");
+    if (!wrap) return;
+    var params = new URLSearchParams(location.search);
+    var demo = params.get("demo") === "1" || localStorage.getItem("scdDemoLogin") === "1";
+    if (params.get("demo") === "1") localStorage.setItem("scdDemoLogin", "1");
+    if (params.get("demo") === "0") { localStorage.removeItem("scdDemoLogin"); demo = false; }
+    wrap.hidden = !demo;
+}
+function initDemoMenuVisibility() {
+    var nav = document.getElementById("navFleetDemo");
+    if (!nav) return;
+    nav.hidden = localStorage.getItem("scdDemoLogin") !== "1" &&
+        new URLSearchParams(location.search).get("demo") !== "1";
+}
+document.addEventListener("DOMContentLoaded", function () {
+    initQuickStartVisibility();
+    initDemoMenuVisibility();
+});
+
+/* ══════════ โซนคลัง: ลบโซน / ลบ overlay / ตั้งค่าความจุ ══════════ */
+async function deleteWhZone(zoneId) {
+    var zone = (whMapState.zones || []).find(function (z) { return z.id === zoneId; });
+    if (!zone) return toast("ไม่พบโซนนี้");
+    var answer = await scdPrompt({
+        title: "ลบโซน " + (zone.name || zoneId),
+        note: "ช่องเก็บของทั้งหมดในโซนนี้จะถูกลบไปด้วย และลบแล้วย้อนกลับไม่ได้",
+        label: 'พิมพ์คำว่า ลบ เพื่อยืนยัน',
+        okText: "ลบโซน"
+    });
+    if (answer === null) return;
+    if (String(answer).trim() !== "ลบ") return toast("ยกเลิก — ไม่ได้ลบโซน");
+    try {
+        await api("/api/warehouse/zone/delete", { zoneId: zoneId });
+        toast("ลบโซน " + (zone.name || "") + " แล้ว");
+        await renderWarehouseMap();
+    } catch (err) {
+        // เซิร์ฟเวอร์จะปฏิเสธถ้ายังมีสินค้าอยู่ในโซน — แสดงเหตุผลให้ผู้ใช้เห็น
+        toast(err.message || "ลบโซนไม่สำเร็จ", "error");
+    }
+}
+
+async function deleteWhOverlay(overlayId) {
+    var ov = (whMapState.overlays || []).find(function (o) { return o.id === overlayId; });
+    if (!ov) return toast("ไม่พบรายการนี้");
+    var answer = await scdPrompt({
+        title: "ลบ " + (ov.label || "องค์ประกอบ"),
+        note: "ลบออกจากผังคลัง (ไม่กระทบสินค้าที่เก็บอยู่)",
+        label: 'พิมพ์คำว่า ลบ เพื่อยืนยัน',
+        okText: "ลบ"
+    });
+    if (answer === null) return;
+    if (String(answer).trim() !== "ลบ") return toast("ยกเลิก — ไม่ได้ลบ");
+    try {
+        await api("/api/warehouse/overlay/delete", { overlayId: overlayId, by: (currentWebUser() || {}).name || "admin" });
+        toast("ลบแล้ว");
+        await renderWarehouseMap();
+    } catch (err) { toast(err.message || "ลบไม่สำเร็จ", "error"); }
+}
+
+async function openZoneCapTable() {
+    var box = document.getElementById("view-wh-status") || document.querySelector(".page.active");
+    if (!box) return;
+    var old = document.getElementById("zoneCapModal");
+    if (old) old.remove();
+    var rows = "";
+    try {
+        var data = await fetch(apiUrl("/api/warehouse/zones/capacity"), { cache: "no-store" }).then(function (r) { return r.json(); });
+        var zones = data.zones || data || [];
+        rows = (Array.isArray(zones) ? zones : []).map(function (z) {
+            return '<div class="zct-row"><b>' + safeHtml(z.name || z.zoneName || z.id) + '</b>' +
+                '<label>พาเลทสูงสุด<input type="number" min="0" class="zct-input" data-zone="' + safeHtml(z.id || z.zoneId) + '" data-field="maxPallets" value="' + (z.maxPallets || 0) + '"></label>' +
+                '<label>กล่องสูงสุด<input type="number" min="0" class="zct-input" data-zone="' + safeHtml(z.id || z.zoneId) + '" data-field="maxBoxes" value="' + (z.maxBoxes || 0) + '"></label>' +
+                '<span class="zct-used">ใช้อยู่ ' + (z.usedPallets || 0) + ' พาเลท · ' + (z.usedBoxes || 0) + ' กล่อง</span></div>';
+        }).join("");
+    } catch (err) {
+        rows = '<div class="empty-state">โหลดข้อมูลความจุไม่สำเร็จ ลองกดรีเฟรชแล้วเปิดใหม่อีกครั้ง</div>';
+    }
+    var modal = document.createElement("div");
+    modal.id = "zoneCapModal";
+    modal.className = "scd-ask";
+    modal.innerHTML = '<div class="scd-ask-box zct-box" role="dialog" aria-modal="true" aria-label="ตั้งค่าความจุโซน">' +
+        '<div class="scd-ask-h"><b>ตั้งค่าความจุโซน</b><span>กำหนดเพดานพาเลทและกล่องของแต่ละโซน เพื่อให้ระบบเตือนเมื่อใกล้เต็ม</span></div>' +
+        '<div class="zct-list">' + (rows || '<div class="empty-state">ยังไม่มีโซนในผังคลัง — สร้างโซนในหน้าแผนที่คลังก่อน</div>') + '</div>' +
+        '<div class="scd-ask-a"><button type="button" class="scd-ask-cancel">ปิด</button>' +
+        '<button type="button" class="scd-ask-ok primary" id="zctSave">บันทึกความจุ</button></div></div>';
+    document.body.appendChild(modal);
+    modal.querySelector(".scd-ask-cancel").onclick = function () { modal.remove(); };
+    modal.onclick = function (e) { if (e.target === modal) modal.remove(); };
+    document.addEventListener("keydown", function esc(e) {
+        if (e.key === "Escape") { modal.remove(); document.removeEventListener("keydown", esc); }
+    });
+    modal.querySelector("#zctSave").onclick = async function () {
+        var byZone = {};
+        modal.querySelectorAll(".zct-input").forEach(function (el) {
+            var id = el.dataset.zone;
+            byZone[id] = byZone[id] || { zoneId: id };
+            byZone[id][el.dataset.field] = Number(el.value) || 0;
+        });
+        try {
+            for (var id in byZone) {
+                await api("/api/warehouse/zone/update", {
+                    zoneId: id,
+                    maxPallets: byZone[id].maxPallets,
+                    maxBoxes: byZone[id].maxBoxes
+                });
+            }
+            toast("บันทึกความจุโซนแล้ว");
+            modal.remove();
+            if (typeof renderWarehouseStatus === "function") renderWarehouseStatus();
+        } catch (err) { toast(err.message || "บันทึกไม่สำเร็จ", "error"); }
+    };
+}
+
+
+/* ══════════ การเข้าถึง: ทำให้คีย์บอร์ดใช้งานได้ทั้งระบบ ══════════ */
+var A11Y_ICON_LABELS = {
+    "refresh-cw": "รีเฟรช", "search": "ค้นหา", "x": "ปิด", "plus": "เพิ่ม",
+    "trash-2": "ลบ", "pencil": "แก้ไข", "download": "ดาวน์โหลด", "upload": "อัปโหลด",
+    "printer": "พิมพ์", "bell": "การแจ้งเตือน", "menu": "เมนู", "chevron-left": "ก่อนหน้า",
+    "chevron-right": "ถัดไป", "chevron-down": "ขยาย", "filter": "ตัวกรอง", "settings": "ตั้งค่า",
+    "eye": "ดูรายละเอียด", "map": "แผนที่", "calendar": "ปฏิทิน", "user": "ผู้ใช้"
+};
+
+function enhanceAccessibility(root) {
+    var scope = root || document;
+    // แถว/การ์ดที่คลิกได้แต่ไม่ใช่ปุ่ม — ให้กด Tab ถึงและกด Enter/Space ได้
+    scope.querySelectorAll("[onclick]").forEach(function (el) {
+        var tag = el.tagName;
+        if (tag === "BUTTON" || tag === "A" || tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+        if (el.hasAttribute("data-a11y-ready")) return;
+        el.setAttribute("data-a11y-ready", "1");
+        if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "0");
+        if (!el.hasAttribute("role")) el.setAttribute("role", "button");
+        el.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+                e.preventDefault();
+                el.click();
+            }
+        });
+    });
+    // ปุ่มที่มีแต่ไอคอน — ตั้งชื่อให้โปรแกรมอ่านหน้าจอ
+    scope.querySelectorAll("button").forEach(function (b) {
+        if (b.hasAttribute("aria-label") || (b.textContent || "").trim()) return;
+        var icon = b.querySelector("[data-lucide]");
+        var name = icon ? icon.getAttribute("data-lucide") : "";
+        var label = A11Y_ICON_LABELS[name] || b.getAttribute("title") || "ปุ่มคำสั่ง";
+        b.setAttribute("aria-label", label);
+    });
+}
+
+// เรียกซ้ำหลังหน้าใหม่ถูกวาด (ระบบวาด DOM ใหม่ตลอดเวลา)
+(function watchForNewContent() {
+    var pending = null;
+    var observer = new MutationObserver(function () {
+        if (pending) return;
+        pending = setTimeout(function () {
+            pending = null;
+            try { enhanceAccessibility(document.querySelector(".page.active") || document); } catch (e) {}
+        }, 400);
+    });
+    document.addEventListener("DOMContentLoaded", function () {
+        enhanceAccessibility(document);
+        var host = document.querySelector(".workspace") || document.body;
+        observer.observe(host, { childList: true, subtree: true });
+    });
+})();

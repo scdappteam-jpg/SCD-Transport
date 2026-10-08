@@ -4,8 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="color-scheme" content="light">
-    <meta name="theme-color" content="#0b4ea2">
+    <meta name="theme-color" content="#143d77">
     <title>S.C.D.TRANSPORT</title>
+    <meta name="description" content="ระบบติดตามงานขนส่งสินค้าทางอากาศครบวงจรของ S.C.D.TRANSPORT ตั้งแต่รับสินค้า เข้าคลัง WH3 ส่ง Terminal จนถึงวางบิล">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="S.C.D.TRANSPORT">
+    <meta property="og:title" content="S.C.D.TRANSPORT · ระบบติดตามงานขนส่งทางอากาศ">
+    <meta property="og:description" content="ระบบติดตามงานขนส่งสินค้าทางอากาศครบวงจรของ S.C.D.TRANSPORT ตั้งแต่รับสินค้า เข้าคลัง WH3 ส่ง Terminal จนถึงวางบิล">
+    <meta property="og:image" content="apple-touch-icon.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="icon" href="icon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,6 +26,7 @@
     <script src="lucide.min.js"></script>
   </head>
   <body>
+    <a class="skip-link" href="#mainContent">ข้ามไปที่เนื้อหาหลัก</a>
     <section id="loginScreen" class="login-screen" aria-label="Login">
       <div class="login-shell">
         <div class="login-brand">
@@ -61,7 +70,7 @@
           <button id="webLoginBtn" type="button" style="margin-top:10px">เข้าสู่ระบบ →</button>
           <div id="webLoginMessage" class="login-message" role="status" aria-live="polite"></div>
           </form>
-          <div class="quick-start-wrap">
+          <div class="quick-start-wrap" id="quickStartWrap" hidden>
             <div class="quick-start-label"><i></i><span>เข้าด่วนสำหรับทดสอบ</span><i></i></div>
             <div class="quick-start-grid">
               <button class="qs-btn" onclick="quickLogin('u_admin_01')">Admin</button>
@@ -128,7 +137,7 @@
             <i data-lucide="boxes" aria-hidden="true"></i>
             <b>สถานะคลัง</b>
           </button>
-          <button class="nav-item" type="button" data-view="fleet-demo">
+          <button class="nav-item" type="button" data-view="fleet-demo" id="navFleetDemo" hidden>
             <i data-lucide="map-pinned" aria-hidden="true"></i>
             <b>GPS รถ · Demo</b>
           </button>
@@ -198,7 +207,7 @@
       </aside>
       <button id="sidebarBackdrop" class="sidebar-backdrop" type="button" aria-label="Close menu"></button>
 
-      <div class="workspace">
+      <div class="workspace" id="mainContent" tabindex="-1">
         <header class="topbar">
           <button id="mobileMenuBtn" class="mobile-menu-button" type="button" aria-label="Open menu" aria-expanded="false"><i data-lucide="menu" aria-hidden="true"></i></button>
           <button id="sidebarCollapseBtn" class="sidebar-collapse-button" type="button" aria-label="Toggle menu" aria-expanded="true"><i data-lucide="panel-left-close" aria-hidden="true"></i></button>
@@ -519,7 +528,7 @@
                 <article class="card shipment-hero">
                   <div class="hero-icon"><i data-lucide="plane" aria-hidden="true"></i></div>
                   <div>
-                    <h2 id="selectedOrderTitle">H-1001</h2>
+                    <h2 id="selectedOrderTitle">เลือกงานจากรายการด้านซ้าย</h2>
                     <p id="selectedOrderSubtitle">Flight / Customer</p>
                   </div>
                   <div class="route-box">
@@ -817,7 +826,7 @@
                 <input id="driverPickupDate" type="date">
                 <label>ใบงาน / Assigned Job</label>
                 <select id="driverJobSelect"></select>
-                <input id="driverHouse" type="hidden" value="H-1001">
+                <input id="driverHouse" type="hidden" value="">
                 <label>ลูกค้า / Customer</label>
                 <input id="driverCustomerName" autocomplete="off" placeholder="ชื่อลูกค้า / Customer name">
                 <label>ทะเบียนรถ / Truck License</label>
@@ -883,7 +892,7 @@
               <section class="panel" id="whPanel" data-role-panel="WH_Staff">
                 <div class="panel-title"><h2>Inbound WH3</h2><span>Twin scanning</span></div>
                 <label>House Number</label>
-                <input id="scanHouse" inputmode="text" autocomplete="off" value="H-1001">
+                <input id="scanHouse" inputmode="text" autocomplete="off" placeholder="เลือกหรือสแกนเลข House">
                 <div id="inboundJobInfo" class="result compact-result"></div>
                 <div id="currentLocationInfo" class="result compact-result"></div>
                 <div class="ops-menu">
@@ -950,7 +959,7 @@
                   </button>
                 </div>
                 <label>House Number</label>
-                <input id="terminalHouse" autocomplete="off" value="H-1001">
+                <input id="terminalHouse" autocomplete="off" placeholder="เลือกหรือสแกนเลข House">
                 <div id="terminalJobInfo" class="result compact-result"></div>
                 <div id="outboundLocationInfo" class="result compact-result"></div>
                 <div class="ops-menu">
@@ -1123,7 +1132,7 @@
                     <h3>งานรอวางบิล / Ready Jobs</h3>
                     <div id="billingReadyList" class="invoice-list"></div>
                     <label>House Number</label>
-                    <input id="billingHouse" autocomplete="off" value="H-1001">
+                    <input id="billingHouse" autocomplete="off" placeholder="เลือกหรือสแกนเลข House">
                     <label>ตรวจเอกสาร / Document review</label>
                     <textarea id="billingReviewNote" rows="3" placeholder="ใบชั่งน้ำหนัก / Cargo Transfer / Loading Detail / เอกสารหน้างาน"></textarea>
                     <div class="form-actions">

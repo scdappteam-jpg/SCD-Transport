@@ -1312,7 +1312,7 @@ function bindEvents() {
         toast("โหลดสินค้าขึ้นรถแล้ว / Cargo loaded");
     }));
     $("#simulatePickupEvidenceBtn")?.addEventListener("click", () => {
-        if (!isSimulatedPickupEvidenceEligible()) return alert("หลักฐานจำลองใช้ได้เฉพาะ House SIT ที่มอบหมายให้คนขับเท่านั้น");
+        if (!isSimulatedPickupEvidenceEligible()) return toast("หลักฐานจำลองใช้ได้เฉพาะ House SIT ที่มอบหมายให้คนขับเท่านั้น");
         state.simulatedPickupEvidenceHouse = primaryHouseNumber();
         $("#simulatePickupEvidenceBtn").textContent = "สร้างหลักฐานจำลองแล้ว";
         toast("สร้างหลักฐานจำลองสำหรับ SIT แล้ว");
@@ -1889,7 +1889,7 @@ function handleAttPhotoFile(file) {
     const startBtn = $("#attStartCameraBtn");
     const retakeBtn = $("#attRetakeBtn");
     if (!canvas || !file) return;
-    if (!file.type.startsWith("image/")) return alert("กรุณาเลือกรูปภาพ / Please choose an image");
+    if (!file.type.startsWith("image/")) return toast("กรุณาเลือกรูปภาพ / Please choose an image");
     const url = URL.createObjectURL(file);
     const img = new Image;
     img.onload = () => {
@@ -1943,7 +1943,7 @@ function handleAttPhotoFile(file) {
     };
     img.onerror = () => {
         URL.revokeObjectURL(url);
-        alert("ไม่สามารถอ่านรูปภาพได้ / Cannot read image");
+        toast("ไม่สามารถอ่านรูปภาพได้ / Cannot read image");
     };
     img.src = url;
 }
@@ -1968,10 +1968,10 @@ function stopAttCamera() {
 
 async function submitAttCheckin() {
     const user = currentUser();
-    if (!user) return alert("กรุณาเข้าสู่ระบบก่อน");
+    if (!user) return toast("กรุณาเข้าสู่ระบบก่อน");
     const zone = $("#attZoneSelect")?.value || "";
     const jobType = $("#attJobTypeSelect")?.value || "";
-    if (!attState.photoBase64) return alert("กรุณาถ่ายรูปยืนยันตัวตนก่อน");
+    if (!attState.photoBase64) return toast("กรุณาถ่ายรูปยืนยันตัวตนก่อน");
     const btn = $("#attCheckinBtn");
     if (btn) {
         btn.disabled = true;
@@ -2004,7 +2004,7 @@ async function submitAttCheckin() {
 async function submitSimulatedAttCheckin() {
     const user = currentUser();
     const job = simulatedCheckinJob();
-    if (!user || !job) return alert("เช็คอินจำลองใช้ได้เฉพาะงานทดสอบที่มอบหมายให้คุณ");
+    if (!user || !job) return toast("เช็คอินจำลองใช้ได้เฉพาะงานทดสอบที่มอบหมายให้คุณ");
     const button = $("#attSimulatedCheckinBtn");
     if (button) {
         button.disabled = true;
@@ -2043,7 +2043,7 @@ async function submitSimulatedAttCheckin() {
 
 async function submitAttCheckout() {
     const user = currentUser();
-    if (!user) return alert("กรุณาเข้าสู่ระบบก่อน");
+    if (!user) return toast("กรุณาเข้าสู่ระบบก่อน");
     if (!attState.photoBase64) {
         await startAttCamera();
         showAttResult("ถ่ายรูปยืนยันตัวตนก่อนเช็คเอาต์", false);
@@ -2613,8 +2613,8 @@ async function foUploadDocs() {
     const fileType = $("#foDocType")?.value || "FieldPhoto";
     const files = Array.from($("#foDocFile")?.files || []);
     const result = $("#foDocResult");
-    if (!house) return alert("เลือกงานก่อน");
-    if (!files.length) return alert("เลือกรูป/ไฟล์ก่อน");
+    if (!house) return toast("เลือกงานก่อน");
+    if (!files.length) return toast("เลือกรูป/ไฟล์ก่อน");
     const btn = $("#foDocUploadBtn");
     if (btn) {
         btn.disabled = true;
@@ -3069,3 +3069,35 @@ async function msvcLoadToday() {
             : '<div class="fo-empty">ยังไม่มีรายการ</div>';
     } catch (e) { box.innerHTML = '<div class="fo-empty">โหลดรายการไม่สำเร็จ</div>'; }
 }
+
+
+/* ══════════ ปุ่มเข้าด่วน: เปิดเฉพาะโหมดทดสอบ (?demo=1) ══════════ */
+function initQuickStartVisibilityMobile() {
+    var wrap = document.getElementById("quickStartWrap");
+    if (!wrap) return;
+    var params = new URLSearchParams(location.search);
+    var demo = params.get("demo") === "1" || localStorage.getItem("scdDemoLogin") === "1";
+    if (params.get("demo") === "1") localStorage.setItem("scdDemoLogin", "1");
+    if (params.get("demo") === "0") { localStorage.removeItem("scdDemoLogin"); demo = false; }
+    wrap.hidden = !demo;
+}
+document.addEventListener("DOMContentLoaded", initQuickStartVisibilityMobile);
+setTimeout(initQuickStartVisibilityMobile, 300);
+
+
+/* ══════════ กด Esc เพื่อปิดแผ่น/ป๊อปอัป (รองรับแป้นพิมพ์ภายนอก) ══════════ */
+function bindEscapeToSheets() {
+    document.addEventListener("keydown", function (e) {
+        if (e.key !== "Escape") return;
+        var more = document.getElementById("moreSheet");
+        if (more && !more.hidden) { foCloseMore(); return; }
+        var confirmSheet = document.getElementById("confirmSheet");
+        if (confirmSheet && !confirmSheet.hidden) { confirmSheet.hidden = true; return; }
+        var mapSheet = document.getElementById("mapSheet");
+        if (mapSheet && !mapSheet.hidden) { mapSheet.hidden = true; return; }
+        var modal = document.getElementById("mobileActionModal");
+        if (modal && modal.classList.contains("show")) modal.classList.remove("show");
+    });
+}
+document.addEventListener("DOMContentLoaded", bindEscapeToSheets);
+setTimeout(bindEscapeToSheets, 500);
