@@ -176,10 +176,26 @@ const AUTH_CONFIG = window.SCD_AUTH_CONFIG || {
 const WEB_AUTH_KEY = "scdTransportWebAuth";
 
 const WEB_AUTH_USER_KEY = "scdTransportWebUser";
+const WEB_SESSION_TOKEN_KEY = "scdTransportWebSession";
 
 const configuredApiBase = window.SMART_LOGISTICS_API_BASE || "";
 
 const API_BASE = configuredApiBase || "";
+
+// Some legacy screens call fetch() directly rather than the api() helper.
+// Attach the session consistently so turning on server authentication cannot
+// leave a hidden screen unauthenticated.
+const nativeWebFetch = window.fetch.bind(window);
+window.fetch = (input, init = {}) => {
+    const requestUrl = typeof input === "string" ? input : input?.url || "";
+    const apiPrefix = API_BASE ? `${API_BASE}/api/` : "/api/";
+    if (!requestUrl.startsWith(apiPrefix)) return nativeWebFetch(input, init);
+    const token = localStorage.getItem(WEB_SESSION_TOKEN_KEY);
+    if (!token) return nativeWebFetch(input, init);
+    const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+    if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+    return nativeWebFetch(input, { ...init, headers });
+};
 
 function initializeIcons() {
     const navIcons = {
@@ -353,7 +369,21 @@ function quickLogin(userId) {
     submitWebLogin();
 }
 
-function submitWebLogin() {
+async function establishWebLogin(userId, token = "") {
+    localStorage.setItem(WEB_AUTH_KEY, "ok");
+    localStorage.setItem(WEB_AUTH_USER_KEY, userId);
+    if (token) localStorage.setItem(WEB_SESSION_TOKEN_KEY, token);
+    else localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
+    await refresh();
+    renderWebLogin();
+    renderAll();
+    applyWebRoleVisibility();
+    applyRequestedWebView();
+    renderWebSessionUser();
+    toast("เข้าสู่ระบบ S.C.D.TRANSPORT แล้ว");
+}
+
+async function submitWebLogin() {
     const userId = $("#webLoginUser")?.value || "";
     const password = $("#webLoginPassword")?.value.trim();
     const message = $("#webLoginMessage");
@@ -362,20 +392,32 @@ function submitWebLogin() {
         $("#webLoginUser")?.focus();
         return;
     }
-    if (password !== passwordForUser(userId)) {
-        if (message) message.textContent = "รหัสผ่านไม่ถูกต้อง";
+    if (message) message.textContent = "กำลังตรวจสอบรหัสผ่าน...";
+    try {
+        const res = await fetch(apiUrl("/api/auth/login"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.token) {
+            if (message) message.textContent = "";
+            await establishWebLogin(userId, data.token);
+            return;
+        }
+        // Preserve access only until Render has per-user hashes configured.
+        // This branch is intentionally limited to the migration response.
+        if (data.code === "SERVER_AUTH_NOT_CONFIGURED") {
+            if (password !== passwordForUser(userId)) throw new Error("รหัสผ่านไม่ถูกต้อง");
+            if (message) message.textContent = "";
+            await establishWebLogin(userId);
+            return;
+        }
+        throw new Error(data.error || "เข้าสู่ระบบไม่สำเร็จ");
+    } catch (error) {
+        if (message) message.textContent = error.message || "เข้าสู่ระบบไม่สำเร็จ";
         $("#webLoginPassword")?.focus();
-        return;
     }
-    localStorage.setItem(WEB_AUTH_KEY, "ok");
-    localStorage.setItem(WEB_AUTH_USER_KEY, userId);
-    if (message) message.textContent = "";
-    renderWebLogin();
-    renderAll();
-    applyWebRoleVisibility();
-    applyRequestedWebView();
-    renderWebSessionUser();
-    toast("เข้าสู่ระบบ S.C.D.TRANSPORT แล้ว");
 }
 
 function setMobileMenu(open) {
@@ -580,6 +622,8 @@ async function api(path, payload, method) {
                 "Content-Type": "application/json"
             }
         };
+        const sessionToken = localStorage.getItem(WEB_SESSION_TOKEN_KEY);
+        if (sessionToken) opts.headers.Authorization = `Bearer ${sessionToken}`;
         if (m !== "GET" && m !== "HEAD") {
             const requestPayload = payload && typeof payload === "object" && !Array.isArray(payload) && !payload.userId ? { ...payload, userId: currentWebUser()?.id || "" } : payload;
             opts.body = JSON.stringify(requestPayload);
@@ -8686,6 +8730,7 @@ function bindEvents() {
     $("#logoutBtn").addEventListener("click", () => {
         localStorage.removeItem(WEB_AUTH_KEY);
         localStorage.removeItem(WEB_AUTH_USER_KEY);
+        localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
         $("#webLoginPassword").value = "";
         renderWebLogin();
         toast("ออกจากระบบแล้ว");
@@ -10322,7 +10367,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
         renderWebLogin();
         try {
-            const res = await fetch(apiUrl("/api/bootstrap"), {
+            const res = await fetch(apiUrl("/api/auth/users"), {
                 cache: "no-store"
             });
             if (res.ok) {
@@ -10346,6 +10391,8 @@ const attDash = {
 };
 
 var _csQueueData = [];
+var _csQueuePage = 1;
+const CS_QUEUE_PAGE_SIZE = 50;
 
 async function renderCsQueue() {
     const wrap = $("#view-cs-queue");
@@ -10376,6 +10423,7 @@ function csQueueFilterChange() {
     _csQueueFilters.q = document.getElementById("csSearchInput")?.value || "";
     _csQueueFilters.from = document.getElementById("csDateFrom")?.value || "";
     _csQueueFilters.to = document.getElementById("csDateTo")?.value || "";
+    _csQueuePage = 1;
     _renderCsQueueList();
 }
 
@@ -10389,11 +10437,13 @@ function csQueueClearFilters() {
         const el = document.getElementById(id);
         if (el) el.value = "";
     });
+    _csQueuePage = 1;
     _renderCsQueueList();
 }
 
 async function csSwitchTab(tab) {
     _csQueueTab = tab;
+    _csQueuePage = 1;
     document.querySelectorAll(".cs-tab").forEach(b => b.classList.toggle("active", b.dataset.cstab === tab));
     const lbl = document.getElementById("csDateLabel");
     if (lbl) lbl.textContent = tab === "history" ? "วันที่ยืนยัน" : "วันที่รับ";
@@ -10457,6 +10507,24 @@ function csSelectDateGroup(btn) {
     onCsJobCheck();
 }
 
+function csQueueGoToPage(page) {
+    _csQueuePage = Math.max(1, Number(page) || 1);
+    _renderCsQueueList();
+    document.getElementById("csQueueList")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function csQueuePaginationHtml(total, page, pageSize) {
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (totalPages <= 1) return "";
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(total, page * pageSize);
+    const windowStart = Math.max(1, Math.min(page - 2, totalPages - 4));
+    const windowEnd = Math.min(totalPages, windowStart + 4);
+    const pages = [];
+    for (let p = windowStart; p <= windowEnd; p += 1) pages.push(`<button type="button" onclick="csQueueGoToPage(${p})" ${p === page ? "disabled" : ""} style="min-width:34px;height:34px;border:1px solid ${p === page ? "#0b4ea2" : "var(--border)"};border-radius:8px;background:${p === page ? "#0b4ea2" : "#fff"};color:${p === page ? "#fff" : "var(--text)"};font-weight:700;cursor:${p === page ? "default" : "pointer"}">${p}</button>`);
+    return `<nav aria-label="หน้ารายการคิวงาน" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 2px 4px"><span style="font-size:12px;color:var(--text-muted)">แสดง ${start}–${end} จาก ${total} งาน</span><div style="display:flex;align-items:center;gap:6px"><button type="button" onclick="csQueueGoToPage(${page - 1})" ${page <= 1 ? "disabled" : ""} style="height:34px;padding:0 11px;border:1px solid var(--border);border-radius:8px;background:#fff;font-weight:600;cursor:pointer">ก่อนหน้า</button>${windowStart > 1 ? `<span style="color:var(--text-muted)">…</span>` : ""}${pages.join("")}${windowEnd < totalPages ? `<span style="color:var(--text-muted)">…</span>` : ""}<button type="button" onclick="csQueueGoToPage(${page + 1})" ${page >= totalPages ? "disabled" : ""} style="height:34px;padding:0 11px;border:1px solid var(--border);border-radius:8px;background:#fff;font-weight:600;cursor:pointer">ถัดไป</button></div></nav>`;
+}
+
 function _renderCsQueueHtml() {
     const wrap = $("#view-cs-queue");
     if (!wrap) return;
@@ -10477,12 +10545,15 @@ function _renderCsQueueList() {
     if (historyTab) historyTab.textContent = "ประวัติส่งต่อเปิดใบงาน";
     if (_csQueueTab === "history") return _renderCsHistoryTable(listEl);
     const jobs = _csApplyFilters(_csQueueData, _csJobDate);
+    const totalPages = Math.max(1, Math.ceil(jobs.length / CS_QUEUE_PAGE_SIZE));
+    _csQueuePage = Math.min(_csQueuePage, totalPages);
+    const pageJobs = jobs.slice((_csQueuePage - 1) * CS_QUEUE_PAGE_SIZE, _csQueuePage * CS_QUEUE_PAGE_SIZE);
     const totalPieces = jobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0);
     const summary = document.getElementById("csQueueSummary");
     const filtered = jobs.length !== _csQueueData.length;
     if (summary) summary.textContent = `รอ CS อนุมัติ ${jobs.length}${filtered ? " / " + _csQueueData.length : ""} งาน · ${totalPieces} ชิ้น — Transport ติดตามการอนุมัติก่อนเปิดใบงาน`;
     const byCustomer = {};
-    jobs.forEach(j => {
+    pageJobs.forEach(j => {
         const key = j.customerName || "ไม่ระบุลูกค้า";
         (byCustomer[key] ||= []).push(j);
     });
@@ -10498,7 +10569,7 @@ function _renderCsQueueList() {
             const gkey = `${safeCust}_${di}`;
             return `\n          <div class="cs-date-group" data-gkey="${gkey}">\n            <div class="cs-date-head">\n              <span>${safeHtml(date)} <em>· ${dJobs.length} HAWB · ${dJobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0)} ชิ้น · 1 Invoice</em></span>\n              <button type="button" class="cs-group-select" onclick="csSelectDateGroup(this)">เลือกทั้งกลุ่ม</button>\n            </div>\n            <div class="cs-jobs-list">\n              ${dJobs.map(j => `\n                <label class="cs-job-row" data-house="${safeHtml(j.houseNumber)}">\n                  <input type="checkbox" class="cs-job-check" value="${safeHtml(j.houseNumber)}" onchange="onCsJobCheck()">\n                  <div class="cs-job-info">\n                    <strong>${safeHtml(j.houseNumber)}</strong>\n                    <span>${safeHtml(j.destAirport || j.flightNo || "-")} · ${safeHtml(j.pieceCount || "-")} ชิ้น</span>\n                  </div>\n                  <div class="cs-job-meta">\n                    <span class="cs-status-badge pending">${safeHtml(j.manualExtra ? "Manual extra" : "Pending CS")}</span>\n                    <small>${safeHtml([ j.evidenceChannel || "", j.planRound || "" ].filter(Boolean).join(" / ") || "Need approval")}</small>\n                  </div>\n                </label>`).join("")}\n            </div>\n            <div class="cs-confirm-bar">\n              <div style="flex:1;display:flex;flex-direction:column;gap:6px">\n                <div style="font-size:11px;font-weight:600;color:#075985">โทรยืนยันแล้ว — Invoice ของกลุ่มวันนี้:</div>\n                <div style="display:flex;gap:8px;flex-wrap:wrap">\n                  <input type="text" class="cs-invoice-input" placeholder="เลข Invoice (เช่น INV-2026-0001)" id="csInvoice-${gkey}">\n                  <input type="text" class="cs-invoice-input" style="max-width:150px" placeholder="ชื่อผู้ติดต่อ" id="csContact-${gkey}">\n                  <select class="cs-invoice-input" style="max-width:130px" id="csEvidenceChannel-${gkey}">\n                    <option value="Line">Line</option>\n                    <option value="Email">Email</option>\n                    <option value="Phone">Phone</option>\n                  </select>\n                  <input type="text" class="cs-invoice-input" style="max-width:220px" placeholder="หลักฐาน/หมายเหตุ" id="csEvidenceNote-${gkey}">\n                  <input type="file" class="cs-evidence-file" accept="image/*,application/pdf" multiple id="csEvidenceFiles-${gkey}">\n                  <button class="cs-confirm-btn" onclick="submitCsConfirm('${gkey}')">✓ Confirm</button>\n                </div>\n              </div>\n            </div>\n          </div>`;
         }).join("")}\n      </div>`;
-    }).join("");
+    }).join("") + csQueuePaginationHtml(jobs.length, _csQueuePage, CS_QUEUE_PAGE_SIZE);
     onCsJobCheck();
 }
 

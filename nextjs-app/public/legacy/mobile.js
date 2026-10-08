@@ -25,10 +25,26 @@ const AUTH_CONFIG = window.SCD_AUTH_CONFIG || {
 };
 
 const MOBILE_AUTH_KEY = "scdTransportMobileAuth";
+const MOBILE_SESSION_TOKEN_KEY = "scdTransportMobileSession";
 
 const configuredApiBase = window.SMART_LOGISTICS_API_BASE || "";
 
 const API_BASE = configuredApiBase || "";
+
+// Keep direct calls on older mobile tabs authenticated as well.  New code
+// should still prefer api(), but this prevents a partial login migration from
+// breaking operational screens that use fetch() directly.
+const nativeMobileFetch = window.fetch.bind(window);
+window.fetch = (input, init = {}) => {
+    const requestUrl = typeof input === "string" ? input : input?.url || "";
+    const apiPrefix = API_BASE ? `${API_BASE}/api/` : "/api/";
+    if (!requestUrl.startsWith(apiPrefix)) return nativeMobileFetch(input, init);
+    const token = localStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
+    if (!token) return nativeMobileFetch(input, init);
+    const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+    if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+    return nativeMobileFetch(input, { ...init, headers });
+};
 
 const i18nOriginalText = new WeakMap;
 
@@ -104,7 +120,23 @@ function quickMobileLogin(userId) {
     submitMobileLogin();
 }
 
-function submitMobileLogin() {
+async function establishMobileLogin(userId, token = "") {
+    state.currentUserId = userId;
+    localStorage.setItem("smartLogisticsMobileUser", state.currentUserId);
+    localStorage.setItem(MOBILE_AUTH_KEY, "ok");
+    if (token) localStorage.setItem(MOBILE_SESSION_TOKEN_KEY, token);
+    else localStorage.removeItem(MOBILE_SESSION_TOKEN_KEY);
+    state.pickupUnlockedSelection = "";
+    state.inboundUnlockedHouse = "";
+    state.outboundUnlockedHouse = "";
+    state.billingUnlockedHouse = "";
+    await refresh();
+    renderMobileAuthState();
+    render();
+    toast("เข้าสู่ระบบแล้ว / Logged in");
+}
+
+async function submitMobileLogin() {
     const userId = $("#mobileUserSelect")?.value || "";
     const password = $("#mobileLoginPassword")?.value.trim();
     if (!userId) {
@@ -112,21 +144,28 @@ function submitMobileLogin() {
         $("#mobileUserSelect")?.focus();
         return;
     }
-    if (password !== passwordForUser(userId)) {
-        $("#mobileLoginStatus").textContent = "รหัสผ่านไม่ถูกต้อง";
+    $("#mobileLoginStatus").textContent = "กำลังตรวจสอบรหัสผ่าน...";
+    try {
+        const res = await fetch(apiUrl("/api/auth/login"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.token) {
+            await establishMobileLogin(userId, data.token);
+            return;
+        }
+        if (data.code === "SERVER_AUTH_NOT_CONFIGURED") {
+            if (password !== passwordForUser(userId)) throw new Error("รหัสผ่านไม่ถูกต้อง");
+            await establishMobileLogin(userId);
+            return;
+        }
+        throw new Error(data.error || "เข้าสู่ระบบไม่สำเร็จ");
+    } catch (error) {
+        $("#mobileLoginStatus").textContent = error.message || "เข้าสู่ระบบไม่สำเร็จ";
         $("#mobileLoginPassword")?.focus();
-        return;
     }
-    state.currentUserId = userId;
-    localStorage.setItem("smartLogisticsMobileUser", state.currentUserId);
-    localStorage.setItem(MOBILE_AUTH_KEY, "ok");
-    state.pickupUnlockedSelection = "";
-    state.inboundUnlockedHouse = "";
-    state.outboundUnlockedHouse = "";
-    state.billingUnlockedHouse = "";
-    renderMobileAuthState();
-    render();
-    toast("เข้าสู่ระบบแล้ว / Logged in");
 }
 
 function apiUrl(path) {
@@ -161,11 +200,12 @@ async function recoverCompletedRequest(path, payload) {
 async function api(path, payload) {
     try {
         const requestPayload = payload && typeof payload === "object" && !Array.isArray(payload) && !payload.userId ? { ...payload, userId: state.currentUserId || "" } : payload;
+        const headers = { "Content-Type": "application/json" };
+        const sessionToken = localStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
+        if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
         const res = await fetch(apiUrl(path), {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers,
             body: JSON.stringify(requestPayload)
         });
         const data = await res.json();
@@ -1130,6 +1170,7 @@ function bindEvents() {
     });
     const logoutMobile = () => {
         localStorage.removeItem(MOBILE_AUTH_KEY);
+        localStorage.removeItem(MOBILE_SESSION_TOKEN_KEY);
         renderMobileAuthState();
         renderMobileLogin();
         toast("ออกจากระบบแล้ว / Logged out");
@@ -1726,7 +1767,17 @@ addPickupItemRow({
     carton: "1M"
 });
 
-refresh();
+(async () => {
+    if (isMobileAuthenticated()) {
+        await refresh();
+        return;
+    }
+    try {
+        const res = await fetch(apiUrl("/api/auth/users"), { cache: "no-store" });
+        if (res.ok) state.users = (await res.json()).users || [];
+    } catch (_) {}
+    renderMobileLogin();
+})();
 
 const attState = {
     stream: null,

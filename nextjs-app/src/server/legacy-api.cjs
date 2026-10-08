@@ -49,6 +49,11 @@ const SUPABASE_STATE_ID = process.env.SUPABASE_STATE_ID || "scd-transport";
 
 const RELATIONAL_MIRROR_ENABLED = String(process.env.RELATIONAL_MIRROR_ENABLED || "true").toLowerCase() !== "false";
 
+const SERVER_AUTH_REQUIRED = String(process.env.SCD_SERVER_AUTH_REQUIRED || "false").toLowerCase() === "true";
+
+let SERVER_PASSWORD_HASHES = {};
+try { SERVER_PASSWORD_HASHES = JSON.parse(process.env.SCD_AUTH_PASSWORD_HASHES || "{}"); } catch (_) { SERVER_PASSWORD_HASHES = {}; }
+
 const SCAN_SERVICE_URL = process.env.SCAN_SERVICE_URL || "http://localhost:5000/scan";
 
 const CARTRACK_BASE_URL = (process.env.CARTRACK_BASE_URL || "").replace(/\/$/, "");
@@ -501,6 +506,7 @@ function ensureDbShape(db) {
     db.attendance ||= [];
     db.taskGroups ||= [];
     db.notifications ||= [];
+    db.authSessions ||= [];
     db.serviceRecords ||= [];
     serviceRates(db);
     db.dock ||= {};
@@ -881,7 +887,7 @@ function sendJson(res, status, payload) {
         "Cache-Control": "no-store",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type"
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
     });
     res.end(body);
 }
@@ -982,6 +988,35 @@ function parseBody(req) {
 
 function nowIso() {
     return (new Date).toISOString();
+}
+
+function serverPasswordMatches(password, encoded) {
+    const [ algorithm, salt, expected ] = String(encoded || "").split("$");
+    if (algorithm !== "scrypt" || !salt || !expected) return false;
+    const actual = crypto.scryptSync(String(password || ""), Buffer.from(salt, "base64"), 64).toString("base64");
+    const expectedBuffer = Buffer.from(expected, "base64"), actualBuffer = Buffer.from(actual, "base64");
+    return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+// Never send password fields back to a browser.  This is deliberately kept
+// close to the session helpers so every authentication endpoint uses the same
+// safe representation of a user.
+function publicUser(user) {
+    if (!user) return null;
+    const { password, passwordHash, ...safeUser } = user;
+    return safeUser;
+}
+
+function publicUsers(db) {
+    return (db.users || []).map(publicUser);
+}
+
+function sessionUser(db, req) {
+    const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    if (!token) return null;
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const session = (db.authSessions || []).find(item => item.tokenHash === hash && new Date(item.expiresAt).getTime() > Date.now());
+    return session ? (db.users || []).find(user => user.id === session.userId) || null : null;
 }
 
 function formatBangkok(iso) {
@@ -2834,12 +2869,15 @@ async function createAlert(db, message, severity = "warning") {
     };
     db.alerts.push(alert);
     if (process.env.LINE_WEBHOOK_URL) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         try {
             await fetch(process.env.LINE_WEBHOOK_URL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
+                signal: controller.signal,
                 body: JSON.stringify({
                     message: message
                 })
@@ -2847,7 +2885,9 @@ async function createAlert(db, message, severity = "warning") {
             alert.sent = true;
         } catch (error) {
             alert.sent = false;
-            alert.error = error.message;
+            alert.error = error.name === "AbortError" ? "LINE webhook timeout (5s)" : error.message;
+        } finally {
+            clearTimeout(timeout);
         }
     }
     return alert;
@@ -3061,9 +3101,30 @@ async function handleApi(req, res, pathname) {
         } ];
         writeDb(db);
     }
+    if (req.method === "GET" && pathname === "/api/auth/users") {
+        return sendJson(res, 200, { users: publicUsers(db) });
+    }
+    if (req.method === "POST" && pathname === "/api/auth/login") {
+        const payload = await parseBody(req);
+        const user = (db.users || []).find(item => item.id === payload.userId && item.status !== "Inactive");
+        // The UI can fall back to the legacy login only while this explicit
+        // migration setting is missing.  Once hashes are configured (and the
+        // required flag is enabled) no password is ever checked in a browser.
+        if (user && !SERVER_PASSWORD_HASHES[user.id]) return sendJson(res, 503, {
+            error: "ยังไม่ได้ตั้งค่ารหัสผ่านฝั่งเซิร์ฟเวอร์",
+            code: "SERVER_AUTH_NOT_CONFIGURED"
+        });
+        if (!user || !serverPasswordMatches(payload.password, SERVER_PASSWORD_HASHES[user.id])) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        const token = crypto.randomBytes(32).toString("base64url");
+        db.authSessions = (db.authSessions || []).filter(item => new Date(item.expiresAt).getTime() > Date.now()).slice(-200);
+        db.authSessions.push({ id: `SES-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, userId: user.id, tokenHash: crypto.createHash("sha256").update(token).digest("hex"), createdAt: nowIso(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1e3).toISOString() });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
+    }
+    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
     if (req.method === "GET" && pathname === "/api/bootstrap") {
         return sendJson(res, 200, {
-            users: db.users,
+            users: publicUsers(db),
             customers: db.customers,
             dashboard: buildDashboard(db)
         });
@@ -5740,8 +5801,8 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
-            user: user,
-            users: db.users,
+            user: publicUser(user),
+            users: publicUsers(db),
             dashboard: buildDashboard(db)
         });
     }
