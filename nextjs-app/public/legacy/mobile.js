@@ -216,16 +216,16 @@ async function recoverCompletedRequest(path, payload) {
     return job;
 }
 
-async function api(path, payload) {
+async function api(path, payload, method = "POST") {
     try {
         const requestPayload = payload && typeof payload === "object" && !Array.isArray(payload) && !payload.userId ? { ...payload, userId: state.currentUserId || "" } : payload;
         const headers = { "Content-Type": "application/json" };
         const sessionToken = localStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
         if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
         const res = await mobileFetch(apiUrl(path), {
-            method: "POST",
+            method,
             headers,
-            body: JSON.stringify(requestPayload)
+            body: method === "GET" ? undefined : JSON.stringify(requestPayload)
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Request failed");
