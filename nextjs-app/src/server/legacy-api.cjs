@@ -67,6 +67,7 @@ const CARTRACK_DEMO_ENABLED = String(process.env.CARTRACK_DEMO_ENABLED || "false
 let dbCache = null;
 
 let dbPersistPromise = Promise.resolve();
+let authSessionPersistPromise = Promise.resolve();
 
 // The original app_state JSON document grew beyond Supabase's statement
 // timeout once imports reached several thousand jobs.  Keep the compatibility
@@ -615,6 +616,23 @@ function stateChunkId(kind, index) {
     return `${SUPABASE_STATE_ID}:${kind}:${index}`;
 }
 
+function authSessionStateId() {
+    return `${SUPABASE_STATE_ID}:auth-sessions`;
+}
+
+function scheduleAuthSessionPersist(sessions) {
+    if (!supabaseEnabled()) return;
+    const snapshot = sanitizedClone(Array.isArray(sessions) ? sessions : []);
+    authSessionPersistPromise = authSessionPersistPromise.catch(() => {}).then(() => supabaseRequest("POST", "", {
+        id: authSessionStateId(), data: { sessions: snapshot }, updated_at: nowIso()
+    }));
+}
+
+async function loadAuthSessions(db) {
+    const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(authSessionStateId())}&select=data`, null);
+    if (Array.isArray(rows) && Array.isArray(rows[0]?.data?.sessions)) db.authSessions = rows[0].data.sessions;
+}
+
 function chunkHash(rows) {
     return crypto.createHash("sha256").update(JSON.stringify(rows)).digest("hex");
 }
@@ -653,6 +671,7 @@ async function loadDbFromSupabase() {
         const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=data`, null);
         if (Array.isArray(rows) && rows[0]?.data) {
             dbCache = await loadChunkedState(rows[0].data);
+            await loadAuthSessions(dbCache);
             ensureCoreUsers(dbCache);
             ensureDbShape(dbCache);
             relationalMirror.schedule(dbCache);
@@ -808,6 +827,10 @@ async function flushSharedStatePersistence() {
     } catch (err) {
         markSupabaseFailed(err);
     }
+}
+
+async function flushAuthSessionPersistence() {
+    await authSessionPersistPromise;
 }
 
 function readDbFromFile() {
@@ -3203,7 +3226,10 @@ async function handleApi(req, res, pathname) {
         const token = crypto.randomBytes(32).toString("base64url");
         db.authSessions = (db.authSessions || []).filter(item => new Date(item.expiresAt).getTime() > Date.now()).slice(-200);
         db.authSessions.push({ id: `SES-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, userId: user.id, tokenHash: crypto.createHash("sha256").update(token).digest("hex"), createdAt: nowIso(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1e3).toISOString() });
-        writeDb(db);
+        if (supabaseEnabled()) {
+            dbCache = db;
+            scheduleAuthSessionPersist(db.authSessions);
+        } else writeDb(db);
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
@@ -7929,5 +7955,6 @@ module.exports = {
     loadDbFromSupabase: loadDbFromSupabase,
     flushSupabasePersistence: flushSupabasePersistence,
     flushSharedStatePersistence: flushSharedStatePersistence,
+    flushAuthSessionPersistence: flushAuthSessionPersistence,
     serveStatic: serveStatic
 };
