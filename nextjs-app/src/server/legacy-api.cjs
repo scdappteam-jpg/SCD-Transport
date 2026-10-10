@@ -737,6 +737,17 @@ async function flushSupabasePersistence() {
     }
 }
 
+// Request handlers must confirm that the source-of-truth state document is
+// saved, but should not wait for the additive relational mirror to upsert the
+// entire production dataset.  The mirror retries independently in background.
+async function flushSharedStatePersistence() {
+    try {
+        await dbPersistPromise;
+    } catch (err) {
+        markSupabaseFailed(err);
+    }
+}
+
 function readDbFromFile() {
     const db = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
     ensureCoreUsers(db);
@@ -7855,5 +7866,6 @@ module.exports = {
     mirrorHealth: mirrorHealth,
     loadDbFromSupabase: loadDbFromSupabase,
     flushSupabasePersistence: flushSupabasePersistence,
+    flushSharedStatePersistence: flushSharedStatePersistence,
     serveStatic: serveStatic
 };

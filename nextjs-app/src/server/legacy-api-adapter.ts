@@ -18,6 +18,7 @@ type LegacyApiModule = {
   handleApi: (request: LegacyRequest, response: LegacyResponse, pathname: string) => Promise<void>;
   loadDbFromSupabase: () => Promise<void>;
   flushSupabasePersistence: () => Promise<void>;
+  flushSharedStatePersistence: () => Promise<void>;
 };
 
 let initialization: Promise<void> | undefined;
@@ -96,9 +97,10 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
   // previously failed write must not make status/read endpoints unavailable.
   if (!["GET", "HEAD"].includes(request.method)) {
     try {
-      // flushSupabasePersistence จัดการความล้มเหลวเองแล้ว (เก็บลงเครื่อง + เข้าคิวลองใหม่)
-      // ตรงนี้เหลือไว้กันกรณีผิดปกติจริง ๆ เท่านั้น
-      await legacyApi.flushSupabasePersistence();
+      // app_state คือ source of truth ที่ UI ต้องรอให้บันทึกสำเร็จ
+      // relational mirror ทำงานเบื้องหลัง เพื่อไม่ให้ mutation เล็ก ๆ
+      // เช่น login ถูกหน่วงด้วยการ upsert ข้อมูลทั้งระบบ
+      await legacyApi.flushSharedStatePersistence();
     } catch (error) {
       // ถึงตรงนี้แปลว่าเขียนฐานข้อมูลหลัก (app_state) ไม่สำเร็จจริง ๆ
       // ส่วนตารางสำเนา (relational mirror) ถูกดักไว้ในฝั่ง legacy-api แล้ว ไม่ทำให้คำสั่งล้ม
