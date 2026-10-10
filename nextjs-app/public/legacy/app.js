@@ -10788,6 +10788,14 @@ async function submitCsConfirm(gkey) {
         const data = await res.json();
         if (data.ok) {
             toast(`✓ Confirm แล้ว ${data.confirmed} รายการ — Invoice: ${invoiceNo}`);
+            // The CS endpoint returns the newly approved records, but the
+            // dashboard cache is also the source for the Job Opening queue.
+            // Merge those records before navigating so a confirmed House is
+            // immediately available to open as Cargo without a browser reload.
+            if (Array.isArray(data.jobs) && state.dashboard?.jobs) {
+                const updatedByHouse = new Map(data.jobs.map(job => [ job.houseNumber, job ]));
+                state.dashboard.jobs = state.dashboard.jobs.map(job => updatedByHouse.get(job.houseNumber) || job);
+            }
             _csHistoryData = [];
             renderCsQueue();
             openWarehouseReservationModal(data.jobs || []);
