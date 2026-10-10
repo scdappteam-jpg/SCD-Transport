@@ -998,6 +998,17 @@ function serverPasswordMatches(password, encoded) {
     return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
 }
 
+// Production accounts are normally configured through Render environment
+// variables.  A separately provisioned SIT account may instead carry a
+// one-way password hash in the protected shared database, which lets a test
+// run use every UI role without exposing or changing a real user's password.
+// Environment configuration always wins so this cannot override a deployed
+// production credential.
+function passwordHashForUser(user) {
+    if (!user) return "";
+    return SERVER_PASSWORD_HASHES[user.id] || user.passwordHash || "";
+}
+
 // Never send password fields back to a browser.  This is deliberately kept
 // close to the session helpers so every authentication endpoint uses the same
 // safe representation of a user.
@@ -3110,11 +3121,12 @@ async function handleApi(req, res, pathname) {
         // The UI can fall back to the legacy login only while this explicit
         // migration setting is missing.  Once hashes are configured (and the
         // required flag is enabled) no password is ever checked in a browser.
-        if (user && !SERVER_PASSWORD_HASHES[user.id]) return sendJson(res, 503, {
+        const passwordHash = passwordHashForUser(user);
+        if (user && !passwordHash) return sendJson(res, 503, {
             error: "ยังไม่ได้ตั้งค่ารหัสผ่านฝั่งเซิร์ฟเวอร์",
             code: "SERVER_AUTH_NOT_CONFIGURED"
         });
-        if (!user || !serverPasswordMatches(payload.password, SERVER_PASSWORD_HASHES[user.id])) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        if (!user || !serverPasswordMatches(payload.password, passwordHash)) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
         const token = crypto.randomBytes(32).toString("base64url");
         db.authSessions = (db.authSessions || []).filter(item => new Date(item.expiresAt).getTime() > Date.now()).slice(-200);
         db.authSessions.push({ id: `SES-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, userId: user.id, tokenHash: crypto.createHash("sha256").update(token).digest("hex"), createdAt: nowIso(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1e3).toISOString() });
