@@ -146,7 +146,7 @@ async function submitMobileLogin() {
     }
     $("#mobileLoginStatus").textContent = "กำลังตรวจสอบรหัสผ่าน...";
     try {
-        const res = await fetch(apiUrl("/api/auth/login"), {
+        const res = await mobileFetch(apiUrl("/api/auth/login"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId, password })
@@ -177,6 +177,25 @@ function assetUrl(path) {
     return path.startsWith("http") ? path : `${API_BASE}${path}`;
 }
 
+// Mobile networks and a cold Render instance can leave a fetch pending long
+// enough that a driver sees a permanent "saving" button.  Bound every mobile
+// API request and let the caller restore its controls in `finally` instead.
+// The server-side actions are idempotent/recovered below where applicable.
+async function mobileFetch(url, options = {}, timeoutMs = 18000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } catch (error) {
+        if (error?.name === "AbortError") {
+            throw new Error("คำขอใช้เวลานานเกิน 18 วินาที กรุณาตรวจสอบสถานะแล้วลองอีกครั้ง");
+        }
+        throw error;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 async function recoverCompletedRequest(path, payload) {
     const expectedStatuses = {
         "/api/pickup/complete": [ "PickedUp", "ReturningWH3" ],
@@ -186,7 +205,7 @@ async function recoverCompletedRequest(path, payload) {
         "/api/billing/mark-billed": [ "Billed" ]
     }[path];
     if (!expectedStatuses || !payload?.houseNumber) return null;
-    const res = await fetch(apiUrl("/api/mobile/bootstrap"));
+    const res = await mobileFetch(apiUrl("/api/mobile/bootstrap"), {}, 8000);
     if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) return null;
     const data = await res.json();
     const house = normalizeHouseBarcode(payload.houseNumber);
@@ -203,7 +222,7 @@ async function api(path, payload) {
         const headers = { "Content-Type": "application/json" };
         const sessionToken = localStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
         if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
-        const res = await fetch(apiUrl(path), {
+        const res = await mobileFetch(apiUrl(path), {
             method: "POST",
             headers,
             body: JSON.stringify(requestPayload)
