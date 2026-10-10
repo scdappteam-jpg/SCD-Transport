@@ -3238,6 +3238,36 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    // Mobile is used on lower-powered phones and must not download the entire
+    // operational database just to render the driver's first screen.  The
+    // normal bootstrap endpoint remains the complete payload for the desktop
+    // application; this endpoint is intentionally role-scoped.
+    if (req.method === "GET" && pathname === "/api/mobile/bootstrap") {
+        const viewer = sessionUser(db, req);
+        const dashboard = buildDashboard(db);
+        const role = viewer?.role || "";
+        const ownDriverJob = job => job.driverId === viewer?.id && job.csConfirmed && job.cargoIssuedAt;
+        const jobsForRole = {
+            Driver: job => ownDriverJob(job),
+            WH_Staff: job => [ "ReturningWH3", "ArrivedWH3", "WaitingRelease", "ReleaseReceived", "WaitingDock", "Unloading", "Stored", "ReadyForTerminal" ].includes(job.status),
+            WH3_TeamLeader: job => [ "ReturningWH3", "ArrivedWH3", "WaitingRelease", "ReleaseReceived", "WaitingDock", "Unloading", "Stored", "ReadyForTerminal" ].includes(job.status),
+            Team_Transport: job => ![ "Billed", "Completed", "Cancelled" ].includes(job.status),
+            EI_Customer: job => [ "ReadyForTerminal", "OutboundConfirmed", "EIApprovalPending", "EIApproved", "AOTQueueBooked", "AOTQueueApproved" ].includes(job.status),
+            Check_House: job => [ "AOTQueueApproved", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
+            Terminal: job => [ "AOTQueueApproved", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
+            Billing: job => job.readyForBilling || [ "PendingBillingReview", "BillingReviewed", "InvoiceDrafted", "InvoiceSent" ].includes(job.status)
+        }[role];
+        const jobs = jobsForRole ? dashboard.jobs.filter(jobsForRole) : dashboard.jobs;
+        const relevantHouses = new Set(jobs.map(job => job.houseNumber));
+        return sendJson(res, 200, {
+            users: publicUsers(db),
+            dashboard: {
+                ...dashboard,
+                jobs,
+                alerts: (dashboard.alerts || []).filter(alert => !alert.houseNumber || relevantHouses.has(alert.houseNumber)).slice(0, 100)
+            }
+        });
+    }
     if (req.method === "GET" && pathname === "/api/bootstrap") {
         return sendJson(res, 200, {
             users: publicUsers(db),

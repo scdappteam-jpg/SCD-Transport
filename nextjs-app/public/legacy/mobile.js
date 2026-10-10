@@ -186,7 +186,7 @@ async function recoverCompletedRequest(path, payload) {
         "/api/billing/mark-billed": [ "Billed" ]
     }[path];
     if (!expectedStatuses || !payload?.houseNumber) return null;
-    const res = await fetch(apiUrl("/api/bootstrap"));
+    const res = await fetch(apiUrl("/api/mobile/bootstrap"));
     if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) return null;
     const data = await res.json();
     const house = normalizeHouseBarcode(payload.houseNumber);
@@ -247,7 +247,7 @@ async function api(path, payload) {
 async function refresh() {
     let data;
     try {
-        const res = await fetch(apiUrl("/api/bootstrap"));
+        const res = await fetch(apiUrl("/api/mobile/bootstrap"));
         if (res.status === 401) {
             state.dashboard = null;
             state.users = [];
