@@ -2318,11 +2318,19 @@ function foMyRecordToday() {
 async function foLoadAttToday(force) {
     if (!force && foState.attToday.length && Date.now() - foState.attAt < 6e4) return;
     try {
-        const res = await fetch(`${API_BASE}/api/attendance/today`);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(`${API_BASE}/api/attendance/today`, { signal: controller.signal });
+        clearTimeout(timeout);
         const data = await res.json();
         foState.attToday = data.records || [];
+    } catch (e) {
+        // Attendance is supplementary on the home screen.  A slow request
+        // must never prevent the driver from seeing their assigned work.
+        foState.attToday = [];
+    } finally {
         foState.attAt = Date.now();
-    } catch (e) {}
+    }
 }
 
 function showMnav(nav) {
@@ -2535,7 +2543,15 @@ async function renderMHome() {
     if (!user) return;
     const nameEl = $("#foUserName");
     if (nameEl) nameEl.textContent = user.name || "-";
-    await foLoadAttToday();
+    // Render the operational queue immediately.  Attendance can refresh in
+    // the background, so a slow endpoint does not leave the whole page on
+    // "กำลังโหลด...".
+    const attendanceFresh = foState.attAt && Date.now() - foState.attAt < 6e4;
+    if (!attendanceFresh) {
+        foLoadAttToday(true).then(() => {
+            if (foState.nav === "home") renderMHome();
+        });
+    }
     const rec = foMyRecordToday();
     const dayStatus = $("#foDayStatus");
     if (dayStatus) {
