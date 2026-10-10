@@ -251,6 +251,14 @@ async function refresh() {
         if (res.status === 401) {
             state.dashboard = null;
             state.users = [];
+            state.currentUserId = "";
+            localStorage.removeItem(MOBILE_AUTH_KEY);
+            localStorage.removeItem(MOBILE_SESSION_TOKEN_KEY);
+            localStorage.removeItem("smartLogisticsMobileUser");
+            try {
+                const usersRes = await fetch(apiUrl("/api/auth/users"), { cache: "no-store" });
+                if (usersRes.ok) state.users = (await usersRes.json()).users || [];
+            } catch (_) {}
             renderMobileLogin();
             return;
         }
