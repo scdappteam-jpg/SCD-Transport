@@ -248,6 +248,12 @@ async function refresh() {
     let data;
     try {
         const res = await fetch(apiUrl("/api/bootstrap"));
+        if (res.status === 401) {
+            state.dashboard = null;
+            state.users = [];
+            renderMobileLogin();
+            return;
+        }
         if (!res.ok) throw new Error("API unavailable");
         if (!res.headers.get("content-type")?.includes("application/json")) throw new Error("API returned HTML");
         data = await res.json();
