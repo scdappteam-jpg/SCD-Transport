@@ -589,11 +589,16 @@ async function supabaseRequest(method, query, body) {
                     apikey: SUPABASE_KEY,
                     Authorization: `Bearer ${SUPABASE_KEY}`,
                     "Content-Type": "application/json",
-                    Prefer: "resolution=merge-duplicates,return=representation"
+                    // Writes are acknowledged only after Supabase has stored
+                    // them.  Do not also serialize the full shared-state
+                    // document back to Render: callers never consume it and
+                    // on production data it turns small UI actions into a
+                    // multi-second response.
+                    Prefer: method === "GET" ? "return=representation" : "resolution=merge-duplicates,return=minimal"
                 },
                 body: body ? JSON.stringify(body) : undefined
             });
-            if (response.ok) return response.status === 204 ? null : response.json();
+            if (response.ok) return method === "GET" && response.status !== 204 ? response.json() : null;
             const message = await response.text().catch(() => response.statusText);
             lastError = new Error(`Supabase ${method} ${response.status}: ${message}`);
             if (response.status < 500) throw lastError;
