@@ -2270,7 +2270,7 @@ function showConfirmSheet(title, desc, onOk) {
         stepper.innerHTML = labels.map((l, i) => {
             const n = i + 1;
             const cls = n === cur ? "active" : n < cur ? "done" : "";
-            return `<button type="button" class="mwf-dot ${cls}" data-goto="${n}"><span>${n < cur ? "✓" : n}</span><small>${l}</small></button>`;
+            return `<button type="button" class="mwf-dot ${cls}" data-goto="${n}" onclick="setPickupStep(${n})"><span>${n < cur ? "✓" : n}</span><small>${l}</small></button>`;
         }).join("");
         const prev = document.getElementById("mwfPrev");
         const next = document.getElementById("mwfNext");
@@ -2294,11 +2294,17 @@ function showConfirmSheet(title, desc, onOk) {
             render();
         }
     });
+    // The mobile view can re-render inside an embedded browser after an
+    // authentication refresh.  Keep a direct handler on each visible step so
+    // the Pickup flow remains navigable even when delegated events are lost.
+    window.setPickupStep = step => {
+        cur = Math.max(1, Math.min(steps.length, Number(step) || 1));
+        render();
+    };
     stepper.addEventListener("click", e => {
         const b = e.target.closest("[data-goto]");
         if (b) {
-            cur = Number(b.dataset.goto);
-            render();
+            window.setPickupStep(b.dataset.goto);
         }
     });
     render();
