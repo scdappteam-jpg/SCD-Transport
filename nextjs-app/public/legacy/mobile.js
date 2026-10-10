@@ -290,6 +290,11 @@ function render() {
     // Dashboard loads asynchronously; refresh the SIT control after driver jobs are available.
     if (typeof renderSimulatedCheckinControl === "function") renderSimulatedCheckinControl(attState?.currentRecord || null);
     applyLanguage();
+    // The Field Operations shell is rendered separately from the legacy
+    // panels.  Explicitly initialise its active view after data arrives;
+    // otherwise an authenticated session restored from storage can leave the
+    // home card on its initial "กำลังโหลด..." placeholder forever.
+    if (typeof showMnav === "function") showMnav(document.body.dataset.mnav || "home");
 }
 
 function renderBillingReadyList() {
