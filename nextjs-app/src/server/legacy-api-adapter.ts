@@ -95,7 +95,15 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
   await legacyApi.handleApi(input, output, pathname);
   // Only a write request needs to wait for the shared-state snapshot.  A
   // previously failed write must not make status/read endpoints unavailable.
-  if (!["GET", "HEAD"].includes(request.method)) {
+  //
+  // Login only appends a short-lived auth session.  Waiting for the complete
+  // shared-state snapshot here made the login screen appear frozen while
+  // Supabase was saving unrelated operational data.  The session write is
+  // still queued and retried by legacy-api; at worst a process restart means
+  // the user signs in again.  Operational mutations continue to wait for a
+  // durable source-of-truth write before we return success.
+  const isLoginRequest = pathname === "/api/auth/login";
+  if (!["GET", "HEAD"].includes(request.method) && !isLoginRequest) {
     try {
       // app_state คือ source of truth ที่ UI ต้องรอให้บันทึกสำเร็จ
       // relational mirror ทำงานเบื้องหลัง เพื่อไม่ให้ mutation เล็ก ๆ
