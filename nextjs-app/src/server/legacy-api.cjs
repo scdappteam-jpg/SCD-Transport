@@ -68,6 +68,13 @@ let dbCache = null;
 
 let dbPersistPromise = Promise.resolve();
 
+// The original app_state JSON document grew beyond Supabase's statement
+// timeout once imports reached several thousand jobs.  Keep the compatibility
+// document, but store its two growing collections in small sibling documents.
+const STATE_CHUNK_SIZE = 300;
+const STATE_CHUNK_VERSION = 1;
+let persistedChunkHashes = { jobs: [], alerts: [] };
+
 const relationalMirror = createProductionRelationalMirror({
     url: SUPABASE_URL,
     key: SUPABASE_KEY,
@@ -597,12 +604,55 @@ async function supabaseRequest(method, query, body) {
     throw lastError || new Error("Supabase request failed");
 }
 
+function splitStateChunks(items) {
+    const rows = Array.isArray(items) ? items : [];
+    const chunks = [];
+    for (let index = 0; index < rows.length; index += STATE_CHUNK_SIZE) chunks.push(rows.slice(index, index + STATE_CHUNK_SIZE));
+    return chunks;
+}
+
+function stateChunkId(kind, index) {
+    return `${SUPABASE_STATE_ID}:${kind}:${index}`;
+}
+
+function chunkHash(rows) {
+    return crypto.createHash("sha256").update(JSON.stringify(rows)).digest("hex");
+}
+
+function compactStateDocument(db) {
+    const main = sanitizedClone(db);
+    const jobs = main.jobs || [];
+    const alerts = main.alerts || [];
+    delete main.jobs;
+    delete main.alerts;
+    const jobChunks = splitStateChunks(jobs);
+    const alertChunks = splitStateChunks(alerts);
+    main.stateChunks = { version: STATE_CHUNK_VERSION, jobs: jobChunks.length, alerts: alertChunks.length };
+    return { main, jobChunks, alertChunks };
+}
+
+async function loadChunkedState(main) {
+    const manifest = main?.stateChunks;
+    if (!manifest || manifest.version !== STATE_CHUNK_VERSION) return main;
+    const loadKind = async (kind, count) => {
+        if (!count) return [];
+        const ids = Array.from({ length: count }, (_, index) => `id.eq.${encodeURIComponent(stateChunkId(kind, index))}`).join(",");
+        const rows = await supabaseRequest("GET", `?or=(${ids})&select=id,data`, null);
+        const byId = new Map((rows || []).map(row => [ row.id, row.data?.items || [] ]));
+        const chunks = Array.from({ length: count }, (_, index) => byId.get(stateChunkId(kind, index)) || []);
+        persistedChunkHashes[kind] = chunks.map(chunkHash);
+        return chunks.flat();
+    };
+    const [ jobs, alerts ] = await Promise.all([ loadKind("jobs", Number(manifest.jobs) || 0), loadKind("alerts", Number(manifest.alerts) || 0) ]);
+    return { ...main, jobs, alerts };
+}
+
 async function loadDbFromSupabase() {
     if (!supabaseEnabled()) return;
     try {
         const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=data`, null);
         if (Array.isArray(rows) && rows[0]?.data) {
-            dbCache = rows[0].data;
+            dbCache = await loadChunkedState(rows[0].data);
             ensureCoreUsers(dbCache);
             ensureDbShape(dbCache);
             relationalMirror.schedule(dbCache);
@@ -622,10 +672,22 @@ async function loadDbFromSupabase() {
 
 async function persistDbToSupabase(db) {
     if (!supabaseEnabled()) return;
-    const data = sanitizedClone(db);
+    const { main, jobChunks, alertChunks } = compactStateDocument(db);
+    const previous = persistedChunkHashes;
+    const writeKind = async (kind, chunks) => {
+        const hashes = chunks.map(chunkHash);
+        const changed = chunks.map((items, index) => ({ items, index })).filter(({ index }) => hashes[index] !== previous[kind][index]);
+        await Promise.all(changed.map(({ items, index }) => supabaseRequest("POST", "", {
+            id: stateChunkId(kind, index),
+            data: { items },
+            updated_at: (new Date).toISOString()
+        })));
+        persistedChunkHashes[kind] = hashes;
+    };
+    await Promise.all([ writeKind("jobs", jobChunks), writeKind("alerts", alertChunks) ]);
     await supabaseRequest("POST", "", {
         id: SUPABASE_STATE_ID,
-        data: data,
+        data: main,
         updated_at: (new Date).toISOString()
     });
 }
