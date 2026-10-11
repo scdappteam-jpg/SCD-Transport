@@ -50,11 +50,14 @@
    */
   function classify(raw) {
     var parts = String(raw || "").trim().split("+");
-    var clean = parts[0].replace(/[^0-9A-Za-z]/g, "");
+    /* Preserve hyphens in House references (for example SITUI-20261010-FULL02).
+       A numeric MAWB remains recognized after separators are removed below. */
+    var clean = parts[0].replace(/[^0-9A-Za-z-]/g, "");
     var piece = parts.length > 1 ? String(parts[1]).replace(/[^0-9]/g, "") : "";
     if (!clean) return null;
-    if (/^\d{11,}$/.test(clean)) {
-      return { type: "master", value: clean.slice(0, 11) };
+    var digits = clean.replace(/-/g, "");
+    if (/^\d{11,}$/.test(digits)) {
+      return { type: "master", value: digits.slice(0, 11) };
     }
     return { type: "house", value: clean, piece: piece };
   }
