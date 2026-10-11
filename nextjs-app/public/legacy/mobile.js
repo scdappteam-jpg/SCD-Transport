@@ -308,7 +308,16 @@ function render() {
     $("#mobileOpenJobs").textContent = jobs.filter(job => job.status !== "Billed").length;
     $("#mobileBillingJobs").textContent = jobs.filter(job => job.readyForBilling).length;
     renderDriverJobSelect();
-    $("#mobileJobList").innerHTML = jobs.length ? jobs.map((job, index) => foDriverJobCard(job, index)).join("") : `<article class="job"><div><strong>ยังไม่มีงานของคนขับคนนี้</strong><br><small>No assigned jobs for this driver</small></div></article>`;
+    // This legacy list remains in the DOM even when Field Operations is the
+    // active UI. Rendering every job (thousands for an admin/transport role)
+    // freezes the mobile browser and blocks Scan/Outbound. The full dataset is
+    // still kept in state for exact House lookups; only the legacy preview is
+    // capped.
+    const mobileListLimit = 100;
+    const visibleList = jobs.slice(0, mobileListLimit);
+    $("#mobileJobList").innerHTML = jobs.length
+        ? `${visibleList.map((job, index) => foDriverJobCard(job, index)).join("")}${jobs.length > mobileListLimit ? `<article class="job"><div><strong>แสดง ${mobileListLimit} จาก ${jobs.length} งาน</strong><br><small>ใช้สแกนหรือค้นหา House เพื่อเปิดงานที่เหลือ</small></div></article>` : ""}`
+        : `<article class="job"><div><strong>ยังไม่มีงานของคนขับคนนี้</strong><br><small>No assigned jobs for this driver</small></div></article>`;
     $("#locationList").innerHTML = state.dashboard.locations.map(location => `\n    <article class="location">\n      <strong>${location.id}</strong><br>\n      <small>${location.status}${location.currentHouseId ? ` · ${location.currentHouseId}` : ""}</small>\n    </article>\n  `).join("");
     renderBillingReadyList();
     updateInboundInfo();
@@ -389,6 +398,15 @@ function renderMobileLogin() {
 function renderDriverJobSelect() {
     const select = $("#driverJobSelect");
     if (!select) return;
+    // The picker is only a Driver control.  Populating it for Admin/WH/
+    // Transport generated thousands of hidden <option>s and made the mobile
+    // UI unresponsive before the user could select Inbound or Outbound.
+    if (currentUser()?.role !== "Driver") {
+        select.innerHTML = `<option value="manual">กรอกเอง / Manual form</option>`;
+        select.value = "manual";
+        applyDriverJob("");
+        return;
+    }
     const current = select.value;
     const groups = pickupGroups();
     const jobs = visibleDriverJobs();
