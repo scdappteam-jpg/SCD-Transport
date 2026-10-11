@@ -890,7 +890,15 @@ function findJob(houseNumber = state.selectedHouse) {
 function normalizeHouseBarcode(value) {
     const raw = String(value || "").trim();
     const compact = raw.replace(/\s+/g, "");
-    const houseMatch = compact.match(/(?:H-?)?(\d{8,12})/i);
+    // Preserve a known partner/test House verbatim.  Alphanumeric references
+    // such as SITUI-20261010-UAT01 must not be shortened to their embedded
+    // numeric sequence before calling the shared API.
+    const exactKnownHouse = state.dashboard?.jobs?.find(job =>
+        String(job.houseNumber || "").trim().toUpperCase() === compact.toUpperCase()
+    )?.houseNumber;
+    if (exactKnownHouse) return exactKnownHouse;
+    // The numeric extraction is only valid for a whole AWB/H-AWB scan.
+    const houseMatch = compact.match(/^(?:H-?)?(\d{8,12})$/i);
     if (houseMatch?.[1]) return houseMatch[1];
     return compact.toUpperCase();
 }
