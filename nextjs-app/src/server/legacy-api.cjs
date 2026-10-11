@@ -3170,7 +3170,10 @@ function billingDocumentStatus(db, job) {
 }
 
 async function handleApi(req, res, pathname) {
-    const db = readDb();
+    // A Render request can be served by a warm worker whose in-memory cache
+    // predates a write made by another worker.  A few mutations below refresh
+    // this reference before retrying a lookup from the shared source of truth.
+    let db = readDb();
     if (!db.warehouseMaps || !db.warehouseMaps.length) {
         const rackSlots = [];
         for (let r = 1; r <= 5; r++) for (let c = 1; c <= 10; c++) rackSlots.push({
@@ -5578,7 +5581,13 @@ async function handleApi(req, res, pathname) {
         });
         job.terminalWeight = payload.weight || "";
         job.terminalDimension = payload.dimension || "";
-        job.status = payload.packing ? "PackingConsolidation" : "WeightDimensionRecorded";
+        // A corrective re-weigh can legitimately happen after X-Ray or even
+        // after Loading Detail.  Keep the later workflow state intact so the
+        // job does not disappear from Billing merely because its measurement
+        // was corrected.
+        const laterTerminalStates = new Set([ "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ]);
+        if (payload.packing) job.status = "PackingConsolidation";
+        else if (!laterTerminalStates.has(job.status)) job.status = "WeightDimensionRecorded";
         if (payload.packing) job.packingCompletedAt = nowIso();
         if (payload.weighStartedAt) job.weighStartedAt = payload.weighStartedAt;
         job.weighEndedAt = nowIso();
@@ -5873,7 +5882,14 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/billing/send-email") {
         const payload = await parseBody(req);
         if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
-        const bill = db.billing.find(item => item.id === payload.invoiceId);
+        let bill = db.billing.find(item => item.id === payload.invoiceId);
+        // Recover from a stale Render worker.  The invoice may already have
+        // been created by a concurrent request and committed to Supabase.
+        if (!bill && supabaseEnabled()) {
+            await loadDbFromSupabase();
+            db = readDb();
+            bill = db.billing.find(item => item.id === payload.invoiceId);
+        }
         if (!bill) return sendJson(res, 404, {
             error: "Invoice not found"
         });
@@ -5909,7 +5925,15 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/billing/mark-billed") {
         const payload = await parseBody(req);
         if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
-        const bill = db.billing.find(item => item.id === payload.invoiceId);
+        let bill = db.billing.find(item => item.id === payload.invoiceId);
+        // Same stale-worker recovery as email delivery: never reject a
+        // committed invoice just because this request landed on another
+        // warm process.
+        if (!bill && supabaseEnabled()) {
+            await loadDbFromSupabase();
+            db = readDb();
+            bill = db.billing.find(item => item.id === payload.invoiceId);
+        }
         if (!bill) return sendJson(res, 404, {
             error: "Invoice not found"
         });
