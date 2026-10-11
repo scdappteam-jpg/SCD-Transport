@@ -406,6 +406,14 @@ function inboundWdChecklist() {
 function normalizeHouseBarcode(value) {
     const raw = String(value || "").trim();
     const compact = raw.replace(/\s+/g, "");
+    // A manually keyed/scanned test or partner House can contain letters and
+    // separators (for example SITUI-20261010-FULL02).  Resolve an exact House
+    // already loaded from the shared dashboard before applying the numeric
+    // barcode extraction rule used by normal 8-12 digit AWB labels.
+    const exactKnownHouse = state.dashboard?.jobs?.find(job =>
+        String(job.houseNumber || "").trim().toUpperCase() === compact.toUpperCase()
+    )?.houseNumber;
+    if (exactKnownHouse) return exactKnownHouse;
     const houseMatch = compact.match(/(?:H-?)?(\d{8,12})/i);
     if (houseMatch?.[1]) return houseMatch[1];
     return compact.toUpperCase();
