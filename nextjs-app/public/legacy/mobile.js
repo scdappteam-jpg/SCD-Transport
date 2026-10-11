@@ -227,7 +227,11 @@ async function recoverCompletedRequest(path, payload) {
 async function api(path, payload, method = "POST") {
     try {
         const requestPayload = payload && typeof payload === "object" && !Array.isArray(payload) && !payload.userId ? { ...payload, userId: state.currentUserId || "" } : payload;
-        const headers = { "Content-Type": "application/json" };
+        // Mutation endpoints otherwise return the complete desktop dashboard
+        // (thousands of jobs) even though Mobile immediately refreshes its
+        // role-scoped bootstrap.  Ask for the concise response so field
+        // actions do not spend most of their time downloading unused data.
+        const headers = { "Content-Type": "application/json", "X-SCD-Mobile-Compact": "1" };
         const sessionToken = localStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
         if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
         const res = await mobileFetch(apiUrl(path), {

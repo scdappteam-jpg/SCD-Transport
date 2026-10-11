@@ -988,9 +988,19 @@ function sendJson(res, status, payload) {
         "Cache-Control": "no-store",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-SCD-Mobile-Compact"
     });
     res.end(body);
+}
+
+// The desktop screens still consume a full dashboard after mutations.  Mobile
+// already follows each successful mutation with its smaller role-scoped
+// bootstrap, so returning the full production dataset here turns a one-field
+// update into a multi-megabyte response and makes buttons appear frozen.
+function mutationDashboard(req, db) {
+    return String(req.headers["x-scd-mobile-compact"] || "") === "1" ? {} : {
+        dashboard: buildDashboard(db)
+    };
 }
 
 function cartrackConfigured() {
@@ -1108,6 +1118,36 @@ function serverPasswordMatches(password, encoded) {
 function passwordHashForUser(user) {
     if (!user) return "";
     return SERVER_PASSWORD_HASHES[user.id] || user.passwordHash || "";
+}
+
+// Once a legacy directory user has an auth_user_id, Supabase Auth becomes the
+// credential source for that account.  Accounts not yet provisioned continue
+// through the existing hash path until the staged migration is complete.
+async function authenticateWithSupabaseAuth(user, password) {
+    if (!user || !supabaseEnabled()) return { managed: false, valid: false };
+    const profileUrl = `${SUPABASE_URL}/rest/v1/user_profiles?legacy_user_id=eq.${encodeURIComponent(user.id)}&select=auth_user_id,login_email&limit=1`;
+    let profileResponse;
+    try {
+        profileResponse = await fetch(profileUrl, {
+            headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+        });
+    } catch (_) {
+        return { managed: false, valid: false, unavailable: true };
+    }
+    if (!profileResponse.ok) return { managed: false, valid: false, unavailable: true };
+    const profiles = await profileResponse.json().catch(() => []);
+    const profile = Array.isArray(profiles) ? profiles[0] : null;
+    if (!profile?.auth_user_id || !profile.login_email) return { managed: false, valid: false };
+    try {
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+            method: "POST",
+            headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({ email: profile.login_email, password: String(password || "") })
+        });
+        return { managed: true, valid: response.ok };
+    } catch (_) {
+        return { managed: true, valid: false, unavailable: true };
+    }
 }
 
 // Never send password fields back to a browser.  This is deliberately kept
@@ -3251,15 +3291,18 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/auth/login") {
         const payload = await parseBody(req);
         const user = (db.users || []).find(item => item.id === payload.userId && item.status !== "Inactive");
-        // The UI can fall back to the legacy login only while this explicit
-        // migration setting is missing.  Once hashes are configured (and the
-        // required flag is enabled) no password is ever checked in a browser.
-        const passwordHash = passwordHashForUser(user);
-        if (user && !passwordHash) return sendJson(res, 503, {
-            error: "ยังไม่ได้ตั้งค่ารหัสผ่านฝั่งเซิร์ฟเวอร์",
-            code: "SERVER_AUTH_NOT_CONFIGURED"
-        });
-        if (!user || !serverPasswordMatches(payload.password, passwordHash)) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        if (!user) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        const supabaseAuth = await authenticateWithSupabaseAuth(user, payload.password);
+        if (supabaseAuth.managed && supabaseAuth.unavailable) return sendJson(res, 503, { error: "Supabase Auth ใช้งานไม่ได้ชั่วคราว กรุณาลองใหม่" });
+        if (supabaseAuth.managed && !supabaseAuth.valid) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        if (!supabaseAuth.managed) {
+            const passwordHash = passwordHashForUser(user);
+            if (!passwordHash) return sendJson(res, 503, {
+                error: "ยังไม่ได้ตั้งค่ารหัสผ่านฝั่งเซิร์ฟเวอร์",
+                code: "SERVER_AUTH_NOT_CONFIGURED"
+            });
+            if (!serverPasswordMatches(payload.password, passwordHash)) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        }
         const token = crypto.randomBytes(32).toString("base64url");
         db.authSessions = (db.authSessions || []).filter(item => new Date(item.expiresAt).getTime() > Date.now()).slice(-200);
         db.authSessions.push({ id: `SES-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, userId: user.id, tokenHash: crypto.createHash("sha256").update(token).digest("hex"), createdAt: nowIso(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1e3).toISOString() });
@@ -5080,7 +5123,7 @@ async function handleApi(req, res, pathname) {
                 ok: true,
                 step: step,
                 job: normalizeJob(job),
-                dashboard: buildDashboard(db)
+                ...mutationDashboard(req, db)
             });
         } catch (error) {
             return sendJson(res, 422, {
@@ -5327,7 +5370,7 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, {
             ok: true,
             job: normalizeJob(job),
-            dashboard: buildDashboard(db)
+            ...mutationDashboard(req, db)
         });
     }
     if (req.method === "POST" && pathname === "/api/outbound/confirm-location") {
@@ -5355,7 +5398,7 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, {
             ok: true,
             job: normalizeJob(job),
-            dashboard: buildDashboard(db)
+            ...mutationDashboard(req, db)
         });
     }
     if (req.method === "POST" && pathname === "/api/outbound/ei-approve") {

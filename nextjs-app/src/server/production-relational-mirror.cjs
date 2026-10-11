@@ -115,6 +115,7 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
 
     async function mirror(db) {
         const source = {
+            users: db.users || [],
             jobs: db.jobs || [],
             customers: db.customers || [],
             activityLogs: db.activityLogs || [],
@@ -125,6 +126,21 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
         };
         const snapshotHash = stableHash(source);
         if (snapshotHash === lastSnapshotHash) return { skipped: true };
+
+        // Keep the non-secret operational profile in Supabase.  Credentials
+        // live only in Supabase Auth; legacy password hashes are deliberately
+        // excluded from this mirror.
+        const users = source.users.map(user => ({
+            legacy_user_id: asText(user.id),
+            login_email: `${asText(user.id).trim().toLowerCase().replace(/[^a-z0-9._-]/g, "-")}@login.scdtransport.local`,
+            display_name: asText(user.name, asText(user.id)),
+            role: asText(user.role, "Staff"),
+            vehicle_plate: asText(user.vehiclePlate) || null,
+            status: asText(user.status, "Active"),
+            metadata: { legacy: { id: user.id, role: user.role || "", name: user.name || "" } },
+            updated_at: new Date().toISOString()
+        })).filter(row => row.legacy_user_id && row.login_email);
+        await upsert("user_profiles", "legacy_user_id", users);
 
         const customers = source.customers.map(customer => ({
             external_id: asText(customer.id),
@@ -384,7 +400,7 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
         await upsert("hr_payroll_runs", "legacy_run_id", payrollRuns);
 
         lastSnapshotHash = snapshotHash;
-        return { jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult, leaveRequests: leaveRequests.length, otRequests: otRequests.length, employeeProfiles: employeeProfiles.length, checkInLocations: checkInLocations.length, attendanceCorrections: corrections.length, hrNotifications: hrNotifications.length, payrollProfiles: payrollProfiles.length, payrollRuns: payrollRuns.length };
+        return { users: users.length, jobs: jobs.length, zones: zones.length, locations: locations.length, events: statusEvents.length + activityEvents.length, attachments: attachmentResult, leaveRequests: leaveRequests.length, otRequests: otRequests.length, employeeProfiles: employeeProfiles.length, checkInLocations: checkInLocations.length, attendanceCorrections: corrections.length, hrNotifications: hrNotifications.length, payrollProfiles: payrollProfiles.length, payrollRuns: payrollRuns.length };
     }
 
     function schedule(db) {
