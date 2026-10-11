@@ -533,6 +533,17 @@ function renderOutboundWorkflow() {
             if (control.closest(".step-tracker")) return;
             control.disabled = stepStatus !== "InProgress";
         });
+        // The tracker is rendered dynamically and must remain actionable even
+        // while all of the actual form fields are locked.  Set these two
+        // controls explicitly after locking the section so the next workflow
+        // stage can always be started from Mobile.
+        const tracker = section.querySelector(".step-tracker");
+        if (tracker) {
+            const start = tracker.querySelector('[data-step-action="start"]');
+            const finish = tracker.querySelector('[data-step-action="finish"]');
+            if (start) start.disabled = stepStatus !== "NotStarted";
+            if (finish) finish.disabled = stepStatus !== "InProgress";
+        }
     });
 }
 
