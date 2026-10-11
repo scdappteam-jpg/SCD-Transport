@@ -1677,8 +1677,12 @@ function buildMobileDashboard(db, viewer) {
     const ownDriverJob = job => job.driverId === viewer?.id && job.csConfirmed && job.cargoIssuedAt;
     const jobsForRole = {
         Driver: job => ownDriverJob(job),
-        WH_Staff: job => [ "ReturningWH3", "ArrivedWH3", "WaitingRelease", "ReleaseReceived", "WaitingDock", "Unloading", "Stored", "ReadyForTerminal" ].includes(job.status),
-        WH3_TeamLeader: job => [ "ReturningWH3", "ArrivedWH3", "WaitingRelease", "ReleaseReceived", "WaitingDock", "Unloading", "Stored", "ReadyForTerminal" ].includes(job.status),
+        // Use the persisted workflow states.  The former aliases
+        // WaitingRelease/WaitingDock/Unloading were never emitted by the
+        // current Driver → WH3 flow, so Warehouse users could not find a job
+        // after the driver received the release document.
+        WH_Staff: job => [ "ReturningWH3", "ArrivedWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status),
+        WH3_TeamLeader: job => [ "ReturningWH3", "ArrivedWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status),
         Team_Transport: job => ![ "Billed", "Completed", "Cancelled" ].includes(job.status),
         EI_Customer: job => [ "ReadyForTerminal", "OutboundConfirmed", "EIApprovalPending", "EIApproved", "AOTQueueBooked", "AOTQueueApproved" ].includes(job.status),
         Check_House: job => [ "AOTQueueApproved", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
