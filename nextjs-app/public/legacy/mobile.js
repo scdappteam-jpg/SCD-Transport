@@ -414,7 +414,10 @@ function normalizeHouseBarcode(value) {
         String(job.houseNumber || "").trim().toUpperCase() === compact.toUpperCase()
     )?.houseNumber;
     if (exactKnownHouse) return exactKnownHouse;
-    const houseMatch = compact.match(/(?:H-?)?(\d{8,12})/i);
+    // Only parse the numeric barcode form when the entire scan is an AWB/H-AWB
+    // number.  Do not strip a valid alphanumeric House just because it embeds
+    // an 8+ digit sequence (e.g. SITUI-20261010-FULL02).
+    const houseMatch = compact.match(/^(?:H-?)?(\d{8,12})$/i);
     if (houseMatch?.[1]) return houseMatch[1];
     return compact.toUpperCase();
 }
