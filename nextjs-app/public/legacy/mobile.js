@@ -181,14 +181,18 @@ function assetUrl(path) {
 // enough that a driver sees a permanent "saving" button.  Bound every mobile
 // API request and let the caller restore its controls in `finally` instead.
 // The server-side actions are idempotent/recovered below where applicable.
-async function mobileFetch(url, options = {}, timeoutMs = 18000) {
+// Writes can take longer than a cold-start read because the API persists the
+// operational event and refreshes the consolidated job state.  Keep the
+// client waiting long enough to receive that authoritative response; a short
+// timeout previously showed a false failure even though the write succeeded.
+async function mobileFetch(url, options = {}, timeoutMs = 45000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
         return await fetch(url, { ...options, signal: controller.signal });
     } catch (error) {
         if (error?.name === "AbortError") {
-            throw new Error("คำขอใช้เวลานานเกิน 18 วินาที กรุณาตรวจสอบสถานะแล้วลองอีกครั้ง");
+            throw new Error("คำขอใช้เวลานานเกิน 45 วินาที กรุณาตรวจสอบสถานะแล้วลองอีกครั้ง");
         }
         throw error;
     } finally {
@@ -199,6 +203,10 @@ async function mobileFetch(url, options = {}, timeoutMs = 18000) {
 async function recoverCompletedRequest(path, payload) {
     const expectedStatuses = {
         "/api/pickup/complete": [ "PickedUp", "ReturningWH3" ],
+        "/api/inbound/document-check": [ "DocumentChecked", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal" ],
+        "/api/inbound/open": [ "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal" ],
+        "/api/inbound/scan-house": [ "HouseIdentified", "Stored", "ReadyForTerminal" ],
+        "/api/inbound/twin-scan": [ "LocationLocked", "Stored", "ReadyForTerminal" ],
         "/api/inbound/close": [ "Stored", "ReadyForTerminal" ],
         "/api/outbound/aot-booking": payload?.approved ? [ "AOTQueueApproved" ] : [ "AOTQueueBooked", "AOTQueueApproved" ],
         "/api/billing/send-email": [ "InvoiceSent", "Billed" ],
