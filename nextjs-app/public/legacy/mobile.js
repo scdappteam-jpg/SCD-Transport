@@ -346,6 +346,11 @@ function renderBillingReadyList() {
         item.addEventListener("click", () => {
             $("#billingHouse").value = item.dataset.billingHouse;
             state.billingUnlockedHouse = item.dataset.billingHouse;
+            // A selected job can already be at InvoiceDrafted / InvoiceSent.
+            // Keep the hidden invoice reference in sync so the final two
+            // actions never submit an empty invoiceId to the API.
+            const selectedJob = findAnyJob(item.dataset.billingHouse);
+            $("#invoiceId").value = selectedJob?.invoiceId || "";
             renderBillingGuide();
             toast(`เลือก ${item.dataset.billingHouse}`);
         });
