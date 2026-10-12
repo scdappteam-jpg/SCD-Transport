@@ -65,6 +65,8 @@ const CARTRACK_PASSWORD = process.env.CARTRACK_PASSWORD || "";
 const CARTRACK_DEMO_ENABLED = String(process.env.CARTRACK_DEMO_ENABLED || "false").toLowerCase() === "true";
 
 let dbCache = null;
+let dbCacheUpdatedAt = "";
+let lastSharedStateCheckAt = 0;
 
 let dbPersistPromise = Promise.resolve();
 let authSessionPersistPromise = Promise.resolve();
@@ -673,9 +675,10 @@ async function loadChunkedState(main) {
 async function loadDbFromSupabase() {
     if (!supabaseEnabled()) return;
     try {
-        const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=data`, null);
+        const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=data,updated_at`, null);
         if (Array.isArray(rows) && rows[0]?.data) {
             dbCache = await loadChunkedState(rows[0].data);
+            dbCacheUpdatedAt = String(rows[0].updated_at || "");
             await loadAuthSessions(dbCache);
             ensureCoreUsers(dbCache);
             ensureDbShape(dbCache);
@@ -691,6 +694,24 @@ async function loadDbFromSupabase() {
     } catch (err) {
         console.error(`[db] Supabase load failed, using local db.json fallback: ${err.message}`);
         dbCache = null;
+    }
+}
+
+// Render may serve consecutive requests from different warm workers.  Keep
+// their in-memory snapshots cheap to validate on dashboard bootstrap, while
+// retaining the full chunked reload only for a newer shared-state version.
+async function refreshDbIfSharedStateChanged() {
+    if (!supabaseEnabled()) return;
+    const now = Date.now();
+    if (now - lastSharedStateCheckAt < 1500) return;
+    lastSharedStateCheckAt = now;
+    try {
+        const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=updated_at`, null);
+        const sharedUpdatedAt = String(rows?.[0]?.updated_at || "");
+        if (sharedUpdatedAt && sharedUpdatedAt !== dbCacheUpdatedAt) await loadDbFromSupabase();
+    } catch (err) {
+        // A transient version check must never take the operational UI down.
+        console.warn(`[db] Shared-state version check skipped: ${err.message}`);
     }
 }
 
@@ -3174,6 +3195,10 @@ async function handleApi(req, res, pathname) {
     // predates a write made by another worker.  A few mutations below refresh
     // this reference before retrying a lookup from the shared source of truth.
     let db = readDb();
+    if (req.method === "GET" && [ "/api/mobile/bootstrap", "/api/bootstrap" ].includes(pathname)) {
+        await refreshDbIfSharedStateChanged();
+        db = readDb();
+    }
     if (!db.warehouseMaps || !db.warehouseMaps.length) {
         const rackSlots = [];
         for (let r = 1; r <= 5; r++) for (let c = 1; c <= 10; c++) rackSlots.push({
