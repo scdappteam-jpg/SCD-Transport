@@ -49,7 +49,9 @@ const SUPABASE_STATE_ID = process.env.SUPABASE_STATE_ID || "scd-transport";
 
 const RELATIONAL_MIRROR_ENABLED = String(process.env.RELATIONAL_MIRROR_ENABLED || "true").toLowerCase() !== "false";
 
-const SERVER_AUTH_REQUIRED = String(process.env.SCD_SERVER_AUTH_REQUIRED || "false").toLowerCase() === "true";
+// Production must fail closed: an omitted Render environment variable must
+// never turn the operational API into an anonymous API.
+const SERVER_AUTH_REQUIRED = String(process.env.SCD_SERVER_AUTH_REQUIRED || "true").toLowerCase() === "true";
 
 let SERVER_PASSWORD_HASHES = {};
 try { SERVER_PASSWORD_HASHES = JSON.parse(process.env.SCD_AUTH_PASSWORD_HASHES || "{}"); } catch (_) { SERVER_PASSWORD_HASHES = {}; }
@@ -1283,8 +1285,7 @@ function hrRequireSelfServiceActor(db, payload, employeeId) {
     return { actor };
 }
 
-function requireBillingActor(db, payload) {
-    const actor = (db.users || []).find(user => user.id === payload.userId);
+function requireBillingActor(actor) {
     return actor && [ "Billing", "Admin", "Executive" ].includes(actor.role) ? actor : null;
 }
 
@@ -5892,7 +5893,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/review-batch") {
         const payload = await parseBody(req);
-        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        const actor = requireBillingActor(sessionUser(db, req));
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        payload.userId = actor.id;
         const jobs = findPayloadJobs(db, payload);
         if (!jobs.length) return sendJson(res, 404, {
             error: "No matching billing jobs"
@@ -5924,7 +5927,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/generate-batch") {
         const payload = await parseBody(req);
-        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        const actor = requireBillingActor(sessionUser(db, req));
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        payload.userId = actor.id;
         const jobs = findPayloadJobs(db, payload);
         if (!jobs.length) return sendJson(res, 404, {
             error: "No matching billing jobs"
@@ -5972,7 +5977,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/generate") {
         const payload = await parseBody(req);
-        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        const actor = requireBillingActor(sessionUser(db, req));
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -6014,7 +6021,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/review") {
         const payload = await parseBody(req);
-        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        const actor = requireBillingActor(sessionUser(db, req));
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -6048,7 +6057,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/send-email") {
         const payload = await parseBody(req);
-        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        const actor = requireBillingActor(sessionUser(db, req));
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        payload.userId = actor.id;
         let bill = db.billing.find(item => item.id === payload.invoiceId);
         // Recover from a stale Render worker.  The invoice may already have
         // been created by a concurrent request and committed to Supabase.
@@ -6091,7 +6102,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/mark-billed") {
         const payload = await parseBody(req);
-        if (!requireBillingActor(db, payload)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        const actor = requireBillingActor(sessionUser(db, req));
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
+        payload.userId = actor.id;
         let bill = db.billing.find(item => item.id === payload.invoiceId);
         // Same stale-worker recovery as email delivery: never reject a
         // committed invoice just because this request landed on another
