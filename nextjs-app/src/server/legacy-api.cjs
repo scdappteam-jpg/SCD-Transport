@@ -1290,6 +1290,11 @@ function requireBillingActor(actor) {
     return actor && [ "Billing", "Admin", "Executive" ].includes(actor.role) ? actor : null;
 }
 
+function requireSessionRole(db, req, roles) {
+    const actor = sessionUser(db, req);
+    return actor && roles.includes(actor.role) ? actor : null;
+}
+
 const LOAD_PLAN_ROUNDS = String(process.env.LOAD_PLAN_ROUNDS || "08:00,12:00,16:00").split(",").map(value => value.trim()).filter(Boolean);
 
 const TERMINAL_PROFILES = {
@@ -6139,6 +6144,8 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/customers/upsert") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Billing", "CS" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์แก้ไขข้อมูลลูกค้า" });
         const name = String(payload.name || "").trim();
         if (!name) return sendJson(res, 400, {
             error: "Customer name is required"
@@ -6173,6 +6180,8 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/users/upsert") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการผู้ใช้งาน" });
         const name = String(payload.name || "").trim();
         const code = String(payload.code || "").trim().toUpperCase();
         const allowedRoles = new Set([ "Driver", "WH_Staff", "Terminal", "Billing", "Admin", "Executive" ]);
@@ -6256,6 +6265,8 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/profiles/save") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการแปลนคลัง" });
         if (!payload.name) return sendJson(res, 400, {
             error: "name required"
         });
@@ -6291,6 +6302,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/profiles/load") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการแปลนคลัง" });
+        payload.userId = actor.id;
         if (!payload.id) return sendJson(res, 400, {
             error: "id required"
         });
@@ -6318,6 +6332,8 @@ async function handleApi(req, res, pathname) {
         });
     }
     if (req.method === "POST" && pathname.startsWith("/api/warehouse/profiles/delete/")) {
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการแปลนคลัง" });
         const profileId = decodeURIComponent(pathname.replace("/api/warehouse/profiles/delete/", ""));
         const before = (db.warehouseProfiles || []).length;
         db.warehouseProfiles = (db.warehouseProfiles || []).filter(p => p.id !== profileId);
@@ -6329,6 +6345,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/layouts/2026-09-01/apply") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการแปลนคลัง" });
+        payload.userId = actor.id;
         const existingLocations = db.warehouseMap?.locations || [];
         const occupied = existingLocations.filter(location => (location.occupiedBy || []).length > 0);
         if (occupied.length > 0) return sendJson(res, 409, {
@@ -6348,6 +6367,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/building/move") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการแปลนคลัง" });
+        payload.userId = actor.id;
         const map = db.warehouseMap;
         if (!map) return sendJson(res, 404, { error: "No warehouse map found" });
         ensureWarehouseLayoutBuildingGroups(map);
@@ -6402,11 +6424,14 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/zone/create") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการโซนคลัง" });
+        payload.userId = actor.id;
         const {name: name, prefix: prefix, rows: rows, cols: cols, defaultLevels: defaultLevels, color: color, gridCol: gridCol, gridRow: gridRow, maxPallets: maxPallets, maxBoxes: maxBoxes} = payload;
         if (!name || !prefix || !rows || !cols) return sendJson(res, 400, {
             error: "name, prefix, rows, cols required"
         });
-        const db = readDb();
         if (!db.warehouseMap) db.warehouseMap = {
             zones: [],
             locations: []
@@ -6467,11 +6492,13 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/zone/delete") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการโซนคลัง" });
         const {zoneId: zoneId} = payload;
         if (!zoneId) return sendJson(res, 400, {
             error: "zoneId required"
         });
-        const db = readDb();
         if (!db.warehouseMap) return sendJson(res, 404, {
             error: "No map found"
         });
@@ -6493,11 +6520,13 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/location/set-levels") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการโซนคลัง" });
         const {locationId: locationId, maxLevels: maxLevels} = payload;
         if (!locationId) return sendJson(res, 400, {
             error: "locationId required"
         });
-        const db = readDb();
         const loc = (db.warehouseMap?.locations || []).find(l => l.id === locationId);
         if (!loc) return sendJson(res, 404, {
             error: "Location not found"
@@ -6511,11 +6540,14 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/location/assign") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดเก็บสินค้าเข้าคลัง" });
+        payload.userId = actor.id;
         const {locationId: locationId, level: level, houseNumber: houseNumber, pallets: pallets, boxes: boxes, pieces: pieces, areaSqm: areaSqm, volumeCbm: volumeCbm} = payload;
         if (!locationId || !houseNumber) return sendJson(res, 400, {
             error: "locationId and houseNumber required"
         });
-        const db = readDb();
         const loc = (db.warehouseMap?.locations || []).find(l => l.id === locationId);
         if (!loc) return sendJson(res, 404, {
             error: "Location not found"
@@ -6595,11 +6627,14 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/location/release") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ปล่อยพื้นที่คลัง" });
+        payload.userId = actor.id;
         const {houseNumber: houseNumber, userId: userId} = payload;
         if (!houseNumber) return sendJson(res, 400, {
             error: "houseNumber required"
         });
-        const db = readDb();
         const locs = db.warehouseMap?.locations || [];
         let releasedFrom = null;
         for (const loc of locs) {
@@ -6629,11 +6664,14 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/zone/update") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการโซนคลัง" });
+        payload.userId = actor.id;
         const {zoneId: zoneId, name: name, color: color, mapOrder: mapOrder, canvasX: canvasX, canvasY: canvasY, userId: userId, maxPallets: maxPallets, maxBoxes: maxBoxes, maxAreaSqm: maxAreaSqm, maxVolumeCbm: maxVolumeCbm, capacityUnit: capacityUnit, rows: rows, cols: cols} = payload;
         if (!zoneId) return sendJson(res, 400, {
             error: "zoneId required"
         });
-        const db = readDb();
         const zone = (db.warehouseMap?.zones || []).find(z => z.id === zoneId);
         if (!zone) return sendJson(res, 404, {
             error: "Zone not found"
@@ -6725,6 +6763,8 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/warehouse/config") {
         const payload = await parseBody(req);
         const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ตั้งค่าคลัง" });
         if (!db.warehouseConfig) db.warehouseConfig = {
             palletToBoxRatio: 10
         };
@@ -6739,9 +6779,12 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/warehouse/reservations") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จองพื้นที่คลัง" });
+        payload.userId = actor.id;
         const reservations = Array.isArray(payload.reservations) ? payload.reservations : [];
         if (!reservations.length) return sendJson(res, 400, { error: "reservations required" });
-        const db = readDb();
         const zones = db.warehouseMap?.zones || [];
         let saved = 0;
         for (const item of reservations) {
