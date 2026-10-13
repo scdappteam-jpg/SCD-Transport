@@ -5342,6 +5342,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/return") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการคืนสินค้า" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5381,6 +5384,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/validate") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff", "Terminal" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ตรวจเอกสารขาออก" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5415,6 +5421,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/wh3-dispatch-check") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ตรวจปล่อยออกจาก WH3" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5468,6 +5477,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/transfer-form") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ออก Cargo Transfer Form" });
+        payload.userId = actor.id;
         const houses = Array.isArray(payload.houses) ? [ ...new Set(payload.houses.map(value => String(value || "").trim()).filter(Boolean)) ] : [];
         const jobs = houses.map(house => findJob(db, house)).filter(Boolean);
         if (!jobs.length) return sendJson(res, 404, {
@@ -5539,6 +5551,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/picking") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์หยิบสินค้าออกคลัง" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5584,6 +5599,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/confirm-location") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ยืนยันตำแหน่งสินค้า" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5612,6 +5630,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/ei-approve") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "EI_Customer" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์อนุมัติ EI" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5704,6 +5725,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/load-bay") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Terminal" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์บันทึกการโหลดเข้า Terminal" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5767,6 +5791,9 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/outbound/weigh-start") {
         const payload = await parseBody(req);
         const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Terminal" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เริ่มชั่งสินค้า" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5796,6 +5823,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/weight-dimension") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Terminal" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์บันทึกน้ำหนักและขนาด" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5843,6 +5873,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/xray") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Terminal" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์บันทึกผล X-Ray" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -5881,6 +5914,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/loading-detail") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Terminal" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์บันทึกรายละเอียดการโหลด" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
