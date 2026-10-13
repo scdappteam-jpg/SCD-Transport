@@ -11072,7 +11072,7 @@ function flightBoardRows() {
         var minutes = isNaN(ms) ? null : (ms - now) / 6e4;
         return { job: job, minutes: minutes, tier: fbTier(minutes) };
     }).filter(function (row) {
-        return row.minutes !== null && row.minutes < 24 * 60 && row.minutes > -24 * 60;
+        return row.minutes !== null && row.minutes >= 0 && row.minutes < 24 * 60;
     }).sort(function (a, b) { return a.minutes - b.minutes; }).slice(0, 60);
 }
 
@@ -11085,7 +11085,7 @@ function renderFlightBoard() {
     var now = new Date();
     var clock = new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
     var dateTxt = new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now);
-    var urgent = rows.filter(function (r) { return r.tier.key === "critical" || r.tier.key === "over"; })[0];
+    var urgent = rows.filter(function (r) { return r.tier.key === "critical"; })[0];
 
     var rowHtml = function (r) {
         var j = r.job;
@@ -11110,7 +11110,7 @@ function renderFlightBoard() {
 
     box.innerHTML = '<div class="fb-wrap" id="fbWrap">'
         + '<div class="fb-head"><div class="fb-mark">SCD</div><div class="fb-title"><b>สถานะงานส่งออก · WH3</b>'
-        + '<span>เรียงตามเวลาที่เหลือก่อนปิดรับ · อัปเดตอัตโนมัติทุก 30 วินาที</span></div>'
+        + '<span>แสดงเฉพาะงานปัจจุบันที่ยังไม่เลยเวลาปิดรับ · อัปเดตอัตโนมัติทุก 30 วินาที</span></div>'
         + '<div class="fb-clock"><b>' + clock + '</b><span>' + dateTxt + '</span></div>'
         + '<button type="button" class="fb-full" onclick="fbToggleFull()">เต็มจอ</button></div>'
         + '<div class="fb-legend"><span><i style="background:#FF6B6B"></i>ด่วนมาก · น้อยกว่า 2 ชม.</span>'
@@ -11122,10 +11122,10 @@ function renderFlightBoard() {
         + '<div class="fb-body' + (scrolling ? " scrolling" : "") + '">'
         + (rows.length
             ? '<div class="fb-track" style="animation-duration:' + dur + 's">' + body + (scrolling ? body : "") + '</div>'
-            : '<div class="fb-empty">ไม่มีงานส่งออกที่ต้องเฝ้าระวังใน 24 ชั่วโมงข้างหน้า</div>')
+            : '<div class="fb-empty">ไม่มีงานส่งออกปัจจุบันที่ต้องเฝ้าระวังใน 24 ชั่วโมงข้างหน้า</div>')
         + '</div>'
         + '<div class="fb-foot"><div><b>' + rows.length + '</b><span>งานเฝ้าระวัง</span></div>'
-        + '<div><b style="color:#FF6B6B">' + (counts.critical + counts.over) + '</b><span>ด่วนมาก</span></div>'
+        + '<div><b style="color:#FF6B6B">' + counts.critical + '</b><span>ด่วนมาก</span></div>'
         + '<div><b style="color:#FFB44D">' + counts.warning + '</b><span>เฝ้าระวัง</span></div>'
         + '<div><b>' + (state.dockSummary ? state.dockSummary.available : "—") + '</b><span>ท่าเทียบว่าง</span></div>'
         + '<div class="fb-ticker">' + (urgent ? "ด่วน: " + safeHtml(urgent.job.houseNumber) + " · ไฟลท์ " + safeHtml(urgent.job.flightNo || "-") + " เหลือ " + fbLeftLabel(urgent.minutes) + " — เร่งดำเนินการทันที" : "ไม่มีประกาศด่วนในขณะนี้") + '</div></div></div>';
