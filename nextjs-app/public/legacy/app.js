@@ -806,6 +806,10 @@ function isDemoJob(job) {
     return /abc logistics|xyz trading|c_abc_logistics|c_xyz_trading|mock|demo/.test(text);
 }
 
+function operationalJobs() {
+    return (state.dashboard?.jobs || []).filter(job => !isDemoJob(job));
+}
+
 function dateRangeKeys(from, to) {
     const start = new Date(`${from}T00:00:00`);
     const end = new Date(`${to}T00:00:00`);
@@ -821,8 +825,7 @@ function dateRangeKeys(from, to) {
 
 function dashboardFilteredJobs() {
     const {dateFrom: dateFrom, dateTo: dateTo, status: status} = state.filters;
-    return (state.dashboard?.jobs || []).filter(job => {
-        if (isDemoJob(job)) return false;
+    return operationalJobs().filter(job => {
         const key = jobDateKey(job);
         const inDate = (!dateFrom || key >= dateFrom) && (!dateTo || key <= dateTo);
         const inStatus = status === "All" || job.status === status;
@@ -6485,7 +6488,7 @@ function orderIsStale(job) {
 }
 
 function orderFilterCounts() {
-    const jobs = state.dashboard?.jobs || [];
+    const jobs = operationalJobs();
     return {
         today: jobs.filter(job => orderMatchesFilter(job, "today")).length,
         pending: jobs.filter(job => orderMatchesFilter(job, "pending")).length,
@@ -6498,7 +6501,7 @@ function orderFilterCounts() {
 function renderOrderAlertSummary() {
     const el = $("#orderAlertSummary");
     if (!el || !state.dashboard) return;
-    const jobs = state.dashboard.jobs || [];
+    const jobs = operationalJobs();
     const staleEl = $("#orderFilterStale");
     const staleJobs = jobs.filter(orderIsStale);
     if (staleEl) staleEl.textContent = staleJobs.length;
@@ -6539,7 +6542,7 @@ function renderOrderFilterCounts() {
 
 function orderVisibleJobs() {
     const query = ($("#orderSearch")?.value || $("#globalSearch")?.value || "").toLowerCase();
-    return (state.dashboard?.jobs || []).filter(job => {
+    return operationalJobs().filter(job => {
         const haystack = `${job.houseNumber} ${job.customerName} ${job.flightNo} ${job.status}`.toLowerCase();
         return orderMatchesFilter(job) && haystack.includes(query);
     });
