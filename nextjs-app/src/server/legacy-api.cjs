@@ -2979,6 +2979,110 @@ function warehouseLayoutPreset202609(existingLog = []) {
     return map;
 }
 
+// Layout drawn from the rear-warehouse plan supplied on 2026-10-13.  It is
+// deliberately additive: applying it never replaces the existing WH3 map.
+// The four pallet courts are physical 4 x 4 areas (16 pallet positions each).
+const REAR_WAREHOUSE_BUILDING_ID = "building-rear-20261013";
+const REAR_WAREHOUSE_PREFIX = "rear_20261013_";
+
+function rearWarehouseLayoutComponents(createdAt = nowIso()) {
+    const courts = [
+        [ "D6", "ลานหลัง · ประตู 6 · ขนถ่ายพาเลท", "RB6", 70, 1550 ],
+        [ "D4", "ลานหลัง · ประตู 4 · ขนถ่ายพาเลท", "RB4", 570, 1550 ],
+        [ "D2", "ลานหลัง · ประตู 2 · ปิดสนิท", "RB2", 1070, 1550 ],
+        [ "D1", "ลานหลัง · ประตู 1 · ปิดสนิท", "RB1", 1320, 1550 ]
+    ];
+    const zones = courts.map(([ door, name, prefix, canvasX, canvasY ]) => ({
+        id: `${REAR_WAREHOUSE_PREFIX}zone_${door}`,
+        name,
+        prefix,
+        rows: 4,
+        cols: 4,
+        defaultLevels: 1,
+        color: "#fb923c",
+        canvasX,
+        canvasY,
+        gridCol: 0,
+        gridRow: 0,
+        // The approved drawing explicitly specifies 4 × 4 pallet courts.
+        maxPallets: 16,
+        maxBoxes: 0,
+        storageMode: "Flexible",
+        buildingId: REAR_WAREHOUSE_BUILDING_ID,
+        createdAt
+    }));
+    const locations = zones.flatMap(zone => Array.from({ length: 16 }, (_, index) => ({
+        id: `loc_${zone.id}_${index + 1}`,
+        code: `${zone.prefix}-${String(index + 1).padStart(2, "0")}`,
+        zoneId: zone.id,
+        row: Math.floor(index / 4),
+        col: index % 4,
+        maxLevels: 1,
+        occupiedBy: []
+    })));
+    const overlay = (id, type, label, color, canvasX, canvasY, ovW, ovH, sublabel = "") => ({
+        id: `${REAR_WAREHOUSE_PREFIX}${id}`,
+        type,
+        label,
+        sublabel,
+        color,
+        canvasX,
+        canvasY,
+        ovW,
+        ovH,
+        buildingId: REAR_WAREHOUSE_BUILDING_ID
+    });
+    const overlays = [
+        overlay("office", "office", "OFFICE", "#dbeafe", 770, 1030, 250, 170, "ตรงกับประตู 3"),
+        overlay("door6", "door", "ประตู 6", "#dbeafe", 125, 1450, 165, 38, "ขนถ่ายพาเลท"),
+        overlay("door5", "door", "ประตู 5", "#dcfce7", 385, 1450, 165, 38, "คนเดินเข้า-ออก"),
+        overlay("door4", "door", "ประตู 4", "#dbeafe", 625, 1450, 165, 38, "ขนถ่ายพาเลท"),
+        overlay("door3", "door", "ประตู 3", "#dcfce7", 850, 1450, 165, 38, "คนเดินเข้า-ออก"),
+        overlay("door2", "door", "ประตู 2 · ปิดสนิท", "#fecaca", 1110, 1450, 165, 38, "ห้ามใช้งาน"),
+        overlay("door1", "door", "ประตู 1 · ปิดสนิท", "#fecaca", 1370, 1450, 165, 38, "ห้ามใช้งาน"),
+        overlay("walk5", "aisle", "ทางคนเดิน · ประตู 5 → Office", "#dcfce7", 420, 1190, 75, 260),
+        overlay("walk3", "aisle", "ทางคนเดิน · ประตู 3 → Office", "#dcfce7", 895, 1190, 75, 260),
+        overlay("officewalk", "aisle", "ทางเดินคนไป Office", "#dcfce7", 420, 1000, 430, 55),
+        overlay("forklift", "aisle", "เส้นทางรถโฟล์คลิฟท์ · ลานกลาง", "#ffedd5", 55, 1870, 1500, 85),
+        overlay("rearwall", "wall", "ผนังหลัง · คลังสินค้าอาคารฝั่งตรงข้าม", "#e5e7eb", 25, 1980, 1550, 75)
+    ];
+    return {
+        zones,
+        locations,
+        overlays,
+        building: {
+            id: REAR_WAREHOUSE_BUILDING_ID,
+            label: "WH ด้านหลัง · 6 ประตู",
+            canvasX: 20,
+            canvasY: 950,
+            width: 1580,
+            height: 1120,
+            color: "#f97316",
+            background: "rgba(255,247,237,.32)"
+        }
+    };
+}
+
+function applyRearWarehouseLayout(map) {
+    const components = rearWarehouseLayoutComponents();
+    map.zones ||= [];
+    map.locations ||= [];
+    map.overlays ||= [];
+    map.buildingOutlines ||= [];
+    const rearZoneIds = new Set(map.zones.filter(zone => String(zone.id || "").startsWith(REAR_WAREHOUSE_PREFIX)).map(zone => zone.id));
+    const occupied = map.locations.filter(location => rearZoneIds.has(location.zoneId) && (location.occupiedBy || []).length > 0);
+    if (occupied.length) {
+        const error = new Error(`มีสินค้าอยู่ใน WH ด้านหลัง ${occupied.length} ตำแหน่ง จึงยังปรับแปลนใหม่ไม่ได้`);
+        error.statusCode = 409;
+        throw error;
+    }
+    map.zones = map.zones.filter(zone => !String(zone.id || "").startsWith(REAR_WAREHOUSE_PREFIX)).concat(components.zones);
+    map.locations = map.locations.filter(location => !rearZoneIds.has(location.zoneId)).concat(components.locations);
+    map.overlays = map.overlays.filter(item => !String(item.id || "").startsWith(REAR_WAREHOUSE_PREFIX)).concat(components.overlays);
+    map.buildingOutlines = map.buildingOutlines.filter(building => building.id !== REAR_WAREHOUSE_BUILDING_ID).concat(components.building);
+    return map;
+}
+
 function ensureWarehouseLayoutBuildingGroups(map) {
     if (map?.layoutVersion !== "2026-09-01") return false;
     let changed = false;
@@ -6466,6 +6570,26 @@ async function handleApi(req, res, pathname) {
             layoutVersion: "2026-09-01",
             layoutName: "WH3 Layout 1-9-26",
             userId: payload.userId || "system"
+        });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, map: db.warehouseMap });
+    }
+    if (req.method === "POST" && pathname === "/api/warehouse/layouts/rear-2026-10-13/apply") {
+        const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการแปลนคลัง" });
+        if (!db.warehouseMap) db.warehouseMap = { zones: [], locations: [], overlays: [], buildingOutlines: [], log: [] };
+        try {
+            applyRearWarehouseLayout(db.warehouseMap);
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message || "ใช้แปลน WH ด้านหลังไม่ได้" });
+        }
+        whLog(db, {
+            action: "rear_layout_apply",
+            layoutVersion: "rear-2026-10-13",
+            layoutName: "WH ด้านหลัง · 6 ประตู",
+            userId: actor.id,
+            requestedBy: payload.userId || actor.name || actor.id
         });
         writeDb(db);
         return sendJson(res, 200, { ok: true, map: db.warehouseMap });

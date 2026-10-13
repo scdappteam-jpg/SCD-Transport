@@ -3796,6 +3796,26 @@ async function applyWarehouseLayout202609() {
     }
 }
 
+async function applyRearWarehouseLayout() {
+    const confirmed = await showWhConfirm("เพิ่ม/อัปเดตแปลน WH ด้านหลัง 6 ประตูหรือไม่? ระบบจะเพิ่มลานพาเลท 4 กลุ่ม กลุ่มละ 4×4 = 16 พาเลท, Office, ทางคนเดิน และเส้นทางรถโฟล์คลิฟท์ โดยไม่เขียนทับโซน WH3 เดิม");
+    if (!confirmed) return;
+    try {
+        const data = await api("/api/warehouse/layouts/rear-2026-10-13/apply", {
+            userId: currentWebUser()?.id || "admin"
+        });
+        whMapState.zones = data.map.zones || [];
+        whMapState.locations = data.map.locations || [];
+        whMapState.overlays = data.map.overlays || [];
+        whMapState.buildingOutlines = data.map.buildingOutlines || [];
+        renderWarehouseEditor();
+        const viewport = $("#whMapCanvas");
+        if (viewport) viewport.scrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+        toast("เพิ่มแปลน WH ด้านหลัง · 6 ประตูแล้ว");
+    } catch (error) {
+        toast(error.message || "เพิ่มแปลน WH ด้านหลังไม่ได้", "error");
+    }
+}
+
 function showWhConfirm(message) {
     return new Promise(resolve => {
         const el = document.getElementById("whConfirmModal");
@@ -10114,6 +10134,7 @@ function bindEvents() {
         collapseWhEditorToCard();
     });
     $("#whApplyLayout202609")?.addEventListener("click", applyWarehouseLayout202609);
+    $("#whApplyRearLayout")?.addEventListener("click", applyRearWarehouseLayout);
     $("#whZoomOutBtn")?.addEventListener("click", () => applyWarehouseZoom(whViewportState.zoom - .1));
     $("#whZoomInBtn")?.addEventListener("click", () => applyWarehouseZoom(whViewportState.zoom + .1));
     $("#whZoomResetBtn")?.addEventListener("click", resetWarehouseViewport);
