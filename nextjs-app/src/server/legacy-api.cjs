@@ -5529,16 +5529,30 @@ async function handleApi(req, res, pathname) {
         if (!job.aotApprovedAt) return sendJson(res, 409, {
             error: "AOT queue must be approved before loading"
         });
+        const terminal = normalizeTerminal(job.terminalDestination || payload.terminalDestination || job.destination || "TG");
+        const progressedStatuses = [ "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ];
+        const alreadyArrived = Boolean(payload.arrived && (job.terminalArrivedAt || progressedStatuses.includes(job.status)));
+        const alreadyLoaded = Boolean(!payload.arrived && (job.goodsLoadedAt || [ "GoodsLoaded", ...progressedStatuses ].includes(job.status)));
+        if (alreadyArrived || alreadyLoaded) {
+            job.terminalDestination = terminal;
+            job.updatedAt = nowIso();
+            writeDb(db);
+            return sendJson(res, 200, {
+                ok: true,
+                idempotent: true,
+                job: normalizeJob(job),
+                dashboard: buildDashboard(db)
+            });
+        }
         if (!payload.arrived && !payload.imageBase64) return sendJson(res, 422, {
             error: "Pre-load vehicle photo is required"
         });
-        saveBase64File(db, {
+        if (!payload.arrived) saveBase64File(db, {
             houseNumber: job.houseNumber,
             fileType: "PreLoadPhoto",
             base64: payload.imageBase64,
             mimeType: payload.mimeType || "image/jpeg"
         });
-        const terminal = normalizeTerminal(job.terminalDestination || payload.terminalDestination || job.destination || "TG");
         const workflowStatus = payload.arrived ? "ArrivedAtTerminal" : "VehicleQueued";
         job.status = payload.arrived ? "TerminalArrived" : "GoodsLoaded";
         job.goodsLoadedAt = job.goodsLoadedAt || nowIso();

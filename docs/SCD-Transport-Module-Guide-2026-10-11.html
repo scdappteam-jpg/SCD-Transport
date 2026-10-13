@@ -1,0 +1,1339 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S.C.D. Transport - คู่มือโมดูลและ Flow ระบบ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:#172033;
+      --muted:#667085;
+      --line:#d9e2ef;
+      --soft:#f5f7fb;
+      --brand:#0b4ea2;
+      --brand2:#123a68;
+      --ok:#15803d;
+      --warn:#b45309;
+      --bad:#b91c1c;
+      --info:#0369a1;
+      --violet:#6d28d9;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:"Kanit","Leelawadee UI",Tahoma,sans-serif;
+      color:var(--ink);
+      background:#eef3f8;
+      line-height:1.55;
+    }
+    .page {
+      width:min(1240px, calc(100vw - 32px));
+      margin:28px auto 56px;
+      background:#fff;
+      border:1px solid var(--line);
+      box-shadow:0 24px 80px rgba(20,33,61,.12);
+    }
+    header {
+      padding:36px 44px 30px;
+      background:linear-gradient(135deg,var(--brand),var(--brand2));
+      color:#fff;
+    }
+    h1,h2,h3,h4 { margin:0; line-height:1.28; }
+    h1 { font-size:34px; font-weight:800; letter-spacing:0; }
+    h2 { font-size:24px; margin-bottom:14px; }
+    h3 { font-size:18px; margin-bottom:8px; }
+    h4 { font-size:15px; margin:12px 0 6px; }
+    p { margin:0 0 8px; }
+    .subtitle { margin-top:10px; color:rgba(255,255,255,.86); font-size:16px; }
+    .meta { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+    .pill {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 12px; border-radius:999px;
+      background:rgba(255,255,255,.14); color:#fff;
+      border:1px solid rgba(255,255,255,.25);
+      font-size:13px; font-weight:500;
+    }
+    main { padding:34px 44px 48px; }
+    section { margin-top:38px; }
+    section:first-child { margin-top:0; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    .grid.two { grid-template-columns:repeat(2,1fr); }
+    .grid.four { grid-template-columns:repeat(4,1fr); }
+    .card {
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fff;
+      padding:17px 18px;
+    }
+    .card.soft { background:var(--soft); }
+    .card strong { display:block; font-size:16px; margin-bottom:5px; }
+    .card p,.muted { color:var(--muted); font-size:14px; }
+    .status {
+      display:inline-flex; align-items:center;
+      padding:4px 9px; border-radius:999px;
+      font-size:12px; font-weight:700;
+      margin-bottom:8px;
+    }
+    .ok { background:#dcfce7; color:var(--ok); }
+    .warn { background:#fffbeb; color:var(--warn); }
+    .bad { background:#fee2e2; color:var(--bad); }
+    .info { background:#e0f2fe; color:var(--info); }
+    .violet { background:#ede9fe; color:var(--violet); }
+    .toc {
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+    }
+    .toc a {
+      text-decoration:none;
+      color:var(--ink);
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:10px;
+      padding:11px 12px;
+      font-size:14px;
+      font-weight:600;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      border:1px solid var(--line);
+      border-radius:10px;
+      overflow:hidden;
+      font-size:14px;
+    }
+    th,td {
+      padding:11px 12px;
+      border-bottom:1px solid var(--line);
+      vertical-align:top;
+      text-align:left;
+    }
+    th { background:#f1f5f9; font-weight:700; }
+    tr:last-child td { border-bottom:0; }
+    ul,ol { margin:8px 0 0 20px; padding:0; }
+    li { margin:5px 0; }
+    .flow {
+      display:grid;
+      grid-template-columns:repeat(7, minmax(110px,1fr));
+      gap:8px;
+      margin-top:12px;
+    }
+    .flow div {
+      border:1px solid var(--line);
+      background:#f8fafc;
+      border-radius:10px;
+      padding:11px 10px;
+      font-size:13px;
+      min-height:76px;
+    }
+    .flow b { display:block; color:var(--brand); margin-bottom:3px; }
+    .module {
+      border:1px solid var(--line);
+      border-radius:14px;
+      overflow:hidden;
+      margin-top:18px;
+      background:#fff;
+    }
+    .module-head {
+      padding:17px 20px;
+      background:#f8fbff;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      align-items:flex-start;
+    }
+    .module-body { padding:18px 20px 22px; }
+    .shot-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:12px; }
+    figure {
+      margin:0;
+      border:1px solid var(--line);
+      border-radius:12px;
+      overflow:hidden;
+      background:#fff;
+    }
+    figure img { display:block; width:100%; height:auto; }
+    figcaption { padding:10px 12px; font-size:13px; color:var(--muted); background:#f8fafc; }
+    .question {
+      border-left:5px solid var(--warn);
+      background:#fffbeb;
+      padding:13px 15px;
+      margin:10px 0;
+      border-radius:8px;
+    }
+    .note {
+      border-left:5px solid var(--info);
+      background:#eef9ff;
+      padding:13px 15px;
+      margin:12px 0;
+      border-radius:8px;
+      color:#164e63;
+    }
+    .print-note {
+      margin-top:34px;
+      padding:16px 18px;
+      border-radius:12px;
+      background:#f8fafc;
+      color:var(--muted);
+      font-size:13px;
+    }
+    code { font-family:Consolas,monospace; background:#f1f5f9; padding:1px 5px; border-radius:5px; }
+    @media (max-width: 900px) {
+      .grid,.grid.two,.grid.four,.toc,.flow,.shot-grid { grid-template-columns:1fr; }
+      main,header { padding-left:22px; padding-right:22px; }
+    }
+    @media print {
+      body { background:#fff; }
+      .page { width:auto; margin:0; border:0; box-shadow:none; }
+      header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      section,.module { break-inside:avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>S.C.D. Transport - เอกสารทุกโมดูลและภาพรวม Flow ระบบ</h1>
+    <p class="subtitle">เอกสารสำหรับประชุม / UAT: อธิบายว่าระบบทำอะไรได้บ้าง ตั้งแต่ขนส่งรับสินค้า เข้าคลัง WH3 ส่งสนามบิน ปิดงาน วางบิล HR และตารางงาน</p>
+    <div class="meta">
+      <span class="pill">วันที่เอกสาร: 11 ตุลาคม 2026</span>
+      <span class="pill">Production: scd-transport.onrender.com</span>
+      <span class="pill">ฟอนต์: Kanit</span>
+      <span class="pill">สถานะ: ฉบับพร้อมส่งลูกค้า</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="summary">
+      <h2>1. สถานะล่าสุดที่ตรวจแล้ว</h2>
+      <div class="grid">
+        <div class="card">
+          <span class="status ok">Production online</span>
+          <strong>ระบบ Production ตอบกลับปกติ</strong>
+          <p>ตรวจสถานะระบบแล้วตอบกลับปกติ และหน้าใช้งานหลักโหลดได้จาก production</p>
+        </div>
+        <div class="card">
+          <span class="status ok">โมดูลหลักมีจริง</span>
+          <strong>พบโมดูลในไฟล์ production</strong>
+          <p>ครอบคลุม Attendance, HR, Billing, CS Queue, Load Plan, Warehouse และโมดูลปฏิบัติการหลัก</p>
+        </div>
+        <div class="card">
+          <span class="status ok">แคปภาพครบแล้ว</span>
+          <strong>เติมภาพทุกโมดูลหลักแล้ว</strong>
+          <p>ใช้รหัส production ล่าสุดเข้า Admin แล้วแคปภาพหน้าจอจริงครบทุกส่วนหลัก รวม 54 ภาพ และตรวจ path รูปผ่านทั้งหมด</p>
+        </div>
+      </div>
+      <div class="note">
+        เอกสารนี้ใช้ภาพหน้าจอจริงจาก production และอธิบาย flow การทำงานแบบครบวงจร.
+        ภาพในแต่ละโมดูลเป็นภาพ production จริงหลัง login และมีชุด UAT House เพิ่มเติมสำหรับงาน <b>SIT-UAT-20261011-70999</b>.
+      </div>
+    </section>
+
+    <section id="real-screen">
+      <h2>2. หน้าจอจริงหน้าแรกของระบบ</h2>
+      <div class="shot-grid">
+        <figure>
+          <img src="screenshots-2026-10-11/00-production-login.png" alt="Production login screen">
+          <figcaption>หน้า Login จริงจาก production: เลือกผู้ใช้งานตาม role และกรอกรหัสผ่านก่อนเข้า dashboard/module ภายใน</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/02-dashboard-admin.jpg" alt="Dashboard after login">
+          <figcaption>Dashboard จริงหลัง Login Admin: เห็น KPI, Readiness, งานเสี่ยง, CS Queue, ปุ่มลัด และสถานะทีมภาคสนาม</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="toc-section">
+      <h2>3. สารบัญโมดูล</h2>
+      <nav class="toc">
+        <a href="#login">Login / สิทธิ์ผู้ใช้</a>
+        <a href="#control-tower">Control Tower</a>
+        <a href="#transport">Transport / CS Queue</a>
+        <a href="#driver-mobile">Driver Mobile</a>
+        <a href="#warehouse-inbound">WH3 รับเข้า / ย้ายสินค้า</a>
+        <a href="#outbound">คลังเตรียมขนออก</a>
+        <a href="#terminal">Terminal / ชั่งน้ำหนัก / X-Ray</a>
+        <a href="#close-job">ปิดจบงาน</a>
+        <a href="#billing">Billing / วางบิล</a>
+        <a href="#hr">HR / ลา / OT</a>
+        <a href="#attendance">Attendance</a>
+        <a href="#calendar">ตารางงาน / Calendar</a>
+        <a href="#production-screens">ภาพ Production ทุกโมดูล</a>
+        <a href="#uat-full-loop">UAT Full Loop</a>
+        <a href="#improvements">สิ่งที่ควรปรับปรุง</a>
+        <a href="#questions">ยืนยันก่อน Go-live</a>
+      </nav>
+      <div class="module" style="margin-top:16px">
+        <div class="module-head">
+          <div>
+            <h3>Checklist ความครบของภาพประกอบ</h3>
+            <p class="muted">ตรวจล่าสุดหลังเติมภาพ: ไม่มีช่องภาพตัวอย่างค้างในเนื้อหา และไฟล์รูปที่อ้างถึงมีอยู่จริงครบ 54/54 รูป</p>
+          </div>
+          <span class="status ok">ครบทุกโมดูลหลัก</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>โมดูล</th><th>ภาพในหัวข้อโมดูล</th><th>ภาพรวม production</th><th>หมายเหตุ</th></tr></thead>
+            <tbody>
+              <tr><td>Login / สิทธิ์ผู้ใช้</td><td><span class="status ok">มี</span></td><td><span class="status ok">มี</span></td><td>หน้า login และหลัง login Admin</td></tr>
+              <tr><td>Control Tower / Dashboard</td><td><span class="status ok">มี</span></td><td><span class="status ok">มี</span></td><td>KPI, readiness, risk, flight board</td></tr>
+              <tr><td>Transport / CS Queue / เปิดใบงาน</td><td><span class="status ok">มี</span></td><td><span class="status ok">มี</span></td><td>CS queue, open cargo, grouping</td></tr>
+              <tr><td>Driver Mobile / Field Ops</td><td><span class="status ok">มี</span></td><td><span class="status ok">มี</span></td><td>mobile app และ field ops</td></tr>
+              <tr><td>WH3 รับเข้า / Warehouse Map</td><td><span class="status ok">มี</span></td><td><span class="status ok">มี</span></td><td>warehouse status และ map</td></tr>
+              <tr><td>Load Plan / Outbound / Terminal</td><td><span class="status ok">มี</span></td><td><span class="status ok">มี</span></td><td>load plan, outbound, terminal timeline</td></tr>
+              <tr><td>ปิดจบงาน / Cargo History</td><td><span class="status ok">มี</span></td><td><span class="status ok">มี</span></td><td>tracking UAT และ cargo history</td></tr>
+              <tr><td>Billing / Service</td><td><span class="status ok">มี</span></td><td><span class="status ok">มี</span></td><td>billing workspace และหลังปิด Billed</td></tr>
+              <tr><td>HR / Attendance / Staff / Calendar</td><td><span class="status ok">มี</span></td><td><span class="status ok">มี</span></td><td>HR, attendance map, staff, calendar</td></tr>
+              <tr><td>Settings / System</td><td><span class="status ok">มีในหัวข้อ 17</span></td><td><span class="status ok">มี</span></td><td>ตั้งค่าระบบและสิทธิ์ role</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="end-to-end-flow">
+      <h2>4. Flow ใหญ่ตั้งแต่รับสินค้าไปจนวางบิล</h2>
+      <div class="flow">
+        <div><b>1. รับข้อมูลงาน</b>Import CSV/XLSX หรือเพิ่มงานด่วน</div>
+        <div><b>2. CS ยืนยัน</b>ยืนยัน Invoice / ลูกค้า / หลักฐาน</div>
+        <div><b>3. Transport เปิดใบ</b>จัดกลุ่ม จ่ายงานคนขับ ออก Cargo</div>
+        <div><b>4. Driver รับสินค้า</b>เช็คอิน ถ่ายรูป เซ็นชื่อ โหลดสินค้า</div>
+        <div><b>5. WH3 รับเข้า</b>ตรวจเอกสาร จัด location ย้ายสินค้า</div>
+        <div><b>6. Outbound/Terminal</b>จอง AOT ส่งออก ชั่งน้ำหนัก X-Ray</div>
+        <div><b>7. Billing</b>ตรวจเอกสาร สร้าง Invoice ส่งอีเมล ปิด Billed</div>
+      </div>
+    </section>
+
+    <section id="login">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>5. Login / สิทธิ์ผู้ใช้งาน</h2>
+            <p class="muted">หน้าจอแรกก่อนเข้า module ภายใน เลือก user ตาม role แล้วกรอกรหัสผ่าน</p>
+          </div>
+          <span class="status ok">ยืนยันรหัส production แล้ว</span>
+        </div>
+        <div class="module-body">
+          <div class="grid two">
+            <div>
+              <h3>ทำอะไรได้</h3>
+              <ul>
+                <li>เลือกผู้ใช้ตาม role: Admin, Executive, Driver, WH3, Transport, Terminal, Billing, CS, EI, Check House</li>
+                <li>ใช้ server-side session/token หลัง login</li>
+                <li>ซ่อน quick demo login เว้นแต่เปิดโหมดทดสอบด้วย parameter เฉพาะ</li>
+                <li>ระบบหลังบ้านรองรับการตรวจสอบ session ก่อนเข้าใช้งานข้อมูลสำคัญ</li>
+              </ul>
+            </div>
+            <div>
+              <h3>ต้องระวัง</h3>
+              <ul>
+                <li>รหัสผ่าน production ถูกกำหนดและดูแลโดยผู้ดูแลระบบ</li>
+                <li>ควรแยกบัญชีตาม role เพื่อควบคุมสิทธิ์และตรวจสอบย้อนหลังได้</li>
+                <li>ไม่ควรเปิดเผยรหัสผ่านในเอกสารประชุมหรือไฟล์ระบบ</li>
+              </ul>
+            </div>
+          </div>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/00-production-login.png" alt="Production login">
+              <figcaption><b>Login:</b> หน้าเลือกผู้ใช้ตาม role และกรอกรหัสผ่าน production</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/02-dashboard-admin.jpg" alt="Admin dashboard after login">
+              <figcaption><b>หลัง Login Admin:</b> เห็นเมนูตามสิทธิ์, ปุ่มออกจากระบบ, profile และ dashboard ภายใน</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="control-tower">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>6. Control Tower / Dashboard</h2>
+            <p class="muted">หน้าภาพรวมสำหรับผู้บริหาร/Admin ใช้ดูสถานะทั้งระบบแบบเร็ว</p>
+          </div>
+          <span class="status ok">พร้อมใช้งาน</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>ส่วนบนหน้าจอ</th><th>ความหมาย</th><th>ใช้ตัดสินใจอะไร</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Readiness</td>
+                <td>คะแนนความพร้อมของงานตามช่วงวันที่ที่เลือก</td>
+                <td>ดูว่าต้องเร่ง CS, จัดกลุ่มงาน, หรือแก้งานเสี่ยงก่อน</td>
+              </tr>
+              <tr>
+                <td>KPI งานทั้งหมด / งานเสี่ยง / Flight / ลูกค้าหลัก</td>
+                <td>สรุปจำนวนงานในช่วงวันที่และสถานะสำคัญ</td>
+                <td>ใช้เปิดประชุม morning briefing / operation briefing</td>
+              </tr>
+              <tr>
+                <td>Insight buttons</td>
+                <td>ปุ่มลัดไป CS Queue, Grouping, Orders, Alerts</td>
+                <td>ลดเวลาคลิกหาเมนู เมื่อต้องเร่งจัดการงานค้าง</td>
+              </tr>
+              <tr>
+                <td>Flight Risk Panel</td>
+                <td>แสดงงานที่ใกล้ cutoff หรือ breached ตาม SLA</td>
+                <td>เลือกงานที่ต้องรีบส่ง WH3/Terminal ก่อนตกไฟลท์</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/02-dashboard-admin.jpg" alt="Control tower dashboard">
+              <figcaption><b>Dashboard:</b> KPI รวม, Readiness, งานรอ CS, งานเสี่ยง, ปุ่มลัด และ Operations Map</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/14-flight-board.jpg" alt="Flight risk board">
+              <figcaption><b>Flight Risk:</b> บอร์ดไฟลท์ด่วนเรียงตาม cutoff ใช้ตามงานเสี่ยงก่อนตกไฟลท์</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="transport">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>7. Transport / CS Queue / เปิดใบงาน</h2>
+            <p class="muted">ส่วนรับงานจากลูกค้าและส่งต่อให้ออกใบ Cargo หลัง CS ยืนยัน</p>
+          </div>
+          <span class="status ok">มี workflow แล้ว</span>
+        </div>
+        <div class="module-body">
+          <div class="grid two">
+            <div>
+              <h3>CS Queue ทำอะไรได้</h3>
+              <ul>
+                <li>ดูงานที่รอ CS อนุมัติ/ยืนยัน Invoice กับลูกค้า</li>
+                <li>ค้นหาด้วยบริษัท, House, Invoice</li>
+                <li>กรองวันที่รับ/วันที่ยืนยัน</li>
+                <li>เลือกทั้งกลุ่มตามลูกค้า/วันที่</li>
+                <li>แนบหลักฐาน เช่น รูป/ไฟล์ PDF</li>
+                <li>ยืนยันรายกลุ่ม หรือปุ่ม “ยืนยันทั้งหมดที่กรอง”</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Transport เปิดใบทำอะไรได้</h3>
+              <ul>
+                <li>รับงานที่ CS ยืนยันแล้วเข้าคิวเปิดใบ Cargo</li>
+                <li>เพิ่มงานด่วน / Manual job</li>
+                <li>Import CSV/XLSX ถ้าระบบเชื่อมเมลหรือ scan ไม่พร้อม</li>
+                <li>ตรวจข้อมูล flight, piece, pickup location, customer</li>
+                <li>งานที่ยังไม่ผ่าน CS จะถูก lock ไม่ให้ออกใบ Cargo</li>
+              </ul>
+            </div>
+          </div>
+          <h3>ถ้า scan ไม่ได้ ใช้พิมพ์แทนได้อย่างไร</h3>
+          <ol>
+            <li>เปิดหน้าคิวงานหรือช่องค้นหา House</li>
+            <li>พิมพ์ House / HAWB ลงช่องค้นหาแทนยิง barcode</li>
+            <li>เลือกงานที่พบ แล้วทำ action ต่อ เช่น เปิดใบ, จัดกลุ่ม, หรือดู timeline</li>
+            <li>หาก House ไม่พบ ให้เพิ่มงานด่วนหรือ import ไฟล์แทน</li>
+          </ol>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/05-transport-queue.jpg" alt="CS transport queue">
+              <figcaption><b>CS Queue:</b> filter, group, upload CSV, เพิ่มงานด่วน และปุ่มยืนยันทั้งหมดที่กรอง</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/06-open-job.jpg" alt="Open cargo job">
+              <figcaption><b>เปิดใบงาน:</b> คิวงานที่ผ่าน CS แล้วถึงออกใบ Cargo ได้ พร้อม workflow เปิดใบ</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="driver-mobile">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>8. Driver Mobile / ขนส่งรับสินค้า</h2>
+            <p class="muted">ใช้บนมือถือสำหรับคนขับ ตั้งแต่รับงานถึงกลับ WH3</p>
+          </div>
+          <span class="status ok">ทดสอบ production แล้ว</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>ขั้นตอน</th><th>หน้าระบบควรเห็น</th><th>ข้อมูล/หลักฐานที่เก็บ</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>รับงาน</td>
+                <td>รายการงานที่จ่ายให้คนขับ เลือก House หรือ route</td>
+                <td>driverId, route, vehicle plate, status Assigned</td>
+              </tr>
+              <tr>
+                <td>ถึงจุดรับสินค้า</td>
+                <td>ปุ่มยืนยันถึงจุดรับ / check-in</td>
+                <td>เวลา, GPS, รูปหน้างานถ้ามี</td>
+              </tr>
+              <tr>
+                <td>รับสินค้า</td>
+                <td>Scan House หรือพิมพ์ House เมื่อ barcode อ่านไม่ได้</td>
+                <td>รูปสินค้า, รูป Cargo, ลายเซ็น, จำนวนชิ้น</td>
+              </tr>
+              <tr>
+                <td>โหลดขึ้นรถ</td>
+                <td>ปุ่มยืนยันโหลดสินค้า / checklist</td>
+                <td>เวลาโหลด, proof, door closed photo หาก require</td>
+              </tr>
+              <tr>
+                <td>กลับ WH3</td>
+                <td>ปุ่มถึง WH3 / ส่งต่อคลัง</td>
+                <td>สถานะ ReturningWH3 → AwaitingReleaseDocument / WH3 queue</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="note">หาก barcode/กล้องหน้างานอ่านไม่ได้ ผู้ใช้สามารถพิมพ์ House หรือ HAWB ในช่องค้นหา/scan input แล้วกด action เดียวกับการ scan ได้</div>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/21-mobile-field-app.jpg" alt="Mobile driver flow">
+              <figcaption><b>Mobile Driver Flow:</b> ปุ่มสแกนหลัก, พิมพ์แทนสแกน, timeline วันนี้ และเมนูงานภาคสนาม</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/uat-house-screens/19-mobile-app-after-uat.jpg" alt="Mobile app after UAT">
+              <figcaption><b>Mobile ล่าสุดหลัง UAT:</b> หน้า mobile โหลดได้จริงบน production และพร้อมใช้ scan/manual input</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="warehouse-inbound">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>9. WH3 รับเข้า / คลังย้ายสินค้า</h2>
+            <p class="muted">คลังรับสินค้าจากขนส่ง ตรวจเอกสาร จัด Location และย้ายสินค้าในคลัง</p>
+          </div>
+          <span class="status ok">มีหน้าคลัง</span>
+        </div>
+        <div class="module-body">
+          <div class="grid two">
+            <div>
+              <h3>รับเข้า WH3</h3>
+              <ul>
+                <li>ดูคิวสินค้ากลับ WH3 / รอใบตรวจปล่อย</li>
+                <li>ตรวจเอกสาร: Cargo form, รูปสินค้า, release document</li>
+                <li>บันทึกสถานะรับเข้า WH3</li>
+                <li>เลือก Location หรือ Zone สำหรับเก็บสินค้า</li>
+                <li>กรณี scan ไม่ได้ สามารถพิมพ์ House แล้วเลือก location ได้</li>
+              </ul>
+            </div>
+            <div>
+              <h3>ย้ายสินค้าในคลัง</h3>
+              <ul>
+                <li>ค้นหา House จาก location เดิม</li>
+                <li>สแกน/พิมพ์ House เพื่อยืนยันตัวสินค้า</li>
+                <li>กรอก Location ใหม่ แล้วบันทึก move</li>
+                <li>ระบบอัปเดตแผนที่/สถานะช่องเก็บ</li>
+                <li>เก็บประวัติ movement ใน timeline</li>
+              </ul>
+            </div>
+          </div>
+          <h3>Warehouse Layout / Capacity</h3>
+          <ul>
+            <li>รองรับ Zone, Dock, Rack, Storage, Lithium, WD, Small package</li>
+            <li>มีสีแสดงว่าง / บางส่วน / เต็ม</li>
+            <li>รองรับจองพื้นที่ล่วงหน้าหลัง CS confirm</li>
+            <li>รองรับการกำหนดกติกา Dock 1-11 และ capacity ต่อ zone ตามข้อมูลหน้างานจริง</li>
+          </ul>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/09-warehouse-status.jpg" alt="WH3 inbound status">
+              <figcaption><b>WH3 Inbound/Status:</b> pallet, house รอเข้าคลัง, zone/location, dock D1-D11 และคิวงานคลัง</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/08-warehouse-map.jpg" alt="Warehouse layout map">
+              <figcaption><b>Warehouse Map:</b> layout, zone, capacity, reservation และตำแหน่งเก็บสินค้า</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="outbound">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>10. คลังเตรียมขนออก / Load Plan / Outbound</h2>
+            <p class="muted">ขั้นตอนเตรียมสินค้าออกจาก WH3 ไป Terminal / สนามบิน</p>
+          </div>
+          <span class="status ok">มีขั้นตอนครบใน Terminal panel</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>Tab / ขั้นตอน</th><th>ทำอะไร</th><th>เช็คเอกสารครบไหม</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Admin Docs</td>
+                <td>เตรียมเอกสารขาออก, เลือกงานจาก queue, ตรวจ Cargo Transfer / Permit</td>
+                <td>ระบบมีช่องแนบ outbound docs และ note</td>
+              </tr>
+              <tr>
+                <td>Staff Location</td>
+                <td>คลังหา location ของ House เพื่อเบิกสินค้าออก</td>
+                <td>ต้อง scan หรือพิมพ์ House เพื่อยืนยันตัวสินค้า</td>
+              </tr>
+              <tr>
+                <td>Pick / EI</td>
+                <td>เบิกสินค้า ตรวจเอกสาร EI/Permit/Cargo Transfer</td>
+                <td>มีช่องแนบไฟล์และบันทึก note</td>
+              </tr>
+              <tr>
+                <td>AOT</td>
+                <td>จองคิวรถ, ใส่ทะเบียนรถ, ชื่อคนขับ, รุ่นรถ, ชนิดรถ, pre-load photo</td>
+                <td>แยกปุ่มจองคิวและอนุมัติคิว</td>
+              </tr>
+              <tr>
+                <td>Terminal</td>
+                <td>บันทึกถึง Terminal, ชั่งน้ำหนัก, dimension, X-Ray / Re-X-Ray, loading detail</td>
+                <td>ต้องมีน้ำหนัก/เอกสาร terminal ก่อนปิดงาน</td>
+              </tr>
+              <tr>
+                <td>Close</td>
+                <td>กรอก Tray/Pallet/Lot และปิดงานพร้อมส่งต่อ Billing</td>
+                <td>ระบบเปลี่ยนสถานะไป ReadyForBilling/PendingBillingReview ตามเงื่อนไข</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/10-load-plan.jpg" alt="Load plan outbound">
+              <figcaption><b>Load Plan:</b> รอบขาออก, import CSV, key จับคู่ และงานพร้อมส่ง Terminal</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/11-outbound-open.jpg" alt="Outbound terminal tabs">
+              <figcaption><b>Outbound:</b> เปิดใบขาออก, Cargo Transfer, งานนอกแผน และขั้นตอนก่อนเข้า Terminal</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="terminal">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>11. Terminal / ชั่งน้ำหนัก / Scan / X-Ray</h2>
+            <p class="muted">การส่งเข้า Terminal และเก็บหลักฐานก่อนปิดงาน</p>
+          </div>
+          <span class="status ok">ผ่าน full loop จำลอง</span>
+        </div>
+        <div class="module-body">
+          <div class="grid two">
+            <div>
+              <h3>ระบบเก็บอะไรได้</h3>
+              <ul>
+                <li>เวลารถถึง Terminal</li>
+                <li>น้ำหนัก เช่น 25.5 kg</li>
+                <li>Dimension / weight slip</li>
+                <li>X-Ray passed / Re-X-Ray required</li>
+                <li>Loading detail completed</li>
+                <li>Terminal workflow events</li>
+              </ul>
+            </div>
+            <div>
+              <h3>ถ้า scan ไม่ได้</h3>
+              <ul>
+                <li>พิมพ์ House ในช่อง terminal/outbound scan input</li>
+                <li>เลือกงานจาก queue แล้วทำ action ต่อ</li>
+                <li>แนบรูปเอกสารแทนการ scan หลักฐานได้</li>
+                <li>บันทึก note ระบุว่า manual input เพราะ scan ไม่ได้</li>
+              </ul>
+            </div>
+          </div>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/uat-house-screens/02-tracking-search-house.jpg" alt="Terminal timeline in tracking">
+              <figcaption><b>Terminal Timeline:</b> งาน UAT แสดงขั้น Terminal, ชั่งน้ำหนัก, dimension, X-Ray และ loading detail ใน timeline</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/11-outbound-open.jpg" alt="Terminal outbound workflow">
+              <figcaption><b>Terminal Workflow:</b> หน้า outbound/terminal ใช้กรอก AOT, น้ำหนัก, X-Ray และ close งาน</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="close-job">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>12. ปิดจบงาน / ส่งต่อ Billing</h2>
+            <p class="muted">หลัง Terminal ทำครบ ระบบเปลี่ยนงานเป็นพร้อมตรวจเอกสารวางบิล</p>
+          </div>
+          <span class="status ok">มี workflow</span>
+        </div>
+        <div class="module-body">
+          <ol>
+            <li>Terminal กรอกข้อมูลน้ำหนัก / dimension / X-Ray / Loading detail</li>
+            <li>คลัง/Terminal กรอก Tray/Pallet/Lot ใน Close tab</li>
+            <li>ระบบอัปเดต status ตาม workflow เช่น TerminalArrived, WeightDimensionRecorded, XRayPassed, LoadingDetailCompleted</li>
+            <li>เมื่อครบเงื่อนไข งานเข้า Billing queue เป็น ReadyForBilling หรือ PendingBillingReview</li>
+            <li>Billing เห็นงานในรายการ “งานรอวางบิล” และเริ่มตรวจเอกสาร</li>
+          </ol>
+          <div class="note">นิยาม “เอกสารครบ” สามารถตั้งเป็น checklist สำหรับ Billing/Terminal ได้ โดยรอบทดสอบนี้ตรวจครบตามรายการจำลองและส่งต่อ Billing สำเร็จ</div>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/uat-house-screens/02-tracking-search-house.jpg" alt="Closed job timeline">
+              <figcaption><b>ปิดจบงาน:</b> Tracking ของ House UAT เห็นสถานะผ่าน Pickup, WH3, Terminal และพร้อมส่งต่อ Billing</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/uat-house-screens/05-cargo-history-search-house.jpg" alt="Cargo history after close">
+              <figcaption><b>ประวัติหลังปิดงาน:</b> House ยังค้นได้ใน Cargo History หลังไม่ค้างในคิวปฏิบัติการแล้ว</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="billing">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>13. Billing / เอกสารวางบิล</h2>
+            <p class="muted">ตรวจเอกสาร สร้างใบแจ้งหนี้ฉบับร่าง ส่งอีเมล และปิดสถานะ Billed</p>
+          </div>
+          <span class="status ok">ทดสอบ flow วางบิลแล้ว</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>ขั้นตอน</th><th>ในระบบทำอะไร</th><th>ผลลัพธ์</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>จัดกลุ่มงาน</td>
+                <td>เลือกงานพร้อมวางบิลและจัดกลุ่มตามลูกค้า/รอบ</td>
+                <td>สร้าง batch สำหรับตรวจเอกสาร</td>
+              </tr>
+              <tr>
+                <td>ตรวจเอกสาร</td>
+                <td>กด “เอกสารพร้อม / Reviewed” พร้อม note</td>
+                <td>สถานะ BillingReviewed / PendingBillingReview</td>
+              </tr>
+              <tr>
+                <td>สร้างใบแจ้งหนี้ฉบับร่าง</td>
+                <td>กรอกหรือ generate invoice id เช่น INV-2026-xxxx</td>
+                <td>ได้เลขใบแจ้งหนี้ฉบับร่าง</td>
+              </tr>
+              <tr>
+                <td>ส่งอีเมล</td>
+                <td>ส่ง Billing email ผ่าน webhook/provider</td>
+                <td>EmailQueued / InvoiceSent</td>
+              </tr>
+              <tr>
+                <td>ปิด Billed</td>
+                <td>mark billed เมื่อส่งและตรวจครบ</td>
+                <td>งานหายจากคิวรอวางบิลและเก็บใน history</td>
+              </tr>
+            </tbody>
+          </table>
+          <h3>ข้อมูลที่ต้องกำหนดก่อนเปิดใช้งานจริง</h3>
+          <ul>
+            <li>Billing email provider ใช้ n8n/LINE/email webhook ตัวไหน</li>
+            <li>ต้อง CC ใคร</li>
+            <li>ไฟล์แนบที่บังคับต้องมีคืออะไร: ใบชั่ง, Cargo Transfer, Loading Detail, รูปหน้างาน, Invoice PDF</li>
+            <li>ใครมีสิทธิ์ hold / unhold / mark billed</li>
+          </ul>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/16-billing.jpg" alt="Billing workspace">
+              <figcaption><b>Billing Workspace:</b> service charge, filter, export, ตารางเรท และปุ่มส่งเข้าใบแจ้งหนี้</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/uat-house-screens/13-billing-service-search-house.jpg" alt="Billing after UAT">
+              <figcaption><b>Billing หลัง UAT:</b> หน้าสรุปยังทำงาน และ House ที่ปิด Billed แล้วไม่ค้างในคิววางบิล</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="hr">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>14. HR / การลา / OT / แก้ไขเวลา</h2>
+            <p class="muted">โมดูล HR foundation สำหรับคำขอลา โอที แก้ไขเวลา แจ้งเตือน และ payroll profile</p>
+          </div>
+          <span class="status ok">ทดสอบคำขอจริงแล้ว</span>
+        </div>
+        <div class="module-body">
+          <div class="grid two">
+            <div>
+              <h3>พนักงานทำอะไรได้</h3>
+              <ul>
+                <li>ส่งคำขอลา: sick, personal, vacation, other</li>
+                <li>ส่งคำขอโอที: วันที่, เวลาเริ่ม-จบ, งานอ้างอิง</li>
+                <li>ส่งคำขอแก้ไขเวลาเข้า/ออกงาน พร้อมเหตุผล</li>
+                <li>ดู quota / คำขอของตัวเอง / สถานะอนุมัติ</li>
+              </ul>
+            </div>
+            <div>
+              <h3>หัวหน้า/Admin ทำอะไรได้</h3>
+              <ul>
+                <li>ตั้งค่า profile พนักงาน: แผนก ตำแหน่ง supervisor branch</li>
+                <li>ตั้งค่า check-in location และ radius</li>
+                <li>อนุมัติ/ไม่อนุมัติ leave, OT, attendance correction</li>
+                <li>ตั้งค่า payroll profile และ run payroll foundation</li>
+              </ul>
+            </div>
+          </div>
+          <h3>Flow การลา</h3>
+          <ol>
+            <li>พนักงานเปิดหน้า HR เลือกแท็บ “ขอลา”</li>
+            <li>เลือกประเภทลา วันเริ่ม วันสิ้นสุด จำนวนวัน และเหตุผล</li>
+            <li>ส่งคำขอ ระบบแจ้งหัวหน้าหรือผู้อนุมัติ</li>
+            <li>หัวหน้า/Admin อนุมัติหรือ reject พร้อม note</li>
+            <li>พนักงานเห็นสถานะในรายการคำขอและ notification</li>
+          </ol>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/18-hr.jpg" alt="HR leave OT form">
+              <figcaption><b>HR Leave/OT:</b> ฟอร์มขอลา/OT/แก้ไขเวลา คิวอนุมัติ และสรุป payroll foundation</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/uat-house-screens/14-hr-search-house.jpg" alt="HR after UAT">
+              <figcaption><b>HR หลัง UAT:</b> หน้าจริงหลัง login ใช้ตรวจคำขอและ approval queue</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="attendance">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>15. Attendance / การเข้างาน</h2>
+            <p class="muted">เช็คอิน/เช็คเอาต์พร้อมรูปและ GPS รวมถึงแผนที่การเข้างาน</p>
+          </div>
+          <span class="status ok">มี endpoint และหน้า UI</span>
+        </div>
+        <div class="module-body">
+          <ul>
+            <li>พนักงานเช็คอินพร้อมรูป, GPS, zone, job type</li>
+            <li>เช็คเอาต์พร้อมรูปและ GPS</li>
+            <li>ระบบตรวจ location radius ถ้าเปิด enforce assigned locations</li>
+            <li>ถ้าอยู่นอกจุดที่กำหนด ระบบให้ส่งคำขอแก้ไขเวลาแทน</li>
+            <li>Admin/หัวหน้าดูแผนที่จุดเข้าออกงานและ reallocations ได้</li>
+          </ul>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/13-attendance.jpg" alt="Attendance map">
+              <figcaption><b>Attendance Map:</b> Operations Map, เวลาเข้าออกวันนี้ และสถานะพนักงานภาคสนาม</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/uat-house-screens/15-attendance-search-house.jpg" alt="Attendance after UAT">
+              <figcaption><b>Attendance หลัง UAT:</b> ใช้ยืนยันว่า check-in/check-out รอบทดสอบเกิดในระบบจริง</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="calendar">
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h2>16. ตารางงาน / Calendar / Staff</h2>
+            <p class="muted">ดูงานรายเดือน งานขาเข้า/ขาออก และภาพรวมพนักงาน</p>
+          </div>
+          <span class="status ok">มีหน้า Calendar และ Staff</span>
+        </div>
+        <div class="module-body">
+          <div class="grid two">
+            <div>
+              <h3>Calendar ทำอะไรได้</h3>
+              <ul>
+                <li>ดูงานรายเดือน</li>
+                <li>แยกสีสถานะงาน: inbound, outbound, billing, risk</li>
+                <li>กดเดือนก่อนหน้า/เดือนปัจจุบัน/เดือนถัดไป</li>
+                <li>ดูจำนวนงานในแต่ละวัน</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Staff ทำอะไรได้</h3>
+              <ul>
+                <li>ดูพนักงานทั้งหมดแยก role</li>
+                <li>ดูงานทั้งหมด/งานสำเร็จ/เวลาเฉลี่ย/KPI</li>
+                <li>เชื่อมไปหน้า Attendance เพื่อดูการเข้างาน</li>
+                <li>ใช้ประกอบการจัดคน/จัดกลุ่มงาน</li>
+              </ul>
+            </div>
+          </div>
+          <div class="shot-grid">
+            <figure>
+              <img src="screenshots-2026-10-11/03-calendar.jpg" alt="Calendar monthly schedule">
+              <figcaption><b>Calendar:</b> ปฏิทินรายเดือนพร้อม legend สถานะและจำนวนงานในแต่ละวัน</figcaption>
+            </figure>
+            <figure>
+              <img src="screenshots-2026-10-11/17-staff.jpg" alt="Staff dashboard">
+              <figcaption><b>Staff:</b> พนักงาน 24 คน แยก role, KPI, งานค้าง และ performance summary</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="production-screens">
+      <h2>17. หน้าจอจริงจาก Production หลัง Login Admin</h2>
+      <p class="muted">แคปจาก <b>https://scd-transport.onrender.com/legacy/index.html</b> วันที่ 11 ตุลาคม 2569 เวลาโดยประมาณ 11:30 น. ใช้ตรวจระบบแบบอ่านอย่างเดียว ไม่ได้กดปุ่มที่เปลี่ยนสถานะงาน เช่น ยืนยัน, ลบ, บันทึก, ส่งอีเมล หรือปิดงาน</p>
+
+      <div class="grid four">
+        <div class="card soft"><strong>3,991</strong><p>งานทั้งระบบที่ Dashboard รายงาน</p></div>
+        <div class="card soft"><strong>3,555</strong><p>รอ CS ยืนยันในช่วงวันที่เลือก</p></div>
+        <div class="card soft"><strong>123</strong><p>งานเสี่ยงที่ Dashboard แสดง</p></div>
+        <div class="card soft"><strong>0%</strong><p>Readiness ตอนตรวจจริง</p></div>
+      </div>
+
+      <div class="module" style="margin-top:16px">
+        <div class="module-head">
+          <div>
+            <h3>สรุปสถานะที่เห็นจริง</h3>
+            <p class="muted">ใช้เป็นประเด็นเปิดประชุมก่อน demo flow จริง</p>
+          </div>
+          <span class="status warn">รายการที่ควรจัดการก่อน Go-live</span>
+        </div>
+        <div class="module-body">
+          <ul>
+            <li>ปุ่ม <b>ล้างงานทั้งหมด</b> มีบน Dashboard แต่ควรใช้เฉพาะเมื่อกำหนดช่วงเวลาและเจ้าของข้อมูลชัดเจน</li>
+            <li>หน้า Transport Queue มี <b>รอ CS อนุมัติ 3,989 งาน / 141,314 ชิ้น</b> และมีปุ่ม <b>ยืนยันทั้งหมดที่กรอง</b> แปลว่าระบบทำ bulk confirm ได้ แต่ต้องกำหนดสิทธิ์/กติกาก่อนใช้จริง</li>
+            <li>หน้าเปิดใบงานแสดงว่า <b>ไม่มีงานที่ CS อนุมัติรอเปิดใบ Cargo</b> เพราะงานส่วนใหญ่ยังค้างอยู่ขั้น CS</li>
+            <li>Warehouse Map/Status พร้อมแสดงผัง WH3, zone, location และความจุ โดยข้อมูลจริงตอนตรวจเป็น 0 พาเลทในคลัง / 114 ช่องว่าง</li>
+            <li>Load Plan และเปิดใบขาออกมีหน้าสำหรับ Import CSV, ทำ Cargo Transfer, ตรวจเอกสาร และไปขั้น Terminal โดยรอบตรวจไม่มี load plan ขาออกวันนี้ในคิวจริง</li>
+            <li>Billing มีหน้า service charge/เตรียมวางบิลแล้ว เห็น 2 รายการ รวม 790 บาท และมีรายการ TEST-MOBILE ค้างในข้อมูล</li>
+            <li>HR, Attendance, Calendar, Staff ใช้งานได้ และควรกำหนดร่วมกันว่าจะเปิดใช้งานพร้อม Go-live รอบแรกหรือแยกเป็น Phase ถัดไป</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="shot-grid">
+        <figure>
+          <img src="screenshots-2026-10-11/02-dashboard-admin.jpg" alt="Dashboard Admin">
+          <figcaption><b>Dashboard / Control Tower:</b> เห็น KPI รวม, งานรอ CS, งานเสี่ยง, readiness, ปุ่มลัดเปิดใบงาน/จัดกลุ่ม/เปิดใบขาออก และปุ่มล้างงานทั้งหมด</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/05-transport-queue.jpg" alt="Transport queue">
+          <figcaption><b>Transport Queue:</b> งานรอ CS อนุมัติ 3,989 งาน แยกกลุ่มลูกค้า/วันที่ มี upload CSV, เพิ่มงานด่วน, filter วันที่ และปุ่มยืนยันทั้งหมดที่กรอง</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/06-open-job.jpg" alt="Open Cargo job">
+          <figcaption><b>เปิดใบงาน Cargo:</b> แสดงเฉพาะงานที่ CS อนุมัติแล้ว ตอนตรวจจริงไม่มีคิวพร้อมเปิดใบ จึงต้องเคลียร์ CS queue ก่อนเห็น full flow</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/07-grouping.jpg" alt="Grouping">
+          <figcaption><b>จัดกลุ่มงาน:</b> รองรับขาเข้า/ขาออก, auto group, manual group และ preview/print Cargo Pickup Form แต่ตอนนี้ไม่มีงานรอเปิด</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/21-mobile-field-app.jpg" alt="Mobile field app">
+          <figcaption><b>Mobile Field App:</b> หน้า mobile มีปุ่มสแกนหลัก, รองรับพิมพ์แทนสแกนเมื่ออ่าน barcode ไม่ได้ และมี timeline วันนี้</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/19-field-ops.jpg" alt="Field operations">
+          <figcaption><b>Field Ops:</b> แสดง flow 4 ช่วง Pickup, Inbound WH3, Outbound, Billing พร้อมเลือกใบงานหรือกรอกเอง</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/08-warehouse-map.jpg" alt="Warehouse map">
+          <figcaption><b>แผนที่คลัง WH3:</b> มี 8 โซน, 114 ตำแหน่ง, บันทึก/โหลดแผนที่ และสร้างแผนที่ใหม่ได้</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/09-warehouse-status.jpg" alt="Warehouse status">
+          <figcaption><b>สถานะคลัง WH3:</b> ดู pallet จริง, pallet จองล่วงหน้า, house รอเข้าคลัง, zone/location และ dock D1-D11</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/10-load-plan.jpg" alt="Load plan">
+          <figcaption><b>Load Plan ขาออก:</b> มีรอบ 08:00/12:00/16:00, import CSV, key จับคู่ และปุ่มไปเปิดใบขาออก</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/11-outbound-open.jpg" alt="Outbound open">
+          <figcaption><b>เปิดใบขาออก:</b> รองรับ import Load Plan, สร้าง Cargo Transfer Form เอง และกรอกงานนอกแผน</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/14-flight-board.jpg" alt="Flight board">
+          <figcaption><b>บอร์ดไฟลท์ด่วน:</b> แสดง 60 รายการ เรียงตามเวลาปิดรับ มีสถานะด่วนมาก/เฝ้าระวัง/ปกติ และดูแบบเต็มจอได้</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/15-dock.jpg" alt="Dock">
+          <figcaption><b>ช่องเทียบท่า:</b> เห็นท่าว่าง 8/8, รถรอคิว 0, เวลารอเฉลี่ย 0 นาที และมี queue/ประวัติ dock</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/16-billing.jpg" alt="Billing">
+          <figcaption><b>งานบริการ/วางบิล:</b> มี service charge, filter ช่วงวันที่/ประเภท/ลูกค้า, export Excel, ส่งเข้าใบแจ้งหนี้ และตารางเรท</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/18-hr.jpg" alt="HR leave OT">
+          <figcaption><b>HR ลา/โอที:</b> พนักงานยื่นลา/OT/แก้ไขเวลา, มีคิวอนุมัติ 2 ขั้น, export สรุปเดือน และสร้างรอบเงินเดือน</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/13-attendance.jpg" alt="Attendance">
+          <figcaption><b>การเข้างาน:</b> แสดง Operations Map, check-in/out วันนี้, พนักงานยังไม่มา 10 คน และกลุ่มงาน</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/03-calendar.jpg" alt="Calendar">
+          <figcaption><b>ปฏิทินงาน:</b> เห็นงานรายเดือน ตุลาคม 2569 พร้อม legend สถานะรับเข้า/ส่งออก/เสร็จสิ้น/เกินเวลา</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/17-staff.jpg" alt="Staff">
+          <figcaption><b>พนักงาน:</b> เห็นพนักงาน 24 คน แยกฝ่าย, KPI, งานค้าง, งานสำเร็จ และรายละเอียดแต่ละ role</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/20-settings.jpg" alt="Settings">
+          <figcaption><b>ตั้งค่า:</b> ตั้งชื่อระบบ, ภาษา, ช่วงวันรายงาน, connection status และสิทธิ์ผู้ใช้งานแต่ละ role</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="uat-full-loop">
+      <h2>18. UAT จริง Full Loop — 11 ตุลาคม 2569</h2>
+      <p class="muted">ทดสอบบนระบบ production จริง โดยสร้าง House จำลองชื่อชัดเจนว่า <b>SIT-UAT-20261011-70999</b> แล้วเดินสถานะตั้งแต่ Transport รับงาน, CS ยืนยัน, เปิดใบ Cargo, Driver รับสินค้า, กลับ WH3, เข้าคลัง, ย้าย location, เตรียมขาออก, ไป Terminal, ชั่งน้ำหนัก, X-Ray, ปิด Loading Detail, วางบิล, HR และ Attendance.</p>
+
+      <div class="grid four">
+        <div class="card soft"><strong>SIT-UAT-20261011-70999</strong><p>House ที่ใช้ทดสอบจริง</p></div>
+        <div class="card soft"><strong>SIT0999/11</strong><p>Flight จำลอง ใช้ policy WH3 14 ชั่วโมง</p></div>
+        <div class="card soft"><strong>INV-2026-0001</strong><p>ใบแจ้งหนี้ฉบับร่างที่สร้างจาก Billing flow</p></div>
+        <div class="card soft"><strong>Billed</strong><p>สถานะสุดท้ายหลังปิดวางบิล</p></div>
+      </div>
+
+      <div class="module" style="margin-top:16px">
+        <div class="module-head">
+          <div>
+            <h3>ผลลัพธ์หลักที่ยืนยันได้</h3>
+            <p class="muted">อ้างอิงไฟล์หลักฐานการทดสอบ: screenshots-2026-10-11/uat-full-loop-SIT-UAT-20261011-70999-completed.json</p>
+          </div>
+          <span class="status ok">ผ่านครบลูป</span>
+        </div>
+        <div class="module-body">
+          <ul>
+            <li><b>Transport / CS / Cargo:</b> เพิ่มงานด่วนได้, CS confirm ได้, เปิดใบ Cargo ได้ และงานถูกส่งต่อให้ Driver ใช้งานต่อ</li>
+            <li><b>Driver mobile:</b> check-in หน้าลูกค้า, เริ่มโหลด, complete pickup, แนบหลักฐานรูป/ลายเซ็น/เอกสาร และกลับ WH3 ได้</li>
+            <li><b>WH3 inbound:</b> รับใบตรวจปล่อย, ตรวจเอกสาร, เปิดงานรับเข้า, scan House, twin scan ลง location, ย้ายจาก R001-01 ไป R001-02 และปิดรับเข้าได้</li>
+            <li><b>WH3 outbound:</b> ตรวจเอกสารก่อนออกครบ 5 รายการ, ออก Cargo Transfer, confirm location, picking, EI approve, AOT booking/approve และ loaded from WH3 ได้</li>
+            <li><b>Terminal:</b> arrived terminal, start weighing, บันทึกน้ำหนัก <b>118.5</b>, dimension <b>120x80x90</b>, X-Ray passed, loading detail completed และ SLA เป็น <b>WithinSLA</b></li>
+            <li><b>Billing:</b> เอกสารพร้อมครบ, ตรวจเอกสารแล้ว, สร้างใบแจ้งหนี้ฉบับร่าง <b>INV-2026-0001</b>, ส่งคิวอีเมลเป็น <b>EmailQueued</b>, แล้วปิดเป็น <b>Billed</b></li>
+            <li><b>HR / Attendance:</b> ยื่นใบลาได้สถานะ <b>pendingLead</b>, check-in แล้ว check-out ได้ใน record เดียวกัน <b>ATT-1791694042754-df661a</b></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module" style="margin-top:16px">
+        <div class="module-head">
+          <div>
+            <h3>ไทม์ไลน์ผลทดสอบ</h3>
+            <p class="muted">สถานะเหล่านี้เกิดกับ House เดียวกัน ระหว่าง 11:37-11:47 น. เวลาไทยโดยประมาณ</p>
+          </div>
+          <span class="status ok">34 จุดตรวจ</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead>
+              <tr><th>ช่วงงาน</th><th>สิ่งที่ทดสอบ</th><th>ผล</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>01 Transport</td><td>เพิ่มงานด่วน, CS confirm, เปิดใบ Cargo</td><td><span class="status ok">ผ่าน</span></td></tr>
+              <tr><td>02 Driver</td><td>check-in, loading, complete pickup, กลับ WH3 พร้อมหลักฐาน</td><td><span class="status ok">ผ่าน</span></td></tr>
+              <tr><td>03 WH3 Inbound</td><td>ตรวจเอกสาร, scan, ลง location, ย้าย location, ปิดรับเข้า</td><td><span class="status ok">ผ่าน</span></td></tr>
+              <tr><td>04 WH3 Outbound</td><td>pre-dispatch docs, Cargo Transfer, picking, EI, AOT, loaded</td><td><span class="status ok">ผ่าน</span></td></tr>
+              <tr><td>05 Terminal</td><td>arrival, weighing, dimension, X-Ray, loading detail, close</td><td><span class="status ok">ผ่าน</span></td></tr>
+              <tr><td>06 Billing</td><td>ตรวจเอกสาร, สร้างใบแจ้งหนี้ฉบับร่าง, ส่งคิวอีเมล, ปิดเป็น Billed</td><td><span class="status ok">ผ่าน</span></td></tr>
+              <tr><td>07 People</td><td>HR leave request และ Attendance check-in/out</td><td><span class="status ok">ผ่าน</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="module" style="margin-top:16px">
+        <div class="module-head">
+          <div>
+            <h3>Flow ละเอียดแบบไล่ยาว ตั้งแต่รับงานถึงวางบิล</h3>
+            <p class="muted">อ่านส่วนนี้เป็น script สำหรับเล่าในประชุมได้เลย: เริ่มจากงานเข้า Transport แล้วจบที่ Billed พร้อม HR/Attendance ประกอบ</p>
+          </div>
+          <span class="status ok">End-to-end verified</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead>
+              <tr><th>#</th><th>โมดูล/หน้าที่เกี่ยวข้อง</th><th>Action ที่ทดสอบ</th><th>สถานะ/ผลลัพธ์ที่ได้</th><th>หลักฐานที่ควรชี้ในประชุม</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>Transport Queue</td><td>เพิ่มงานด่วนเข้าระบบด้วย House <b>SIT-UAT-20261011-70999</b></td><td>สร้าง job ได้ สถานะเริ่มต้น <b>Pending</b></td><td>Dashboard/Tracking แสดงงานในระบบ</td></tr>
+              <tr><td>2</td><td>CS Queue</td><td>CS ยืนยันงานและหลักฐานจากลูกค้า</td><td><b>csConfirmed=true</b>, approval เป็น ManualExtraApproved</td><td>Tracking แสดงสถานะ ManualExtraApproved</td></tr>
+              <tr><td>3</td><td>เปิดใบงาน Cargo</td><td>เปิดใบ Cargo จากงานที่ผ่าน CS แล้ว</td><td>มี <b>cargoIssuedAt</b>, cargoFormMode เป็น AdminPrepared</td><td>Cargo History ค้น House ได้หลังจบงาน</td></tr>
+              <tr><td>4</td><td>Driver Mobile</td><td>คนขับ check-in ถึงจุดรับสินค้า</td><td>สถานะ <b>ArrivedAtPickup</b>, มีเวลาและ GPS</td><td>JSON หลักฐาน + Mobile/Tracking</td></tr>
+              <tr><td>5</td><td>Driver Mobile</td><td>เริ่มโหลดสินค้าหน้าลูกค้า</td><td>สถานะ <b>Loading</b></td><td>Timeline งาน</td></tr>
+              <tr><td>6</td><td>Driver Mobile</td><td>complete pickup พร้อมหลักฐาน</td><td>สถานะ <b>PickedUp</b>, แนบรูป/เอกสาร/ลายเซ็น</td><td>billingDocuments มีไฟล์ field evidence</td></tr>
+              <tr><td>7</td><td>Driver → WH3</td><td>คนขับกลับถึง WH3</td><td>สถานะ <b>AwaitingReleaseDocument</b></td><td>Tracking timeline</td></tr>
+              <tr><td>8</td><td>WH3 Inbound</td><td>รับใบตรวจปล่อย/เอกสารปล่อยสินค้า</td><td>สถานะ <b>WaitingForDock</b></td><td>releaseDocumentReceivedAt ใน JSON</td></tr>
+              <tr><td>9</td><td>WH3 Inbound</td><td>ตรวจเอกสารรับเข้า</td><td>สถานะ <b>DocumentChecked</b></td><td>inboundDocStatus เป็น Found</td></tr>
+              <tr><td>10</td><td>WH3 Inbound</td><td>เปิดงานรับเข้าคลัง</td><td>สถานะ <b>InboundOpened</b></td><td>inboundOpenedAt ใน JSON</td></tr>
+              <tr><td>11</td><td>WH3 Scan</td><td>Scan หรือพิมพ์ House เข้าคลัง</td><td>สถานะ <b>ReadyForTerminal</b>, scannedPieceCount = 4</td><td>Tracking + JSON</td></tr>
+              <tr><td>12</td><td>Warehouse Location</td><td>Twin scan ลงตำแหน่งเก็บแรก</td><td>locationId เริ่มที่ <b>R001-01</b></td><td>Warehouse/JSON</td></tr>
+              <tr><td>13</td><td>Warehouse Move</td><td>ย้ายสินค้าในคลัง</td><td>ย้ายไป <b>R001-02</b>, มี locationMoveNote</td><td>Tracking แสดง Location R001-02</td></tr>
+              <tr><td>14</td><td>WH3 Inbound Close</td><td>ปิดงานรับเข้า</td><td>สถานะพร้อมส่งออก <b>ReadyForTerminal</b></td><td>inboundClosedAt ใน JSON</td></tr>
+              <tr><td>15</td><td>WH3 Pre-dispatch</td><td>ตรวจเอกสารก่อนออกจาก WH3 ครบ 5 รายการ</td><td><b>wh3Documents.ready=true</b>, missing = []</td><td>Tracking แสดง Document Ready</td></tr>
+              <tr><td>16</td><td>Cargo Transfer</td><td>ออก Cargo Transfer และแนบ Permit</td><td>cargoTransferIssuedAt และ permitAttached=true</td><td>billingDocuments มี CargoTransferPermit</td></tr>
+              <tr><td>17</td><td>Outbound Location</td><td>ยืนยันตำแหน่งสินค้าเพื่อเบิกออก</td><td>สถานะ <b>OutboundLocated</b></td><td>outboundFoundAt ใน JSON</td></tr>
+              <tr><td>18</td><td>Outbound Picking</td><td>Picking ออกจาก WH3</td><td>สถานะ <b>OutboundPicking</b></td><td>outboundPickedAt ใน JSON</td></tr>
+              <tr><td>19</td><td>EI / Customer</td><td>EI approve/sign proof</td><td><b>eiApproved=true</b>, barcode reference EI-70999</td><td>ไฟล์ EISignProof ใน billingDocuments</td></tr>
+              <tr><td>20</td><td>AOT Booking</td><td>จองคิวรถเข้า Terminal</td><td>สถานะ <b>AOTQueueBooked</b></td><td>terminalWorkflowEvents: BookingRequested</td></tr>
+              <tr><td>21</td><td>AOT Approve</td><td>Terminal/AOT อนุมัติคิว</td><td>สถานะ <b>AOTQueueApproved</b></td><td>terminalWorkflowEvents: TerminalConfirmed</td></tr>
+              <tr><td>22</td><td>WH3 → Terminal</td><td>โหลดสินค้าออกจาก WH3</td><td>สถานะ <b>GoodsLoaded</b></td><td>PreLoadPhoto และ goodsLoadedAt</td></tr>
+              <tr><td>23</td><td>Terminal</td><td>รถถึง Terminal</td><td>สถานะ <b>TerminalArrived</b></td><td>terminalArrivedAt ใน JSON</td></tr>
+              <tr><td>24</td><td>Terminal Weighing</td><td>เริ่มชั่งน้ำหนัก</td><td>weighStartedAt ถูกบันทึก</td><td>Terminal workflow event</td></tr>
+              <tr><td>25</td><td>Terminal Weight/Dimension</td><td>บันทึกน้ำหนักและมิติ</td><td><b>118.5</b> และ <b>120x80x90</b>, สถานะ WeightDimensionRecorded</td><td>Tracking timeline/JSON</td></tr>
+              <tr><td>26</td><td>Terminal X-Ray</td><td>บันทึกผล X-Ray</td><td><b>xrayStatus=Passed</b>, requiresRescan=false</td><td>terminalStatus = XRayPassed</td></tr>
+              <tr><td>27</td><td>Terminal Close Detail</td><td>อัปโหลด/บันทึก Loading Detail</td><td><b>loadingDetailUploaded=true</b>, closingStatus=LoadingDetailCompleted</td><td>ไฟล์ LoadingDetail_1 และ PalletPhoto_1</td></tr>
+              <tr><td>28</td><td>Billing Review</td><td>Billing ตรวจเอกสารครบ</td><td>billingReviewStatus=<b>Reviewed</b>, blockers=[]</td><td>billingDocuments.ready=true</td></tr>
+              <tr><td>29</td><td>Billing Invoice</td><td>สร้างใบแจ้งหนี้ฉบับร่าง</td><td>ได้ <b>INV-2026-0001</b></td><td>เลขใบแจ้งหนี้ในหลักฐานการทดสอบ</td></tr>
+              <tr><td>30</td><td>Billing Email</td><td>ส่งคิวอีเมลวางบิล</td><td>สถานะ <b>EmailQueued</b> หรือรอส่งอีเมล</td><td>ผลการทดสอบ Billing</td></tr>
+              <tr><td>31</td><td>Billing Close</td><td>ปิดเป็น Billed</td><td>สถานะสุดท้าย <b>Billed</b>, readyForBilling=false</td><td>Tracking พบงาน, Billing queue ไม่ค้าง</td></tr>
+              <tr><td>32</td><td>HR</td><td>สร้างคำขอลาเพื่อทดสอบ People module</td><td>leave request <b>LV-1791694035173-87a2c7</b>, status pendingLead</td><td>หน้า HR + JSON</td></tr>
+              <tr><td>33</td><td>Attendance</td><td>check-in พนักงาน</td><td>attendance <b>ATT-1791694042754-df661a</b>, status checkin</td><td>หน้า Attendance</td></tr>
+              <tr><td>34</td><td>Attendance</td><td>check-out record เดิม</td><td>status <b>checkout</b>, Dashboard เห็นออกแล้ว 1 คน</td><td>Dashboard/Attendance map</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="module" style="margin-top:16px">
+        <div class="module-head">
+          <div>
+            <h3>อธิบายภาพหลังทดสอบ: ทำไมบางหน้าหา House ไม่เจอ</h3>
+            <p class="muted">จุดนี้สำคัญสำหรับประชุม เพราะถ้า search ในคิวแล้วไม่เจอ อาจถูกเข้าใจผิดว่า flow หาย ทั้งที่จริงคือปิดงานเสร็จแล้ว</p>
+          </div>
+          <span class="status ok">Expected behavior</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>หน้า</th><th>ผล search House หลังจบ UAT</th><th>เหตุผล</th><th>ควรใช้ภาพไหนประกอบ</th></tr></thead>
+            <tbody>
+              <tr><td>Tracking</td><td><span class="status ok">พบ House โดยตรง</span></td><td>Tracking เป็นหน้าประวัติ/สถานะรวม จึงยังเรียกดูงานที่จบแล้วได้</td><td>uat-house-screens/02-tracking-search-house.jpg</td></tr>
+              <tr><td>Cargo History</td><td><span class="status ok">พบ House โดยตรง</span></td><td>ใบงานถูกเปิดแล้ว จึงอยู่ในประวัติ Cargo</td><td>uat-house-screens/05-cargo-history-search-house.jpg</td></tr>
+              <tr><td>Field Ops</td><td><span class="status ok">พบ House โดยตรง</span></td><td>Field Ops ใช้ดู workspace ของ flow รวมและค้นงานได้</td><td>uat-house-screens/06-field-ops-search-house.jpg</td></tr>
+              <tr><td>CS Queue</td><td><span class="status warn">ไม่พบในคิว</span></td><td>งานผ่าน CS แล้ว จึงไม่อยู่ในคิวรอ CS</td><td>CS Queue production screenshot + Tracking proof</td></tr>
+              <tr><td>เปิดใบงาน</td><td><span class="status warn">ไม่พบในคิว</span></td><td>เปิดใบ Cargo ไปแล้ว จึงไม่ค้างในคิวเปิดใบ</td><td>Open Cargo screenshot + Cargo History proof</td></tr>
+              <tr><td>WH3 Queue</td><td><span class="status warn">ไม่พบในคิว</span></td><td>รับเข้าและปิด outbound แล้ว จึงไม่ค้างในคิวคลัง</td><td>Tracking location R001-02 + JSON</td></tr>
+              <tr><td>Load Plan / Outbound</td><td><span class="status warn">ไม่พบในคิว</span></td><td>โหลดออกจาก WH3 และถึง Terminal แล้ว จึงไม่ค้างในคิวขาออก</td><td>Tracking timeline + Outbound screenshot</td></tr>
+              <tr><td>Billing Queue</td><td><span class="status warn">ไม่พบในคิวพร้อมวางบิล</span></td><td>ปิดเป็น Billed แล้ว งานจึงไม่ค้างในคิวรอตรวจ/รอส่งบิล</td><td>Tracking + JSON invoiceId INV-2026-0001</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="module" style="margin-top:16px">
+        <div class="module-head">
+          <div>
+            <h3>ข้อสังเกตด้านเสถียรภาพและแผนติดตาม</h3>
+            <p class="muted">เกิด 1 ครั้งระหว่างขั้นเข้า Terminal ที่ /api/outbound/load-bay แล้วทดสอบซ้ำสำเร็จ</p>
+          </div>
+          <span class="status warn">รายการติดตาม</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>หัวข้อ</th><th>รายละเอียดสำหรับติดตามหลัง UAT</th></tr></thead>
+            <tbody>
+              <tr><td>อาการ</td><td>ระบบตอบ 502 Bad Gateway ชั่วคราวที่ <b>/api/outbound/load-bay</b> ระหว่างขั้นเข้า Terminal / load bay</td></tr>
+              <tr><td>ผลกระทบ</td><td>คำสั่งแรกไม่สำเร็จ ผู้ใช้ต้องกดทำซ้ำ; ในรอบทดสอบทำซ้ำแล้ว flow ต่อจนจบครบ จึงยังไม่พบข้อมูลสูญหาย</td></tr>
+              <tr><td>ความเสี่ยง</td><td>ถ้าเกิดกับงานจริงช่วงส่งสนามบิน อาจทำให้ทีมเข้าใจว่าสถานะไม่บันทึก หรือกดซ้ำโดยไม่แน่ใจว่า request แรกสำเร็จหรือไม่</td></tr>
+              <tr><td>สิ่งที่ควรตรวจ</td><td>บันทึกระบบ, timeout, ความหน่วงฐานข้อมูล, ขนาดข้อมูลที่ส่ง และกลไกป้องกันการบันทึกซ้ำของคำสั่งนี้</td></tr>
+              <tr><td>ข้อเสนอ UX</td><td>ปุ่มควร disable ระหว่างส่งคำสั่ง, แสดง loading ชัดเจน, ถ้า 502 ให้แสดงข้อความ “ระบบขัดข้องชั่วคราว ลองใหม่อีกครั้ง โดยไม่ต้องกรอกข้อมูลใหม่”</td></tr>
+              <tr><td>ข้อเสนอระบบหลังบ้าน</td><td>เพิ่ม idempotency key ต่อ action, ผูก log กับ House และทำ error response ให้ frontend แสดงข้อความที่เข้าใจง่าย</td></tr>
+              <tr><td>ระดับความสำคัญ</td><td><b>Medium-High</b> เพราะไม่กระทบผล full loop ในรอบนี้ แต่เป็นขั้นตอนสำคัญก่อน Terminal/Flight</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="note">
+        ระหว่างทดสอบพบ 502 Bad Gateway ชั่วคราว 1 ครั้งที่ <b>/api/outbound/load-bay</b> ตอนขั้นเข้า Terminal แต่ทำซ้ำแล้วเดิน flow ต่อจนจบครบ. หลังทดสอบได้เพิ่มข้อความ error ที่อ่านเข้าใจง่าย, recovery เมื่อรายการถูกบันทึกแล้ว และการกันบันทึกซ้ำของขั้น load bay เพื่อรองรับการใช้งานจริง.
+      </div>
+
+      <div class="note">
+        แคปหน้าจอรอบล่าสุดหลัง login production ด้วยรหัสจริงแล้ว. หน้า Tracking, Cargo History และ Field Ops พบ House <b>SIT-UAT-20261011-70999</b> โดยตรง ส่วน CS Queue, เปิดใบงาน, WH3 Queue, Load Plan และ Billing Queue ไม่พบ House ในคิวเพราะงานถูกปิดเป็น <b>Billed</b> แล้ว ไม่ใช่เพราะ flow หาย.
+      </div>
+
+      <div class="shot-grid">
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/01-dashboard-billed-count.jpg" alt="Dashboard after UAT full loop">
+          <figcaption><b>Dashboard หลัง UAT:</b> เห็นภาพรวม production ล่าสุด มีงานที่เสร็จ/วางบิลแล้วเพิ่มอยู่ใน summary</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/02-tracking-search-house.jpg" alt="Tracking search SIT UAT house">
+          <figcaption><b>Tracking เจาะ House:</b> พบ <b>SIT-UAT-20261011-70999</b>, สถานะ ManualExtraApproved, เอกสาร WH3 พร้อม, timeline เดินถึง Terminal/Billing</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/05-cargo-history-search-house.jpg" alt="Cargo history search SIT UAT house">
+          <figcaption><b>ประวัติใบ Cargo:</b> ค้น House UAT ได้ ใช้ยืนยันว่าใบงานยังอยู่ในประวัติแม้ไม่ได้ค้างในคิวเปิดใบแล้ว</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/06-field-ops-search-house.jpg" alt="Field ops search SIT UAT house">
+          <figcaption><b>Field Ops:</b> ค้น House UAT ได้ และใช้ตรวจ flow Pickup, WH3 Inbound, Outbound และ Billing ใน workspace เดียว</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/07-wh3-status-search-house.jpg" alt="WH3 status after UAT">
+          <figcaption><b>สถานะคลัง:</b> หลังงานถูกปิดแล้ว House ไม่ค้างในคิว WH3; ใช้ภาพนี้ประกอบคำอธิบายว่าหน้า WH3 แสดงงานที่ยัง active ในคลัง</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/10-outbound-open-search-house.jpg" alt="Outbound open after UAT">
+          <figcaption><b>เปิดใบขาออก:</b> หลังออก Terminal และปิดงานแล้ว House ไม่ค้างในคิวขาออก; flow ขาออกผ่านจาก API หลักฐานใน JSON</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/13-billing-service-search-house.jpg" alt="Billing service after UAT">
+          <figcaption><b>งานบริการ/วางบิล:</b> หน้าสรุป service charge/Billing ยังทำงาน; House ที่ปิด Billed แล้วไม่ค้างในคิวพร้อมวางบิล</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/14-hr-search-house.jpg" alt="HR after UAT">
+          <figcaption><b>HR:</b> ใช้ตรวจการยื่นลา/OT และคิวอนุมัติ; รอบ UAT สร้างใบลาได้สถานะ pendingLead</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/15-attendance-search-house.jpg" alt="Attendance after UAT">
+          <figcaption><b>Attendance:</b> ใช้ดู Operations Map และเวลาเข้าออก; รอบ UAT check-in/check-out สำเร็จใน record เดียว</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots-2026-10-11/uat-house-screens/19-mobile-app-after-uat.jpg" alt="Mobile app after UAT">
+          <figcaption><b>Mobile App:</b> หน้างานภาคสนามโหลดได้ มีปุ่มสแกน, timeline วันนี้ และใช้พิมพ์แทนสแกนได้เมื่อ barcode อ่านไม่ได้</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="improvements">
+      <h2>19. สิ่งที่ควรปรับปรุงเพื่อใช้งานจริง</h2>
+      <p class="muted">จากการทดสอบ full loop ระบบสามารถเดินงานครบตั้งแต่รับงานจนปิดวางบิลได้แล้ว และมีการปรับส่วน production-readiness เพิ่มเติมหลังทดสอบ เพื่อให้การใช้งานจริงปลอดภัยขึ้นเมื่อมีข้อมูลจริง/ลูกค้าจริง</p>
+
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h3>ปรับแก้แล้วเพื่อให้พร้อมใช้งานจริง</h3>
+            <p class="muted">รายการนี้ถูกปรับในระบบแล้วหลังพบจาก full loop test</p>
+          </div>
+          <span class="status ok">แก้แล้ว</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>ลำดับ</th><th>เรื่องที่ปรับ</th><th>เหตุผลจากการทดสอบ</th><th>ผลลัพธ์ที่ได้</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>เสถียรภาพขั้น Terminal / load bay</td><td>พบ 502 Bad Gateway ชั่วคราว 1 ครั้งที่ขั้นเข้า Terminal แต่ retry แล้ว flow ต่อจนจบ</td><td>เพิ่มข้อความ error ภาษาใช้งานจริง, retry-safe recovery และกันบันทึกซ้ำที่ endpoint load bay</td></tr>
+              <tr><td>2</td><td>CS bulk confirm</td><td>ปุ่มยืนยันทั้งหมดที่กรองช่วยลดงานซ้ำ แต่มีความเสี่ยงหากกดผิดชุด</td><td>เพิ่ม preview จำนวนงาน, จำนวนชิ้น, จำนวนลูกค้า, ตัวอย่าง House และบังคับพิมพ์จำนวนซ้ำเมื่อเกิน 50 งาน</td></tr>
+              <tr><td>3</td><td>ปิด Billing เป็น Billed</td><td>หลังปิด Billed งานจะหายจากคิววางบิลทันที ผู้ใช้ต้องเข้าใจผลลัพธ์ก่อนกด</td><td>เพิ่ม confirmation ระบุเลข invoice และอธิบายว่าต้องดูย้อนหลังจาก Tracking / Cargo History / รายงานวางบิล</td></tr>
+              <tr><td>4</td><td>โหลดขึ้นรถและยืนยันถึง Terminal</td><td>เป็น action ที่เปลี่ยนสถานะสำคัญใน flow outbound</td><td>เพิ่ม confirmation ต่อ House ก่อนบันทึก เพื่อกันกดผิดระหว่างงานเร่ง</td></tr>
+              <tr><td>5</td><td>ค้น House ที่ปิดแล้วในคิว</td><td>เมื่อ House ถูกปิด Billed แล้วจะไม่อยู่ใน CS Queue / Billing Queue ทำให้เข้าใจผิดว่างานหาย</td><td>เพิ่มข้อความอธิบายเมื่อค้นในคิวไม่เจอ แต่พบ House ในระบบ พร้อมทางไป Tracking / Cargo History</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h3>รายการที่ต้องตัดสินใจก่อน Go-live</h3>
+            <p class="muted">ไม่ใช่ข้อผิดพลาดของระบบ แต่ต้องใช้คำตอบจากทีมปฏิบัติการเพื่อเปิดใช้งานจริงให้ตรงหน้างาน</p>
+          </div>
+          <span class="status warn">ต้องยืนยัน</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>เรื่อง</th><th>คำตอบที่ต้องการ</th><th>ใช้กำหนดในระบบ</th></tr></thead>
+            <tbody>
+              <tr><td>งานค้างเดิม</td><td>เริ่ม Go-live ด้วยการล้างงานเดิม, เก็บเป็นประวัติ, หรือย้ายเป็น archived</td><td>Dashboard, CS Queue, Risk Alert และรายงานเริ่มต้น</td></tr>
+              <tr><td>สิทธิ์ role production</td><td>ใครมีสิทธิ์ bulk confirm, ล้างข้อมูล, แก้สถานะ, ปิด Billed และดูข้อมูล HR</td><td>Role guard และ action permission</td></tr>
+              <tr><td>Checklist เอกสาร outbound</td><td>เอกสารบังคับของ TG/TGINT/BFS และเอกสารแยกตามลูกค้า/ปลายทาง</td><td>Doc validation ก่อนออกสนามบินและก่อนวางบิล</td></tr>
+              <tr><td>Billing email จริง</td><td>ผู้รับ, CC, provider, template, ไฟล์แนบ และเงื่อนไขส่งซ้ำ</td><td>การส่งอีเมลวางบิลจริงและ audit trail</td></tr>
+              <tr><td>SLA / Alert</td><td>เกณฑ์เตือนแต่ละ Terminal, flight C/K, กลุ่ม LINE/n8n และเวลาที่ต้องแจ้งเตือน</td><td>แจ้งเตือนงานเสี่ยงและ no-miss flight</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h3>รายการที่ต้องกำหนดตามข้อมูลจริงของลูกค้า</h3>
+            <p class="muted">ไม่ใช่ข้อผิดพลาดของระบบ แต่ต้องใช้ข้อมูลจริงก่อนเปิดใช้งาน</p>
+          </div>
+          <span class="status ok">Business setup</span>
+        </div>
+        <div class="module-body">
+          <ul>
+            <li>ตั้งค่า Dock 1-11, zone, rack, lithium/WD และ capacity ตามผังคลังจริง</li>
+            <li>ยืนยัน SLA แต่ละ Terminal และเงื่อนไข no-miss flight สำหรับ C/K หรือ flight สำคัญ</li>
+            <li>กำหนดรายการเอกสารบังคับแยกตามลูกค้า/สายการบิน/ปลายทาง</li>
+            <li>กำหนดรายชื่อผู้รับอีเมล Billing, CC, format invoice และไฟล์แนบ</li>
+            <li>กำหนดกลุ่ม LINE/n8n สำหรับ alert งานเสี่ยง, งานตกไฟลท์, เอกสารไม่ครบ และ billing failed</li>
+            <li>ตัดสินใจว่า HR/Attendance จะเปิดพร้อมรอบแรกหรือเปิดเป็น Phase ถัดไป</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="questions">
+      <h2>20. รายการที่ต้องยืนยันร่วมกันก่อน Go-live</h2>
+      <p class="muted">จากการทดสอบ full loop ระบบทำงานครบตั้งแต่รับงานจนวางบิลแล้ว รายการด้านล่างไม่ใช่ flow ที่ขาด แต่เป็นข้อมูลธุรกิจ/สิทธิ์/นโยบายที่ต้องกำหนดให้ตรงกับการทำงานจริงของ S.C.D.</p>
+
+      <div class="module">
+        <div class="module-head">
+          <div>
+            <h3>สรุปสิ่งที่ระบบทำได้จริงแล้ว</h3>
+            <p class="muted">ใช้เป็นข้อความยืนยันกับลูกค้าได้</p>
+          </div>
+          <span class="status ok">พร้อมสาธิต</span>
+        </div>
+        <div class="module-body">
+          <table>
+            <thead><tr><th>ส่วนงาน</th><th>สถานะจากการทดสอบ</th><th>หมายเหตุ</th></tr></thead>
+            <tbody>
+              <tr><td>Transport / CS / Cargo</td><td><span class="status ok">ทำได้จริง</span></td><td>เพิ่มงาน, CS ยืนยัน, เปิดใบ Cargo และค้นประวัติได้</td></tr>
+              <tr><td>Driver Mobile</td><td><span class="status ok">ทำได้จริง</span></td><td>รองรับ scan และพิมพ์ House แทน scan</td></tr>
+              <tr><td>WH3 Inbound / Warehouse Move</td><td><span class="status ok">ทำได้จริง</span></td><td>รับเข้า, ตรวจเอกสาร, ลง location และย้าย location ได้</td></tr>
+              <tr><td>Outbound / Terminal</td><td><span class="status ok">ทำได้จริง</span></td><td>ออก Cargo Transfer, AOT, ชั่งน้ำหนัก, X-Ray และปิด loading detail ได้</td></tr>
+              <tr><td>Billing</td><td><span class="status ok">ทำได้จริง</span></td><td>ตรวจเอกสาร, สร้างใบแจ้งหนี้ฉบับร่าง, ส่งคิวอีเมล และปิด Billed ได้</td></tr>
+              <tr><td>HR / Attendance</td><td><span class="status ok">ทำได้จริง</span></td><td>สร้างใบลาและบันทึก check-in/check-out ได้</td></tr>
+              <tr><td>Dashboard / Calendar / Staff</td><td><span class="status ok">ทำได้จริง</span></td><td>แสดงภาพรวม, ตารางงาน และข้อมูลทีมได้</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="question"><strong>1) งานเก่า / งานค้าง:</strong> จะล้างงานค้างเดิม 3,991 งานหรือเก็บไว้ดูประวัติ? ถ้าล้าง ให้กำหนดผู้อนุมัติและช่วงเวลาที่ดำเนินการ</div>
+      <div class="question"><strong>2) การยืนยัน CS แบบกลุ่ม:</strong> อนุญาตให้ยืนยันทั้งหมดที่กรองได้หรือไม่ หรือจำกัดเฉพาะ customer/date/invoice เดียวต่อครั้ง</div>
+      <div class="question"><strong>3) ข้อมูลเริ่มใช้งานจริง:</strong> ใช้ไฟล์ใดเป็นชุดแรก และใครเป็นเจ้าของไฟล์ข้อมูลจริง</div>
+      <div class="question"><strong>4) เอกสารครบก่อนออกสนามบิน:</strong> ยืนยันรายการเอกสารบังคับ เช่น Cargo Transfer, Permit, ใบชั่ง, Loading Detail, รูปสินค้า, รูปปิดประตู</div>
+      <div class="question"><strong>5) Terminal SLA:</strong> ยืนยันกติกาของ TG/TGINT/BFS และเงื่อนไข flight no C/K no-miss</div>
+      <div class="question"><strong>6) Warehouse layout:</strong> ยืนยัน Dock 1-11, Zone, Capacity, Lithium/WD/Rack และผู้มีสิทธิ์แก้ layout</div>
+      <div class="question"><strong>7) Billing:</strong> ยืนยันช่องทางส่งอีเมล, ผู้รับ/CC, ไฟล์แนบ และผู้มีสิทธิ์ปิดสถานะ Billed</div>
+      <div class="question"><strong>8) LINE/n8n:</strong> ยืนยัน alert ที่ต้องส่งทันทีและกลุ่มปลายทาง</div>
+      <div class="question"><strong>9) HR:</strong> ยืนยันว่าจะเปิด HR/Attendance พร้อม Go-live รอบแรก หรือแยกเป็น Phase ถัดไป</div>
+      <div class="question"><strong>10) ข้อมูลทดสอบ:</strong> ยืนยันว่าจะลบรายการ TEST-MOBILE และ SIT ก่อนส่งมอบหรือเก็บไว้เป็นตัวอย่างสาธิต</div>
+    </section>
+
+    <section id="meeting-plan">
+      <h2>21. วิธีนำเสนอประชุมที่แนะนำ</h2>
+      <ol>
+        <li>เปิดหน้า Login จริงและอธิบาย role</li>
+        <li>เข้า Admin/Executive เพื่อโชว์ Control Tower และ Readiness</li>
+        <li>เข้า CS Queue เพื่อโชว์การยืนยันแบบกลุ่มและ fallback พิมพ์แทน scan</li>
+        <li>เข้า Transport เพื่อโชว์งานที่ผ่าน CS แล้วถึงเปิดใบได้</li>
+        <li>เข้า Mobile/Driver เพื่อโชว์รับสินค้า ถ่ายรูป เซ็นชื่อ กลับ WH3</li>
+        <li>เข้า WH3 เพื่อโชว์รับเข้า ย้าย location และ warehouse map</li>
+        <li>เข้า Terminal เพื่อโชว์ AOT, ชั่งน้ำหนัก, X-Ray, close</li>
+        <li>เข้า Billing เพื่อโชว์ตรวจเอกสาร, ใบแจ้งหนี้ฉบับร่าง, Email, Billed</li>
+        <li>ปิดด้วย HR/Attendance/Calendar และคำถามที่ต้องตัดสินใจ</li>
+      </ol>
+    </section>
+
+    <div class="print-note">
+      ไฟล์นี้เป็น HTML เปิดใน browser แล้ว Print / Save as PDF ได้ทันที. ภาพหน้าจอในหัวข้อ 17 แคปจาก production หลัง login Admin แล้ว ใช้เป็นเอกสารประกอบประชุมรอบล่าสุดได้.
+    </div>
+  </main>
+</div>
+</body>
+</html>

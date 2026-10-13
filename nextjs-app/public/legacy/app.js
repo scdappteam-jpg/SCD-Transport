@@ -599,6 +599,7 @@ function applyLanguage(root = document.body) {
 async function recoverCompletedDesktopRequest(path, payload) {
     const expectedStatuses = {
         "/api/outbound/aot-booking": payload?.approved ? [ "AOTQueueApproved" ] : [ "AOTQueueBooked", "AOTQueueApproved" ],
+        "/api/outbound/load-bay": payload?.arrived ? [ "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ] : [ "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ],
         "/api/billing/send-email": [ "InvoiceSent", "Billed" ],
         "/api/billing/mark-billed": [ "Billed" ]
     }[path];
@@ -611,6 +612,42 @@ async function recoverCompletedDesktopRequest(path, payload) {
     state.dashboard = data.dashboard;
     state.users = data.users || state.users;
     return job;
+}
+
+function apiErrorMessage(path, status, data, rawText) {
+    const serverMessage = data?.error || data?.message || "";
+    const text = rawText || data?.raw || "";
+    if (status === 502 || /bad gateway/i.test(text)) return "ระบบบันทึกงานขัดข้องชั่วคราว กรุณากดทำรายการซ้ำอีกครั้ง หากรายการถูกบันทึกแล้วระบบจะกู้สถานะให้";
+    if (status === 503 || status === 504) return "ระบบปลายทางตอบช้าหรือไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้งในอีกสักครู่";
+    if (status === 401 || status === 403) return "สิทธิ์เข้าใช้งานหมดอายุหรือไม่พอ กรุณาเข้าสู่ระบบใหม่ด้วย role ที่ถูกต้อง";
+    if (status === 409 && path === "/api/outbound/load-bay") return serverMessage || "ต้องอนุมัติคิวรถก่อนจึงโหลดขึ้นรถหรือยืนยันถึง Terminal ได้";
+    return serverMessage || `Request failed (${status || "network"})`;
+}
+
+async function parseApiResponse(res, path) {
+    const contentType = res.headers.get("content-type") || "";
+    const rawText = await res.text();
+    let data = {};
+    if (rawText && contentType.includes("application/json")) {
+        try {
+            data = JSON.parse(rawText);
+        } catch (_) {
+            data = {
+                raw: rawText
+            };
+        }
+    } else if (rawText) {
+        data = {
+            raw: rawText
+        };
+    }
+    if (!res.ok) {
+        const error = new Error(apiErrorMessage(path, res.status, data, rawText));
+        error.status = res.status;
+        error.data = data;
+        throw error;
+    }
+    return data;
 }
 
 async function api(path, payload, method) {
@@ -629,9 +666,7 @@ async function api(path, payload, method) {
             opts.body = JSON.stringify(requestPayload);
         }
         const res = await fetch(apiUrl(path), opts);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Request failed");
-        return data;
+        return await parseApiResponse(res, path);
     } catch (error) {
         try {
             const job = await recoverCompletedDesktopRequest(path, payload);
@@ -9628,9 +9663,12 @@ function bindEvents() {
         toast("อนุมัติคิวแล้ว / Queue approved");
     }));
     $("#loadBayBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
+        const houseNumber = normalizeHouseBarcode($("#terminalHouse").value);
+        if (!houseNumber) throw new Error("กรุณาระบุ House ก่อนโหลดขึ้นรถ");
+        if (!window.confirm(`ยืนยันโหลด House ${houseNumber} ขึ้นรถไป Terminal?\n\nระบบจะบันทึกหลักฐานรูปก่อนโหลด และย้ายงานออกจากขั้นเตรียมขนออก WH3`)) return;
         const image = await fileToCompressedBase64($("#preLoadPhoto"));
         await api("/api/outbound/load-bay", {
-            houseNumber: normalizeHouseBarcode($("#terminalHouse").value),
+            houseNumber: houseNumber,
             userId: "u_wh_01",
             imageBase64: image.base64,
             mimeType: image.mimeType,
@@ -9639,8 +9677,11 @@ function bindEvents() {
         toast("โหลดขึ้นรถแล้ว / Goods loaded");
     }));
     $("#terminalArrivalBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
+        const houseNumber = normalizeHouseBarcode($("#terminalHouse").value);
+        if (!houseNumber) throw new Error("กรุณาระบุ House ก่อนยืนยันถึง Terminal");
+        if (!window.confirm(`ยืนยันว่า House ${houseNumber} ถึง Terminal แล้ว?\n\nหลังยืนยัน งานจะเข้าสู่ขั้นชั่งน้ำหนัก / X-Ray / ปิดงานก่อนวางบิล`)) return;
         await api("/api/outbound/load-bay", {
-            houseNumber: normalizeHouseBarcode($("#terminalHouse").value),
+            houseNumber: houseNumber,
             userId: "u_driver_01",
             arrived: true
         });
@@ -9796,8 +9837,11 @@ function bindEvents() {
         toast("บันทึกสถานะส่งอีเมลแล้ว / Email status saved");
     }));
     $("#markBilledBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
+        const invoiceId = $("#invoiceId").value.trim();
+        if (!invoiceId) throw new Error("กรุณาระบุเลขใบแจ้งหนี้ก่อนปิดวางบิล");
+        if (!window.confirm(`ปิดใบแจ้งหนี้ ${invoiceId} เป็น Billed?\n\nรายการจะหายจากคิวรอวางบิลทันที และต้องดูย้อนหลังจาก Tracking / Cargo History / รายงานวางบิล`)) return;
         const data = await api("/api/billing/mark-billed", {
-            invoiceId: $("#invoiceId").value.trim()
+            invoiceId: invoiceId
         });
         state.dashboard = data.dashboard;
         renderAll();
@@ -10540,6 +10584,36 @@ function _renderCsQueueHtml() {
     _renderCsQueueList();
 }
 
+function queueSearchHintHtml(query, queueName, activeRule) {
+    const term = (query || "").trim();
+    if (!term) return "";
+    const normalized = term.toUpperCase();
+    const job = (state.dashboard?.jobs || []).find(item => String(item.houseNumber || "").toUpperCase() === normalized || String(item.houseNumber || "").toUpperCase().includes(normalized));
+    if (!job) return `<div class="empty-state" style="margin-top:40px"><p>ไม่พบงานตามเงื่อนไขใน${safeHtml(queueName)}</p><small>คิวนี้แสดงเฉพาะ${safeHtml(activeRule)} หากต้องการตามงานปิดแล้วให้ค้นใน Tracking หรือ Cargo History</small></div>`;
+    const isBilled = job.status === "Billed";
+    const reason = isBilled ? "งานนี้ปิดเป็นวางบิลแล้ว จึงไม่แสดงในคิวปฏิบัติงาน" : `สถานะปัจจุบันคือ ${statusLabelTh(job.status)} จึงไม่เข้าเงื่อนไขของคิวนี้`;
+    return `<div class="empty-state" style="margin-top:40px;text-align:left;max-width:680px;margin-left:auto;margin-right:auto">
+        <p style="margin-bottom:8px">พบ House <strong>${safeHtml(job.houseNumber)}</strong> ในระบบแล้ว แต่ไม่อยู่ใน${safeHtml(queueName)}</p>
+        <small style="display:block;line-height:1.65">${safeHtml(reason)}<br>คิวนี้แสดงเฉพาะ${safeHtml(activeRule)} ให้ตรวจต่อที่ Tracking หรือ Cargo History</small>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <button type="button" data-house="${safeHtml(job.houseNumber)}" onclick="openQueueHintTracking(this)">เปิด Tracking</button>
+          <button type="button" class="secondary" onclick="setView('cargo-history')">เปิด Cargo History</button>
+        </div>
+      </div>`;
+}
+
+function openQueueHintTracking(button) {
+    const houseNumber = button?.dataset?.house || "";
+    setView("orders");
+    setTimeout(() => {
+        const input = document.getElementById("globalSearch");
+        if (input && houseNumber) {
+            input.value = houseNumber;
+            input.dispatchEvent(new Event("input"));
+        }
+    }, 80);
+}
+
 function _renderCsQueueList() {
     const listEl = document.getElementById("csQueueList");
     if (!listEl) return;
@@ -10566,7 +10640,7 @@ function _renderCsQueueList() {
         (byCustomer[key] ||= []).push(j);
     });
     const customers = Object.entries(byCustomer).sort((a, b) => a[0].localeCompare(b[0], "th"));
-    listEl.innerHTML = !jobs.length ? `<div class="empty-state" style="margin-top:40px"><p>${filtered ? "ไม่พบงานตามเงื่อนไข" : "✓ ไม่มีงานรอ CS อนุมัติ"}</p></div>` : customers.map(([customer, cJobs]) => {
+    listEl.innerHTML = !jobs.length ? queueSearchHintHtml(_csQueueFilters.q, "คิวรอ CS อนุมัติ", "งานที่ยังไม่ผ่าน CS และยังไม่ถูกเปิดใบงาน") || `<div class="empty-state" style="margin-top:40px"><p>${filtered ? "ไม่พบงานตามเงื่อนไข" : "✓ ไม่มีงานรอ CS อนุมัติ"}</p></div>` : customers.map(([customer, cJobs]) => {
         const byDate = {};
         cJobs.forEach(j => {
             (byDate[_csJobDate(j) || "ไม่ระบุวันที่"] ||= []).push(j);
@@ -10707,9 +10781,26 @@ async function csBulkConfirmFiltered() {
     if (_csQueueTab !== "pending") return toast("สลับไปแท็บรอยืนยันก่อน");
     const jobs = _csApplyFilters(_csQueueData, _csJobDate);
     if (!jobs.length) return toast("ไม่มีงานตามเงื่อนไขให้ยืนยัน");
-    const invoiceNo = await scdPrompt({ title: "ยืนยันแบบกลุ่ม " + jobs.length + " งาน", note: "ใช้เลขอ้างอิงเดียวกันทุกงานในกลุ่มนี้", label: "เลขอ้างอิง / Invoice", value: "BULK-" + new Date().toISOString().slice(0, 10) });
+    const totalPieces = jobs.reduce((sum, job) => sum + Number(job.pieceCount || 0), 0);
+    const customerCount = new Set(jobs.map(job => job.customerName || "ไม่ระบุลูกค้า")).size;
+    const sampleHouses = jobs.slice(0, 8).map(job => job.houseNumber).join(", ");
+    const invoiceNo = await scdPrompt({
+        title: "ยืนยันแบบกลุ่ม " + jobs.length + " งาน",
+        note: `ลูกค้า ${customerCount} ราย · ${totalPieces} ชิ้น · ตัวอย่าง House: ${sampleHouses}${jobs.length > 8 ? "..." : ""}`,
+        label: "เลขอ้างอิง / Invoice",
+        value: "BULK-" + new Date().toISOString().slice(0, 10)
+    });
     if (!invoiceNo) return;
-    if (!window.confirm(`ยืนยัน CS ทั้งหมด ${jobs.length} งาน ด้วยอ้างอิง "${invoiceNo}" ?\nงานจะพร้อมเปิดใบ Cargo ทันที`)) return;
+    if (!window.confirm(`ยืนยัน CS แบบกลุ่มทั้งหมด ${jobs.length} งาน ด้วยอ้างอิง "${invoiceNo}"?\n\nลูกค้า ${customerCount} ราย · ${totalPieces} ชิ้น\nตัวอย่าง House: ${sampleHouses}${jobs.length > 8 ? "..." : ""}\n\nหลังยืนยัน งานจะหายจากคิวรอ CS และพร้อมเปิดใบ Cargo ทันที`)) return;
+    if (jobs.length >= 50) {
+        const typedCount = await scdPrompt({
+            title: "ยืนยันจำนวนงานอีกครั้ง",
+            note: "รายการเกิน 50 งาน เพื่อกันกดยืนยันผิด ให้พิมพ์จำนวนงานให้ตรง",
+            label: `พิมพ์ ${jobs.length}`,
+            okText: "ยืนยันต่อ"
+        });
+        if (typedCount !== String(jobs.length)) return toast("ยกเลิก — จำนวนที่พิมพ์ไม่ตรงกับรายการที่กรอง");
+    }
     const user = currentWebUser();
     try {
         const data = await api("/api/jobs/cs-confirm", {

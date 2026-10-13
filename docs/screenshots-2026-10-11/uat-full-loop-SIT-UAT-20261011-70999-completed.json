@@ -1,0 +1,579 @@
+{
+  "house": "SIT-UAT-20261011-70999",
+  "flight": "SIT0999/11",
+  "invoiceId": "INV-2026-0001",
+  "finalJob": {
+    "id": "JOB-1791693471230",
+    "cbm": "",
+    "tel": "099-000-0000",
+    "amount": 2500,
+    "dgType": "",
+    "refsNo": "",
+    "source": "TransportEmergencyManual",
+    "status": "Billed",
+    "urgent": true,
+    "weight": 120,
+    "booking": "",
+    "carrier": "",
+    "contact": "SIT Contact",
+    "edocCin": "",
+    "edocInv": "",
+    "driverId": "u_driver_01",
+    "endPlace": "WH3",
+    "flightNo": "SIT0999/11",
+    "icNumber": "",
+    "loadedAt": "2026-10-11T04:39:00.266Z",
+    "planDate": "2026-10-11",
+    "wh3DueAt": "2026-10-11T14:00:00.000Z",
+    "workDate": "2026-10-11",
+    "cargoDesc": "",
+    "cargoType": "normal",
+    "checkInAt": "2026-10-11T04:38:48.170Z",
+    "closeTime": "",
+    "createdAt": "2026-10-11T04:37:51.229Z",
+    "invoiceNo": "",
+    "isLithium": false,
+    "loadedGps": "13.7563,100.5018",
+    "ownerCode": "",
+    "planRound": "Manual",
+    "readyTime": "",
+    "trackType": "Pair",
+    "updatedAt": "2026-10-11T04:47:02.966Z",
+    "volWeight": "",
+    "checkInGps": "13.7563,100.5018",
+    "customerId": "c_sit_uat_customer_co_ltd",
+    "driverType": "",
+    "eiApproved": true,
+    "flightTime": "2026-10-12T04:00",
+    "locationId": "R001-02",
+    "mawbNumber": "",
+    "pickupCase": "Normal",
+    "pickupDate": "2026-10-11",
+    "pieceCount": "4",
+    "planSource": "ManualExtra",
+    "slaProfile": "WH3_14H",
+    "startPlace": "SIT TEST PICKUP LOCATION",
+    "urgentCode": "C",
+    "actualCount": "",
+    "aotBookedAt": "2026-10-11T04:42:25.849Z",
+    "completeGps": "13.7563,100.5018",
+    "completedAt": "2026-10-11T04:39:09.562Z",
+    "csConfirmed": true,
+    "csInvoiceNo": "SIT-INV-70999",
+    "destAirport": "NRT",
+    "destination": "WH3",
+    "houseNumber": "SIT-UAT-20261011-70999",
+    "manualExtra": true,
+    "packageType": "Carton",
+    "pickupItems": [
+      {
+        "tel": "099-000-0000",
+        "dest": "NRT",
+        "route": "WH3",
+        "carton": "4",
+        "booking": "SITBKG-0999",
+        "contact": "SIT Contact",
+        "bookingNo": "SITBKG-0999",
+        "invoiceNo": "SIT-INV-70999",
+        "routeType": "WH3",
+        "pickupDate": "2026-10-11",
+        "destination": "NRT",
+        "houseNumber": "SIT-UAT-20261011-70999",
+        "pickupDestination": "WH3"
+      }
+    ],
+    "pickupPhone": "",
+    "planMatched": false,
+    "productType": "General",
+    "routePolicy": "ReturnWH3BeforeTerminal",
+    "shippingDoc": "",
+    "vehicleType": "",
+    "wdChecklist": [],
+    "airportDueAt": "2026-10-11T14:00:00.000Z",
+    "arrivedWh3At": "2026-10-11T04:39:17.587Z",
+    "customerName": "SIT UAT CUSTOMER CO., LTD.",
+    "eiApprovedAt": "2026-10-11T04:42:12.852Z",
+    "evidenceNote": "SIT UAT approval evidence",
+    "receiverName": "SIT Receiver",
+    "adminPrepared": true,
+    "aotApprovedAt": "2026-10-11T04:42:38.652Z",
+    "aotDriverName": "Driver A / สมชาย",
+    "approvalTrail": [
+      {
+        "at": "2026-10-11T04:38:16.591Z",
+        "by": "SIT UAT",
+        "to": "ManualExtraApproved",
+        "from": "PendingCSApproval",
+        "note": "SIT UAT approval evidence",
+        "type": "ManualExtraApproved",
+        "channel": "Line",
+        "invoiceNo": "SIT-INV-70999"
+      }
+    ],
+    "arrivedWh3Gps": "13.6900,100.7501",
+    "cargoCutoffAt": "",
+    "cargoFormMode": "AdminPrepared",
+    "cargoIssuedAt": "2026-10-11T04:38:30.136Z",
+    "consigneeName": "",
+    "contactPerson": "",
+    "csConfirmedAt": "2026-10-11T04:38:16.591Z",
+    "csConfirmedBy": "SIT UAT",
+    "csContactName": "SIT Contact",
+    "dimensionText": "120x80x90",
+    "goodsLoadedAt": "2026-10-11T04:42:53.550Z",
+    "inspectorName": "SIT Inspector",
+    "mustReturnWh3": true,
+    "scannedPieces": [
+      "SIT-P1",
+      "SIT-P2",
+      "SIT-P3",
+      "SIT-P4"
+    ],
+    "aotQueueStatus": "Approved",
+    "aotVehicleType": "4W",
+    "approvalStatus": "ManualExtraApproved",
+    "inboundDocNote": "SIT UAT document found",
+    "pickupLocation": "SIT TEST PICKUP LOCATION",
+    "returningWh3At": "2026-10-11T04:39:09.562Z",
+    "warehouseBoxes": 4,
+    "afterFinalRound": true,
+    "aotVehicleModel": "Toyota",
+    "aotVehiclePlate": "กข-1234",
+    "documentReadyAt": "2026-10-11T04:41:13.962Z",
+    "documentReadyBy": "u_admin_01",
+    "evidenceChannel": "Line",
+    "inboundClosedAt": "2026-10-11T04:41:05.378Z",
+    "inboundOpenedAt": "2026-10-11T04:40:05.856Z",
+    "locationMovedAt": "2026-10-11T04:40:50.268Z",
+    "outboundFoundAt": "2026-10-11T04:41:40.370Z",
+    "outboundFoundBy": "u_admin_01",
+    "pickupChecklist": [
+      "driver",
+      "vehicle",
+      "cargo_form",
+      "house",
+      "piece",
+      "weight",
+      "invoice",
+      "booking",
+      "photo",
+      "seal"
+    ],
+    "readyForBilling": false,
+    "routeNextModule": "Module2",
+    "evidenceRequired": false,
+    "flightRiskReason": "Cargo received at WH3",
+    "flightRiskStatus": "WH3Received",
+    "inboundDocStatus": "Found",
+    "inboundScannedAt": "2026-10-11T04:40:22.848Z",
+    "locationMoveNote": "SIT UAT move location",
+    "outboundPickedAt": "2026-10-11T04:41:59.853Z",
+    "warehousePallets": 1,
+    "wh3PreDispatchAt": "2026-10-11T04:41:13.962Z",
+    "wh3PreDispatchBy": "u_admin_01",
+    "arrivedAtPickupAt": "2026-10-11T04:38:48.170Z",
+    "cargoTransferDate": "2026-10-11",
+    "cargoTransferFrom": "WH3",
+    "cargoTransferNote": "SIT UAT picking",
+    "cargoTransferTime": "14:00",
+    "doorClosedPhotoAt": "2026-10-11T04:39:09.562Z",
+    "driverRouteStatus": "ReleasedForDock",
+    "mustNotMissFlight": false,
+    "scannedPieceCount": 4,
+    "subcontractorRate": "",
+    "terminalArrivedAt": "2026-10-11T04:45:02.475Z",
+    "cargoTransferGroup": [
+      "SIT-UAT-20261011-70999"
+    ],
+    "csApprovalRequired": false,
+    "eiBarcodeReference": "EI-70999",
+    "flightNumberDigits": 4,
+    "flightRiskAlertKey": "DueToday|2026-10-11T14:00:00.000Z",
+    "locationReleasedAt": "2026-10-11T04:41:59.853Z",
+    "previousLocationId": "R001-01",
+    "releasedLocationId": "R001-02",
+    "wh3PreDispatchNote": "SIT UAT docs ready",
+    "inboundStickerColor": "",
+    "minutesToAirportDue": 552,
+    "requiresLithiumDocs": false,
+    "terminalDestination": "TG",
+    "terminalProfileNote": "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
+    "wh3PreDispatchReady": true,
+    "slaHoursBeforeFlight": 14,
+    "cargoTransferIssuedAt": "2026-10-11T04:41:20.915Z",
+    "effectiveAirportDueAt": "2026-10-11T14:00:00.000Z",
+    "routeComplianceStatus": "MustReturnWH3",
+    "cargoTransferReleaseBy": "SIT UAT",
+    "terminalWorkflowEvents": [
+      {
+        "at": "2026-10-11T04:42:25.849Z",
+        "status": "BookingRequested",
+        "userId": "u_admin_01",
+        "terminal": "TG",
+        "driverName": "Driver A / สมชาย",
+        "vehiclePlate": "กข-1234"
+      },
+      {
+        "at": "2026-10-11T04:42:38.652Z",
+        "status": "TerminalConfirmed",
+        "userId": "u_admin_01",
+        "terminal": "TG",
+        "driverName": "Driver A / สมชาย",
+        "vehiclePlate": "กข-1234"
+      },
+      {
+        "at": "2026-10-11T04:42:53.550Z",
+        "status": "VehicleQueued",
+        "userId": "u_admin_01",
+        "terminal": "TG"
+      },
+      {
+        "at": "2026-10-11T04:44:35.560Z",
+        "status": "ArrivedAtTerminal",
+        "userId": "u_admin_01",
+        "terminal": "TG"
+      },
+      {
+        "at": "2026-10-11T04:45:02.475Z",
+        "status": "ArrivedAtTerminal",
+        "terminal": "TG",
+        "userId": "u_admin_01"
+      },
+      {
+        "at": "2026-10-11T04:45:18.625Z",
+        "status": "UnloadingStarted",
+        "terminal": "TG",
+        "userId": "u_admin_01"
+      },
+      {
+        "at": "2026-10-11T04:45:26.697Z",
+        "status": "UnloadingCompleted",
+        "terminal": "TG",
+        "userId": "u_admin_01"
+      },
+      {
+        "at": "2026-10-11T04:45:52.777Z",
+        "status": "LoadingDetailCompleted",
+        "terminal": "TG",
+        "userId": "u_admin_01"
+      }
+    ],
+    "terminalWorkflowStatus": "UnloadingCompleted",
+    "doorClosedPhotoRequired": true,
+    "wh3PreDispatchChecklist": [
+      "outbound_weighing_slip",
+      "security_original",
+      "airline_specific",
+      "permit",
+      "manifest_review"
+    ],
+    "wh3QueuePriorityMinutes": 561,
+    "releaseDocumentReceivedAt": "2026-10-11T04:39:28.471Z",
+    "cargoTransferPermitAttached": true,
+    "cargoTransferLithiumAttached": false,
+    "weighStartedAt": "2026-10-11T04:45:18.625Z",
+    "unloadingStartedAt": "2026-10-11T04:45:18.625Z",
+    "terminalWeight": "118.5",
+    "terminalDimension": "120x80x90",
+    "weighEndedAt": "2026-10-11T04:45:26.697Z",
+    "unloadingCompletedAt": "2026-10-11T04:45:26.697Z",
+    "unloadingMinutes": 0,
+    "terminalSlaMinutes": 180,
+    "terminalSlaStatus": "WithinSLA",
+    "xrayStatus": "Passed",
+    "requiresRescan": false,
+    "trayNumber": "TRAY-0999",
+    "loadingDetailCount": 1,
+    "packingCompletedAt": "2026-10-11T04:45:52.777Z",
+    "loadingDetailUploaded": true,
+    "closingStatus": "LoadingDetailCompleted",
+    "terminalClosedAt": "2026-10-11T04:45:52.777Z",
+    "billingReviewStatus": "Reviewed",
+    "billingReviewNote": "SIT UAT billing docs ready",
+    "billingDocuments": {
+      "hasWeight": true,
+      "hasTransfer": true,
+      "hasLoading": true,
+      "hasFieldEvidence": true,
+      "hasPlanApproval": true,
+      "hasWh3Dispatch": true,
+      "hasCsEvidence": true,
+      "hasWorkDate": true,
+      "hasPlanVersion": true,
+      "blockers": [],
+      "ready": true,
+      "files": [
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693549553-50fd88.png",
+          "fileId": "FILE-1791693549553-50fd88",
+          "fileType": "ProductImage",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:39:09.557Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693549557-7d272f.png",
+          "fileId": "FILE-1791693549557-7d272f",
+          "fileType": "CargoForm",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:39:09.558Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693549558-b6f16a.png",
+          "fileId": "FILE-1791693549558-b6f16a",
+          "fileType": "DoorClosedAudit",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:39:09.558Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693549558-5b25e8.png",
+          "fileId": "FILE-1791693549558-5b25e8",
+          "fileType": "SignedCargoForm",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:39:09.558Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693549561-fece9e.png",
+          "fileId": "FILE-1791693549561-fece9e",
+          "fileType": "Signature",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:39:09.562Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693577353-de5798.png",
+          "fileId": "FILE-1791693577353-de5798",
+          "fileType": "InboundDocument",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:39:37.354Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693665378-52aa72.png",
+          "fileId": "FILE-1791693665378-52aa72",
+          "fileType": "InboundEvidence",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:41:05.378Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693673962-52359e.png",
+          "fileId": "FILE-1791693673962-52359e",
+          "fileType": "WH3PreDispatchEvidence",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:41:13.962Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693680915-8b7d44.png",
+          "fileId": "FILE-1791693680915-8b7d44",
+          "fileType": "CargoTransferPermit",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:41:20.915Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693719852-82bdc1.png",
+          "fileId": "FILE-1791693719852-82bdc1",
+          "fileType": "OutboundDocument",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:41:59.853Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693732852-958131.png",
+          "fileId": "FILE-1791693732852-958131",
+          "fileType": "EISignProof",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:42:12.852Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693773549-e0b866.png",
+          "fileId": "FILE-1791693773549-e0b866",
+          "fileType": "PreLoadPhoto",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:42:53.550Z",
+          "houseNumber": "SIT-UAT-20261011-70999"
+        },
+        {
+          "fileId": "FILE-1791693952776-f41d46",
+          "houseNumber": "SIT-UAT-20261011-70999",
+          "fileType": "LoadingDetail_1",
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693952776-f41d46.png",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:45:52.777Z"
+        },
+        {
+          "fileId": "FILE-1791693952777-e0f9b9",
+          "houseNumber": "SIT-UAT-20261011-70999",
+          "fileType": "PalletPhoto_1",
+          "url": "/storage/SIT-UAT-20261011-70999/FILE-1791693952777-e0f9b9.png",
+          "mimeType": "image/png",
+          "createdAt": "2026-10-11T04:45:52.777Z"
+        }
+      ]
+    },
+    "invoiceId": "INV-2026-0001",
+    "billingStatus": "Billed",
+    "dueDate": "2026-10-11T04:46:19.473Z",
+    "terminalProfile": {
+      "label": "TG",
+      "note": "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
+      "statuses": [
+        "BookingRequested",
+        "TerminalConfirmed",
+        "LoadedFromWH3",
+        "ArrivedAtTerminal",
+        "WeighingCompleted",
+        "DimensionCompleted",
+        "XRayPassed",
+        "LoadingCompleted",
+        "LoadingDetailCompleted"
+      ],
+      "checklist": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit"
+      ],
+      "slaMinutes": 180
+    },
+    "wh3Documents": {
+      "required": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "checked": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "missing": [],
+      "ready": true,
+      "labels": [
+        {
+          "key": "outbound_weighing_slip",
+          "label": "ใบชั่งสินค้าขาออกจาก WH3",
+          "checked": true
+        },
+        {
+          "key": "security_original",
+          "label": "ใบ Security ตัวจริง",
+          "checked": true
+        },
+        {
+          "key": "airline_specific",
+          "label": "ใบ Airline ตรงสายการบิน/สาขาปลายทาง",
+          "checked": true
+        },
+        {
+          "key": "permit",
+          "label": "ใบ Permit",
+          "checked": true
+        },
+        {
+          "key": "manifest_review",
+          "label": "Manifest / ตรวจยอดก่อนโหลด",
+          "checked": true
+        }
+      ]
+    },
+    "processTracking": {
+      "planning": "ManualExtraEntered",
+      "approval": "ManualExtraApproved",
+      "wh3Documents": "DocumentReady",
+      "transport": "UnloadingCompleted",
+      "terminal": "TG",
+      "terminalStatus": "XRayPassed",
+      "closing": "LoadingDetailCompleted",
+      "billing": "Billed"
+    },
+    "flightTimeLabel": "12/10/69 11:00",
+    "hoursToFlight": 23.2,
+    "redFlag": false,
+    "canUploadLoadingDetail": true
+  },
+  "steps": [
+    {
+      "name": "23 Arrived Terminal",
+      "ok": true,
+      "status": "TerminalArrived",
+      "id": ""
+    },
+    {
+      "name": "24 Start weighing",
+      "ok": true,
+      "status": "",
+      "id": ""
+    },
+    {
+      "name": "25 Weight/Dimension",
+      "ok": true,
+      "status": "WeightDimensionRecorded",
+      "id": ""
+    },
+    {
+      "name": "26 X-Ray passed",
+      "ok": true,
+      "status": "",
+      "id": ""
+    },
+    {
+      "name": "27 Loading detail completed",
+      "ok": true,
+      "status": "",
+      "id": ""
+    },
+    {
+      "name": "28 Billing review",
+      "ok": true,
+      "status": "BillingReviewed",
+      "id": ""
+    },
+    {
+      "name": "29 Generate invoice",
+      "ok": true,
+      "status": "Draft",
+      "id": "INV-2026-0001"
+    },
+    {
+      "name": "30 Send billing email/queue",
+      "ok": true,
+      "status": "EmailQueued",
+      "id": "INV-2026-0001"
+    },
+    {
+      "name": "31 Mark billed",
+      "ok": true,
+      "status": "Billed",
+      "id": "INV-2026-0001"
+    },
+    {
+      "name": "32 HR leave request",
+      "ok": true,
+      "status": "pendingLead",
+      "id": "LV-1791694035173-87a2c7"
+    },
+    {
+      "name": "33 Attendance check-in",
+      "ok": true,
+      "status": "checkin",
+      "id": "ATT-1791694042754-df661a"
+    },
+    {
+      "name": "34 Attendance check-out",
+      "ok": true,
+      "status": "checkout",
+      "id": "ATT-1791694042754-df661a"
+    }
+  ]
+}
