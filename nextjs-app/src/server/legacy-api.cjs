@@ -4352,6 +4352,8 @@ async function handleApi(req, res, pathname) {
         });
     }
     if (req.method === "POST" && pathname === "/api/integrations/run-import") {
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์สั่งนำเข้าข้อมูล" });
         const summary = await processImportFeedDirectory();
         return sendJson(res, 200, {
             ok: true,
@@ -4392,6 +4394,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/transport/emergency-job") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เพิ่มงานด่วน" });
+        payload.userId = actor.id;
         const houseNumber = String(payload.houseNumber || "").trim().toUpperCase();
         if (!houseNumber) return sendJson(res, 400, { error: "กรุณากรอกเลข House" });
         const existing = findJob(db, houseNumber);
@@ -4425,6 +4430,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/admin/job") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เปิดใบงาน" });
+        payload.userId = actor.id;
         payload.planSource ||= payload.sourceChannel || "ManualExtra";
         payload.evidenceChannel ||= payload.sourceChannel || "Line/Email";
         payload.manualExtra = payload.planSource !== "LoadPlan";
@@ -4451,6 +4459,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/admin/job-batch") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เปิดใบงานแบบกลุ่ม" });
+        payload.userId = actor.id;
         payload.planSource ||= payload.sourceChannel || "ManualExtra";
         payload.evidenceChannel ||= payload.sourceChannel || "Line/Email";
         payload.manualExtra = payload.planSource !== "LoadPlan";
@@ -4505,6 +4516,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/admin/issue-cargo") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ออกใบ Cargo" });
+        payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -4526,6 +4540,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/admin/import-flight") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์นำเข้าไฟล์เที่ยวบิน" });
+        payload.userId = actor.id;
         const rows = parseCsvRows(payload.csvText);
         const imported = [];
         const headers = rows[0]?.map(header => String(header || "").trim()) || [];
@@ -4582,6 +4599,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/admin/import-xlsx") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์นำเข้าไฟล์" });
+        payload.userId = actor.id;
         if (!payload.fileBase64) return sendJson(res, 400, {
             error: "fileBase64 required"
         });
@@ -4655,6 +4675,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/admin/import-scd") {
         const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์นำเข้าไฟล์ SCD" });
+        payload.userId = actor.id;
         const result = isGlobalConsolFormat(payload.csvText) ? importGlobalConsolRows(db, payload.csvText) : importScdRows(db, payload.csvText);
         const history = recordImportHistory(db, result, payload.fileName, "Manual");
         const criticalChanges = result.changes.filter(change => change.changes.some(item => item !== "NEW_JOB"));
@@ -7346,11 +7369,14 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/loadplan/tag") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์แก้ไข Load Plan" });
+        payload.userId = actor.id;
         const {houseNumber: houseNumber, action: action} = payload;
         if (!houseNumber) return sendJson(res, 400, {
             error: "houseNumber required"
         });
-        const db = readDb();
         if (!db.loadPlans) db.loadPlans = [];
         let plan = db.loadPlans[db.loadPlans.length - 1];
         const today = payload.flightDate || bangkokDate();
@@ -7415,6 +7441,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/jobs/upload-doc") {
         const payload = await parseBody(req);
+        const actor = sessionUser(db, req);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์อัปโหลดเอกสาร" });
+        payload.userId = actor.id;
         if (!payload.houseNumber) return sendJson(res, 400, {
             error: "houseNumber required"
         });
@@ -7478,11 +7507,15 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/jobs/cs-confirm") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "CS" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ยืนยันงานแทน CS" });
+        payload.confirmedBy = actor.name || actor.id;
+        payload.userId = actor.id;
         const {houseNumbers: houseNumbers, invoiceNo: invoiceNo, confirmedBy: confirmedBy, contactName: contactName, evidenceChannel: evidenceChannel, evidenceNote: evidenceNote, evidenceFiles: evidenceFiles} = payload;
         if (!houseNumbers?.length) return sendJson(res, 400, {
             error: "houseNumbers required"
         });
-        const db = readDb();
         const now = nowIso();
         let confirmed = 0;
         (db.jobs || []).forEach(job => {
@@ -7563,11 +7596,15 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/jobs/cs-reject") {
         const payload = await parseBody(req);
+        const db = readDb();
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "CS" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ปฏิเสธงานแทน CS" });
+        payload.rejectedBy = actor.name || actor.id;
+        payload.userId = actor.id;
         const {houseNumbers: houseNumbers, reason: reason, rejectedBy: rejectedBy} = payload;
         if (!houseNumbers?.length) return sendJson(res, 400, {
             error: "houseNumbers required"
         });
-        const db = readDb();
         const now = nowIso();
         (db.jobs || []).forEach(job => {
             if (houseNumbers.includes(job.houseNumber)) {
