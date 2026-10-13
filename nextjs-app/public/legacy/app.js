@@ -801,6 +801,11 @@ function jobDateKey(job) {
     return String(value).slice(0, 10);
 }
 
+function isDemoJob(job) {
+    const text = [ job?.customerId, job?.customerName, job?.houseNumber, job?.source, job?.planSource ].filter(Boolean).join(" ").toLowerCase();
+    return /abc logistics|xyz trading|c_abc_logistics|c_xyz_trading|mock|demo/.test(text);
+}
+
 function dateRangeKeys(from, to) {
     const start = new Date(`${from}T00:00:00`);
     const end = new Date(`${to}T00:00:00`);
@@ -817,6 +822,7 @@ function dateRangeKeys(from, to) {
 function dashboardFilteredJobs() {
     const {dateFrom: dateFrom, dateTo: dateTo, status: status} = state.filters;
     return (state.dashboard?.jobs || []).filter(job => {
+        if (isDemoJob(job)) return false;
         const key = jobDateKey(job);
         const inDate = (!dateFrom || key >= dateFrom) && (!dateTo || key <= dateTo);
         const inStatus = status === "All" || job.status === status;
@@ -8067,6 +8073,7 @@ function renderCalendar() {
     const start = new Date(year, month, 1 - firstWeekday);
     const jobsByDate = new Map;
     for (const job of state.dashboard.jobs || []) {
+        if (isDemoJob(job)) continue;
         const key = jobDateKey(job);
         if (!key) continue;
         if (!jobsByDate.has(key)) jobsByDate.set(key, []);
@@ -11061,14 +11068,9 @@ function fbDueAt(job) {
     return "";
 }
 
-function isDemoFlightBoardJob(job) {
-    var text = [ job.customerId, job.customerName, job.houseNumber, job.source, job.planSource ].filter(Boolean).join(" ").toLowerCase();
-    return /abc logistics|xyz trading|c_abc_logistics|c_xyz_trading|mock|demo/.test(text);
-}
-
 function flightBoardRows() {
     var jobs = (state.dashboard?.jobs || []).filter(function (job) {
-        return !isDemoFlightBoardJob(job) && !["Billed", "InvoiceSent", "Completed", "ReadyForBilling"].includes(job.status);
+        return !isDemoJob(job) && !["Billed", "InvoiceSent", "Completed", "ReadyForBilling"].includes(job.status);
     });
     var now = Date.now();
     return jobs.map(function (job) {
