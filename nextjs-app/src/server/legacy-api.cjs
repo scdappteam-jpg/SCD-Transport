@@ -3436,7 +3436,7 @@ async function handleApi(req, res, pathname) {
 
     if (req.method === "POST" && pathname === "/api/admin/db-retry-sync") {
         const payload = await parseBody(req);
-        const actor = (db.users || []).find(user => user.id === payload.userId);
+        const actor = sessionUser(db, req);
         if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) {
             return sendJson(res, 403, { error: "เฉพาะ Admin / ผู้บริหาร เท่านั้นที่สั่งซิงก์ใหม่ได้" });
         }
@@ -3466,7 +3466,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/admin/reset-jobs") {
         const payload = await parseBody(req);
-        const actor = (db.users || []).find(user => user.id === payload.userId);
+        const actor = sessionUser(db, req);
         if (!actor || actor.role !== "Admin") return sendJson(res, 403, {
             ok: false,
             error: "เฉพาะ Admin เท่านั้นที่ล้างงานได้"
@@ -3549,7 +3549,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/admin/purge-old-jobs") {
         const payload = await parseBody(req);
-        const actor = (db.users || []).find(user => user.id === payload.userId);
+        const actor = sessionUser(db, req);
         if (!actor || actor.role !== "Admin") return sendJson(res, 403, {
             ok: false,
             error: "เฉพาะ Admin เท่านั้นที่ล้างงานเก่าได้"
@@ -3800,8 +3800,7 @@ async function handleApi(req, res, pathname) {
         });
     }
     if (req.method === "GET" && pathname === "/api/integrations/cartrack/demo") {
-        const viewerId = new URL(req.url, "http://localhost").searchParams.get("userId") || "";
-        const viewer = (db.users || []).find(user => user.id === viewerId);
+        const viewer = sessionUser(db, req);
         if (!viewer || ![ "Admin", "Executive", "Team_Transport" ].includes(viewer.role)) return sendJson(res, 403, { ok: false, error: "ไม่มีสิทธิ์ดูข้อมูลตำแหน่งรถ" });
         try {
             const vehicles = await getCartrackDemoVehicles();
@@ -3820,9 +3819,10 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/dock/bays") {
         const payload = await parseBody(req);
-        const actor = (db.users || []).find(user => user.id === payload.userId);
+        const actor = sessionUser(db, req);
         const allowed = actor && [ "Admin", "Executive", "WH3_TeamLeader" ].includes(actor.role);
         if (!allowed) return sendJson(res, 403, { error: "เฉพาะ Admin / ผู้บริหาร / หัวหน้าคลัง เท่านั้นที่แก้ไขช่องเทียบท่าได้" });
+        payload.userId = actor.id;
         const bays = dockBayList(db);
         const action = String(payload.action || "").toLowerCase();
 
@@ -3897,7 +3897,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/billing/remove-draft") {
         const payload = await parseBody(req);
-        const actor = (db.users || []).find(user => user.id === payload.userId);
+        const actor = sessionUser(db, req);
         if (!actor || ![ "Admin", "Executive", "Billing" ].includes(actor.role)) {
             return sendJson(res, 403, { error: "เฉพาะ Admin / ผู้บริหาร / Billing เท่านั้นที่ลบใบแจ้งหนี้ร่างได้" });
         }
@@ -3921,7 +3921,7 @@ async function handleApi(req, res, pathname) {
 
     if (req.method === "POST" && pathname === "/api/admin/close-stale-jobs") {
         const payload = await parseBody(req);
-        const actor = (db.users || []).find(user => user.id === payload.userId);
+        const actor = sessionUser(db, req);
         if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) {
             return sendJson(res, 403, { error: "เฉพาะ Admin / ผู้บริหาร เท่านั้นที่ปิดงานค้างได้" });
         }
@@ -5604,7 +5604,7 @@ async function handleApi(req, res, pathname) {
         if (!job.wh3PreDispatchReady) return sendJson(res, 409, {
             error: "Complete WH3 original document checklist before terminal booking"
         });
-        const actor = (db.users || []).find(user => user.id === payload.userId);
+        const actor = sessionUser(db, req);
         const canBook = actor && [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ].includes(actor.role);
         const canApprove = actor && [ "Admin", "Executive" ].includes(actor.role);
         if (!canBook || payload.approved && !canApprove) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จองหรืออนุมัติคิว AOT" });
@@ -5615,6 +5615,7 @@ async function handleApi(req, res, pathname) {
         });
         const terminal = normalizeTerminal(payload.terminalDestination || job.terminalDestination || job.destination || "TG");
         const workflowStatus = payload.approved ? "TerminalConfirmed" : "BookingRequested";
+        payload.userId = actor.id;
         const event = {
             at: nowIso(),
             status: workflowStatus,
@@ -7511,6 +7512,8 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/hr/checkin-location") {
         const payload = await parseBody(req);
         const db = readDb();
+        const actor = sessionUser(db, req);
+        if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น" });
         const name = String(payload.name || "").trim().slice(0, 160);
         const latitude = Number(payload.latitude);
         const longitude = Number(payload.longitude);
@@ -7528,7 +7531,7 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/hr/attendance-settings") {
         const payload = await parseBody(req);
         const db = readDb();
-        const actor = (db.users || []).find(user => user.id === payload.actorId);
+        const actor = sessionUser(db, req);
         if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น" });
         const defaultRadiusMeters = Number(payload.defaultRadiusMeters);
         if (!Number.isFinite(defaultRadiusMeters) || defaultRadiusMeters < 20 || defaultRadiusMeters > 5000) return sendJson(res, 400, { error: "รัศมีต้องอยู่ระหว่าง 20 ถึง 5,000 เมตร" });
@@ -7541,7 +7544,7 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/hr/payroll-profile") {
         const payload = await parseBody(req);
         const db = readDb();
-        const actor = (db.users || []).find(user => user.id === payload.actorId);
+        const actor = sessionUser(db, req);
         const employee = (db.users || []).find(user => user.id === payload.employeeId);
         if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น" });
         if (!employee) return sendJson(res, 404, { error: "Employee not found" });
@@ -7555,7 +7558,7 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/hr/payroll-run") {
         const payload = await parseBody(req);
         const db = readDb();
-        const actor = (db.users || []).find(user => user.id === payload.actorId);
+        const actor = sessionUser(db, req);
         if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น" });
         const periodStart = String(payload.periodStart || "").slice(0, 10), periodEnd = String(payload.periodEnd || "").slice(0, 10);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart) || !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd) || periodEnd < periodStart) return sendJson(res, 400, { error: "ระบุช่วงรอบจ่ายไม่ถูกต้อง" });
@@ -7662,7 +7665,7 @@ async function handleApi(req, res, pathname) {
         const list = kind === "ot" ? db.hr.otRequests : kind === "attendance" ? db.hr.attendanceCorrections : db.hr.leaveRequests;
         const request = list.find(item => item.id === payload.id);
         if (!request) return sendJson(res, 404, { error: "HR request not found" });
-        const actor = (db.users || []).find(item => item.id === payload.actorId);
+        const actor = sessionUser(db, req);
         if (!actor) return sendJson(res, 403, { error: "ไม่พบผู้ดำเนินการ HR" });
         const actorName = actor.name || "System";
         const action = String(payload.action || "");
