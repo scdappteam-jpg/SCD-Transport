@@ -49,9 +49,10 @@ const SUPABASE_STATE_ID = process.env.SUPABASE_STATE_ID || "scd-transport";
 
 const RELATIONAL_MIRROR_ENABLED = String(process.env.RELATIONAL_MIRROR_ENABLED || "true").toLowerCase() !== "false";
 
-// Production must fail closed: an omitted Render environment variable must
-// never turn the operational API into an anonymous API.
-const SERVER_AUTH_REQUIRED = String(process.env.SCD_SERVER_AUTH_REQUIRED || "true").toLowerCase() === "true";
+// Production must fail closed.  The old SCD_SERVER_AUTH_REQUIRED=false flag
+// existed during the migration and must not be able to reopen the operational
+// API.  Local test environments may opt out only with this explicit name.
+const SERVER_AUTH_REQUIRED = String(process.env.SCD_ALLOW_INSECURE_NO_AUTH || "false").toLowerCase() !== "true";
 
 let SERVER_PASSWORD_HASHES = {};
 try { SERVER_PASSWORD_HASHES = JSON.parse(process.env.SCD_AUTH_PASSWORD_HASHES || "{}"); } catch (_) { SERVER_PASSWORD_HASHES = {}; }
