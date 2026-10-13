@@ -1208,6 +1208,23 @@ function bangkokDate(iso = nowIso()) {
     return new Date(d.getTime() + 7 * 36e5).toISOString().slice(0, 10);
 }
 
+function dateOnlyBangkok(value) {
+    if (!value) return "";
+    const text = String(value);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+    if (/^\d{4}-\d{2}-\d{2}T/.test(text)) return bangkokDate(text);
+    const d = new Date(text);
+    return isNaN(d.getTime()) ? "" : bangkokDate(d.toISOString());
+}
+
+function jobBusinessDates(job = {}) {
+    return [ job.workDate, job.planDate, job.pickupDate, job.readyTime, job.flightTime, job.createdAt, job.updatedAt ].map(dateOnlyBangkok).filter(Boolean);
+}
+
+function jobBelongsToBusinessDate(job, date) {
+    return jobBusinessDates(job).includes(date);
+}
+
 function createHrNotification(db, { recipientUserId, title, body, request, kind, actor }) {
     if (!recipientUserId) return;
     db.notifications ||= [];
@@ -3528,6 +3545,114 @@ async function handleApi(req, res, pathname) {
             dashboard: buildDashboard(db)
         });
     }
+    if (req.method === "POST" && pathname === "/api/admin/purge-old-jobs") {
+        const payload = await parseBody(req);
+        const actor = (db.users || []).find(user => user.id === payload.userId);
+        if (!actor || actor.role !== "Admin") return sendJson(res, 403, {
+            ok: false,
+            error: "เฉพาะ Admin เท่านั้นที่ล้างงานเก่าได้"
+        });
+        if (payload.confirm !== "KEEP_TODAY_ONLY") return sendJson(res, 400, {
+            ok: false,
+            error: "Invalid purge confirmation"
+        });
+        const keepDate = dateOnlyBangkok(payload.keepDate) || bangkokDate();
+        const beforeJobs = db.jobs || [];
+        const keepJobs = beforeJobs.filter(job => jobBelongsToBusinessDate(job, keepDate));
+        const keepHouses = new Set(keepJobs.map(job => job.houseNumber).filter(Boolean));
+        const keepByHouseOrToday = item => {
+            const house = item.houseNumber || item.house || item.hawb || item.jobHouseNumber;
+            if (house && keepHouses.has(house)) return true;
+            const houses = Array.isArray(item.houseNumbers) ? item.houseNumbers : Array.isArray(item.houses) ? item.houses : [];
+            if (houses.some(h => keepHouses.has(h))) return true;
+            return [ item.workDate, item.planDate, item.pickupDate, item.flightDate, item.date, item.createdAt, item.updatedAt ].map(dateOnlyBangkok).includes(keepDate);
+        };
+        const removed = {
+            keepDate,
+            jobs: beforeJobs.length - keepJobs.length,
+            billing: (db.billing || []).length,
+            loadPlans: (db.loadPlans || []).length,
+            activityLogs: (db.activityLogs || []).length,
+            attachments: (db.attachments || []).length,
+            importChanges: (db.importChanges || []).length,
+            importHistory: (db.importHistory || []).length,
+            alerts: (db.alerts || []).length,
+            taskGroups: (db.taskGroups || []).length,
+            notifications: (db.notifications || []).length,
+            dockQueue: (db.dock?.queue || []).length,
+            serviceRecords: (db.serviceRecords || []).length
+        };
+        db.jobs = keepJobs;
+        db.billing = (db.billing || []).filter(keepByHouseOrToday);
+        db.loadPlans = (db.loadPlans || []).filter(keepByHouseOrToday);
+        db.activityLogs = (db.activityLogs || []).filter(keepByHouseOrToday);
+        db.attachments = (db.attachments || []).filter(keepByHouseOrToday);
+        db.importChanges = (db.importChanges || []).filter(keepByHouseOrToday);
+        db.importHistory = (db.importHistory || []).filter(keepByHouseOrToday);
+        db.alerts = (db.alerts || []).filter(keepByHouseOrToday);
+        db.taskGroups = (db.taskGroups || []).filter(keepByHouseOrToday);
+        db.notifications = (db.notifications || []).filter(keepByHouseOrToday);
+        db.serviceRecords = (db.serviceRecords || []).filter(keepByHouseOrToday);
+        removed.billing -= db.billing.length;
+        removed.loadPlans -= db.loadPlans.length;
+        removed.activityLogs -= db.activityLogs.length;
+        removed.attachments -= db.attachments.length;
+        removed.importChanges -= db.importChanges.length;
+        removed.importHistory -= db.importHistory.length;
+        removed.alerts -= db.alerts.length;
+        removed.taskGroups -= db.taskGroups.length;
+        removed.notifications -= db.notifications.length;
+        removed.serviceRecords -= db.serviceRecords.length;
+
+        let freedLocations = 0;
+        for (const loc of db.warehouseMap?.locations || []) {
+            if (Array.isArray(loc.occupiedBy)) {
+                const next = loc.occupiedBy.filter(house => keepHouses.has(house));
+                if (next.length !== loc.occupiedBy.length) freedLocations += 1;
+                loc.occupiedBy = next;
+            }
+            if ((!loc.occupiedBy || !loc.occupiedBy.length) && loc.status && loc.status !== "Available") loc.status = "Available";
+        }
+        removed.freedLocations = freedLocations;
+
+        db.dock ||= {};
+        db.dock.queue = (db.dock.queue || []).filter(keepByHouseOrToday);
+        removed.dockQueue -= db.dock.queue.length;
+        db.dock.log = (db.dock.log || []).filter(keepByHouseOrToday);
+        for (const bay of db.dock.bays || []) {
+            if (bay.houseNumber && !keepHouses.has(bay.houseNumber)) {
+                if (bay.status !== "Closed") bay.status = "Available";
+                delete bay.houseNumber;
+                delete bay.vehiclePlate;
+                delete bay.driverName;
+                delete bay.assignedAt;
+            }
+        }
+
+        db.integrations ||= {};
+        db.integrations.importedFeedHashes = {};
+        db.integrations.n8nEmailHashes = {};
+        db.integrations.n8nEmail = null;
+        db.integrations.lastFeedRun = {
+            checked: 0,
+            importedFiles: 0,
+            jobs: 0,
+            changes: 0,
+            checkedAt: nowIso(),
+            note: `Purged old jobs, kept ${keepDate}`
+        };
+        logActivity(db, { activityType: "OldJobsPurged", actor: actor.name || actor.id, detail: `เหลืองานวันที่ ${keepDate}: ${keepJobs.length} ใบ / ลบงานเก่า ${removed.jobs} ใบ` });
+        writeDb(db);
+        await flushSupabasePersistence();
+        return sendJson(res, 200, {
+            ok: true,
+            keepDate,
+            keptJobs: keepJobs.length,
+            removedJobs: removed.jobs,
+            removed,
+            dashboard: buildDashboard(db)
+        });
+    }
     if (req.method === "GET" && pathname === "/api/process/config") {
         return sendJson(res, 200, {
             ok: true,
@@ -3797,6 +3922,9 @@ async function handleApi(req, res, pathname) {
         const actor = (db.users || []).find(user => user.id === payload.userId);
         if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) {
             return sendJson(res, 403, { error: "เฉพาะ Admin / ผู้บริหาร เท่านั้นที่ปิดงานค้างได้" });
+        }
+        if (actor.role !== "Admin" && payload.supervisorConfirmed !== true) {
+            return sendJson(res, 403, { error: "การยกเลิกงานต้องได้รับการยืนยันจากหัวหน้าก่อน ยกเว้น Admin" });
         }
         const days = Math.max(1, Number(payload.days || 7));
         const cutoff = Date.now() - days * 864e5;

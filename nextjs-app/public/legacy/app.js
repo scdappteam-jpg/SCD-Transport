@@ -2278,7 +2278,7 @@ function renderRoleHome() {
         return;
     }
     const riskJobs = jobs.filter(isDashboardRiskJob).slice(0, 5);
-    const actionButtons = actions.map(([t, v]) => `<button type="button" onclick="setView('${v}')">${t}</button>`).join("") + (role === "Admin" ? `<button type="button" style="background:#fee2e2;color:#b91c1c" onclick="adminResetAllJobs()">ล้างงานทั้งหมด</button>` : "");
+    const actionButtons = actions.map(([t, v]) => `<button type="button" onclick="setView('${v}')">${t}</button>`).join("") + (role === "Admin" ? `<button type="button" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa" onclick="adminPurgeOldJobsKeepToday()">ล้างงานเก่า</button><button type="button" style="background:#fee2e2;color:#b91c1c" onclick="adminResetAllJobs()">ล้างงานทั้งหมด</button>` : "");
     box.innerHTML = `\n    <section class="role-home card">\n      <div class="rh-head">\n        <div>\n          <strong>สวัสดี ${safeHtml(user.name || "")}</strong>\n          <span>${safeHtml(ROLE_LABEL_TH[role] || role)} · สิ่งที่ต้องโฟกัสตอนนี้ · เฉพาะช่วงวันที่เลือก</span>\n        </div>\n        ${actionButtons ? `<div class="rh-actions">${actionButtons}</div>` : ""}\n      </div>\n      <div class="rh-cards">\n        ${cards.map(c => `\n          <button type="button" class="rh-card ${c.c}" onclick="setView('${c.v}')">\n            <strong>${c.n}</strong><span>${c.t}</span>\n          </button>`).join("")}\n      </div>\n      ${role === "Admin" || role === "Executive" || role === "WH3_TeamLeader" || role === "Team_Transport" ? `<div class="rh-staff-strip" id="rhStaffStrip"></div>` : ""}\n      ${riskJobs.length && (role === "Admin" || role === "Executive" || role === "Terminal") ? `\n        <div class="rh-risk">\n          <span class="rh-risk-title">ต้องจัดการด่วน</span>\n          ${riskJobs.map(j => `\n            <button type="button" class="rh-risk-item" onclick="setView('orders')">\n              <b>${safeHtml(j.houseNumber)}</b>\n              <span>${safeHtml(j.customerName || "-")}</span>\n              <em>${j.redFlag ? "เสี่ยงตกไฟลท์ &lt;4 ชม." : statusLabelTh(j.status)}</em>\n            </button>`).join("")}\n        </div>` : ""}\n    </section>`;
     loadRoleHomeAttendance();
 }
@@ -10848,6 +10848,46 @@ async function adminResetAllJobs() {
     }
 }
 
+async function adminPurgeOldJobsKeepToday() {
+    const user = currentWebUser();
+    if (user?.role !== "Admin") return toast("เฉพาะ Admin เท่านั้นที่ล้างงานเก่าได้", "error");
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+    const jobs = state.dashboard?.jobs || [];
+    const isTodayJob = job => [ job.workDate, job.planDate, job.pickupDate, job.readyTime, job.flightTime, job.createdAt, job.updatedAt ].some(value => {
+        if (!value) return false;
+        const text = String(value);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text === today;
+        const d = new Date(text);
+        return !Number.isNaN(d.getTime()) && d.toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }) === today;
+    });
+    const keepCount = jobs.filter(isTodayJob).length;
+    const purgeCount = Math.max(0, jobs.length - keepCount);
+    if (!window.confirm(
+        `ล้างงานเก่าและเหลือเฉพาะงานวันนี้ (${today})?\n\n` +
+        `จะเก็บงานวันนี้ประมาณ ${keepCount} ใบ\n` +
+        `จะลบงานเก่าประมาณ ${purgeCount} ใบ พร้อมคิว/แจ้งเตือน/เอกสารแนบที่ผูกกับงานเก่า\n\n` +
+        "Admin ทำรายการนี้ได้ทันที แต่ควรใช้เมื่อพร้อมเริ่มรอบงานใหม่แล้ว")) return;
+    const word = await scdPrompt({
+        title: "ยืนยันล้างงานเก่า",
+        note: `ระบบจะเก็บเฉพาะงานวันที่ ${today} และลบงานเก่าออกจากคิว`,
+        label: "พิมพ์ TODAY เพื่อยืนยัน",
+        okText: "ล้างงานเก่า"
+    });
+    if (word !== "TODAY") return toast("ยกเลิก — ไม่ได้ล้างงานเก่า");
+    try {
+        const data = await api("/api/admin/purge-old-jobs", {
+            confirm: "KEEP_TODAY_ONLY",
+            keepDate: today,
+            userId: user.id
+        });
+        state.dashboard = data.dashboard;
+        toast(`ล้างงานเก่าแล้ว ${data.removedJobs || 0} ใบ · เหลืองานวันนี้ ${data.keptJobs || 0} ใบ`);
+        renderAll();
+    } catch (error) {
+        toast(error.message || "ล้างงานเก่าไม่สำเร็จ", "error");
+    }
+}
+
 async function submitCsConfirm(gkey) {
     const grp = document.querySelector(`.cs-date-group[data-gkey="${gkey}"]`);
     if (!grp) return;
@@ -12103,10 +12143,21 @@ async function closeStaleJobs() {
     });
     if (answer === null) return;
     var days = Math.max(1, Number(answer) || orderStaleDays);
+    var supervisorConfirmed = user.role === "Admin";
+    if (!supervisorConfirmed) {
+        var leadWord = await scdPrompt({
+            title: "ยืนยันจากหัวหน้า",
+            note: "การยกเลิกงานค้างต้องได้รับการยืนยันจากหัวหน้า ยกเว้นผู้ดูแลระบบ",
+            label: "พิมพ์ APPROVED เมื่อหัวหน้ายืนยันแล้ว",
+            okText: "ดำเนินการต่อ"
+        });
+        if (leadWord !== "APPROVED") return toast("ยกเลิก — ยังไม่ได้ยืนยันจากหัวหน้า");
+        supervisorConfirmed = true;
+    }
     try {
         var res = await fetch(apiUrl("/api/admin/close-stale-jobs"), {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: user.id, days: days })
+            body: JSON.stringify({ userId: user.id, days: days, supervisorConfirmed: supervisorConfirmed })
         });
         var data = await res.json();
         if (!res.ok) throw new Error(data.error || "ปิดงานค้างไม่สำเร็จ");

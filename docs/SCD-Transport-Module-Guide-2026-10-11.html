@@ -1227,6 +1227,8 @@
               <tr><td>3</td><td>ปิด Billing เป็น Billed</td><td>หลังปิด Billed งานจะหายจากคิววางบิลทันที ผู้ใช้ต้องเข้าใจผลลัพธ์ก่อนกด</td><td>เพิ่ม confirmation ระบุเลข invoice และอธิบายว่าต้องดูย้อนหลังจาก Tracking / Cargo History / รายงานวางบิล</td></tr>
               <tr><td>4</td><td>โหลดขึ้นรถและยืนยันถึง Terminal</td><td>เป็น action ที่เปลี่ยนสถานะสำคัญใน flow outbound</td><td>เพิ่ม confirmation ต่อ House ก่อนบันทึก เพื่อกันกดผิดระหว่างงานเร่ง</td></tr>
               <tr><td>5</td><td>ค้น House ที่ปิดแล้วในคิว</td><td>เมื่อ House ถูกปิด Billed แล้วจะไม่อยู่ใน CS Queue / Billing Queue ทำให้เข้าใจผิดว่างานหาย</td><td>เพิ่มข้อความอธิบายเมื่อค้นในคิวไม่เจอ แต่พบ House ในระบบ พร้อมทางไป Tracking / Cargo History</td></tr>
+              <tr><td>6</td><td>ล้างงานเก่า เหลือเฉพาะงานวันนี้</td><td>ต้องเริ่มใช้งานจริงโดยไม่ให้รายการเก่าปนกับงานประจำวันที่ต้องดูแล</td><td>เพิ่มคำสั่ง Admin-only สำหรับล้างงานก่อนวันนี้ โดยเก็บงานวันที่ปัจจุบันและข้อมูลตั้งค่าหลักไว้</td></tr>
+              <tr><td>7</td><td>กติกายกเลิกงาน</td><td>การยกเลิกงานมีผลต่อคิวและรายงาน จึงต้องมีผู้รับผิดชอบชัดเจน</td><td>Admin ทำได้ทันที ส่วนผู้มีสิทธิ์ดูแล role อื่นต้องยืนยันจากหัวหน้าก่อนดำเนินการ</td></tr>
             </tbody>
           </table>
         </div>
@@ -1244,8 +1246,8 @@
           <table>
             <thead><tr><th>เรื่อง</th><th>คำตอบที่ต้องการ</th><th>ใช้กำหนดในระบบ</th></tr></thead>
             <tbody>
-              <tr><td>งานค้างเดิม</td><td>เริ่ม Go-live ด้วยการล้างงานเดิม, เก็บเป็นประวัติ, หรือย้ายเป็น archived</td><td>Dashboard, CS Queue, Risk Alert และรายงานเริ่มต้น</td></tr>
-              <tr><td>สิทธิ์ role production</td><td>ใครมีสิทธิ์ bulk confirm, ล้างข้อมูล, แก้สถานะ, ปิด Billed และดูข้อมูล HR</td><td>Role guard และ action permission</td></tr>
+              <tr><td>งานค้างเดิม</td><td>กำหนดเวลาที่ Admin จะกดล้างงานเก่า และยืนยันว่าให้เหลือเฉพาะงานของวันนั้น</td><td>Dashboard, CS Queue, Risk Alert และรายงานเริ่มต้น</td></tr>
+              <tr><td>สิทธิ์ role production</td><td>Admin กำหนดสิทธิ์หลักได้เท่านั้น ส่วนการยกเลิกโดย role ดูแลต้องมีหัวหน้ายืนยัน ยกเว้น Admin ที่ลบได้โดยตรง</td><td>Role guard และ action permission</td></tr>
               <tr><td>Checklist เอกสาร outbound</td><td>เอกสารบังคับของ TG/TGINT/BFS และเอกสารแยกตามลูกค้า/ปลายทาง</td><td>Doc validation ก่อนออกสนามบินและก่อนวางบิล</td></tr>
               <tr><td>Billing email จริง</td><td>ผู้รับ, CC, provider, template, ไฟล์แนบ และเงื่อนไขส่งซ้ำ</td><td>การส่งอีเมลวางบิลจริงและ audit trail</td></tr>
               <tr><td>SLA / Alert</td><td>เกณฑ์เตือนแต่ละ Terminal, flight C/K, กลุ่ม LINE/n8n และเวลาที่ต้องแจ้งเตือน</td><td>แจ้งเตือนงานเสี่ยงและ no-miss flight</td></tr>
@@ -1303,7 +1305,7 @@
         </div>
       </div>
 
-      <div class="question"><strong>1) งานเก่า / งานค้าง:</strong> จะล้างงานค้างเดิม 3,991 งานหรือเก็บไว้ดูประวัติ? ถ้าล้าง ให้กำหนดผู้อนุมัติและช่วงเวลาที่ดำเนินการ</div>
+      <div class="question"><strong>1) งานเก่า / งานค้าง:</strong> ใช้นโยบายล้างงานเก่าโดย Admin และเหลือเฉพาะงานของวันปัจจุบันก่อนเริ่มรอบงานจริง</div>
       <div class="question"><strong>2) การยืนยัน CS แบบกลุ่ม:</strong> อนุญาตให้ยืนยันทั้งหมดที่กรองได้หรือไม่ หรือจำกัดเฉพาะ customer/date/invoice เดียวต่อครั้ง</div>
       <div class="question"><strong>3) ข้อมูลเริ่มใช้งานจริง:</strong> ใช้ไฟล์ใดเป็นชุดแรก และใครเป็นเจ้าของไฟล์ข้อมูลจริง</div>
       <div class="question"><strong>4) เอกสารครบก่อนออกสนามบิน:</strong> ยืนยันรายการเอกสารบังคับ เช่น Cargo Transfer, Permit, ใบชั่ง, Loading Detail, รูปสินค้า, รูปปิดประตู</div>
