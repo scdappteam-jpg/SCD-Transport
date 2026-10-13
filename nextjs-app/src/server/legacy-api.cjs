@@ -1295,6 +1295,13 @@ function requireSessionRole(db, req, roles) {
     return actor && roles.includes(actor.role) ? actor : null;
 }
 
+function requirePickupActor(db, req, jobs) {
+    const actor = requireSessionRole(db, req, [ "Driver", "Admin", "Executive", "Team_Transport" ]);
+    if (!actor) return null;
+    if (actor.role === "Driver" && jobs.some(job => String(job.driverId || "") !== actor.id)) return null;
+    return actor;
+}
+
 const LOAD_PLAN_ROUNDS = String(process.env.LOAD_PLAN_ROUNDS || "08:00,12:00,16:00").split(",").map(value => value.trim()).filter(Boolean);
 
 const TERMINAL_PROFILES = {
@@ -4695,6 +4702,9 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/pickup/route-start") {
         const payload = await parseBody(req);
         const jobs = findPayloadJobs(db, payload);
+        const actor = requirePickupActor(db, req, jobs);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เริ่มรอบรับสินค้านี้" });
+        payload.userId = actor.id;
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมเริ่มรอบ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
@@ -4712,6 +4722,9 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/pickup/checkin") {
         const payload = await parseBody(req);
         const jobs = findPayloadJobs(db, payload);
+        const actor = requirePickupActor(db, req, jobs);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เช็กอินงานนี้" });
+        payload.userId = actor.id;
         const job = jobs[0];
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -4751,6 +4764,9 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/pickup/pause") {
         const payload = await parseBody(req);
         const jobs = findPayloadJobs(db, payload);
+        const actor = requirePickupActor(db, req, jobs);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์พักรอบงานนี้" });
+        payload.userId = actor.id;
         const job = jobs[0];
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -4800,6 +4816,9 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/pickup/load") {
         const payload = await parseBody(req);
         const jobs = findPayloadJobs(db, payload);
+        const actor = requirePickupActor(db, req, jobs);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์บันทึกการรับสินค้านี้" });
+        payload.userId = actor.id;
         const job = jobs[0];
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -4853,6 +4872,9 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/pickup/complete") {
         const payload = await parseBody(req);
         const jobs = findPayloadJobs(db, payload);
+        const actor = requirePickupActor(db, req, jobs);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ปิดรับสินค้านี้" });
+        payload.userId = actor.id;
         const job = jobs[0];
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
@@ -4966,6 +4988,9 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/pickup/arrive-wh3") {
         const payload = await parseBody(req);
         const jobs = findPayloadJobs(db, payload);
+        const actor = requirePickupActor(db, req, jobs);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ยืนยันถึง WH3 สำหรับงานนี้" });
+        payload.userId = actor.id;
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
@@ -4989,6 +5014,9 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/pickup/release-document") {
         const payload = await parseBody(req);
         const jobs = findPayloadJobs(db, payload);
+        const actor = requirePickupActor(db, req, jobs);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์รับใบตรวจปล่อยสำหรับงานนี้" });
+        payload.userId = actor.id;
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
