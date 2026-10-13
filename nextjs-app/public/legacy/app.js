@@ -11061,9 +11061,14 @@ function fbDueAt(job) {
     return "";
 }
 
+function isDemoFlightBoardJob(job) {
+    var text = [ job.customerId, job.customerName, job.houseNumber, job.source, job.planSource ].filter(Boolean).join(" ").toLowerCase();
+    return /abc logistics|xyz trading|c_abc_logistics|c_xyz_trading|mock|demo/.test(text);
+}
+
 function flightBoardRows() {
     var jobs = (state.dashboard?.jobs || []).filter(function (job) {
-        return !["Billed", "InvoiceSent", "Completed", "ReadyForBilling"].includes(job.status);
+        return !isDemoFlightBoardJob(job) && !["Billed", "InvoiceSent", "Completed", "ReadyForBilling"].includes(job.status);
     });
     var now = Date.now();
     return jobs.map(function (job) {
