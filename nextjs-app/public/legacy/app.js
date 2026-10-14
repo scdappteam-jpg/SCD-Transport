@@ -803,6 +803,13 @@ function jobDateKey(job) {
 
 function isDemoJob(job) {
     const text = [ job?.customerId, job?.customerName, job?.houseNumber, job?.source, job?.planSource ].filter(Boolean).join(" ").toLowerCase();
+    const house = String(job?.houseNumber || "").trim().toUpperCase();
+    return /abc logistics|xyz trading|c_abc_logistics|c_xyz_trading|mock|demo/.test(text)
+        || /^F\d{8,}$/.test(house);
+}
+
+function isDemoCustomer(customer) {
+    const text = [ customer?.id, customer?.name ].filter(Boolean).join(" ").toLowerCase();
     return /abc logistics|xyz trading|c_abc_logistics|c_xyz_trading|mock|demo/.test(text);
 }
 
@@ -1036,8 +1043,9 @@ function renderDriverJobSelect() {
     const select = $("#driverJobSelect");
     if (!select || !state.dashboard) return;
     const current = select.value;
-    select.innerHTML = [ `<option value="">กรอกเอง / Manual form</option>`, ...state.dashboard.jobs.map(job => `<option value="${job.houseNumber}">${job.houseNumber} · ${job.customerName}</option>`) ].join("");
-    select.value = current && state.dashboard.jobs.some(job => job.houseNumber === current) ? current : "";
+    const jobs = operationalJobs();
+    select.innerHTML = [ `<option value="">กรอกเอง / Manual form</option>`, ...jobs.map(job => `<option value="${job.houseNumber}">${job.houseNumber} · ${job.customerName}</option>`) ].join("");
+    select.value = current && jobs.some(job => job.houseNumber === current) ? current : "";
     applyDriverJob(select.value);
 }
 
@@ -2417,8 +2425,9 @@ function renderAdminCustomerOptions() {
     const select = $("#adminCustomer");
     if (!select || !state.customers?.length) return;
     const current = select.value;
-    select.innerHTML = state.customers.map(customer => `<option value="${customer.id}">${customer.name}</option>`).join("");
-    if (state.customers.some(customer => customer.id === current)) {
+    const customers = state.customers.filter(customer => !isDemoCustomer(customer));
+    select.innerHTML = customers.map(customer => `<option value="${customer.id}">${customer.name}</option>`).join("");
+    if (customers.some(customer => customer.id === current)) {
         select.value = current;
     }
 }
@@ -3263,13 +3272,13 @@ function adminUnopenedJobs() {
     // the first 40 records. A job just confirmed by CS could therefore be
     // absent from the next step. Put newest approvals first so the hand-off
     // from CS to Transport is always visible immediately.
-    return (state.dashboard?.jobs || [])
+    return operationalJobs()
         .filter(job => job.csConfirmed && !job.cargoIssuedAt)
         .sort((a, b) => new Date(b.csConfirmedAt || b.updatedAt || 0) - new Date(a.csConfirmedAt || a.updatedAt || 0));
 }
 
 function adminIssuedCargoJobs() {
-    return (state.dashboard?.jobs || []).filter(job => job.cargoIssuedAt).sort((a, b) => new Date(b.cargoIssuedAt) - new Date(a.cargoIssuedAt));
+    return operationalJobs().filter(job => job.cargoIssuedAt).sort((a, b) => new Date(b.cargoIssuedAt) - new Date(a.cargoIssuedAt));
 }
 
 function adminQueueKey(job) {
