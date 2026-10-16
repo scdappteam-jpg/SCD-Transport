@@ -2981,7 +2981,7 @@ function warehouseLayoutPreset202609(existingLog = []) {
 
 // Layout drawn from the rear-warehouse plan supplied on 2026-10-13.  It is
 // deliberately additive: applying it never replaces the existing WH3 map.
-// The four pallet courts are physical 4 x 4 areas (16 pallet positions each).
+// The four pallet courts are physical 4 x 2 areas (8 pallet positions each).
 const REAR_WAREHOUSE_BUILDING_ID = "building-rear-20261013";
 const REAR_WAREHOUSE_PREFIX = "rear_20261013_";
 
@@ -2996,7 +2996,7 @@ function rearWarehouseLayoutComponents(createdAt = nowIso()) {
         id: `${REAR_WAREHOUSE_PREFIX}zone_${door}`,
         name,
         prefix,
-        rows: 4,
+        rows: 2,
         cols: 4,
         defaultLevels: 1,
         color: "#fb923c",
@@ -3004,14 +3004,14 @@ function rearWarehouseLayoutComponents(createdAt = nowIso()) {
         canvasY,
         gridCol: 0,
         gridRow: 0,
-        // The approved drawing explicitly specifies 4 × 4 pallet courts.
-        maxPallets: 16,
+        // Each court is four positions across and two positions deep.
+        maxPallets: 8,
         maxBoxes: 0,
         storageMode: "Flexible",
         buildingId: REAR_WAREHOUSE_BUILDING_ID,
         createdAt
     }));
-    const locations = zones.flatMap(zone => Array.from({ length: 16 }, (_, index) => ({
+    const locations = zones.flatMap(zone => Array.from({ length: 8 }, (_, index) => ({
         id: `loc_${zone.id}_${index + 1}`,
         code: `${zone.prefix}-${String(index + 1).padStart(2, "0")}`,
         zoneId: zone.id,

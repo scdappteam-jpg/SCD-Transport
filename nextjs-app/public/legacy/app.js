@@ -3806,7 +3806,7 @@ async function applyWarehouseLayout202609() {
 }
 
 async function applyRearWarehouseLayout() {
-    const confirmed = await showWhConfirm("เพิ่ม/อัปเดตแปลน WH ด้านหลัง 6 ประตูหรือไม่? ระบบจะเพิ่มลานพาเลท 4 กลุ่ม กลุ่มละ 4×4 = 16 พาเลท, Office, ทางคนเดิน และเส้นทางรถโฟล์คลิฟท์ โดยไม่เขียนทับโซน WH3 เดิม");
+    const confirmed = await showWhConfirm("เพิ่ม/อัปเดตแปลน WH ด้านหลัง 6 ประตูหรือไม่? ระบบจะเพิ่มลานพาเลท 4 กลุ่ม กลุ่มละ 4×2 = 8 พาเลท, Office, ทางคนเดิน และเส้นทางรถโฟล์คลิฟท์ โดยไม่เขียนทับโซน WH3 เดิม");
     if (!confirmed) return;
     try {
         const data = await api("/api/warehouse/layouts/rear-2026-10-13/apply", {
