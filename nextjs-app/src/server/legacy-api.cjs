@@ -11,6 +11,8 @@ const crypto = require("crypto");
 const zlib = require("zlib");
 
 const { createProductionRelationalMirror } = require("./production-relational-mirror.cjs");
+const { consolPacking } = require("./consol-packing.cjs");
+const { planShipmentMerges, applyShipmentMerges, restoreShipmentMerge, updateMergedPickup } = require("./shipment-merge.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -1839,7 +1841,8 @@ function averageCompletedDuration(logs) {
 }
 
 function findJob(db, houseNumber) {
-    return db.jobs.find(job => job.houseNumber === houseNumber || job.id === houseNumber);
+    return db.jobs.find(job => job.houseNumber === houseNumber || job.id === houseNumber)
+        || db.jobs.find(job => (job.mergedHouseNumbers || []).includes(houseNumber));
 }
 
 function findPayloadJobs(db, payload) {
@@ -2322,28 +2325,7 @@ function detectXlsxKind(rows) {
 }
 
 function consolPackageInfo(row, map) {
-    const packagePattern = /^(PLT|PALLET|CTN|CTNS|CARTON|CARTONS)$/i;
-    // The packing type always follows ETD. The actual column may move when
-    // the source file merges or shifts columns, so derive it from ETD.
-    const start = Math.max(0, (map.etd >= 0 ? map.etd : 30) + 1);
-    const end = map.grs > start ? map.grs : Math.min(row.length, start + 8);
-    let packageIndex = -1;
-    for (let i = start; i < end; i++) {
-        if (packagePattern.test(String(row[i] == null ? "" : row[i]).trim())) {
-            packageIndex = i;
-            break;
-        }
-    }
-    if (packageIndex < 0) return { packageType: "", pieces: "" };
-    let pieces = "";
-    for (let i = packageIndex + 1; i < end; i++) {
-        const value = xlsxNumStr(row[i]);
-        if (/^\d+(?:\.\d+)?$/.test(value) && Number(value) > 0) {
-            pieces = value;
-            break;
-        }
-    }
-    return { packageType: String(row[packageIndex]).trim().toUpperCase(), pieces };
+    return consolPacking(row, map);
 }
 
 function consolXlsxToCsv(rows) {
@@ -2384,7 +2366,7 @@ function consolXlsxToCsv(rows) {
         const isDetail = cinVal === "✓" || cinVal === "✗" || /^(N|L|LN|DG)$/.test(dgVal) && /^[A-Z0-9]{6,}$/i.test(mawbVal);
         if (isDetail) {
             if (!mawbVal || !/^[A-Z0-9-]{6,}$/i.test(mawbVal)) continue;
-            out.push([ "", xlsxDateStr(cell(map.ic)), mawbVal, dgVal || "N", "", S(map.flt), S(map.fltDate), S(map.dest), packageInfo.pieces, packageInfo.packageType, "", "", xlsxNumStr(cell(map.grs)), xlsxNumStr(cell(map.vol)), xlsxNumStr(cell(map.cbm)), "", cinVal, S(map.inv), S(map.desc) ]);
+            out.push([ "", xlsxDateStr(cell(map.ic)), mawbVal, dgVal || "N", "", S(map.flt), S(map.fltDate), S(map.dest), packageInfo.pieces, packageInfo.packageType, "", "", xlsxNumStr(cell(map.grs)), xlsxNumStr(cell(map.vol)), xlsxNumStr(cell(map.cbm)), "", cinVal, S(map.inv), S(map.desc), packageInfo.packageCounts.PLT || "", packageInfo.packageCounts.CTN || "" ]);
         } else if (mawbVal) {
             const ic = xlsxNumStr(cell(map.ic)) || mawbVal;
             if (!/^[A-Z0-9]/i.test(ic) || /CONSOL|REPORT/i.test(ic)) continue;
@@ -2514,6 +2496,16 @@ function importPickupXlsxRows(db, rows) {
         if (!/^[A-Z]{0,3}\d{6,}$/i.test(onhand)) continue;
         totalRows += 1;
         const existing = findJob(db, onhand);
+        if (existing && existing.houseNumber !== onhand && (existing.mergedHouseNumbers || []).includes(onhand)) {
+            imported.push(updateMergedPickup(existing, {
+                onhandNumber: onhand, pieceCount: xlsxNumStr(r[map.qty]),
+                pickupLocation: S(map.address), pickupPhone: S(map.phone),
+                contactPerson: S(map.contact), readyTime: xlsxUtcIso(r[map.ready]),
+                closeTime: xlsxUtcIso(r[map.close])
+            }));
+            changedJobs += 1;
+            continue;
+        }
         if (!existing) {
             newJobs += 1;
             changes.push({
@@ -2700,7 +2692,8 @@ function parseGlobalConsolCsv(csvText) {
                 cbm: (r[14] || "").trim(),
                 edocCin: (r[16] || "").trim(),
                 edocInv: (r[17] || "").trim(),
-                desc: (r[18] || "").trim()
+                desc: (r[18] || "").trim(),
+                packageCounts: Object.fromEntries([["PLT", Number(r[19])], ["CTN", Number(r[20])]].filter(([, qty]) => Number(qty) > 0))
             });
         }
     }
@@ -2760,6 +2753,7 @@ function importGlobalConsolRows(db, csvText) {
                 adminPrepared: existing ? Boolean(existing.adminPrepared) : true,
                 source: "GlobalConsolCSV"
             });
+            if (h.packageCounts && Object.keys(h.packageCounts).length) job.packageCounts = h.packageCounts;
             if (changeSet.length) {
                 changes.push({
                     id: "CHG-" + Date.now() + "-" + crypto.randomBytes(2).toString("hex"),
@@ -3491,6 +3485,31 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    if (req.method === "POST" && ["/api/admin/shipment-merges/preview", "/api/admin/shipment-merges/apply", "/api/admin/shipment-merges/restore"].includes(pathname)) {
+        await refreshDbIfSharedStateChanged();
+        db = readDb();
+        const actor = requireSessionRole(db, req, ["Admin"]);
+        if (!actor) return sendJson(res, 403, { error: "Admin required" });
+        const payload = await parseBody(req);
+        try {
+            if (pathname.endsWith("/restore")) {
+                restoreShipmentMerge(db, payload.archiveId);
+                writeDb(db);
+                return sendJson(res, 200, { ok: true, restored: payload.archiveId });
+            }
+            if (!Array.isArray(payload.evidence) || payload.evidence.length > 1000) return sendJson(res, 400, { error: "Quantity source evidence required" });
+            if (pathname.endsWith("/preview")) {
+                const rows = planShipmentMerges(db, payload.evidence);
+                return sendJson(res, 200, { ok: true, rows, eligible: rows.filter(row => row.eligible).length, held: rows.filter(row => !row.eligible).length });
+            }
+            if (!Array.isArray(payload.selection) || !payload.selection.length || payload.selection.length > 500) return sendJson(res, 400, { error: "Reviewed selection required" });
+            const merged = applyShipmentMerges(db, payload.evidence, payload.selection, actor.id);
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, merged, jobs: db.jobs.length });
+        } catch (error) {
+            return sendJson(res, 409, { error: error.message });
+        }
+    }
     // Mobile is used on lower-powered phones and must not download the entire
     // operational database just to render the driver's first screen.  The
     // normal bootstrap endpoint remains the complete payload for the desktop
