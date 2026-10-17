@@ -34,7 +34,10 @@
         for (const key of [...result]) {
             for (const value of index?.get(key) || []) result.add(value);
         }
-        return [...result].sort((a, b) => Number(/^F\d/.test(b)) - Number(/^F\d/.test(a)));
+        // HAWB leads for operations; ONHAND remains visible for customers.
+        // AIR is a pending marker, so keep the usable F reference before it.
+        const priority = value => value === "AIR" ? 2 : /^F\d/.test(value) ? 1 : 0;
+        return [...result].sort((a, b) => priority(a) - priority(b));
     }
 
     const api = {

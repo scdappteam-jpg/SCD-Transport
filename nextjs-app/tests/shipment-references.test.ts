@@ -18,8 +18,8 @@ test("both references find and label existing records without merging their work
     const jobs = [pickup, air];
     const index = refs.createIndex(jobs);
     for (const job of jobs) {
-        assert.deepEqual([...refs.identifiers(job, index)], ["F842092988", "4840805761"]);
-        assert.equal(refs.label(job, index), "F842092988 · 4840805761");
+        assert.deepEqual([...refs.identifiers(job, index)], ["4840805761", "F842092988"]);
+        assert.equal(refs.label(job, index), "4840805761 · F842092988");
     }
     assert.equal(air.status, "Stored");
     assert.equal(jobs.length, 2);
@@ -64,7 +64,7 @@ test("Pickup reimport saves the HAWB column and keeps the existing job identity 
     assert.equal(result.changedJobs, 1);
     assert.equal(job.id, "existing-job");
     assert.equal(job.status, "Stored");
-    assert.equal(refs.label(job, refs.createIndex([job])), "F842092988 · 4840805761");
+    assert.equal(refs.label(job, refs.createIndex([job])), "4840805761 · F842092988");
     rows[1][1] = "AIR";
     context.importPickupXlsxRows({}, rows);
     assert.equal(refs.label(job, refs.createIndex([job])), "F842092988 · AIR");
