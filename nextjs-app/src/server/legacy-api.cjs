@@ -47,7 +47,16 @@ const SUPABASE_STATE_TABLE = process.env.SUPABASE_STATE_TABLE || "app_state";
 
 const SUPABASE_STATE_ID = process.env.SUPABASE_STATE_ID || "scd-transport";
 
-const RELATIONAL_MIRROR_ENABLED = String(process.env.RELATIONAL_MIRROR_ENABLED || "true").toLowerCase() !== "false";
+// app_state is the production source of truth.  The relational mirror is an
+// optional migration/reporting bridge and can generate a large amount of
+// outbound traffic when it mirrors a busy operational database.  Keep it
+// opt-in so a missing environment value can never exhaust Render bandwidth.
+const RELATIONAL_MIRROR_ENABLED = String(process.env.RELATIONAL_MIRROR_ENABLED || "false").toLowerCase() === "true";
+
+// A worker must not ask Supabase for the version document on every request.
+// Local writes update dbCache immediately; this only controls how quickly a
+// different warm worker observes another worker's change.
+const SUPABASE_STATE_CHECK_INTERVAL_MS = Math.max(5000, Number(process.env.SUPABASE_STATE_CHECK_INTERVAL_MS || 15000));
 
 // Production must fail closed.  The old SCD_SERVER_AUTH_REQUIRED=false flag
 // existed during the migration and must not be able to reopen the operational
@@ -706,7 +715,7 @@ async function loadDbFromSupabase() {
 async function refreshDbIfSharedStateChanged() {
     if (!supabaseEnabled()) return;
     const now = Date.now();
-    if (now - lastSharedStateCheckAt < 1500) return;
+    if (now - lastSharedStateCheckAt < SUPABASE_STATE_CHECK_INTERVAL_MS) return;
     lastSharedStateCheckAt = now;
     try {
         const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=updated_at`, null);
