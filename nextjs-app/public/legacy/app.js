@@ -803,9 +803,22 @@ function jobDateKey(job) {
 
 function isDemoJob(job) {
     const text = [ job?.customerId, job?.customerName, job?.houseNumber, job?.source, job?.planSource ].filter(Boolean).join(" ").toLowerCase();
-    const house = String(job?.houseNumber || "").trim().toUpperCase();
-    return /abc logistics|xyz trading|c_abc_logistics|c_xyz_trading|mock|demo/.test(text)
-        || /^F\d{8,}$/.test(house);
+    return /abc logistics|xyz trading|c_abc_logistics|c_xyz_trading|mock|demo/.test(text);
+}
+
+let referenceJobs = null;
+let referenceIndex = null;
+function jobReferenceIdentifiers(job) {
+    const jobs = state.dashboard?.jobs || [];
+    if (referenceJobs !== jobs) {
+        referenceJobs = jobs;
+        referenceIndex = ShipmentReferences.createIndex(jobs);
+    }
+    return ShipmentReferences.identifiers(job, referenceIndex);
+}
+
+function jobReferenceLabel(job) {
+    return jobReferenceIdentifiers(job).join(" · ");
 }
 
 function isDemoCustomer(customer) {
@@ -2112,7 +2125,7 @@ function renderCtBilling() {
     } ];
     chips.innerHTML = seg.map(s => `\n    <button type="button" class="ct-bill-chip ${s.c}" onclick="setView('${s.v}')"><b>${s.n}</b><span>${s.t}</span></button>`).join("");
     const billable = jobs.filter(j => [ "ReadyForBilling", "PendingBillingReview" ].includes(j.status) || j.readyForBilling).slice(0, 8);
-    list.innerHTML = billable.length ? `\n    <table class="ct-mini-table">\n      <thead><tr><th>House</th><th>ลูกค้า</th><th>Flight</th><th>สถานะ</th></tr></thead>\n      <tbody>${billable.map(j => `\n        <tr class="clickable-row" onclick="openJobQuickView('${safeHtml(j.houseNumber)}')">\n          <td><strong>${safeHtml(j.houseNumber)}</strong></td>\n          <td>${safeHtml(j.customerName || "-")}</td>\n          <td>${safeHtml(j.flightNo || "-")}</td>\n          <td><span class="pill ${statusClass(j.status)}">${statusLabelTh(j.status)}</span></td>\n        </tr>`).join("")}</tbody>\n    </table>` : `<div class="empty-state compact">ยังไม่มีงานเข้าคิววางบิลในช่วงที่เลือก</div>`;
+    list.innerHTML = billable.length ? `\n    <table class="ct-mini-table">\n      <thead><tr><th>House</th><th>ลูกค้า</th><th>Flight</th><th>สถานะ</th></tr></thead>\n      <tbody>${billable.map(j => `\n        <tr class="clickable-row" onclick="openJobQuickView('${safeHtml(j.houseNumber)}')">\n          <td><strong>${safeHtml(jobReferenceLabel(j))}</strong></td>\n          <td>${safeHtml(j.customerName || "-")}</td>\n          <td>${safeHtml(j.flightNo || "-")}</td>\n          <td><span class="pill ${statusClass(j.status)}">${statusLabelTh(j.status)}</span></td>\n        </tr>`).join("")}</tbody>\n    </table>` : `<div class="empty-state compact">ยังไม่มีงานเข้าคิววางบิลในช่วงที่เลือก</div>`;
 }
 
 var _rhAttCache = {
@@ -3677,7 +3690,7 @@ function renderOutboundPreparationQueue() {
     const visible = jobs.filter(job => filter.value === "All" || job.flightNo === filter.value);
     const selected = new Set(transferSelectedTextNumbers());
     $("#outboundPrepCount").textContent = `${visible.length} ${localizeText("งาน / jobs")}`;
-    list.innerHTML = visible.length ? visible.map(job => `\n    <label class="outbound-prep-item ${selected.has(job.houseNumber) ? "selected" : ""}">\n      <input class="outbound-prep-check" type="checkbox" value="${job.houseNumber}" ${selected.has(job.houseNumber) ? "checked" : ""}>\n      <span class="prep-house"><strong>${job.houseNumber}</strong><small>${job.customerName || "-"}</small></span>\n      <span><b>${job.flightNo || "No flight"}</b><small>${job.terminalDestination || job.destination || job.routeType || "-"}</small></span>\n      <span class="prep-docs">\n        <em class="${job.cargoTransferIssuedAt ? "ready" : "waiting"}">${job.cargoTransferIssuedAt ? "Cargo issued" : "รอออก Cargo"}</em>\n        <em class="${job.requiresLithiumDocs ? "danger" : "ready"}">${job.requiresLithiumDocs ? "Lithium required" : "General"}</em>\n      </span>\n    </label>`).join("") : `<div class="empty-state">${localizeText("ไม่มีงาน Outbound ตามตัวกรอง / No outbound jobs")}</div>`;
+    list.innerHTML = visible.length ? visible.map(job => `\n    <label class="outbound-prep-item ${selected.has(job.houseNumber) ? "selected" : ""}">\n      <input class="outbound-prep-check" type="checkbox" value="${job.houseNumber}" ${selected.has(job.houseNumber) ? "checked" : ""}>\n      <span class="prep-house"><strong>${safeHtml(jobReferenceLabel(job))}</strong><small>${job.customerName || "-"}</small></span>\n      <span><b>${job.flightNo || "No flight"}</b><small>${job.terminalDestination || job.destination || job.routeType || "-"}</small></span>\n      <span class="prep-docs">\n        <em class="${job.cargoTransferIssuedAt ? "ready" : "waiting"}">${job.cargoTransferIssuedAt ? "Cargo issued" : "รอออก Cargo"}</em>\n        <em class="${job.requiresLithiumDocs ? "danger" : "ready"}">${job.requiresLithiumDocs ? "Lithium required" : "General"}</em>\n      </span>\n    </label>`).join("") : `<div class="empty-state">${localizeText("ไม่มีงาน Outbound ตามตัวกรอง / No outbound jobs")}</div>`;
     const lithiumRequired = visible.some(job => selected.has(job.houseNumber) && job.requiresLithiumDocs);
     $("#transferLithiumHint").textContent = localizeText(lithiumRequired ? "ชุดงานนี้มี Lithium: ต้องแนบเอกสารก่อนออกใบ / Lithium items: attach docs first" : "แนบเมื่อในชุดงานมีสินค้าลิเทียม / Attach when lithium items present");
     $("#transferLithiumHint").classList.toggle("required-hint", lithiumRequired);
@@ -6000,7 +6013,7 @@ function renderAdminIssuedHistory() {
     if (!list) return;
     const jobs = adminIssuedCargoJobs();
     if (count) count.textContent = jobs.length;
-    list.innerHTML = jobs.length ? jobs.slice(0, 10).map(job => `\n    <button class="queue-job history-job" type="button" data-admin-issued-house="${job.houseNumber}">\n      <span class="queue-main">\n        <strong>${job.houseNumber}</strong>\n        <small>${job.customerName || "-"} / ${job.driverName || "-"} / ${job.vehiclePlate || "-"}</small>\n      </span>\n      <span class="queue-tags">\n        <b class="ok">${localizeText("ออกใบแล้ว / Issued")}</b>\n        <b>${new Date(job.cargoIssuedAt).toLocaleDateString(state.lang === "en" ? "en-GB" : "th-TH")}</b>\n      </span>\n    </button>\n  `).join("") : `<div class="empty-state compact">${localizeText("ยังไม่มีประวัติออกใบ Cargo / No cargo history")}</div>`;
+    list.innerHTML = jobs.length ? jobs.slice(0, 10).map(job => `\n    <button class="queue-job history-job" type="button" data-admin-issued-house="${job.houseNumber}">\n      <span class="queue-main">\n        <strong>${safeHtml(jobReferenceLabel(job))}</strong>\n        <small>${job.customerName || "-"} / ${job.driverName || "-"} / ${job.vehiclePlate || "-"}</small>\n      </span>\n      <span class="queue-tags">\n        <b class="ok">${localizeText("ออกใบแล้ว / Issued")}</b>\n        <b>${new Date(job.cargoIssuedAt).toLocaleDateString(state.lang === "en" ? "en-GB" : "th-TH")}</b>\n      </span>\n    </button>\n  `).join("") : `<div class="empty-state compact">${localizeText("ยังไม่มีประวัติออกใบ Cargo / No cargo history")}</div>`;
 }
 
 function assignableUsers() {
@@ -6015,7 +6028,7 @@ function manualGroupVisibleJobs() {
     const search = ($("#manualGroupSearch")?.value || "").trim().toLowerCase();
     return adminUnopenedJobs().filter(job => {
         if (!search) return true;
-        return [ job.houseNumber, job.customerName, job.flightNo, job.pickupLocation, job.driverName ].filter(Boolean).join(" ").toLowerCase().includes(search);
+        return [ jobReferenceLabel(job), job.customerName, job.flightNo, job.pickupLocation, job.driverName ].filter(Boolean).join(" ").toLowerCase().includes(search);
     });
 }
 
@@ -6259,7 +6272,7 @@ function renderManualGroupList() {
     const jobs = manualGroupVisibleJobs();
     state.selectedManualHouses = state.selectedManualHouses.filter(house => availableJobs.some(job => job.houseNumber === house));
     $("#manualGroupCount").textContent = state.selectedManualHouses.length ? `${state.selectedManualHouses.length} ${localizeText("เลือก / selected")}` : `${jobs.length} ${localizeText("งาน / jobs")}`;
-    list.innerHTML = jobs.length ? jobs.slice(0, 120).map(job => `\n    <label class="manual-group-item ${state.selectedManualHouses.includes(job.houseNumber) ? "selected" : ""}">\n      <input type="checkbox" value="${job.houseNumber}" ${state.selectedManualHouses.includes(job.houseNumber) ? "checked" : ""}>\n      <span>\n        <strong>${job.houseNumber}</strong>\n        <small>${job.customerName || "-"} / ${job.pickupDate || toDateInput(job.flightTime) || "-"} / ${job.flightNo || "-"}</small>\n      </span>\n      <b>${job.destination || job.routeType || "WH3"}</b>\n    </label>\n  `).join("") : `<div class="empty-state compact">${localizeText("ไม่มี House ที่ยังไม่ได้ออกใบ Cargo / No unissued houses")}</div>`;
+    list.innerHTML = jobs.length ? jobs.slice(0, 120).map(job => `\n    <label class="manual-group-item ${state.selectedManualHouses.includes(job.houseNumber) ? "selected" : ""}">\n      <input type="checkbox" value="${job.houseNumber}" ${state.selectedManualHouses.includes(job.houseNumber) ? "checked" : ""}>\n      <span>\n        <strong>${safeHtml(jobReferenceLabel(job))}</strong>\n        <small>${job.customerName || "-"} / ${job.pickupDate || toDateInput(job.flightTime) || "-"} / ${job.flightNo || "-"}</small>\n      </span>\n      <b>${job.destination || job.routeType || "WH3"}</b>\n    </label>\n  `).join("") : `<div class="empty-state compact">${localizeText("ไม่มี House ที่ยังไม่ได้ออกใบ Cargo / No unissued houses")}</div>`;
 }
 
 function prepareAdminFormForJobs(jobs, driver = null) {
@@ -6325,7 +6338,7 @@ function cargoHistoryFilteredJobs() {
         if (from && issuedDate < from) return false;
         if (to && issuedDate > to) return false;
         if (!search) return true;
-        return [ job.houseNumber, job.customerName, job.driverName, job.vehiclePlate ].filter(Boolean).join(" ").toLowerCase().includes(search);
+        return [ jobReferenceLabel(job), job.customerName, job.driverName, job.vehiclePlate ].filter(Boolean).join(" ").toLowerCase().includes(search);
     });
 }
 
@@ -6338,7 +6351,7 @@ function renderCargoHistory() {
     if (!jobs.some(job => job.houseNumber === state.selectedHistoryHouse)) {
         state.selectedHistoryHouse = jobs[0]?.houseNumber || "";
     }
-    list.innerHTML = jobs.length ? jobs.slice(0, 80).map(job => `\n    <button class="queue-job history-job ${state.selectedHistoryHouse === job.houseNumber ? "selected" : ""}" type="button" data-admin-issued-house="${job.houseNumber}">\n      <span class="queue-main">\n        <strong>${job.houseNumber}</strong>\n        <small>${job.customerName || "-"} / ${job.driverName || "-"} / ${job.vehiclePlate || "-"}</small>\n      </span>\n      <span class="queue-tags">\n        <b class="ok">ออกใบแล้ว</b>\n        <b>${job.cargoIssuedAt ? new Date(job.cargoIssuedAt).toLocaleDateString("th-TH") : "-"}</b>\n      </span>\n    </button>\n  `).join("") : `<div class="empty-state compact">ยังไม่มีประวัติใบ Cargo ตามตัวกรอง</div>`;
+    list.innerHTML = jobs.length ? jobs.slice(0, 80).map(job => `\n    <button class="queue-job history-job ${state.selectedHistoryHouse === job.houseNumber ? "selected" : ""}" type="button" data-admin-issued-house="${job.houseNumber}">\n      <span class="queue-main">\n        <strong>${safeHtml(jobReferenceLabel(job))}</strong>\n        <small>${job.customerName || "-"} / ${job.driverName || "-"} / ${job.vehiclePlate || "-"}</small>\n      </span>\n      <span class="queue-tags">\n        <b class="ok">ออกใบแล้ว</b>\n        <b>${job.cargoIssuedAt ? new Date(job.cargoIssuedAt).toLocaleDateString("th-TH") : "-"}</b>\n      </span>\n    </button>\n  `).join("") : `<div class="empty-state compact">ยังไม่มีประวัติใบ Cargo ตามตัวกรอง</div>`;
     renderHistoryCargoPreview();
 }
 
@@ -6361,7 +6374,7 @@ function openAutoGroupModal(index) {
     state.activeAutoGroupIndex = Number(index);
     $("#autoGroupTitle").textContent = group.customerName || localizeText("กลุ่มงานอัตโนมัติ / Auto Group");
     $("#autoGroupSummary").textContent = `${group.jobs.length} งาน / ${group.pickupDate || "-"} / ${group.pickupLocation || "-"} / ${group.flightNo || "-"}`;
-    $("#autoGroupDetails").innerHTML = group.jobs.slice(0, 20).map(job => `\n    <div class="auto-group-row">\n      <strong>${job.houseNumber}</strong>\n      <span>${job.customerName || "-"} / ${job.destination || job.routeType || "WH3"} / ${job.pieceCount || "-"} pcs</span>\n    </div>\n  `).join("");
+    $("#autoGroupDetails").innerHTML = group.jobs.slice(0, 20).map(job => `\n    <div class="auto-group-row">\n      <strong>${safeHtml(jobReferenceLabel(job))}</strong>\n      <span>${job.customerName || "-"} / ${job.destination || job.routeType || "WH3"} / ${job.pieceCount || "-"} pcs</span>\n    </div>\n  `).join("");
     setGroupPreview(group.jobs, manualGroupDriver());
     $("#autoGroupModal")?.classList.add("show");
     $("#autoGroupModal")?.setAttribute("aria-hidden", "false");
@@ -6494,7 +6507,7 @@ function closeAutoGroupModal() {
 
 function renderRecentOrders() {
     const jobs = dashboardFilteredJobs();
-    $("#recentOrdersTable").innerHTML = jobs.slice(0, 10).map(job => `\n    <tr class="clickable-row" data-quick-house="${job.houseNumber}">\n      <td><strong>${job.houseNumber}</strong><small>${job.id}</small></td>\n      <td><span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span></td>\n      <td>${job.customerName}</td>\n      <td>${job.flightNo}<small>${job.destination || job.routeType || "WH3"} · ${job.flightTimeLabel}</small></td>\n      <td><div class="lead-bar"><span style="width:${Math.max(8, Math.min(100, 100 - job.hoursToFlight * 8))}%"></span></div>${job.hoursToFlight} hrs</td>\n    </tr>\n  `).join("") || `<tr><td colspan="5">${localizeText("ไม่พบงานตามตัวกรอง / No orders match filter")}</td></tr>`;
+    $("#recentOrdersTable").innerHTML = jobs.slice(0, 10).map(job => `\n    <tr class="clickable-row" data-quick-house="${job.houseNumber}">\n      <td><strong>${safeHtml(jobReferenceLabel(job))}</strong><small>${job.id}</small></td>\n      <td><span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span></td>\n      <td>${job.customerName}</td>\n      <td>${job.flightNo}<small>${job.destination || job.routeType || "WH3"} · ${job.flightTimeLabel}</small></td>\n      <td><div class="lead-bar"><span style="width:${Math.max(8, Math.min(100, 100 - job.hoursToFlight * 8))}%"></span></div>${job.hoursToFlight} hrs</td>\n    </tr>\n  `).join("") || `<tr><td colspan="5">${localizeText("ไม่พบงานตามตัวกรอง / No orders match filter")}</td></tr>`;
 }
 
 function orderMatchesFilter(job, filter = state.orderFilter) {
@@ -6572,7 +6585,7 @@ function renderOrderFilterCounts() {
 function orderVisibleJobs() {
     const query = ($("#orderSearch")?.value || $("#globalSearch")?.value || "").toLowerCase();
     return operationalJobs().filter(job => {
-        const haystack = `${job.houseNumber} ${job.customerName} ${job.flightNo} ${job.status}`.toLowerCase();
+        const haystack = `${jobReferenceLabel(job)} ${job.customerName} ${job.flightNo} ${job.status}`.toLowerCase();
         return orderMatchesFilter(job) && haystack.includes(query);
     });
 }
@@ -6619,7 +6632,7 @@ function renderOrderCards() {
         let urgentBadge = "";
         if (isReXray) urgentBadge = `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;animation:pulse 1.5s infinite">⚠ RE-XRAY</span>`; else if (isMissed) urgentBadge = `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">✕ เลยเวลาบิน</span>`; else if (isUrgent) urgentBadge = `<span style="background:#fffbeb;color:#d97706;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">⏰ ${Math.floor(diffH)}ชม.${Math.floor(diffH % 1 * 60)}น.</span>`;
         const cardBorder = isReXray || isMissed ? "border-left:3px solid #ef4444" : isUrgent ? "border-left:3px solid #f59e0b" : "";
-        return `<button class="order-card ${job.houseNumber === state.selectedHouse ? "active" : ""}" type="button" data-house="${job.houseNumber}" style="${cardBorder}">\n      <span class="cube">□</span>\n      <strong>${job.houseNumber}</strong>\n      <small>${job.customerName || "-"} / ${job.flightTimeLabel || "-"}</small>\n      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0">\n        <span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span>\n        ${urgentBadge}\n        ${!job.csConfirmed ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">รอ CS</span>' : ""}\n        ${(state.loadPlan?.rows || []).some(r => r.houseNumber === job.houseNumber) ? '<span style="background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">LP</span>' : ""}\n      </div>\n    </button>`;
+        return `<button class="order-card ${job.houseNumber === state.selectedHouse ? "active" : ""}" type="button" data-house="${job.houseNumber}" style="${cardBorder}">\n      <span class="cube">□</span>\n      <strong>${safeHtml(jobReferenceLabel(job))}</strong>\n      <small>${job.customerName || "-"} / ${job.flightTimeLabel || "-"}</small>\n      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0">\n        <span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span>\n        ${urgentBadge}\n        ${!job.csConfirmed ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">รอ CS</span>' : ""}\n        ${(state.loadPlan?.rows || []).some(r => r.houseNumber === job.houseNumber) ? '<span style="background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">LP</span>' : ""}\n      </div>\n    </button>`;
     }).join("");
     if (jobs.length > shown.length) {
         $("#orderCards").insertAdjacentHTML("beforeend",
@@ -8340,7 +8353,7 @@ function renderTimeline() {
         return;
     }
     renderCargoIssueState(job);
-    $("#selectedOrderTitle").textContent = job.houseNumber || "-";
+    $("#selectedOrderTitle").textContent = jobReferenceLabel(job) || "-";
     $("#selectedOrderSubtitle").textContent = `${job.customerName || "-"} / ID: ${job.id || "-"}`;
     $("#routeOrigin").textContent = job.pickupLocation || job.originAirport || "WH3";
     $("#routeDest").textContent = job.destination || job.routeType || job.destAirport || "-";
@@ -10281,7 +10294,7 @@ function renderAdminApprovedQueue() {
     const list = $("#adminApprovedQueue");
     if (!list) return;
     const jobs = adminUnopenedJobs();
-    list.innerHTML = jobs.length ? jobs.map(job => `\n      <button class="queue-job ${state.selectedHouse === job.houseNumber ? "selected" : ""}" type="button" onclick="selectApprovedJobForCargo('${escapeAttr(job.houseNumber)}')">\n        <span class="queue-main"><strong>${safeHtml(job.houseNumber)}</strong><small>${safeHtml(job.customerName || "-")} · ${safeHtml(job.flightNo || "ยังไม่มี Flight")} · ${safeHtml(job.pieceCount || "-")} ชิ้น</small></span>\n        <span class="queue-tags"><b class="ok">CS อนุมัติแล้ว</b><b>เลือกเปิดใบ</b></span>\n      </button>`).join("") : `<div class="empty-state compact">ไม่มีงานที่ CS อนุมัติรอเปิดใบ Cargo</div>`;
+    list.innerHTML = jobs.length ? jobs.map(job => `\n      <button class="queue-job ${state.selectedHouse === job.houseNumber ? "selected" : ""}" type="button" onclick="selectApprovedJobForCargo('${escapeAttr(job.houseNumber)}')">\n        <span class="queue-main"><strong>${safeHtml(jobReferenceLabel(job))}</strong><small>${safeHtml(job.customerName || "-")} · ${safeHtml(job.flightNo || "ยังไม่มี Flight")} · ${safeHtml(job.pieceCount || "-")} ชิ้น</small></span>\n        <span class="queue-tags"><b class="ok">CS อนุมัติแล้ว</b><b>เลือกเปิดใบ</b></span>\n      </button>`).join("") : `<div class="empty-state compact">ไม่มีงานที่ CS อนุมัติรอเปิดใบ Cargo</div>`;
 }
 
 function renderAdminWorkQueue() {
@@ -10574,7 +10587,7 @@ function _csApplyFilters(list, dateFn) {
     const q = (_csQueueFilters.q || "").trim().toLowerCase();
     return list.filter(j => {
         if (q) {
-            const hit = String(j.houseNumber || "").toLowerCase().includes(q) || String(j.customerName || "").toLowerCase().includes(q) || String(j.csInvoiceNo || "").toLowerCase().includes(q);
+            const hit = jobReferenceLabel(j).toLowerCase().includes(q) || String(j.customerName || "").toLowerCase().includes(q) || String(j.csInvoiceNo || "").toLowerCase().includes(q);
             if (!hit) return false;
         }
         if (_csQueueFilters.from || _csQueueFilters.to) {
@@ -10689,7 +10702,7 @@ function _renderCsQueueList() {
         const safeCust = customer.replace(/[^a-zA-Z0-9ก-๙]/g, "_");
         return `\n      <div class="cs-customer-block">\n        <div class="cs-customer-header">\n          <span class="cs-customer-name">${safeHtml(customer)}</span>\n          <span class="cs-customer-count">${cJobs.length} HAWB · ${cJobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0)} ชิ้น · ${dates.length} กลุ่มวัน</span>\n        </div>\n        ${dates.map(([date, dJobs], di) => {
             const gkey = `${safeCust}_${di}`;
-            return `\n          <div class="cs-date-group" data-gkey="${gkey}">\n            <div class="cs-date-head">\n              <span>${safeHtml(date)} <em>· ${dJobs.length} HAWB · ${dJobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0)} ชิ้น · 1 Invoice</em></span>\n              <button type="button" class="cs-group-select" onclick="csSelectDateGroup(this)">เลือกทั้งกลุ่ม</button>\n            </div>\n            <div class="cs-jobs-list">\n              ${dJobs.map(j => `\n                <label class="cs-job-row" data-house="${safeHtml(j.houseNumber)}">\n                  <input type="checkbox" class="cs-job-check" value="${safeHtml(j.houseNumber)}" onchange="onCsJobCheck()">\n                  <div class="cs-job-info">\n                    <strong>${safeHtml(j.houseNumber)}</strong>\n                    <span>${safeHtml(j.destAirport || j.flightNo || "-")} · ${safeHtml(j.pieceCount || "-")} ชิ้น</span>\n                  </div>\n                  <div class="cs-job-meta">\n                    <span class="cs-status-badge pending">${safeHtml(j.manualExtra ? "Manual extra" : "Pending CS")}</span>\n                    <small>${safeHtml([ j.evidenceChannel || "", j.planRound || "" ].filter(Boolean).join(" / ") || "Need approval")}</small>\n                  </div>\n                </label>`).join("")}\n            </div>\n            <div class="cs-confirm-bar">\n              <div style="flex:1;display:flex;flex-direction:column;gap:6px">\n                <div style="font-size:11px;font-weight:600;color:#075985">โทรยืนยันแล้ว — Invoice ของกลุ่มวันนี้:</div>\n                <div style="display:flex;gap:8px;flex-wrap:wrap">\n                  <input type="text" class="cs-invoice-input" placeholder="เลข Invoice (เช่น INV-2026-0001)" id="csInvoice-${gkey}">\n                  <input type="text" class="cs-invoice-input" style="max-width:150px" placeholder="ชื่อผู้ติดต่อ" id="csContact-${gkey}">\n                  <select class="cs-invoice-input" style="max-width:130px" id="csEvidenceChannel-${gkey}">\n                    <option value="Line">Line</option>\n                    <option value="Email">Email</option>\n                    <option value="Phone">Phone</option>\n                  </select>\n                  <input type="text" class="cs-invoice-input" style="max-width:220px" placeholder="หลักฐาน/หมายเหตุ" id="csEvidenceNote-${gkey}">\n                  <input type="file" class="cs-evidence-file" accept="image/*,application/pdf" multiple id="csEvidenceFiles-${gkey}">\n                  <button class="cs-confirm-btn" onclick="submitCsConfirm('${gkey}')">✓ Confirm</button>\n                </div>\n              </div>\n            </div>\n          </div>`;
+            return `\n          <div class="cs-date-group" data-gkey="${gkey}">\n            <div class="cs-date-head">\n              <span>${safeHtml(date)} <em>· ${dJobs.length} HAWB · ${dJobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0)} ชิ้น · 1 Invoice</em></span>\n              <button type="button" class="cs-group-select" onclick="csSelectDateGroup(this)">เลือกทั้งกลุ่ม</button>\n            </div>\n            <div class="cs-jobs-list">\n              ${dJobs.map(j => `\n                <label class="cs-job-row" data-house="${safeHtml(j.houseNumber)}">\n                  <input type="checkbox" class="cs-job-check" value="${safeHtml(j.houseNumber)}" onchange="onCsJobCheck()">\n                  <div class="cs-job-info">\n                    <strong>${safeHtml(jobReferenceLabel(j))}</strong>\n                    <span>${safeHtml(j.destAirport || j.flightNo || "-")} · ${safeHtml(j.pieceCount || "-")} ชิ้น</span>\n                  </div>\n                  <div class="cs-job-meta">\n                    <span class="cs-status-badge pending">${safeHtml(j.manualExtra ? "Manual extra" : "Pending CS")}</span>\n                    <small>${safeHtml([ j.evidenceChannel || "", j.planRound || "" ].filter(Boolean).join(" / ") || "Need approval")}</small>\n                  </div>\n                </label>`).join("")}\n            </div>\n            <div class="cs-confirm-bar">\n              <div style="flex:1;display:flex;flex-direction:column;gap:6px">\n                <div style="font-size:11px;font-weight:600;color:#075985">โทรยืนยันแล้ว — Invoice ของกลุ่มวันนี้:</div>\n                <div style="display:flex;gap:8px;flex-wrap:wrap">\n                  <input type="text" class="cs-invoice-input" placeholder="เลข Invoice (เช่น INV-2026-0001)" id="csInvoice-${gkey}">\n                  <input type="text" class="cs-invoice-input" style="max-width:150px" placeholder="ชื่อผู้ติดต่อ" id="csContact-${gkey}">\n                  <select class="cs-invoice-input" style="max-width:130px" id="csEvidenceChannel-${gkey}">\n                    <option value="Line">Line</option>\n                    <option value="Email">Email</option>\n                    <option value="Phone">Phone</option>\n                  </select>\n                  <input type="text" class="cs-invoice-input" style="max-width:220px" placeholder="หลักฐาน/หมายเหตุ" id="csEvidenceNote-${gkey}">\n                  <input type="file" class="cs-evidence-file" accept="image/*,application/pdf" multiple id="csEvidenceFiles-${gkey}">\n                  <button class="cs-confirm-btn" onclick="submitCsConfirm('${gkey}')">✓ Confirm</button>\n                </div>\n              </div>\n            </div>\n          </div>`;
         }).join("")}\n      </div>`;
     }).join("") + csQueuePaginationHtml(jobs.length, _csQueuePage, CS_QUEUE_PAGE_SIZE);
     onCsJobCheck();
@@ -10806,7 +10819,7 @@ function _renderCsHistoryTable(listEl) {
     const rows = _csApplyFilters(_csHistoryData, _csConfirmDate);
     const summary = document.getElementById("csQueueSummary");
     if (summary) summary.textContent = `ประวัติการยืนยัน ${rows.length}${rows.length !== _csHistoryData.length ? " / " + _csHistoryData.length : ""} รายการ (ล่าสุด 500)`;
-    listEl.innerHTML = !rows.length ? `<div class="empty-state" style="margin-top:40px"><p>ไม่พบประวัติการยืนยัน</p></div>` : `\n    <div class="cs-history-wrap">\n      <table class="cs-history-table">\n        <thead><tr>\n          <th>ยืนยันเมื่อ</th><th>House</th><th>บริษัท</th><th>Invoice</th><th>ผู้ยืนยัน</th><th>ผู้ติดต่อ</th><th>สถานะงาน</th>\n        </tr></thead>\n        <tbody>\n          ${rows.map(j => `\n            <tr>\n              <td>${safeHtml(j.timeLabel || "-")}</td>\n              <td><strong>${safeHtml(j.houseNumber)}</strong></td>\n              <td>${safeHtml(j.customerName || "-")}</td>\n              <td>${safeHtml(j.csInvoiceNo || "-")}</td>\n              <td>${safeHtml(j.csConfirmedBy || "-")}</td>\n              <td>${safeHtml(j.csContactName || "-")}</td>\n              <td><span class="pill ${statusClass(j.status)}" title="${safeHtml(j.status || "")}">${statusLabelTh(j.status)}</span></td>\n            </tr>`).join("")}\n        </tbody>\n      </table>\n    </div>`;
+    listEl.innerHTML = !rows.length ? `<div class="empty-state" style="margin-top:40px"><p>ไม่พบประวัติการยืนยัน</p></div>` : `\n    <div class="cs-history-wrap">\n      <table class="cs-history-table">\n        <thead><tr>\n          <th>ยืนยันเมื่อ</th><th>House</th><th>บริษัท</th><th>Invoice</th><th>ผู้ยืนยัน</th><th>ผู้ติดต่อ</th><th>สถานะงาน</th>\n        </tr></thead>\n        <tbody>\n          ${rows.map(j => `\n            <tr>\n              <td>${safeHtml(j.timeLabel || "-")}</td>\n              <td><strong>${safeHtml(jobReferenceLabel(j))}</strong></td>\n              <td>${safeHtml(j.customerName || "-")}</td>\n              <td>${safeHtml(j.csInvoiceNo || "-")}</td>\n              <td>${safeHtml(j.csConfirmedBy || "-")}</td>\n              <td>${safeHtml(j.csContactName || "-")}</td>\n              <td><span class="pill ${statusClass(j.status)}" title="${safeHtml(j.status || "")}">${statusLabelTh(j.status)}</span></td>\n            </tr>`).join("")}\n        </tbody>\n      </table>\n    </div>`;
 }
 
 function onCsJobCheck() {

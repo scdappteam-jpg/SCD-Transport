@@ -2490,6 +2490,7 @@ function importPickupXlsxRows(db, rows) {
         if (labels.includes("ONHAND") && labels.includes("PICKUP")) {
             map = {
                 onhand: labels.indexOf("ONHAND"),
+                hawb: labels.indexOf("HAWB"),
                 dest: labels.indexOf("DEST"),
                 pickup: labels.indexOf("PICKUP"),
                 phone: labels.indexOf("PHONE"),
@@ -2552,6 +2553,11 @@ function importPickupXlsxRows(db, rows) {
             adminPrepared: existing ? Boolean(existing.adminPrepared) : true,
             source: "PickupReportXlsx"
         });
+        // Retain both source identifiers. Never replace the persisted job key
+        // or carry workflow state from another job with the matching HAWB.
+        job.onhandNumber = onhand;
+        const hawbNumber = xlsxNumStr(r[map.hawb]);
+        if (hawbNumber) job.hawbNumber = hawbNumber;
         imported.push(job);
     }
     return {
