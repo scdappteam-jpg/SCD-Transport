@@ -11153,13 +11153,12 @@ async function saveWarehouseReservations() {
 
 /* ══════════ บอร์ดแจ้งเตือนไฟลท์ด่วน (จอในคลัง) ══════════ */
 var _fbTimer = null;
+var _fbRefreshPending = false;
+var _fbLastSync = "";
+var _fbSyncError = "";
 
-function fbTier(minutes) {
-    if (minutes === null || isNaN(minutes)) return { key: "none", label: "ไม่มีกำหนด", color: "#64748B" };
-    if (minutes < 0) return { key: "over", label: "เลยกำหนดแล้ว", color: "#FF4D4D" };
-    if (minutes < 120) return { key: "critical", label: "ด่วนมาก", color: "#FF6B6B" };
-    if (minutes < 240) return { key: "warning", label: "เฝ้าระวัง", color: "#FFB44D" };
-    return { key: "normal", label: "ปกติ", color: "#5BD98A" };
+function fbTier(minutes, job = {}) {
+    return FlightRiskCore.tier(minutes, FlightRiskCore.noMiss(job));
 }
 
 function fbLeftLabel(minutes) {
@@ -11198,7 +11197,7 @@ function flightBoardRows() {
         var due = fbDueAt(job);
         var ms = due ? new Date(due).getTime() : NaN;
         var minutes = isNaN(ms) ? null : (ms - now) / 6e4;
-        return { job: job, minutes: minutes, tier: fbTier(minutes) };
+        return { job: job, minutes: minutes, tier: fbTier(minutes, job) };
     }).filter(function (row) {
         return row.minutes !== null && row.minutes >= 0 && row.minutes < 24 * 60;
     }).sort(function (a, b) { return a.minutes - b.minutes; }).slice(0, 60);
@@ -11241,8 +11240,9 @@ function renderFlightBoard() {
         + '<span>แสดงเฉพาะงานปัจจุบันที่ยังไม่เลยเวลาปิดรับ · อัปเดตอัตโนมัติทุก 30 วินาที</span></div>'
         + '<div class="fb-clock"><b>' + clock + '</b><span>' + dateTxt + '</span></div>'
         + '<button type="button" class="fb-full" onclick="fbToggleFull()">เต็มจอ</button></div>'
-        + '<div class="fb-legend"><span><i style="background:#FF6B6B"></i>ด่วนมาก · น้อยกว่า 2 ชม.</span>'
-        + '<span><i style="background:#FFB44D"></i>เฝ้าระวัง · 2–4 ชม.</span>'
+        + '<p class="fb-sync" role="status">' + safeHtml(_fbSyncError || (_fbLastSync ? 'ดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์ ' + formatBangkok(_fbLastSync) : 'ข้อมูลจากการเปิดหน้า รอตรวจรอบใหม่')) + ' <button type="button" onclick="refreshFlightBoard()">รีเฟรชข้อมูล</button></p>'
+        + '<div class="fb-legend"><span><i style="background:#FF6B6B"></i>ด่วนมาก · ไม่เกิน 2 ชม. หรือ C/K ไม่เกิน 4 ชม.</span>'
+        + '<span><i style="background:#FFB44D"></i>เฝ้าระวัง · มากกว่า 2 ถึง 4 ชม.</span>'
         + '<span><i style="background:#5BD98A"></i>ปกติ · มากกว่า 4 ชม.</span>'
         + '<span class="fb-count">' + rows.length + ' รายการ</span></div>'
         + '<div class="fb-th"><span>MASTER AWB</span><span>HOUSE</span><span>ปลายทาง</span><span>ไฟลท์</span>'
@@ -11264,8 +11264,26 @@ function renderFlightBoard() {
     if (_fbTimer) clearInterval(_fbTimer);
     _fbTimer = setInterval(function () {
         if (state.view !== "flight-board") { clearInterval(_fbTimer); _fbTimer = null; return; }
-        renderFlightBoard();
+        refreshFlightBoard();
     }, 30000);
+}
+
+async function refreshFlightBoard() {
+    if (_fbRefreshPending) return;
+    _fbRefreshPending = true;
+    try {
+        const data = await api('/api/bootstrap', null, 'GET');
+        if (!Array.isArray(data?.dashboard?.jobs)) throw new Error('ข้อมูลไม่ครบ');
+        if (state.view !== 'flight-board') return;
+        state.dashboard = data.dashboard;
+        _fbLastSync = new Date().toISOString();
+        _fbSyncError = '';
+    } catch (_error) {
+        _fbSyncError = 'ดึงข้อมูลใหม่ไม่สำเร็จ กำลังแสดงข้อมูลเดิม กรุณารีเฟรช';
+    } finally {
+        _fbRefreshPending = false;
+        if (state.view === 'flight-board') renderFlightBoard();
+    }
 }
 
 function fbToggleFull() {

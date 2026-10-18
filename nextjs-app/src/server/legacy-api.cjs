@@ -16,6 +16,7 @@ const { planShipmentMerges, applyShipmentMerges, restoreShipmentMerge, updateMer
 const { planReferenceFill, applyReferenceFill, restoreReferenceFill } = require("./shipment-reference-fill.cjs");
 const inboundReceipts = require("./inbound-receipts.cjs");
 const inboundFlight = require("./inbound-flight.cjs");
+const flightRisk = require("./flight-risk.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -103,7 +104,6 @@ const relationalMirror = createProductionRelationalMirror({
 });
 
 const TERMINAL_REACHED_STATUSES = new Set([ "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ]);
-const WH3_RECEIVED_STATUSES = new Set([ "ReceivedAtWH3", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ]);
 
 const FLIGHT_RISK_ALERT_STATUSES = new Set([ "DueToday", "Warning", "Urgent", "Critical", "Breached" ]);
 
@@ -1506,141 +1506,12 @@ function applyPlanConfirmation(db, plan, importedBy = "LoadPlan") {
     return confirmed;
 }
 
-function flightNumberDigits(flightNo) {
-    // Use the first airline flight-number block, not a date suffix in values
-    // such as YP602/28. Only explicit 3- or 4-digit numbers drive the SLA.
-    const match = String(flightNo || "").toUpperCase().match(/^[A-Z]{1,3}[-\s]*([0-9]{3,4})(?![0-9])/);
-    return match ? match[1].length : 0;
-}
-
-function isNoMissFlight(flightNo) {
-    // Destination values such as KUL must never be treated as C/K flights.
-    // Accept C123, K1234, CK123, etc. only when a real 3-4 digit flight
-    // number follows the C/K airline prefix.
-    return /^[CK][A-Z]{0,2}[-\s]*[0-9]{3,4}(?![0-9])/.test(String(flightNo || "").trim().toUpperCase());
-}
-
 function deriveFlightSla(job, referenceTime = Date.now()) {
-    const flightNo = String(job.flightNo || "").trim().toUpperCase();
-    const digits = flightNumberDigits(flightNo);
-    // new Date(null) = 0 (ไม่ใช่ NaN) งานที่ไม่มีเวลาบินจึงเคยกลายเป็นกำหนดส่งปี 1969
-    // และถูกนับว่า "เลยกำหนด" ตลอดไป — ต้องกันค่าที่ใช้ไม่ได้ตั้งแต่ตรงนี้
-    const rawEtd = job.flightTime;
-    const etdMs = (rawEtd === null || rawEtd === undefined || rawEtd === "")
-        ? NaN
-        : new Date(rawEtd).getTime();
-    const etdUsable = !isNaN(etdMs) && new Date(etdMs).getUTCFullYear() >= 2000;
-    const mustNotMissFlight = isNoMissFlight(flightNo);
-    const slaHoursBeforeFlight = 14;
-    const slaProfile = "WH3_14H";
-    if (!etdUsable) {
-        // ยังไม่รู้เที่ยวบิน แต่ถ้ามีเวลาปิดรับ (CLOSE) ก็ใช้คำนวณกำหนดส่งได้
-        const cutoffMs = new Date(job.cargoCutoffAt || "").getTime();
-        const cutoffUsable = !isNaN(cutoffMs) && new Date(cutoffMs).getUTCFullYear() >= 2000;
-        if (cutoffUsable) {
-            const cutoffOnlyDueMs = cutoffMs - 36e5;
-            const mins = Math.round((cutoffOnlyDueMs - referenceTime) / 6e4);
-            const reached = WH3_RECEIVED_STATUSES.has(job.status) || Boolean(job.wh3ReceivedAt);
-            let status = "OnTrack";
-            if (reached) status = "WH3Received";
-            else if (mins < 0) status = "Breached";
-            else if (mins <= 120) status = "Critical";
-            else if (mins <= 240) status = "Urgent";
-            else if (bangkokDate(new Date(cutoffOnlyDueMs).toISOString()) === bangkokDate(new Date(referenceTime).toISOString())) status = "DueToday";
-            return {
-                flightNumberDigits: digits || null,
-                slaProfile: "CARGO_CUTOFF",
-                slaHoursBeforeFlight,
-                mustNotMissFlight,
-                airportDueAt: new Date(cutoffOnlyDueMs).toISOString(),
-                effectiveAirportDueAt: new Date(cutoffOnlyDueMs).toISOString(),
-                wh3DueAt: new Date(cutoffOnlyDueMs).toISOString(),
-                minutesToAirportDue: mins,
-                flightRiskStatus: status,
-                flightRiskReason: "ใช้เวลาปิดรับสินค้า (CLOSE) คำนวณแทน เพราะยังไม่มีเที่ยวบิน"
-            };
-        }
-        return {
-            flightNumberDigits: digits || null,
-            slaProfile,
-            slaHoursBeforeFlight,
-            mustNotMissFlight,
-            airportDueAt: "",
-            effectiveAirportDueAt: "",
-            minutesToAirportDue: null,
-            flightRiskStatus: "Unclassified",
-            flightRiskReason: "ยังไม่มีเวลาบิน (ETD) ที่ใช้คำนวณกำหนดส่งได้"
-        };
-    }
-    const slaDueMs = etdMs - slaHoursBeforeFlight * 36e5;
-    const cargoCutoffMs = new Date(job.cargoCutoffAt || "").getTime();
-    // Legacy closeTime is not consistently an airline cutoff. Only the
-    // explicit cargoCutoffAt field can make the deadline earlier.
-    const cutoffDueMs = isNaN(cargoCutoffMs) ? null : cargoCutoffMs - 36e5;
-    const dueMs = cutoffDueMs === null ? slaDueMs : Math.min(slaDueMs, cutoffDueMs);
-    const minutesToAirportDue = Math.round((dueMs - referenceTime) / 6e4);
-    const reachedWh3 = WH3_RECEIVED_STATUSES.has(job.status) || Boolean(job.wh3ReceivedAt);
-    const dueToday = bangkokDate(new Date(dueMs).toISOString()) === bangkokDate(new Date(referenceTime).toISOString());
-    let flightRiskStatus = "OnTrack";
-    let flightRiskReason = "Within flight SLA";
-    if (reachedWh3) {
-        flightRiskStatus = "WH3Received";
-        flightRiskReason = "Cargo received at WH3";
-    } else if (minutesToAirportDue < 0) {
-        flightRiskStatus = "Breached";
-        flightRiskReason = "WH3 deadline has passed";
-    } else if (mustNotMissFlight && minutesToAirportDue <= 240) {
-        flightRiskStatus = "Critical";
-        flightRiskReason = "C/K no-miss flight is within 4 hours of airport deadline";
-    } else if (minutesToAirportDue <= 120) {
-        flightRiskStatus = "Critical";
-        flightRiskReason = "Less than 2 hours to airport deadline";
-    } else if (minutesToAirportDue <= 240) {
-        flightRiskStatus = "Urgent";
-        flightRiskReason = "Less than 4 hours to airport deadline";
-    } else if (dueToday) {
-        flightRiskStatus = "DueToday";
-        flightRiskReason = "Cargo must reach airport today";
-    } else if (minutesToAirportDue <= 360) {
-        flightRiskStatus = "Warning";
-        flightRiskReason = "Less than 6 hours to airport deadline";
-    }
-    return {
-        flightNumberDigits: digits,
-        slaProfile,
-        slaHoursBeforeFlight,
-        mustNotMissFlight,
-        airportDueAt: new Date(slaDueMs).toISOString(),
-        effectiveAirportDueAt: new Date(dueMs).toISOString(),
-        wh3DueAt: new Date(dueMs).toISOString(),
-        minutesToAirportDue,
-        flightRiskStatus,
-        flightRiskReason
-    };
+    return flightRisk.derive(job, referenceTime);
 }
 
 function refreshFlightSla(db) {
-    db.alerts ||= [];
-    const now = Date.now();
-    const today = bangkokDate(new Date(now).toISOString());
-    for (const job of db.jobs || []) {
-        const risk = deriveFlightSla(job, now);
-        const previousAlertKey = job.flightRiskAlertKey || "";
-        Object.assign(job, risk);
-        const dueToday = risk.effectiveAirportDueAt && bangkokDate(risk.effectiveAirportDueAt) === today;
-        const alertKey = `${risk.flightRiskStatus}|${risk.effectiveAirportDueAt}`;
-        if (!WH3_RECEIVED_STATUSES.has(job.status) && dueToday && FLIGHT_RISK_ALERT_STATUSES.has(risk.flightRiskStatus) && previousAlertKey !== alertKey) {
-            db.alerts.push({
-                id: `FLIGHT-RISK-${job.houseNumber}-${Date.now()}-${db.alerts.length}`,
-                message: `[Flight Risk] ${job.houseNumber} · ${job.flightNo || "TBC"} · ${risk.flightRiskStatus}: ${risk.flightRiskReason}. Must be received at WH3 by ${formatBangkok(risk.effectiveAirportDueAt)}${risk.mustNotMissFlight ? " · C/K NO-MISS" : ""}`,
-                severity: [ "Critical", "Breached" ].includes(risk.flightRiskStatus) ? "danger" : "warning",
-                createdAt: nowIso(),
-                houseNumber: job.houseNumber,
-                flightRiskStatus: risk.flightRiskStatus
-            });
-            job.flightRiskAlertKey = alertKey;
-        }
-    }
+    flightRisk.refresh(db, { now: Date.now(), formatTime: formatBangkok });
 }
 
 function normalizeJob(job) {
