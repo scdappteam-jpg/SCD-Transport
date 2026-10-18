@@ -1511,7 +1511,7 @@ function deriveFlightSla(job, referenceTime = Date.now()) {
 }
 
 function refreshFlightSla(db) {
-    flightRisk.refresh(db, { now: Date.now(), formatTime: formatBangkok });
+    return flightRisk.refresh(db, { now: Date.now(), formatTime: formatBangkok });
 }
 
 function normalizeJob(job) {
@@ -3441,6 +3441,7 @@ async function handleApi(req, res, pathname) {
         });
     }
     if (req.method === "GET" && pathname === "/api/bootstrap") {
+        if (refreshFlightSla(db)) writeDb(db);
         return sendJson(res, 200, {
             users: publicUsers(db),
             customers: db.customers,
@@ -4261,6 +4262,7 @@ async function handleApi(req, res, pathname) {
         });
     }
     if (req.method === "GET" && pathname === "/api/flight-risks") {
+        if (refreshFlightSla(db)) writeDb(db);
         const dashboard = buildDashboard(db);
         return sendJson(res, 200, {
             risks: dashboard.flightRiskJobs,

@@ -94,3 +94,16 @@ test('board refresh fetches new server jobs, avoids overlapping requests and kee
     assert.equal(context.state.dashboard.jobs[0], 'updated-from-server'); assert.match(context._fbSyncError, /ข้อมูลเดิม/);
     assert.match(source.slice(source.indexOf('    _fbTimer = setInterval'), end), /refreshFlightBoard\(\)/);
 });
+test('real dashboard polling evaluates and persists new alerts without requiring a cargo write or n8n', async () => {
+    const source = readFileSync(new URL('../src/server/legacy-api.cjs', import.meta.url), 'utf8');
+    const start = source.indexOf('    if (req.method === "GET" && pathname === "/api/bootstrap")');
+    const end = source.indexOf('    if (req.method === "POST" && pathname === "/api/scan-barcode")', start);
+    const job = fixture(), before = structuredClone(job), db = { jobs: [job], alerts: [] };
+    let writes = 0;
+    const now = Date.parse('2026-10-20T00:01:00+07:00');
+    const context = { req: { method: 'GET' }, res: {}, pathname: '/api/bootstrap', db, publicUsers: () => [], refreshFlightSla: (state: unknown) => risk.refresh(state, { now }), writeDb: () => { writes++; }, buildDashboard: () => ({ jobs: db.jobs, alerts: db.alerts }), sendJson: (_res: unknown, status: number, value: unknown) => ({ status, value }) };
+    const run = () => vm.runInNewContext('(async()=>{' + source.slice(start, end) + '})()', context);
+    assert.equal((await run()).status, 200); assert.equal(writes, 1); assert.equal(db.alerts.length, 1);
+    await run(); assert.equal(writes, 1); assert.equal(db.alerts.length, 1);
+    for (const key of Object.keys(before) as (keyof typeof job)[]) assert.deepEqual(job[key], before[key]);
+});

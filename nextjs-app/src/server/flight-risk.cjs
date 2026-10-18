@@ -30,6 +30,7 @@ function derive(job, now = Date.now()) {
 }
 function refresh(db, { now = Date.now(), formatTime = value => value } = {}) {
     db.alerts ||= [];
+    let changed = false;
     for (const job of db.jobs || []) {
         const risk = derive(job, now), previousKey = job.flightRiskAlertKey || '';
         Object.assign(job, risk);
@@ -38,8 +39,10 @@ function refresh(db, { now = Date.now(), formatTime = value => value } = {}) {
         if (ALERT_STATUSES.has(risk.flightRiskStatus) && (dueToday || ['Urgent', 'Critical', 'Breached', 'Warning'].includes(risk.flightRiskStatus)) && previousKey !== key) {
             db.alerts.push({ id: `FLIGHT-RISK-${job.houseNumber}-${now}-${db.alerts.length}`, message: `[Flight Risk] ${job.houseNumber} · ${job.flightNo || 'TBC'} · ${risk.flightRiskStatus}: ${risk.flightRiskReason}. ต้องยืนยันรับครบที่ WH3 ภายใน ${formatTime(risk.effectiveAirportDueAt)}${risk.mustNotMissFlight ? ' · C/K NO-MISS' : ''}`, severity: ['Critical', 'Breached'].includes(risk.flightRiskStatus) ? 'danger' : 'warning', createdAt: new Date(now).toISOString(), houseNumber: job.houseNumber, flightRiskStatus: risk.flightRiskStatus });
             job.flightRiskAlertKey = key;
+            changed = true;
         }
-        if (!ALERT_STATUSES.has(risk.flightRiskStatus)) job.flightRiskAlertKey = '';
+        if (!ALERT_STATUSES.has(risk.flightRiskStatus) && previousKey) { job.flightRiskAlertKey = ''; changed = true; }
     }
+    return changed;
 }
 module.exports = { derive, refresh, ALERT_STATUSES, ...core };
