@@ -17,6 +17,7 @@ const { planReferenceFill, applyReferenceFill, restoreReferenceFill } = require(
 const inboundReceipts = require("./inbound-receipts.cjs");
 const inboundFlight = require("./inbound-flight.cjs");
 const flightRisk = require("./flight-risk.cjs");
+const consolSchedule = require("./consol-schedule.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -2596,6 +2597,7 @@ function importGlobalConsolRows(db, csvText) {
             const cargoType = dgUp === "L" || dgUp === "LN" ? "lithium" : dgUp === "DG" ? "dg" : "normal";
             const isLithium = cargoType === "lithium";
             const existing = findJob(db, houseNumber);
+            const flightBefore = existing ? consolSchedule.scheduleSnapshot(existing) : null;
             const changeSet = [];
             if (!existing) {
                 changeSet.push("NEW_JOB");
@@ -2603,7 +2605,7 @@ function importGlobalConsolRows(db, csvText) {
             } else {
                 const newDest = s.dest || h.dest || "";
                 if ((existing.destAirport || "") !== newDest) changeSet.push("DEST_CHANGED");
-                if ((existing.flightNo || "") !== s.flight) changeSet.push("FLIGHT_CHANGED");
+                changeSet.push(...consolSchedule.scheduleChanges(existing, { flightNo: s.flight, flightTime: flightDateTime }));
                 if (changeSet.length) changedJobs += 1; else unchangedJobs += 1;
             }
             const job = upsertJob(db, {
@@ -2638,6 +2640,8 @@ function importGlobalConsolRows(db, csvText) {
                     houseNumber: houseNumber,
                     customerName: job.customerName,
                     changes: changeSet,
+                    flightBefore,
+                    flightAfter: consolSchedule.scheduleSnapshot(job),
                     notIssued: !job.cargoIssuedAt,
                     message: buildImportChangeMessage(job, changeSet, !job.cargoIssuedAt),
                     createdAt: nowIso()
@@ -2748,6 +2752,7 @@ function buildImportChangeMessage(job, changes, notIssued) {
     const parts = [];
     if (changes.includes("NEW_JOB")) parts.push(`งานใหม่ ${job.houseNumber}`);
     if (changes.includes("FLIGHT_TIME_CHANGED")) parts.push(`เที่ยวบิน/เวลาปิดเปลี่ยน ${job.houseNumber}`);
+    else if (changes.includes("FLIGHT_CHANGED")) parts.push(`เที่ยวบินเปลี่ยน ${job.houseNumber}`);
     if (changes.includes("DEST_CHANGED")) parts.push(`ปลายทางเปลี่ยน ${job.houseNumber}`);
     if (changes.includes("QTY_CHANGED")) parts.push(`จำนวนเปลี่ยน ${job.houseNumber}`);
     if (changes.includes("CUSTOMER_CHANGED")) parts.push(`ลูกค้าเปลี่ยน ${job.houseNumber}`);

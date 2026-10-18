@@ -1691,8 +1691,14 @@ function pickupItemsToText(job) {
 
 function toDateInput(value) {
     if (!value) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toISOString().slice(0, 10);
+    if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+    const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(date);
+    const part = type => parts.find(item => item.type === type).value;
+    return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
 function toDateTimeInput(value) {
@@ -10413,6 +10419,7 @@ function renderAlerts() {
     const CHANGE_LABELS = {
         CUSTOMER_CHANGED: "ลูกค้าเปลี่ยน",
         FLIGHT_CHANGED: "เที่ยวบินเปลี่ยน",
+        FLIGHT_TIME_CHANGED: "วันเวลาเที่ยวบินเปลี่ยน",
         DESTINATION_CHANGED: "ปลายทางเปลี่ยน",
         DATE_CHANGED: "วันที่เปลี่ยน",
         WEIGHT_CHANGED: "น้ำหนักเปลี่ยน",
