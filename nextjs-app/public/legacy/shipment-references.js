@@ -13,6 +13,7 @@
 
     function createIndex(jobs) {
         const index = new Map();
+        index.masters = new Map();
         function add(key, value) {
             if (!key || key === "AIR") return;
             if (!index.has(key)) index.set(key, new Set());
@@ -20,12 +21,38 @@
         }
         for (const job of jobs || []) {
             const { onhand, hawb } = ownReferences(job);
+            const master = clean(job.mawbNumber || job.masterAwb || job.awbNumber || job.scannedMasterAwb);
+            for (const key of [onhand, hawb]) {
+                if (!key || key === "AIR" || !master) continue;
+                if (!index.masters.has(key)) index.masters.set(key, new Set());
+                index.masters.get(key).add(master);
+            }
             if (onhand && hawb) {
                 add(onhand, hawb);
                 add(hawb, onhand);
             }
         }
         return index;
+    }
+
+    function grouped(job, index) {
+        const ids = identifiers(job, index);
+        const masters = new Set([clean(job.mawbNumber || job.masterAwb || job.awbNumber || job.scannedMasterAwb)].filter(Boolean));
+        for (const id of ids) for (const master of index?.masters?.get(id) || []) masters.add(master);
+        return {
+            onhand: ids.filter(id => /^F\d{8,}$/.test(id)),
+            master: [...masters],
+            house: ids.filter(id => !/^F\d{8,}$/.test(id) && id !== "AIR"),
+            pendingHouse: ids.includes("AIR")
+        };
+    }
+
+    function matches(job, query, index) {
+        const normalize = value => clean(value).replace(/[\s-]/g, "");
+        const term = normalize(query);
+        const refs = grouped(job, index);
+        return !term || [...refs.onhand, ...refs.master, ...refs.house, ...(job.mergedHouseNumbers || [])]
+            .some(value => normalize(value).includes(term));
     }
 
     function identifiers(job, index) {
@@ -43,6 +70,8 @@
     const api = {
         createIndex,
         identifiers,
+        grouped,
+        matches,
         label: (job, index) => identifiers(job, index).join(" · "),
         pickupReferences: (onhand, hawb) => ({ onhandNumber: clean(onhand), hawbNumber: clean(hawb) })
     };

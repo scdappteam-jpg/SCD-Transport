@@ -19,7 +19,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=20260822-mobile-layout">
+    <link rel="stylesheet" href="styles.css?v=20261018-three-references">
     <link rel="stylesheet" href="fleet-demo.css?v=20260829">
     <link rel="stylesheet" href="mobile-layout.css?v=20260822e">
     <style>[hidden]{display:none !important}</style>
@@ -491,7 +491,7 @@
               <aside class="orders-list card">
                 <label class="search-box full">
                   <span>⌕</span>
-                  <input id="orderSearch" placeholder="ค้นหา AWB / Search order">
+                  <input id="orderSearch" placeholder="ค้นหา Onhand / Master / House">
                 </label>
                 <div class="order-filter-cards">
                   <button class="active" type="button" data-order-filter="today">
@@ -529,6 +529,7 @@
                   <div class="hero-icon"><i data-lucide="plane" aria-hidden="true"></i></div>
                   <div>
                     <h2 id="selectedOrderTitle">เลือกงานจากรายการด้านซ้าย</h2>
+                    <div id="selectedOrderReferences"></div>
                     <p id="selectedOrderSubtitle">Flight / Customer</p>
                   </div>
                   <div class="route-box">
@@ -2561,7 +2562,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
         <script src="config.js"></script>
     <script src="demo-data.js"></script>
     <script src="live-scan.js?v=20261011-manual-house-hyphen"></script>
-    <script src="shipment-references.js?v=2-hawb-first"></script>
-    <script src="app.js?v=35-preserve-bulk-approvals"></script>
+    <script src="shipment-references.js?v=3-three-references"></script>
+    <script src="app.js?v=36-three-references"></script>
   </body>
 </html>
