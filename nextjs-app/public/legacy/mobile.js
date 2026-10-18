@@ -656,7 +656,8 @@ function renderInboundGuide() {
     });
     $$("#tab-inbound [data-operation-target]").forEach(button => {
         const optionalMove = button.dataset.operationTarget === "inbound-move" && Boolean(job.locationId);
-        button.disabled = button.dataset.operationTarget !== target && !optionalMove;
+        const flightReview = button.dataset.operationTarget === "inbound-scan" && [ "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status);
+        button.disabled = button.dataset.operationTarget !== target && !optionalMove && !flightReview;
     });
     showOperation(target);
 }

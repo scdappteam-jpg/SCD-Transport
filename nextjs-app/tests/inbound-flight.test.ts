@@ -149,3 +149,14 @@ test('receipt preview labels distinguish simulated amounts from confirmed real a
         assert.match(ui.master(group, true), new RegExp('รับครบ ' + n + '/3'));
     }
 });
+test('mobile permits Flight review after storage without unlocking Scan for jobs still waiting for documents', () => {
+    const source = readFileSync(new URL('../public/legacy/mobile.js', import.meta.url), 'utf8');
+    const start = source.indexOf('function renderInboundGuide()');
+    const end = source.indexOf('function renderBillingGuide()', start);
+    const buttons = ['inbound-doc', 'inbound-scan', 'inbound-putaway', 'inbound-close'].map(target => ({ dataset: { operationTarget: target }, disabled: true }));
+    const context = { job: fixture()[0], state: { inboundUnlockedHouse: '4840805485' }, findAnyJob: () => context.job, $: (selector: string) => selector === '#scanHouse' ? { value: '4840805485' } : { querySelectorAll: () => [] }, $$: () => buttons, InboundReceipts: receipts, showOperation: () => {} };
+    const render = () => vm.runInNewContext(source.slice(start, end) + ';renderInboundGuide();', context);
+    render(); assert.equal(buttons[1].disabled, false);
+    context.job = { ...context.job, status: 'Pending', locationId: '', inboundClosedAt: '' };
+    render(); assert.equal(buttons[1].disabled, true);
+});
