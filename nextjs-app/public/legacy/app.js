@@ -11263,7 +11263,7 @@ function renderFlightBoard() {
 
     if (_fbTimer) clearInterval(_fbTimer);
     _fbTimer = setInterval(function () {
-        if (state.view !== "flight-board") { clearInterval(_fbTimer); _fbTimer = null; return; }
+        if (state.currentView !== "flight-board") { clearInterval(_fbTimer); _fbTimer = null; return; }
         refreshFlightBoard();
     }, 30000);
 }
@@ -11274,7 +11274,7 @@ async function refreshFlightBoard() {
     try {
         const data = await api('/api/bootstrap', null, 'GET');
         if (!Array.isArray(data?.dashboard?.jobs)) throw new Error('ข้อมูลไม่ครบ');
-        if (state.view !== 'flight-board') return;
+        if (state.currentView !== 'flight-board') return;
         state.dashboard = data.dashboard;
         _fbLastSync = new Date().toISOString();
         _fbSyncError = '';
@@ -11282,7 +11282,7 @@ async function refreshFlightBoard() {
         _fbSyncError = 'ดึงข้อมูลใหม่ไม่สำเร็จ กำลังแสดงข้อมูลเดิม กรุณารีเฟรช';
     } finally {
         _fbRefreshPending = false;
-        if (state.view === 'flight-board') renderFlightBoard();
+        if (state.currentView === 'flight-board') renderFlightBoard();
     }
 }
 

@@ -84,7 +84,7 @@ test('board refresh fetches new server jobs, avoids overlapping requests and kee
     const source = readFileSync(new URL('../public/legacy/app.js', import.meta.url), 'utf8');
     const start = source.indexOf('async function refreshFlightBoard()'), end = source.indexOf('function fbToggleFull()', start);
     let resolveRequest: (value: unknown) => void = () => {};
-    const context = { _fbRefreshPending: false, _fbLastSync: '', _fbSyncError: '', state: { view: 'flight-board', dashboard: { jobs: ['old'] } }, calls: 0, rendered: 0, api: () => { context.calls++; return new Promise(resolve => { resolveRequest = resolve; }); }, renderFlightBoard: () => { context.rendered++; } };
+    const context = { _fbRefreshPending: false, _fbLastSync: '', _fbSyncError: '', state: { currentView: 'flight-board', dashboard: { jobs: ['old'] } }, calls: 0, rendered: 0, api: () => { context.calls++; return new Promise(resolve => { resolveRequest = resolve; }); }, renderFlightBoard: () => { context.rendered++; } };
     vm.createContext(context); vm.runInContext(source.slice(start, end), context);
     const first = vm.runInContext('refreshFlightBoard()', context);
     await vm.runInContext('refreshFlightBoard()', context); assert.equal(context.calls, 1);
@@ -92,7 +92,13 @@ test('board refresh fetches new server jobs, avoids overlapping requests and kee
     assert.equal(context.state.dashboard.jobs[0], 'updated-from-server'); assert.ok(context._fbLastSync);
     const second = vm.runInContext('refreshFlightBoard()', context); resolveRequest({ queued: true }); await second;
     assert.equal(context.state.dashboard.jobs[0], 'updated-from-server'); assert.match(context._fbSyncError, /ข้อมูลเดิม/);
-    assert.match(source.slice(source.indexOf('    _fbTimer = setInterval'), end), /refreshFlightBoard\(\)/);
+    const timerSource = source.slice(source.indexOf('    _fbTimer = setInterval'), start);
+    assert.match(timerSource, /refreshFlightBoard\(\)/);
+    const timer = { state: { currentView: 'flight-board' }, _fbTimer: 1 as number | null, calls: 0, callback: () => {}, clearInterval: () => {}, setInterval: (callback: () => void) => { timer.callback = callback; return 1; }, refreshFlightBoard: () => { timer.calls++; } };
+    vm.runInNewContext(timerSource.slice(0, timerSource.lastIndexOf('}')), timer);
+    timer.callback(); assert.equal(timer.calls, 1);
+    timer.state.currentView = 'orders'; timer.callback(); assert.equal(timer.calls, 1); assert.equal(timer._fbTimer, null);
+    assert.match(source.slice(source.indexOf('function setView('), source.indexOf('function setView(') + 1000), /state\.currentView = view/);
 });
 test('real dashboard polling evaluates and persists new alerts without requiring a cargo write or n8n', async () => {
     const source = readFileSync(new URL('../src/server/legacy-api.cjs', import.meta.url), 'utf8');
