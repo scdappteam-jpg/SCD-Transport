@@ -55,6 +55,7 @@ test('replay writes no second history record; stale forms fail and repeated chan
     assert.equal(history[0].oldFlightNo, 'NH850/20');
     assert.equal(history[1].oldFlightNo, 'NH850/21');
     assert.equal(history[1].changedBy, 'wh-2');
+    assert.throws(() => flight.scanHouse(job, first, 'wh-1'), /ถูกแก้ใหม่/);
 });
 test('unchanged scan never regresses stored or later progress and never switches its existing Track', () => {
     for (const status of ['Stored', 'ReadyForTerminal', 'XRayPassed', 'Billed']) {

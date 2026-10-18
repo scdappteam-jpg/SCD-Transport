@@ -27,6 +27,7 @@ function changeFlight(job, payload, actor, at = new Date().toISOString()) {
     const prior = history.find(row => row.requestId === requestId);
     if (prior) {
         if (prior.newFlightNo !== number || !sameTime(prior.newFlightTime, time) || !sameTime(prior.newCargoCutoffAt, cutoff) || prior.reason !== reason) throw new Error('รหัสคำขอนี้ใช้เปลี่ยน Flight เป็นข้อมูลอื่นแล้ว');
+        if (job.flightRevision !== prior.revision || job.flightNo !== prior.newFlightNo || !sameTime(job.flightTime, prior.newFlightTime) || !sameTime(job.cargoCutoffAt, prior.newCargoCutoffAt)) throw new Error('Flight ถูกแก้ใหม่หลังคำขอนี้แล้ว กรุณารีเฟรชและตรวจข้อมูลล่าสุด');
         return { changed: false, replayed: true, record: prior };
     }
     const revision = job.flightRevision || 0;
