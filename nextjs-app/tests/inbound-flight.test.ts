@@ -24,7 +24,7 @@ test('changing Flight after storage preserves every cargo field and only changes
     for (const key of ['status', 'locationId', 'csConfirmed', 'trackType', 'inboundClosedAt', 'inboundReceipt', 'inboundReceiptHistory', 'packageCounts', 'houseNumber', 'onhandNumber', 'mawbNumber']) assert.deepEqual(jobs[0][key], before[0][key]);
     assert.deepEqual(jobs.slice(1), before.slice(1));
     assert.equal(jobs[0].flightTime, '2026-10-21T14:35:00.000Z');
-    assert.equal(jobs[0].trackReprintRequired, true);
+    assert.equal(jobs[0].trackReprintRequired, undefined);
     const master = receipts.overview(jobs).masters.get('20586393230');
     assert.equal(master.completeHouses, 3);
     assert.deepEqual(plain(master.received), { CTN: 235, PLT: 18 });
@@ -90,12 +90,15 @@ test('actual scan route rejects invalid Flight before write, logs one audited ch
     const start = source.indexOf('    if (req.method === "POST" && pathname === "/api/inbound/scan-house")');
     const end = source.indexOf('    if (req.method === "POST" && pathname === "/api/inbound/twin-scan")', start);
     const jobs = fixture(), db = { jobs }, logs: Record<string, unknown>[] = [];
+    const messages: string[] = [];
     let writes = 0, alerts = 0, body = payload(jobs[0], { updatedFlightNo: '' });
-    const context = { req: { method: 'POST' }, res: {}, pathname: '/api/inbound/scan-house', db, inboundFlight: flight, refreshDbIfSharedStateChanged: async () => {}, readDb: () => db, requireSessionRole: () => ({ id: 'server-actor' }), parseBody: async () => body, findJob: () => jobs[0], sendJson: (_: unknown, status: number, data: unknown) => ({ status, data }), nowIso: () => '2026-10-18T00:00:00Z', createAlert: async () => { alerts++; }, writeDb: () => { writes++; }, logActivity: (_: unknown, value: Record<string, unknown>) => logs.push(value), normalizeJob: (job: unknown) => job, deriveFlightSla: (job: Record<string, unknown>) => ({ effectiveAirportDueAt: job.flightTime }), formatBangkok: (value: unknown) => value };
+    const context = { req: { method: 'POST' }, res: {}, pathname: '/api/inbound/scan-house', db, inboundFlight: flight, refreshDbIfSharedStateChanged: async () => {}, readDb: () => db, requireSessionRole: () => ({ id: 'server-actor' }), parseBody: async () => body, findJob: () => jobs[0], sendJson: (_: unknown, status: number, data: unknown) => ({ status, data }), nowIso: () => '2026-10-18T00:00:00Z', createAlert: async (_db: unknown, message: string) => { alerts++; messages.push(message); }, writeDb: () => { writes++; }, logActivity: (_: unknown, value: Record<string, unknown>) => logs.push(value), normalizeJob: (job: unknown) => job, deriveFlightSla: (job: Record<string, unknown>) => ({ effectiveAirportDueAt: job.flightTime }), formatBangkok: (value: unknown) => value };
     const run = () => vm.runInNewContext('(async()=>{' + source.slice(start, end) + '})()', context);
     assert.equal((await run()).status, 409); assert.equal(writes, 0); assert.equal(alerts, 0);
     body = payload(jobs[0]);
     assert.equal((await run()).status, 200); assert.equal(writes, 1); assert.equal(alerts, 1);
+    for (const value of ['4840805485', '205-86393230', 'NH850/20', 'NH850/21', '2026-10-20T21:35:00+07:00', '2026-10-21T14:35:00.000Z', String(body.flightChangeReason)]) assert.ok(messages[0].includes(value));
+    assert.doesNotMatch(messages[0], /พิมพ์/);
     assert.equal(logs[0].activityType, 'InboundFlightChanged');
     assert.equal((logs[0].flightChange as Record<string, unknown>).changedBy, 'server-actor');
     assert.equal(jobs[0].status, 'Stored');
@@ -160,13 +163,20 @@ test('mobile permits Flight review after storage without unlocking Scan for jobs
     context.job = { ...context.job, status: 'Pending', locationId: '', inboundClosedAt: '' };
     render(); assert.equal(buttons[1].disabled, true);
 });
-test('Flight label opens inline with all identifiers without claiming to have printed', () => {
-    let opened = false, printed = 0;
-    const dialog = { id: '', style: { cssText: '' }, innerHTML: '', querySelector: () => ({ addEventListener: () => {} }), showModal: () => { opened = true; }, close: () => {} };
-    const context = { window: { print: () => { printed++; } } as Record<string, unknown>, document: { querySelector: () => null, createElement: () => dialog, body: { appendChild: () => {} } } };
+test('Flight changes show old and new details with history and no printing controls', () => {
+    const nodes: Record<string, { value: string; innerHTML: string; dataset: Record<string, string>; hidden?: boolean; textContent?: string }> = {};
+    for (const key of ['flightHistoryPanel', 'flightChanged', 'updatedFlightNo', 'updatedFlightTime', 'updatedCargoCutoffAt', 'flightChangeReason', 'flightPreviewResult', 'flightChangeFields', 'houseScanBtn']) nodes['#' + key] = { value: '', innerHTML: '', dataset: {} };
+    const context = { window: {} as Record<string, unknown>, document: { querySelector: (key: string) => nodes[key] } };
     vm.runInNewContext(readFileSync(new URL('../public/legacy/inbound-flight-ui.js', import.meta.url), 'utf8'), context);
-    const ui = context.window.FlightUI as { printLabel: (job: unknown) => void };
-    ui.printLabel(fixture()[0]);
-    assert.equal(opened, true); assert.equal(printed, 0);
-    for (const value of ['4840805485', 'F842089695', '205-86393230', 'NH850/20']) assert.ok(dialog.innerHTML.includes(value));
+    const ui = context.window.FlightUI as { sync: (job: unknown) => void };
+    const job = fixture()[0];
+    ui.sync(job);
+    assert.doesNotMatch(nodes['#flightHistoryPanel'].innerHTML, /แจ้งเตือน:/);
+    flight.scanHouse(job, payload(job), 'wh-alert');
+    ui.sync(job);
+    const html = nodes['#flightHistoryPanel'].innerHTML;
+    for (const value of ['role="status"', 'แจ้งเตือน:', 'NH850/20', 'NH850/21', 'wh-alert', 'ประวัติเปลี่ยน Flight 1 รายการ', String(payload(job).flightChangeReason)]) assert.ok(html.includes(value));
+    assert.doesNotMatch(html, /data-flight-print|พิมพ์|flightLabelDialog/);
+    assert.equal('printLabel' in ui, false);
+    for (const name of ['index.html', 'mobile.html']) assert.doesNotMatch(readFileSync(new URL('../public/legacy/' + name, import.meta.url), 'utf8'), /ต้องพิมพ์ Track ใหม่/);
 });

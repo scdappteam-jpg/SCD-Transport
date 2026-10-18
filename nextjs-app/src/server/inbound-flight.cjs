@@ -34,7 +34,7 @@ function changeFlight(job, payload, actor, at = new Date().toISOString()) {
     if (!Number.isSafeInteger(payload.expectedFlightRevision) || payload.expectedFlightRevision !== revision || payload.expectedFlightNo !== (job.flightNo || '') || !sameTime(payload.expectedFlightTime, job.flightTime) || (payload.expectedCargoCutoffAt !== undefined && !sameTime(payload.expectedCargoCutoffAt, job.cargoCutoffAt))) throw new Error('Flight มีการเปลี่ยนแปลง กรุณารีเฟรชและตรวจข้อมูลล่าสุดก่อนบันทึก');
     if (number === String(job.flightNo || '').trim().toUpperCase() && sameTime(time, job.flightTime) && sameTime(cutoff, job.cargoCutoffAt)) return { changed: false, replayed: false, record: null };
     const record = { revision: revision + 1, requestId, houseNumber: job.houseNumber, master: job.mawbNumber || '', oldFlightNo: job.flightNo || '', newFlightNo: number, oldFlightTime: job.flightTime || '', newFlightTime: time, oldCargoCutoffAt: job.cargoCutoffAt || '', newCargoCutoffAt: cutoff, reason, changedBy: actor, changedAt: at };
-    Object.assign(job, { previousFlightNo: job.flightNo || '', previousFlightTime: job.flightTime || '', flightNo: number, flightTime: time, cargoCutoffAt: cutoff, flightRevision: record.revision, flightChangeHistory: [...history, record], trackUpdatedAt: at, trackReprintRequired: true, updatedAt: at });
+    Object.assign(job, { previousFlightNo: job.flightNo || '', previousFlightTime: job.flightTime || '', flightNo: number, flightTime: time, cargoCutoffAt: cutoff, flightRevision: record.revision, flightChangeHistory: [...history, record], trackUpdatedAt: at, updatedAt: at });
     return { changed: true, replayed: false, record };
 }
 

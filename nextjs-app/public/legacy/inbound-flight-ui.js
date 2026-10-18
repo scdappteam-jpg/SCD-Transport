@@ -21,8 +21,8 @@
         $('#flightChangeFields').hidden = $('#flightChanged').value !== 'Yes';
         $('#houseScanBtn').textContent = $('#flightChanged').value === 'Yes' ? 'บันทึก Flight ของ House นี้' : 'Scan House / ตรวจข้อมูล';
         const history = job?.flightChangeHistory || [];
-        panel.innerHTML = job ? `<section class="receipt-card"><strong>Flight ปัจจุบัน ${esc(job.flightNo || '-')}</strong><p>ออกบิน ${esc(timeLabel(job.flightTime))} เวลาไทย · House ${esc(job.houseNumber)} · รุ่น ${job.flightRevision || 0}</p>${job.trackReprintRequired ? '<p><b>Flight เปลี่ยนแล้ว ต้องตรวจและพิมพ์ป้าย Flight ใหม่ก่อนใช้งาน</b></p>' : ''}<button type="button" data-flight-print>เปิดป้ายข้อมูล Flight สำหรับพิมพ์</button><p>ตรวจป้ายกับของจริงก่อนติด ระบบไม่ถือว่าพิมพ์สำเร็จเพียงแค่เปิดหน้านี้</p><details><summary>ประวัติเปลี่ยน Flight ${history.length} รายการ</summary>${history.length ? history.slice().reverse().map(row => `<article><p><b>${esc(row.oldFlightNo)} → ${esc(row.newFlightNo)}</b></p><p>${esc(timeLabel(row.oldFlightTime))} → ${esc(timeLabel(row.newFlightTime))}</p><p>เหตุผล ${esc(row.reason)} · ผู้แก้ ${esc(row.changedBy)} · ${esc(timeLabel(row.changedAt))} · รุ่น ${row.revision}</p></article>`).join('') : '<p>ยังไม่มีประวัติเปลี่ยน Flight ที่บันทึกด้วยฟังก์ชันนี้</p>'}</details></section>` : '';
-        panel.querySelector('[data-flight-print]')?.addEventListener('click', () => printLabel(job));
+        const latest = history[history.length - 1];
+        panel.innerHTML = job ? `<section class="receipt-card"><strong>Flight ปัจจุบัน ${esc(job.flightNo || '-')}</strong><p>ออกบิน ${esc(timeLabel(job.flightTime))} เวลาไทย · House ${esc(job.houseNumber)} · รุ่น ${job.flightRevision || 0}</p>${latest ? `<div role="status" class="receipt-preview"><b>แจ้งเตือน: ข้อมูล Flight ของ House นี้มีการเปลี่ยนแปลง</b><p>${esc(latest.oldFlightNo)} · ${esc(timeLabel(latest.oldFlightTime))} → ${esc(latest.newFlightNo)} · ${esc(timeLabel(latest.newFlightTime))} เวลาไทย</p><p>ปิดรับ ${esc(timeLabel(latest.oldCargoCutoffAt))} → ${esc(timeLabel(latest.newCargoCutoffAt))}</p><p>เหตุผล ${esc(latest.reason)} · ผู้แก้ ${esc(latest.changedBy)} · ${esc(timeLabel(latest.changedAt))}</p></div>` : ''}<details><summary>ประวัติเปลี่ยน Flight ${history.length} รายการ</summary>${history.length ? history.slice().reverse().map(row => `<article><p><b>${esc(row.oldFlightNo)} → ${esc(row.newFlightNo)}</b></p><p>${esc(timeLabel(row.oldFlightTime))} → ${esc(timeLabel(row.newFlightTime))}</p><p>ปิดรับ ${esc(timeLabel(row.oldCargoCutoffAt))} → ${esc(timeLabel(row.newCargoCutoffAt))}</p><p>เหตุผล ${esc(row.reason)} · ผู้แก้ ${esc(row.changedBy)} · ${esc(timeLabel(row.changedAt))} · รุ่น ${row.revision}</p></article>`).join('') : '<p>ยังไม่มีประวัติเปลี่ยน Flight ที่บันทึกด้วยฟังก์ชันนี้</p>'}</details></section>` : '';
     }
     function payload(job) {
         if (!job) throw new Error('กรุณาเลือก House ให้ถูกต้อง');
@@ -57,16 +57,5 @@
         const row = (job.flightChangeHistory || []).find(item => item.requestId === data.requestId);
         return Boolean(row && row.revision === job.flightRevision && row.newFlightNo === String(data.updatedFlightNo || '').trim().toUpperCase() && Date.parse(row.newFlightTime) === Date.parse(data.updatedFlightTime) && row.reason === data.flightChangeReason && (row.newCargoCutoffAt || '') === (job.cargoCutoffAt || '') && job.flightNo === row.newFlightNo && Date.parse(job.flightTime) === Date.parse(row.newFlightTime));
     }
-    function printLabel(job) {
-        document.querySelector('#flightLabelDialog')?.remove();
-        const dialog = document.createElement('dialog');
-        dialog.id = 'flightLabelDialog';
-        dialog.style.cssText = 'width:min(560px,92vw);max-height:88vh;overflow:auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px;font:18px Tahoma,sans-serif;color:#000;background:#fff';
-        dialog.innerHTML = `<style>#flightLabelDialog dt{font-weight:bold;margin-top:12px}#flightLabelDialog dd{margin:0}#flightLabelDialog button{padding:12px;margin:8px 8px 0 0}@media print{body>*{display:none!important}body>#flightLabelDialog{display:block!important;position:static!important;max-height:none!important;overflow:visible!important;border:0!important}#flightLabelDialog button,#flightLabelDialog .instruction{display:none!important}}</style><h2>SCD ป้ายข้อมูล Flight</h2><dl><dt>House</dt><dd>${esc(job.houseNumber)}</dd><dt>Onhand</dt><dd>${esc(job.onhandNumber || '-')}</dd><dt>Master</dt><dd>${esc(job.mawbNumber || '-')}</dd><dt>Flight</dt><dd>${esc(job.flightNo || '-')}</dd><dt>ออกบิน เวลาไทย</dt><dd>${esc(timeLabel(job.flightTime))}</dd><dt>รุ่น Flight</dt><dd>${esc(job.flightRevision || 0)}</dd></dl><p class="instruction">ตรวจเลขและรุ่นกับระบบก่อนติดป้ายใหม่ ป้ายนี้เป็นข้อมูล Flight ให้ใช้คู่กับบาร์โค้ด House เดิมที่ตรงกัน</p><button type="button" data-label-print>พิมพ์ป้าย</button><button type="button" data-label-close>ปิด</button>`;
-        dialog.querySelector('[data-label-print]').addEventListener('click', () => root.print());
-        dialog.querySelector('[data-label-close]').addEventListener('click', () => dialog.close());
-        document.body.appendChild(dialog);
-        dialog.showModal();
-    }
-    root.FlightUI = { sync, payload, preview, runPreview, committed, printLabel };
+    root.FlightUI = { sync, payload, preview, runPreview, committed };
 })(window);

@@ -5337,7 +5337,7 @@ async function handleApi(req, res, pathname) {
         if (flightResult.replayed || (payload.flightChanged === true && !flightResult.changed)) return sendJson(res, 200, { ok: true, changed: false, job: normalizeJob(job) });
         if (flightResult.changed) {
             Object.assign(job, deriveFlightSla(job));
-            await createAlert(db, `Track updated: ${job.houseNumber} / ${job.previousFlightNo || "-"} -> ${job.flightNo} · ${formatBangkok(job.flightTime)} · ต้องพิมพ์ป้าย Flight ใหม่`, "warning");
+            await createAlert(db, `Flight เปลี่ยน: House ${job.houseNumber} · Master ${job.mawbNumber || "-"} · ${flightResult.record.oldFlightNo || "-"} (${formatBangkok(flightResult.record.oldFlightTime)}) → ${job.flightNo} (${formatBangkok(job.flightTime)}) · ปิดรับ ${formatBangkok(flightResult.record.oldCargoCutoffAt)} → ${formatBangkok(flightResult.record.newCargoCutoffAt)} · เหตุผล ${flightResult.record.reason}`, "warning");
         }
         logActivity(db, {
             ...payload,

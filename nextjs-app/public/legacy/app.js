@@ -9639,7 +9639,7 @@ function bindEvents() {
     $("#houseScanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const payload = FlightUI.payload(findExactJob($("#scanHouse").value));
         await api("/api/inbound/scan-house", payload);
-        toast(payload.flightChanged ? "บันทึก Flight แล้ว ยอดรับ สถานะและ Location คงเดิม ตรวจป้าย Flight ใหม่ก่อนใช้" : "ตรวจ House แล้ว สถานะงานที่ดำเนินการแล้วคงเดิม");
+        toast(payload.flightChanged ? "บันทึก Flight แล้ว ยอดรับ สถานะและ Location คงเดิม แจ้งเตือนและเก็บประวัติการเปลี่ยนแล้ว" : "ตรวจ House แล้ว สถานะงานที่ดำเนินการแล้วคงเดิม");
     }));
     $("#moveLocationBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const newLocationId = ($("#moveLocationId").value || $("#scanLocation").value).trim();
