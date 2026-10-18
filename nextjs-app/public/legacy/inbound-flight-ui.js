@@ -58,10 +58,15 @@
         return Boolean(row && row.revision === job.flightRevision && row.newFlightNo === String(data.updatedFlightNo || '').trim().toUpperCase() && Date.parse(row.newFlightTime) === Date.parse(data.updatedFlightTime) && row.reason === data.flightChangeReason && (row.newCargoCutoffAt || '') === (job.cargoCutoffAt || '') && job.flightNo === row.newFlightNo && Date.parse(job.flightTime) === Date.parse(row.newFlightTime));
     }
     function printLabel(job) {
-        const win = root.open('', '_blank');
-        if (!win) return root.alert('กรุณาอนุญาตเปิดหน้าป้ายสำหรับพิมพ์');
-        win.document.write(`<!doctype html><html lang="th"><meta charset="utf-8"><title>Flight ${esc(job.houseNumber)}</title><style>body{font:20px Tahoma,sans-serif;margin:24px;color:#000}h1{font-size:32px}dt{font-weight:bold;margin-top:14px}dd{margin:0}button{padding:12px}@media print{button,.instruction{display:none}}</style><h1>SCD ป้ายข้อมูล Flight</h1><dl><dt>House</dt><dd>${esc(job.houseNumber)}</dd><dt>Onhand</dt><dd>${esc(job.onhandNumber || '-')}</dd><dt>Master</dt><dd>${esc(job.mawbNumber || '-')}</dd><dt>Flight</dt><dd>${esc(job.flightNo || '-')}</dd><dt>ออกบิน เวลาไทย</dt><dd>${esc(timeLabel(job.flightTime))}</dd><dt>รุ่น Flight</dt><dd>${job.flightRevision || 0}</dd></dl><p class="instruction">ตรวจเลขและรุ่นกับระบบก่อนติดป้ายใหม่ ป้ายนี้เป็นข้อมูล Flight ให้ใช้คู่กับบาร์โค้ด House เดิมที่ตรงกัน</p><button onclick="window.print()">พิมพ์ป้าย</button></html>`);
-        win.document.close();
+        document.querySelector('#flightLabelDialog')?.remove();
+        const dialog = document.createElement('dialog');
+        dialog.id = 'flightLabelDialog';
+        dialog.style.cssText = 'width:min(560px,92vw);max-height:88vh;overflow:auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px;font:18px Tahoma,sans-serif;color:#000;background:#fff';
+        dialog.innerHTML = `<style>#flightLabelDialog dt{font-weight:bold;margin-top:12px}#flightLabelDialog dd{margin:0}#flightLabelDialog button{padding:12px;margin:8px 8px 0 0}@media print{body>*{display:none!important}body>#flightLabelDialog{display:block!important;position:static!important;max-height:none!important;overflow:visible!important;border:0!important}#flightLabelDialog button,#flightLabelDialog .instruction{display:none!important}}</style><h2>SCD ป้ายข้อมูล Flight</h2><dl><dt>House</dt><dd>${esc(job.houseNumber)}</dd><dt>Onhand</dt><dd>${esc(job.onhandNumber || '-')}</dd><dt>Master</dt><dd>${esc(job.mawbNumber || '-')}</dd><dt>Flight</dt><dd>${esc(job.flightNo || '-')}</dd><dt>ออกบิน เวลาไทย</dt><dd>${esc(timeLabel(job.flightTime))}</dd><dt>รุ่น Flight</dt><dd>${esc(job.flightRevision || 0)}</dd></dl><p class="instruction">ตรวจเลขและรุ่นกับระบบก่อนติดป้ายใหม่ ป้ายนี้เป็นข้อมูล Flight ให้ใช้คู่กับบาร์โค้ด House เดิมที่ตรงกัน</p><button type="button" data-label-print>พิมพ์ป้าย</button><button type="button" data-label-close>ปิด</button>`;
+        dialog.querySelector('[data-label-print]').addEventListener('click', () => root.print());
+        dialog.querySelector('[data-label-close]').addEventListener('click', () => dialog.close());
+        document.body.appendChild(dialog);
+        dialog.showModal();
     }
-    root.FlightUI = { sync, payload, preview, runPreview, committed };
+    root.FlightUI = { sync, payload, preview, runPreview, committed, printLabel };
 })(window);

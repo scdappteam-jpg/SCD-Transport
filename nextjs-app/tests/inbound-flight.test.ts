@@ -160,3 +160,13 @@ test('mobile permits Flight review after storage without unlocking Scan for jobs
     context.job = { ...context.job, status: 'Pending', locationId: '', inboundClosedAt: '' };
     render(); assert.equal(buttons[1].disabled, true);
 });
+test('Flight label opens inline with all identifiers without claiming to have printed', () => {
+    let opened = false, printed = 0;
+    const dialog = { id: '', style: { cssText: '' }, innerHTML: '', querySelector: () => ({ addEventListener: () => {} }), showModal: () => { opened = true; }, close: () => {} };
+    const context = { window: { print: () => { printed++; } } as Record<string, unknown>, document: { querySelector: () => null, createElement: () => dialog, body: { appendChild: () => {} } } };
+    vm.runInNewContext(readFileSync(new URL('../public/legacy/inbound-flight-ui.js', import.meta.url), 'utf8'), context);
+    const ui = context.window.FlightUI as { printLabel: (job: unknown) => void };
+    ui.printLabel(fixture()[0]);
+    assert.equal(opened, true); assert.equal(printed, 0);
+    for (const value of ['4840805485', 'F842089695', '205-86393230', 'NH850/20']) assert.ok(dialog.innerHTML.includes(value));
+});
