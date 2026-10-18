@@ -13,6 +13,7 @@ const zlib = require("zlib");
 const { createProductionRelationalMirror } = require("./production-relational-mirror.cjs");
 const { consolPacking } = require("./consol-packing.cjs");
 const { planShipmentMerges, applyShipmentMerges, restoreShipmentMerge, updateMergedPickup } = require("./shipment-merge.cjs");
+const { planReferenceFill, applyReferenceFill, restoreReferenceFill } = require("./shipment-reference-fill.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -3485,6 +3486,27 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    if (req.method === "POST" && ["/api/admin/shipment-references/preview", "/api/admin/shipment-references/apply", "/api/admin/shipment-references/restore"].includes(pathname)) {
+        await refreshDbIfSharedStateChanged();
+        db = readDb();
+        const actor = requireSessionRole(db, req, ["Admin"]);
+        if (!actor) return sendJson(res, 403, { error: "Admin required" });
+        const payload = await parseBody(req);
+        try {
+            if (pathname.endsWith("/preview")) return sendJson(res, 200, { ok: true, rows: planReferenceFill(db) });
+            if (pathname.endsWith("/restore")) {
+                restoreReferenceFill(db, payload.archiveId);
+                writeDb(db);
+                return sendJson(res, 200, { ok: true, restored: payload.archiveId });
+            }
+            if (!Array.isArray(payload.selection) || !payload.selection.length || payload.selection.length > 500) return sendJson(res, 400, { error: "Reviewed selection required" });
+            const applied = applyReferenceFill(db, payload.selection, actor.id);
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, applied, jobs: db.jobs.length });
+        } catch (error) {
+            return sendJson(res, 409, { error: error.message });
+        }
+    }
     if (req.method === "POST" && ["/api/admin/shipment-merges/preview", "/api/admin/shipment-merges/apply", "/api/admin/shipment-merges/restore"].includes(pathname)) {
         await refreshDbIfSharedStateChanged();
         db = readDb();

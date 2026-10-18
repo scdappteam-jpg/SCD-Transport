@@ -53,6 +53,12 @@ test('quantity conflict, multiple F, workflow references and approval difference
     }
 });
 
+test('reference fill archives are audit history rather than active workflow assignments', () => {
+    const { db, source, evidence } = fixture();
+    Object.assign(db, { shipmentReferenceArchive: [{ houseNumber: source.houseNumber, before: { mawbNumber: null } }] });
+    assert.equal(planShipmentMerges(db, evidence)[0].eligible, true);
+});
+
 test('stale review fails atomically and undo refuses to overwrite subsequent work', () => {
     const { db, target, evidence } = fixture();
     const [row] = planShipmentMerges(db, evidence);

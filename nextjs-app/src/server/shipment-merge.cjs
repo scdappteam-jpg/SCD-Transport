@@ -9,7 +9,7 @@ const workCollections = ['billing', 'loadPlans', 'taskGroups', 'attachments', 'a
 function hasReferences(db, job) {
     // Unknown operational collections also block a merge. Import/audit history
     // is retained as source history and is not a live workflow reference.
-    const ignored = new Set(['jobs', 'importChanges', 'importHistory', 'alerts', 'notifications', 'shipmentMergeArchive']);
+    const ignored = new Set(['jobs', 'importChanges', 'importHistory', 'alerts', 'notifications', 'shipmentMergeArchive', 'shipmentReferenceArchive']);
     const collections = new Set([...workCollections, ...Object.keys(db).filter(key => !ignored.has(key) && Array.isArray(db[key]))]);
     return [...collections].some(key => {
         const text = JSON.stringify(db[key] || []);
