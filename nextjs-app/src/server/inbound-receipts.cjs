@@ -1,12 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- CommonJS API adapter. */
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-// The same pure calculation is used by the browser and the API. The public
-// classic script is loaded in an isolated CommonJS context under this ESM app.
-const context = { module: { exports: {} } };
-vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../public/legacy/inbound-receipts.js'), 'utf8'), context);
-const core = context.module.exports;
+// One CommonJS-scoped classic script is bundled into the API and served to
+// browsers, so both use the same calculation without runtime filesystem reads.
+const core = require('../../public/legacy/receipt-core/index.js');
 
 function receiveCounts(job, payload, actor) {
     const plan = core.planned(job);
