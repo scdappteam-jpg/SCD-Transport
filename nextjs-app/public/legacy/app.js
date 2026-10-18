@@ -675,6 +675,7 @@ async function api(path, payload, method) {
                 return { ok: true, recovered: true, job };
             }
         } catch (_) {}
+        if (path === "/api/inbound/flight/preview" || (path === "/api/inbound/scan-house" && payload?.flightChanged)) throw error;
         if (!navigator.onLine) {
             queueOffline(path, payload);
             return {
@@ -873,7 +874,7 @@ async function previewMasterReceiptCase(count) {
         const received = [...group.houses].sort((a, b) => a.houseNumber.localeCompare(b.houseNumber)).map((row, index) => ({ houseNumber: row.houseNumber, counts: Object.fromEntries(Object.entries(row.planned).map(([unit, qty]) => [unit, index < count ? qty : 0])) }));
         const result = await api("/api/inbound/receipts/preview", { master: group.master, received });
         if (!result.preview || result.persisted !== false) throw new Error("ยังยืนยันผลชุดทดสอบไม่ได้ กรุณาตรวจการเชื่อมต่อ");
-        $("#receiptScenarioResult").innerHTML = '<p><b>ผลจำลองสำหรับทดสอบเท่านั้น ยอดรับจริงไม่เปลี่ยน</b></p>' + ReceiptUI.master(result.summary);
+        $("#receiptScenarioResult").innerHTML = '<p><b>ผลจำลองสำหรับทดสอบเท่านั้น ยอดรับจริงไม่เปลี่ยน</b></p><p>House ที่ยังไม่มาในผลจำลองยืนยันยอดเป็น 0 จึงแสดงยังไม่รับสินค้า ต่างจากยอดจริงที่ยังไม่ยืนยัน</p>' + ReceiptUI.master(result.summary, true);
     } catch (error) { toast(error.message); }
 }
 
@@ -8350,6 +8351,7 @@ function updateTerminalRequirements() {
 function updateInboundInfo() {
     const job = findExactJob($("#scanHouse")?.value);
     renderInboundReceiptPanel(job);
+    FlightUI.sync(job);
     const info = $("#inboundJobInfo");
     const locationInfo = $("#currentLocationInfo");
     if (info) {
@@ -9632,15 +9634,12 @@ function bindEvents() {
         });
         toast("เปิดงานรับเข้าแล้ว / Inbound opened");
     }));
+    $("#flightChanged").addEventListener("change", () => FlightUI.sync(findExactJob($("#scanHouse").value)));
+    $("#previewFlightBtn").addEventListener("click", event => FlightUI.runPreview(event.currentTarget, findExactJob($("#scanHouse").value), api, toast));
     $("#houseScanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
-        await api("/api/inbound/scan-house", {
-            houseNumber: normalizeHouseBarcode($("#scanHouse").value),
-            userId: "u_wh_01",
-            trackType: $("#trackType").value,
-            flightChanged: $("#flightChanged").value === "Yes",
-            updatedFlightNo: $("#updatedFlightNo").value.trim()
-        });
-        toast("Scan House แล้ว / House identified");
+        const payload = FlightUI.payload(findExactJob($("#scanHouse").value));
+        await api("/api/inbound/scan-house", payload);
+        toast(payload.flightChanged ? "บันทึก Flight แล้ว ยอดรับ สถานะและ Location คงเดิม ตรวจป้าย Flight ใหม่ก่อนใช้" : "ตรวจ House แล้ว สถานะงานที่ดำเนินการแล้วคงเดิม");
     }));
     $("#moveLocationBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const newLocationId = ($("#moveLocationId").value || $("#scanLocation").value).trim();

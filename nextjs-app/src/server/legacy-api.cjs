@@ -15,6 +15,7 @@ const { consolPacking } = require("./consol-packing.cjs");
 const { planShipmentMerges, applyShipmentMerges, restoreShipmentMerge, updateMergedPickup } = require("./shipment-merge.cjs");
 const { planReferenceFill, applyReferenceFill, restoreReferenceFill } = require("./shipment-reference-fill.cjs");
 const inboundReceipts = require("./inbound-receipts.cjs");
+const inboundFlight = require("./inbound-flight.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -3154,7 +3155,8 @@ function logActivity(db, payload) {
         gpsLat: payload.gpsLat || null,
         gpsLong: payload.gpsLong || null,
         userId: payload.userId || "unknown",
-        createdAt: nowIso()
+        createdAt: nowIso(),
+        ...(payload.flightChange ? { flightChange: payload.flightChange } : {})
     };
     db.activityLogs.push(log);
     return log;
@@ -5301,28 +5303,46 @@ async function handleApi(req, res, pathname) {
             job: normalizeJob(job)
         });
     }
+    if (req.method === "POST" && pathname === "/api/inbound/flight/preview") {
+        const payload = await parseBody(req);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ตรวจ Flight ขาเข้า" });
+        await refreshDbIfSharedStateChanged();
+        db = readDb();
+        try {
+            const result = inboundFlight.preview(db.jobs, payload, actor.id);
+            result.after.sla = deriveFlightSla({ ...findJob(db, payload.houseNumber), flightNo: result.after.flightNo, flightTime: result.after.flightTime, cargoCutoffAt: result.after.cargoCutoffAt });
+            return sendJson(res, 200, result);
+        } catch (error) {
+            return sendJson(res, 409, { error: error.message });
+        }
+    }
     if (req.method === "POST" && pathname === "/api/inbound/scan-house") {
         const payload = await parseBody(req);
         const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์สแกน House ขาเข้า" });
+        await refreshDbIfSharedStateChanged();
+        db = readDb();
         payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
         if (!job) return sendJson(res, 404, {
             error: "House number not found"
         });
-        if (payload.flightChanged && payload.updatedFlightNo) {
-            job.previousFlightNo = job.flightNo;
-            job.flightNo = payload.updatedFlightNo;
-            job.trackUpdatedAt = nowIso();
-            await createAlert(db, `Track updated: ${job.houseNumber} / ${job.previousFlightNo || "-"} -> ${job.flightNo}`, "warning");
+        let flightResult;
+        try {
+            flightResult = inboundFlight.scanHouse(job, payload, actor.id, nowIso());
+        } catch (error) {
+            return sendJson(res, 409, { error: error.message });
         }
-        job.trackType = payload.trackType || job.trackType || "Single";
-        job.inboundScannedAt = nowIso();
-        job.status = job.trackType === "Pair" && inboundReceipts.house(job).complete ? "ReadyForTerminal" : "HouseIdentified";
-        job.updatedAt = nowIso();
+        if (flightResult.replayed || (payload.flightChanged === true && !flightResult.changed)) return sendJson(res, 200, { ok: true, changed: false, job: normalizeJob(job) });
+        if (flightResult.changed) {
+            Object.assign(job, deriveFlightSla(job));
+            await createAlert(db, `Track updated: ${job.houseNumber} / ${job.previousFlightNo || "-"} -> ${job.flightNo} · ${formatBangkok(job.flightTime)} · ต้องพิมพ์ป้าย Flight ใหม่`, "warning");
+        }
         logActivity(db, {
             ...payload,
-            activityType: "InboundHouseScan"
+            activityType: flightResult.changed ? "InboundFlightChanged" : "InboundHouseScan",
+            flightChange: flightResult.record
         });
         writeDb(db);
         return sendJson(res, 200, {

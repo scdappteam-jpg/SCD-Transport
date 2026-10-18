@@ -218,7 +218,10 @@ async function recoverCompletedRequest(path, payload) {
     const data = await res.json();
     const house = normalizeHouseBarcode(payload.houseNumber);
     const job = (data.dashboard?.jobs || []).find(item => item.houseNumber === house);
-    if (!job || !expectedStatuses.includes(job.status)) return null;
+    if (!job) return null;
+    if (path === "/api/inbound/scan-house") {
+        if (!payload.flightChanged || !FlightUI.committed(job, payload)) return null;
+    } else if (!expectedStatuses.includes(job.status)) return null;
     if (path === "/api/inbound/close" && !InboundReceipts.closeConfirmed(job, payload)) return null;
     state.dashboard = data.dashboard;
     state.users = data.users || state.users;
@@ -256,6 +259,7 @@ async function api(path, payload, method = "POST") {
         } catch (_) {
             // Fall through to the normal offline/error handling below.
         }
+        if (path === "/api/inbound/flight/preview" || (path === "/api/inbound/scan-house" && payload?.flightChanged)) throw error;
         if (!navigator.onLine) {
             state.offlineQueue.push({
                 path: path,
@@ -690,6 +694,7 @@ function updateInboundInfo() {
     const currentLocation = $("#currentLocationInfo");
     if (!info) return;
     const job = findAnyJob(house);
+    FlightUI.sync(job);
     const receiptPanel = $("#inboundReceiptPanel");
     if (receiptPanel) {
         receiptPanel.innerHTML = job ? ReceiptUI.panel(state.dashboard?.jobs || [], job, true, state.dashboard?.receiptMasters || []) : "";
@@ -1566,15 +1571,12 @@ function bindEvents() {
         });
         toast("เปิดงานรับเข้าแล้ว / Inbound opened");
     }));
+    $("#flightChanged").addEventListener("change", () => FlightUI.sync(findAnyJob($("#scanHouse").value)));
+    $("#previewFlightBtn").addEventListener("click", event => FlightUI.runPreview(event.currentTarget, findAnyJob($("#scanHouse").value), api, toast));
     $("#houseScanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
-        await api("/api/inbound/scan-house", {
-            houseNumber: normalizeHouseBarcode($("#scanHouse").value),
-            userId: state.currentUserId,
-            trackType: $("#trackType").value,
-            flightChanged: $("#flightChanged").value === "Yes",
-            updatedFlightNo: $("#updatedFlightNo").value.trim()
-        });
-        toast($("#trackType").value === "Pair" ? "Track คู่: พร้อมส่ง Terminal / Ready for Terminal" : "Track เดี่ยว: เตรียมจัดเก็บ WH3 / Prepare putaway");
+        const payload = FlightUI.payload(findAnyJob($("#scanHouse").value));
+        await api("/api/inbound/scan-house", payload);
+        toast(payload.flightChanged ? "บันทึก Flight แล้ว ยอดรับ สถานะและ Location คงเดิม ตรวจป้ายใหม่ก่อนใช้" : "ตรวจ House แล้ว สถานะงานที่ดำเนินการแล้วคงเดิม");
     }));
     $("#closeInboundBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const evidenceFiles = await filesToCompressedBase64($("#inboundEvidenceFiles"));

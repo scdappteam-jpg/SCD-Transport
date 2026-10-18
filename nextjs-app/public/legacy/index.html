@@ -930,8 +930,22 @@
                     <option value="No">Flight ไม่เปลี่ยน</option>
                     <option value="Yes">Flight เปลี่ยน ต้องพิมพ์ Track ใหม่</option>
                   </select>
-                  <input id="updatedFlightNo" autocomplete="off" placeholder="Flight ใหม่ ถ้ามี">
+                  <div id="flightChangeFields" hidden>
+                    <p>เปลี่ยนเฉพาะ House ที่เลือก ไม่เปลี่ยน House อื่นใน Master</p>
+                    <label for="updatedFlightNo">เลข Flight ใหม่</label>
+                    <input id="updatedFlightNo" autocomplete="off" maxlength="40" placeholder="เลข Flight ใหม่">
+                    <label for="updatedFlightTime">วันเวลาออกบินใหม่ เวลาไทย</label>
+                    <input id="updatedFlightTime" type="datetime-local" step="60">
+                    <label for="updatedCargoCutoffAt">เวลาปิดรับสินค้าแผนใหม่ เวลาไทย ถ้ามี</label>
+                    <input id="updatedCargoCutoffAt" type="datetime-local" step="60">
+                    <small>ตรวจ Cutoff ตามแผนใหม่ ช่องว่างหมายถึงไม่มี Cutoff ใช้เกณฑ์จากเวลาออกบิน</small>
+                    <label for="flightChangeReason">เหตุผลเปลี่ยน Flight</label>
+                    <textarea id="flightChangeReason" maxlength="1000" rows="2" placeholder="ระบุเหตุผลและเอกสารอ้างอิง"></textarea>
+                    <button id="previewFlightBtn" type="button">ดูผลจำลอง Flight ไม่บันทึก</button>
+                    <div id="flightPreviewResult" role="status"></div>
+                  </div>
                   <button id="houseScanBtn" type="button">Scan House / ตรวจข้อมูล</button>
+                  <div id="flightHistoryPanel"></div>
                 </div>
                 <div class="ops-section" data-ops-section="web-inbound-putaway">
                   <input id="dimensionText" autocomplete="off" placeholder="Dimension เช่น 120 x 120 x 80 cm">
@@ -2566,8 +2580,9 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="demo-data.js"></script>
     <script src="live-scan.js?v=20261011-manual-house-hyphen"></script>
     <script src="receipt-core/index.js?v=3-zero-receipt"></script>
-    <script src="inbound-receipt-ui.js?v=2-zero-receipt"></script>
+    <script src="inbound-receipt-ui.js?v=3-preview-labels"></script>
+    <script src="inbound-flight-ui.js?v=1-flight-history"></script>
     <script src="shipment-references.js?v=3-three-references"></script>
-    <script src="app.js?v=37-confirmed-receipts"></script>
+    <script src="app.js?v=38-flight-history"></script>
   </body>
 </html>
