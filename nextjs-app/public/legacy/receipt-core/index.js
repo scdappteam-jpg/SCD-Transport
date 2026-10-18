@@ -38,7 +38,7 @@
         const exceeded = Object.values(over).some(qty => qty > 0);
         const complete = plan.known && countsValid && !exceeded && Object.values(remaining).every(qty => qty === 0);
         return { houseNumber: job.houseNumber, onhandNumber: job.onhandNumber || "", master: job.mawbNumber || job.masterAwb || job.awbNumber || "", planned: plan.counts, planKnown: plan.known, received, remaining, over, confirmed, complete, revision: receipt?.revision || 0,
-            state: !plan.known ? "plan_missing" : !confirmed ? "unconfirmed" : !countsValid ? "invalid" : exceeded ? "over" : complete ? "complete" : "partial" };
+            state: !plan.known ? "plan_missing" : !confirmed ? "unconfirmed" : !countsValid ? "invalid" : exceeded ? "over" : complete ? "complete" : Object.values(received).every(qty => qty === 0) ? "not_received" : "partial" };
     }
 
     function canonical(jobs) {

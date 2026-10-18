@@ -34,6 +34,7 @@ test('Master 205-86393230 computes 2/3 and 3/3 with PLT/CTN kept separate; previ
         assert.equal(result.summary.totalHouses, 3);
         assert.equal(result.summary.completeHouses, count);
         assert.equal(result.summary.complete, count === 3);
+        if (count === 2) assert.equal(result.summary.houses[2].state, 'not_received');
         assert.deepEqual(plain(result.summary.planned), { PLT: 18, CTN: 235 });
         assert.deepEqual(plain(result.summary.received), count === 2 ? { PLT: 12, CTN: 226 } : { PLT: 18, CTN: 235 });
         assert.deepEqual(plain(result.summary.remaining), count === 2 ? { PLT: 6, CTN: 9 } : { PLT: 0, CTN: 0 });

@@ -1,6 +1,6 @@
 (function (root) {
     const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
-    const label = row => row.ambiguous ? "ต้องตรวจคู่ House" : ({ unconfirmed: "ยังไม่ยืนยันยอดรับ", partial: "รับบางส่วน", complete: "รับครบ", over: "ยอดเกิน ต้องตรวจสอบ", invalid: "ต้องตรวจยอดและหน่วย", plan_missing: "ยังไม่ยืนยันยอดแผน" }[row.state]);
+    const label = row => row.ambiguous ? "ต้องตรวจคู่ House" : ({ unconfirmed: "ยังไม่ยืนยันยอดรับ", not_received: "ยังไม่รับสินค้า", partial: "รับบางส่วน", complete: "รับครบ", over: "ยอดเกิน ต้องตรวจสอบ", invalid: "ต้องตรวจยอดและหน่วย", plan_missing: "ยังไม่ยืนยันยอดแผน" }[row.state]);
     const format = counts => Object.entries(counts || {}).map(([unit, qty]) => `${qty} ${esc(unit)}`).join(" · ") || "ยังไม่ทราบหน่วย";
     function house(row) {
         return `<section class="receipt-card"><strong>ยอดรับ House ${esc(row.houseNumber)}</strong><span class="receipt-badge ${row.complete ? "complete" : "pending"}">${label(row)}</span><div class="receipt-totals"><span>ตามแผน<b>${format(row.planned)}</b></span><span>รับจริงยืนยัน<b>${row.confirmed ? format(row.received) : "ยังไม่ยืนยัน"}</b></span><span>ค้างรับหรือค้างยืนยัน<b>${format(row.remaining)}</b></span></div>${Object.values(row.over).some(qty => qty > 0) ? `<p>ยอดเกิน ${format(row.over)}</p>` : ""}<small>สถานะจัดเก็บและ Location แสดงขั้นตอนปฏิบัติงานแยกจากการรับครบตามยอด</small></section>`;
