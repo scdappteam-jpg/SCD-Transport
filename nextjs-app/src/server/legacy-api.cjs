@@ -14,6 +14,7 @@ const { createProductionRelationalMirror } = require("./production-relational-mi
 const { consolPacking } = require("./consol-packing.cjs");
 const { planShipmentMerges, applyShipmentMerges, restoreShipmentMerge, updateMergedPickup } = require("./shipment-merge.cjs");
 const { planReferenceFill, applyReferenceFill, restoreReferenceFill } = require("./shipment-reference-fill.cjs");
+const inboundReceipts = require("./inbound-receipts.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -1653,6 +1654,7 @@ function normalizeJob(job) {
     });
     return {
         ...job,
+        inboundReceiptSummary: inboundReceipts.house(job),
         terminalProfile: TERMINAL_PROFILES[terminal],
         wh3Documents: wh3Documents,
         processTracking: processTrackingStatus(job),
@@ -1751,6 +1753,7 @@ function buildDashboard(db) {
     };
     return {
         jobs: jobs,
+        receiptMasters: [...inboundReceipts.overview(db.jobs || []).masters.values()],
         locations: db.locations,
         billing: db.billing.slice(-20).reverse(),
         attachments: db.attachments.slice(-30).reverse(),
@@ -1795,8 +1798,10 @@ function buildMobileDashboard(db, viewer) {
     }[role];
     const jobs = (db.jobs || []).filter(jobsForRole || (() => true)).map(job => normalizeJob(job));
     const relevantHouses = new Set(jobs.map(job => job.houseNumber));
+    const relevantMasters = new Set(jobs.map(job => inboundReceipts.masterKey(job)).filter(Boolean));
     return {
         jobs,
+        receiptMasters: ["Admin", "Executive", "WH_Staff", "WH3_TeamLeader"].includes(role) ? [...inboundReceipts.overview(db.jobs || []).masters.entries()].filter(([key]) => relevantMasters.has(key)).map(([, summary]) => summary) : [],
         locations: db.locations || [],
         alerts: (db.alerts || []).filter(alert => !alert.houseNumber || relevantHouses.has(alert.houseNumber)).slice(-100).reverse(),
         billing: [],
@@ -3486,6 +3491,25 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    if (req.method === "POST" && ["/api/inbound/receive-counts", "/api/inbound/receipts/preview"].includes(pathname)) {
+        await refreshDbIfSharedStateChanged();
+        db = readDb();
+        const actor = requireSessionRole(db, req, ["Admin", "Executive", "WH3_TeamLeader", "WH_Staff"]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ยืนยันยอดรับเข้าคลัง" });
+        const payload = await parseBody(req);
+        try {
+            if (pathname.endsWith("/preview")) return sendJson(res, 200, { ok: true, ...inboundReceipts.previewScenario(db.jobs || [], payload) });
+            const job = findJob(db, payload.houseNumber);
+            if (!job) return sendJson(res, 404, { error: "House number not found" });
+            const canonical = inboundReceipts.canonical(db.jobs || []).find(row => row.key === inboundReceipts.houseKey(job));
+            if (!canonical || canonical.ambiguous || canonical.job !== job) return sendJson(res, 409, { error: `กรุณาบันทึกยอดที่ House หลัก ${canonical?.job?.houseNumber || "ที่ตรวจสอบแล้ว"}` });
+            inboundReceipts.receiveCounts(job, payload, actor.id);
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, job: normalizeJob(job) });
+        } catch (error) {
+            return sendJson(res, 409, { error: error.message });
+        }
+    }
     if (req.method === "POST" && ["/api/admin/shipment-references/preview", "/api/admin/shipment-references/apply", "/api/admin/shipment-references/restore"].includes(pathname)) {
         await refreshDbIfSharedStateChanged();
         db = readDb();
@@ -5294,7 +5318,7 @@ async function handleApi(req, res, pathname) {
         }
         job.trackType = payload.trackType || job.trackType || "Single";
         job.inboundScannedAt = nowIso();
-        job.status = job.trackType === "Pair" ? "ReadyForTerminal" : "HouseIdentified";
+        job.status = job.trackType === "Pair" && inboundReceipts.house(job).complete ? "ReadyForTerminal" : "HouseIdentified";
         job.updatedAt = nowIso();
         logActivity(db, {
             ...payload,
@@ -5380,7 +5404,7 @@ async function handleApi(req, res, pathname) {
             job.scannedPieces = payload.pieces.slice();
             job.scannedPieceCount = payload.pieces.length;
         }
-        job.status = payload.trackType === "Pair" ? "ReadyForTerminal" : "Stored";
+        job.status = payload.trackType === "Pair" && inboundReceipts.house(job).complete ? "ReadyForTerminal" : "Stored";
         job.locationId = finalLocId;
         job.dimensionText = payload.dimensionText || job.dimensionText || "";
         job.trackType = payload.trackType || job.trackType || "Single";
@@ -5453,7 +5477,7 @@ async function handleApi(req, res, pathname) {
         job.locationId = finalMoveId;
         job.locationMovedAt = nowIso();
         job.locationMoveNote = payload.note || "";
-        job.status = job.status === "ReadyForTerminal" ? job.status : "Stored";
+        job.status = job.status === "ReadyForTerminal" && inboundReceipts.house(job).complete ? job.status : "Stored";
         job.updatedAt = nowIso();
         logActivity(db, {
             ...payload,
@@ -5470,6 +5494,8 @@ async function handleApi(req, res, pathname) {
         });
     }
     if (req.method === "POST" && pathname === "/api/inbound/close") {
+        await refreshDbIfSharedStateChanged();
+        db = readDb();
         const payload = await parseBody(req);
         const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ปิดงานขาเข้า" });
@@ -5478,6 +5504,12 @@ async function handleApi(req, res, pathname) {
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
         });
+        try {
+            inboundReceipts.assertReceiptComplete(job);
+        } catch (error) {
+            return sendJson(res, 409, { error: error.message, receipt: inboundReceipts.house(job) });
+        }
+        if (payload.requestId && job.inboundCloseRequestId === payload.requestId && job.inboundClosedRevision === job.inboundReceipt.revision) return sendJson(res, 200, { ok: true, job: normalizeJob(job) });
         if (!Array.isArray(payload.evidenceFiles) || !payload.evidenceFiles.length) {
             return sendJson(res, 422, {
                 error: "Cargo Pickup Form or EI confirmation evidence is required"
@@ -5490,6 +5522,8 @@ async function handleApi(req, res, pathname) {
         });
         job.status = job.trackType === "Pair" ? "ReadyForTerminal" : "Stored";
         job.inboundClosedAt = nowIso();
+        job.inboundClosedRevision = job.inboundReceipt.revision;
+        job.inboundCloseRequestId = payload.requestId || "";
         job.updatedAt = nowIso();
         logActivity(db, {
             ...payload,

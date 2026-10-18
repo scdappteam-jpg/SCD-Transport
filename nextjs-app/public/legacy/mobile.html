@@ -19,6 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="mobile.css?v=20260821-driver">
+      <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
   </head>
   <body class="mobile-locked">
     <header class="mobile-header">
@@ -263,6 +264,7 @@
         <button id="confirmInboundHouseBtn" type="button">ตรวจสอบและเปิดงานรับเข้า</button>
         <div id="inboundWorkflowDetails" class="guided-workflow-details" hidden>
         <div id="inboundJobInfo" class="soft-note"></div>
+        <div id="inboundReceiptPanel"></div>
         <div id="currentLocationInfo" class="soft-note"></div>
 
         <nav class="operation-menu" aria-label="Inbound functions">
@@ -784,6 +786,8 @@
     <script src="lucide.min.js"></script>
     <script src="config.js"></script>
     <script src="live-scan.js?v=20261011-manual-house-hyphen"></script>
-  <script src="mobile.js?v=20261011-mobile-outbound-step-fix"></script>
+    <script src="inbound-receipts.js?v=1-confirmed-counts"></script>
+    <script src="inbound-receipt-ui.js?v=1-confirmed-counts"></script>
+  <script src="mobile.js?v=20261018-confirmed-receipts"></script>
   </body>
 </html>

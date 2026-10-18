@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="mobile-layout.css?v=20260822e">
     <style>[hidden]{display:none !important}</style>
     <script src="lucide.min.js"></script>
+      <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
   </head>
   <body>
     <a class="skip-link" href="#mainContent">ข้ามไปที่เนื้อหาหลัก</a>
@@ -540,6 +541,7 @@
                   </div>
                 </article>
 
+                <div id="orderReceiptSummary"></div>
                 <div class="detail-grid">
                   <article class="card timeline-card">
                     <div class="card-head">
@@ -895,6 +897,7 @@
                 <label>House Number</label>
                 <input id="scanHouse" inputmode="text" autocomplete="off" placeholder="เลือกหรือสแกนเลข House">
                 <div id="inboundJobInfo" class="result compact-result"></div>
+                <div id="inboundReceiptPanel"></div>
                 <div id="currentLocationInfo" class="result compact-result"></div>
                 <div class="ops-menu">
                   <button class="ops-tab active" type="button" data-ops-target="web-inbound-doc">เอกสาร / Docs</button>
@@ -2562,7 +2565,9 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
         <script src="config.js"></script>
     <script src="demo-data.js"></script>
     <script src="live-scan.js?v=20261011-manual-house-hyphen"></script>
+    <script src="inbound-receipts.js?v=1-confirmed-counts"></script>
+    <script src="inbound-receipt-ui.js?v=1-confirmed-counts"></script>
     <script src="shipment-references.js?v=3-three-references"></script>
-    <script src="app.js?v=36-three-references"></script>
+    <script src="app.js?v=37-confirmed-receipts"></script>
   </body>
 </html>

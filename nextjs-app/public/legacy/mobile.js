@@ -219,6 +219,7 @@ async function recoverCompletedRequest(path, payload) {
     const house = normalizeHouseBarcode(payload.houseNumber);
     const job = (data.dashboard?.jobs || []).find(item => item.houseNumber === house);
     if (!job || !expectedStatuses.includes(job.status)) return null;
+    if (path === "/api/inbound/close" && !InboundReceipts.closeConfirmed(job, payload)) return null;
     state.dashboard = data.dashboard;
     state.users = data.users || state.users;
     return job;
@@ -637,8 +638,8 @@ function renderInboundGuide() {
     if (!unlocked) return;
     let target = "inbound-doc";
     if ([ "InboundOpened" ].includes(job.status)) target = "inbound-scan";
-    if ([ "HouseIdentified" ].includes(job.status)) target = job.trackType === "Pair" ? "inbound-close" : "inbound-putaway";
-    if ([ "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status)) target = "inbound-close";
+    if ([ "HouseIdentified" ].includes(job.status)) target = job.trackType === "Pair" && InboundReceipts.house(job).complete ? "inbound-close" : "inbound-putaway";
+    if ([ "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status)) target = InboundReceipts.house(job).complete ? "inbound-close" : "inbound-putaway";
     const targetIndex = {
         "inbound-doc": 1,
         "inbound-scan": 2,
@@ -689,6 +690,17 @@ function updateInboundInfo() {
     const currentLocation = $("#currentLocationInfo");
     if (!info) return;
     const job = findAnyJob(house);
+    const receiptPanel = $("#inboundReceiptPanel");
+    if (receiptPanel) {
+        receiptPanel.innerHTML = job ? ReceiptUI.panel(state.dashboard?.jobs || [], job, true, state.dashboard?.receiptMasters || []) : "";
+        receiptPanel.querySelector('[data-receipt-save]')?.addEventListener('click', event => runAction(event.currentTarget, async () => {
+            const result = await api('/api/inbound/receive-counts', ReceiptUI.payload(receiptPanel));
+            if (result.queued) return toast('เก็บคำขอไว้รอ Sync ยังไม่ยืนยันยอดรับ');
+            await refresh();
+            toast('บันทึกยอดรับสะสมแล้ว');
+        }));
+    }
+    if ($("#closeInboundBtn")) $("#closeInboundBtn").disabled = !job || !InboundReceipts.house(job).complete;
     if (!job) {
         info.className = "soft-note warning";
         info.innerHTML = "<strong>ไม่พบ House</strong><span>กรุณาสแกนหรือกรอก House Number ให้ถูกต้อง</span>";
@@ -1567,6 +1579,7 @@ function bindEvents() {
     $("#closeInboundBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const evidenceFiles = await filesToCompressedBase64($("#inboundEvidenceFiles"));
         await api("/api/inbound/close", {
+            requestId: crypto.randomUUID(),
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
             userId: state.currentUserId,
             evidenceFiles: evidenceFiles

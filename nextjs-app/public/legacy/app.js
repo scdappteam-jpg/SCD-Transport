@@ -841,6 +841,56 @@ function jobPackingLabel(job) {
     return packages.length ? packages.map(([unit, qty]) => `${qty} ${unit}`).join(" / ") : `${job.pieceCount || "-"} ${job.packageType || "ชิ้น"}`;
 }
 
+let receiptJobs = null;
+let receiptOverview = null;
+function receiptState() {
+    const jobs = state.dashboard?.jobs || [];
+    if (receiptJobs !== jobs) {
+        receiptJobs = jobs;
+        receiptOverview = InboundReceipts.overview(jobs);
+    }
+    return receiptOverview;
+}
+
+function jobReceiptLabel(job) {
+    const row = receiptState().byHouse.get(InboundReceipts.houseKey(job));
+    return `${ReceiptUI.label(row)} · รับ ${row.confirmed ? ReceiptUI.format(row.received) : "ยังไม่ยืนยัน"} · ค้าง ${ReceiptUI.format(row.remaining)}`;
+}
+
+function renderOrderReceipts(job) {
+    const panel = $("#orderReceiptSummary");
+    if (!panel) return;
+    panel.innerHTML = job ? ReceiptUI.panel(state.dashboard?.jobs || [], job, false) : "";
+    if (job && InboundReceipts.masterKey(job) === "20586393230" && ["Admin", "Executive", "WH3_TeamLeader", "WH_Staff"].includes(currentWebUser()?.role)) {
+        panel.insertAdjacentHTML("beforeend", '<section class="receipt-card receipt-preview"><strong>ชุดทดสอบยอดรับ ไม่บันทึกข้อมูลจริง</strong><p>Master 205-86393230 ใช้จำนวนตามแผนปัจจุบัน</p><button type="button" onclick="previewMasterReceiptCase(2)">ดูกรณีรับครบ 2/3 House</button> <button type="button" onclick="previewMasterReceiptCase(3)">ดูกรณีรับครบ 3/3 House</button><div id="receiptScenarioResult"></div></section>');
+    }
+}
+
+async function previewMasterReceiptCase(count) {
+    try {
+        const group = receiptState().masters.get("20586393230");
+        if (!group || group.totalHouses !== 3) throw new Error("จำนวน House ของชุดเทสเปลี่ยน กรุณาตรวจ Master อีกครั้ง");
+        const received = [...group.houses].sort((a, b) => a.houseNumber.localeCompare(b.houseNumber)).map((row, index) => ({ houseNumber: row.houseNumber, counts: Object.fromEntries(Object.entries(row.planned).map(([unit, qty]) => [unit, index < count ? qty : 0])) }));
+        const result = await api("/api/inbound/receipts/preview", { master: group.master, received });
+        if (!result.preview || result.persisted !== false) throw new Error("ยังยืนยันผลชุดทดสอบไม่ได้ กรุณาตรวจการเชื่อมต่อ");
+        $("#receiptScenarioResult").innerHTML = '<p><b>ผลจำลองสำหรับทดสอบเท่านั้น ยอดรับจริงไม่เปลี่ยน</b></p>' + ReceiptUI.master(result.summary);
+    } catch (error) { toast(error.message); }
+}
+
+function renderInboundReceiptPanel(job) {
+    const panel = $("#inboundReceiptPanel");
+    if (!panel) return;
+    panel.innerHTML = job ? ReceiptUI.panel(state.dashboard?.jobs || [], job, true) : "";
+    const close = $("#closeInboundBtn");
+    if (close) close.disabled = !job || !InboundReceipts.house(job).complete;
+    panel.querySelector('[data-receipt-save]')?.addEventListener('click', event => runAction(event.currentTarget, async () => {
+        const result = await api('/api/inbound/receive-counts', ReceiptUI.payload(panel));
+        if (result.queued) return toast('เก็บคำขอไว้รอ Sync ยังไม่ยืนยันยอดรับ');
+        await refresh();
+        toast('บันทึกยอดรับสะสมแล้ว');
+    }));
+}
+
 function isDemoCustomer(customer) {
     const text = [ customer?.id, customer?.name ].filter(Boolean).join(" ").toLowerCase();
     return /abc logistics|xyz trading|c_abc_logistics|c_xyz_trading|mock|demo/.test(text);
@@ -6652,7 +6702,7 @@ function renderOrderCards() {
         let urgentBadge = "";
         if (isReXray) urgentBadge = `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;animation:pulse 1.5s infinite">⚠ RE-XRAY</span>`; else if (isMissed) urgentBadge = `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">✕ เลยเวลาบิน</span>`; else if (isUrgent) urgentBadge = `<span style="background:#fffbeb;color:#d97706;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">⏰ ${Math.floor(diffH)}ชม.${Math.floor(diffH % 1 * 60)}น.</span>`;
         const cardBorder = isReXray || isMissed ? "border-left:3px solid #ef4444" : isUrgent ? "border-left:3px solid #f59e0b" : "";
-        return `<button class="order-card ${job.houseNumber === state.selectedHouse ? "active" : ""}" type="button" data-house="${job.houseNumber}" style="${cardBorder}">\n      <span class="cube">□</span>\n      ${jobReferenceFieldsHtml(job)}\n      <small>${job.customerName || "-"} / ${job.flightTimeLabel || "-"}</small>\n      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0">\n        <span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span>\n        ${urgentBadge}\n        ${!job.csConfirmed ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">รอ CS</span>' : ""}\n        ${(state.loadPlan?.rows || []).some(r => r.houseNumber === job.houseNumber) ? '<span style="background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">LP</span>' : ""}\n      </div>\n    </button>`;
+        return `<button class="order-card ${job.houseNumber === state.selectedHouse ? "active" : ""}" type="button" data-house="${job.houseNumber}" style="${cardBorder}">\n      <span class="cube">□</span>\n      ${jobReferenceFieldsHtml(job)}\n      <small class="receipt-line">${jobReceiptLabel(job)}</small>\n      <small>${job.customerName || "-"} / ${job.flightTimeLabel || "-"}</small>\n      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0">\n        <span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span>\n        ${urgentBadge}\n        ${!job.csConfirmed ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">รอ CS</span>' : ""}\n        ${(state.loadPlan?.rows || []).some(r => r.houseNumber === job.houseNumber) ? '<span style="background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">LP</span>' : ""}\n      </div>\n    </button>`;
     }).join("");
     if (jobs.length > shown.length) {
         $("#orderCards").insertAdjacentHTML("beforeend",
@@ -6691,7 +6741,7 @@ function renderTimelineLegacyUnused() {
     $("#pickupItemsInfo").textContent = Array.isArray(job.pickupItems) && job.pickupItems.length ? `${job.pickupItems.length} rows` : "-";
     $("#packageInfo").textContent = job.packageType || "-";
     $("#stickerInfo").textContent = job.stickerColor || "-";
-    const steps = [ [ "Pickup", "รับสินค้าจากลูกค้า / Cargo picked up", PICKUP_DONE_STATUSES.includes(job.status) ], [ "Load Cargo", localizeText("ตรวจ 10 รายการ แปะ Sticker ถ้าจำเป็น / Check 10 items & attach sticker"), LOAD_DONE_STATUSES.includes(job.status) ], [ "Inbound Receive", "รับเข้าคลัง WH3 และจัดตำแหน่ง / Received at WH3", INBOUND_DONE_STATUSES.includes(job.status) ], [ "Document Check", "ตรวจเอกสาร Permit / Cargo Transfer / Lithium", Boolean(job.documentValidated || job.inboundDocStatus || job.eiApproved) ], [ "X-Ray", "ตรวจ X-Ray ก่อนเข้าถาดโหลด / Terminal security scan", job.xrayStatus === "Passed" ], [ "Loading Detail", localizeText("รวม flight และอัปโหลด Loading Detail / Upload Loading Detail"), Boolean(job.loadingDetailUploaded) ], [ "Billing", "สร้างเอกสารวางบิล / Invoice generated", job.status === "Billed" ] ];
+    const steps = [ [ "Pickup", "รับสินค้าจากลูกค้า / Cargo picked up", PICKUP_DONE_STATUSES.includes(job.status) ], [ "Load Cargo", localizeText("ตรวจ 10 รายการ แปะ Sticker ถ้าจำเป็น / Check 10 items & attach sticker"), LOAD_DONE_STATUSES.includes(job.status) ], [ "Inbound Receive", "รับเข้าคลัง WH3 และจัดตำแหน่ง / Received at WH3", InboundReceipts.house(job).complete ], [ "Document Check", "ตรวจเอกสาร Permit / Cargo Transfer / Lithium", Boolean(job.documentValidated || job.inboundDocStatus || job.eiApproved) ], [ "X-Ray", "ตรวจ X-Ray ก่อนเข้าถาดโหลด / Terminal security scan", job.xrayStatus === "Passed" ], [ "Loading Detail", localizeText("รวม flight และอัปโหลด Loading Detail / Upload Loading Detail"), Boolean(job.loadingDetailUploaded) ], [ "Billing", "สร้างเอกสารวางบิล / Invoice generated", job.status === "Billed" ] ];
     $("#timelineList").innerHTML = steps.map((step, index) => `\n    <div class="timeline-item ${step[2] ? "done" : index === 0 ? "active" : ""}">\n      <span>${step[2] ? "✓" : index + 1}</span>\n      <div>\n        <strong>${step[0]}</strong>\n        <p>${step[1]}</p>\n        <small>${step[2] ? "Completed" : "Pending"}</small>\n      </div>\n    </div>\n  `).join("");
     const lpRows = state.loadPlan?.rows || [];
     const inPlan = lpRows.some(r => r.houseNumber === job.houseNumber);
@@ -8299,6 +8349,7 @@ function updateTerminalRequirements() {
 
 function updateInboundInfo() {
     const job = findExactJob($("#scanHouse")?.value);
+    renderInboundReceiptPanel(job);
     const info = $("#inboundJobInfo");
     const locationInfo = $("#currentLocationInfo");
     if (info) {
@@ -8351,6 +8402,7 @@ function renderCargoIssueState(job) {
 
 function renderTimeline() {
     const job = findJob();
+    renderOrderReceipts(job);
     if (!job) {
         $("#selectedOrderTitle").textContent = "No order selected";
         $("#selectedOrderReferences").innerHTML = "";
@@ -8430,7 +8482,7 @@ function renderTimeline() {
     }, {
         label: "รับเข้าคลัง (Inbound)",
         desc: "Twin-scan · จัดตำแหน่ง · WD checklist",
-        done: INBOUND_DONE_STATUSES.includes(job.status),
+        done: InboundReceipts.house(job).complete,
         detail: job.inboundDocStatus === "Missing" ? "รอ EI Confirm" : job.locationId ? `Location: ${job.locationId}` : ""
     }, {
         label: "ตรวจเอกสาร",
@@ -9604,6 +9656,7 @@ function bindEvents() {
     $("#closeInboundBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const evidenceFiles = await filesToCompressedBase64($("#inboundEvidenceFiles"));
         await api("/api/inbound/close", {
+            requestId: crypto.randomUUID(),
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
             userId: "u_wh_01",
             evidenceFiles: evidenceFiles
