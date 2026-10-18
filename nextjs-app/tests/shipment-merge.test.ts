@@ -75,3 +75,34 @@ test('later Pickup import updates pickup information but cannot undo canonical p
     assert.equal(target.csConfirmed, false);
     assert.equal(target.pickupLocation, 'New Factory');
 });
+
+test('explicit BULK policy preserves both histories and retains every canonical CS field', () => {
+    const { db, source, target, evidence } = fixture();
+    Object.assign(source, { csConfirmed: true, csInvoiceNo: 'BULK-2026-10-13', csConfirmedBy: 'Pickup admin', csConfirmedAt: '2026-10-13T04:52:00Z' });
+    Object.assign(target, { csConfirmed: true, csInvoiceNo: 'BULK-2026-10-14', csConfirmedBy: 'Consol admin', csConfirmedAt: '2026-10-14T09:15:00Z' });
+    assert.equal(planShipmentMerges(db, evidence)[0].eligible, false);
+    Object.assign(evidence[0], { bulkPolicy: 'preserve_both_use_hawb' });
+    const [review] = planShipmentMerges(db, evidence);
+    assert.equal(review.eligible, true);
+    const [result] = applyShipmentMerges(db, evidence, [review], 'Admin');
+    const history = Reflect.get(target, 'csConfirmationHistory');
+    assert.equal(history.length, 2);
+    assert.equal(Reflect.get(target, 'csInvoiceNo'), 'BULK-2026-10-14');
+    assert.equal(Reflect.get(target, 'csConfirmedBy'), 'Consol admin');
+    assert.equal(target.csConfirmed, true);
+    assert.deepEqual(new Set(history.map((r: {csInvoiceNo: string}) => r.csInvoiceNo)), new Set(['BULK-2026-10-13', 'BULK-2026-10-14']));
+    restoreShipmentMerge(db, result.archiveId);
+    assert.equal(db.jobs.length, 2);
+});
+
+test('BULK exception never overrides a real invoice or transfers CS approval to a pending job', () => {
+    for (const conflict of ['real_invoice', 'pending']) {
+        const { db, source, target, evidence } = fixture();
+        Object.assign(source, { csConfirmed: true, csInvoiceNo: 'BULK-2026-10-13' });
+        Object.assign(target, { csConfirmed: true, csInvoiceNo: 'BULK-2026-10-14' });
+        Object.assign(evidence[0], { bulkPolicy: 'preserve_both_use_hawb' });
+        if (conflict === 'real_invoice') Object.assign(source, { invoiceNo: 'INV-123' });
+        else target.csConfirmed = false;
+        assert.equal(planShipmentMerges(db, evidence)[0].eligible, false);
+    }
+});

@@ -8359,7 +8359,8 @@ function renderTimeline() {
     }
     renderCargoIssueState(job);
     $("#selectedOrderTitle").textContent = jobReferenceLabel(job) || "-";
-    $("#selectedOrderSubtitle").textContent = `${job.customerName || "-"} / ${jobPackingLabel(job)} / ID: ${job.id || "-"}`;
+    const confirmationHistory = (job.csConfirmationHistory || []).map(row => row.csInvoiceNo).filter(Boolean);
+    $("#selectedOrderSubtitle").textContent = `${job.customerName || "-"} / ${jobPackingLabel(job)} / ID: ${job.id || "-"}${confirmationHistory.length ? " / ประวัติ CS: " + [...new Set(confirmationHistory)].join(" · ") : ""}`;
     $("#routeOrigin").textContent = job.pickupLocation || job.originAirport || "WH3";
     $("#routeDest").textContent = job.destination || job.routeType || job.destAirport || "-";
     $("#routeWeight").textContent = job.weightKg ? `${job.weightKg}kg` : job.weight ? `${job.weight}kg` : job.pieceCount || "-";
