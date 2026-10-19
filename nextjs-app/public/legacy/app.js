@@ -4043,12 +4043,20 @@ function outboundGroupsByFlight() {
     const overrides = state.outboundGroupOverrides || {};
     const map = new Map;
     for (const r of rows) {
-        const origFlight = r.flightNumber || "—";
+        const job = jobs.find(j => j.houseNumber === r.houseNumber) || {};
+        // Load Plan is a snapshot; the House owns its current Flight.
+        const currentFlight = String(job.flightNo || job.flightNumber || "").trim();
+        const origFlight = currentFlight || r.flightNumber || "—";
         const origDest = r.destination || "";
         const origKey = `${origFlight}|${origDest}`;
-        const effectiveKey = overrides[r.houseNumber] || origKey;
+        const override = overrides[r.houseNumber];
+        const overrideApplies = !!override && (!currentFlight || override === "__new__" || override.split("|")[0] === currentFlight);
+        const effectiveKey = overrideApplies ? (override === "__new__" && currentFlight ? `__new__|${currentFlight}|${origDest}` : override) : origKey;
         let flight, dest;
-        if (effectiveKey === "__new__") {
+        if (overrideApplies && override === "__new__" && currentFlight) {
+            flight = currentFlight;
+            dest = origDest;
+        } else if (effectiveKey === "__new__") {
             flight = "(กลุ่มใหม่)";
             dest = "";
         } else {
@@ -4062,7 +4070,6 @@ function outboundGroupsByFlight() {
                 rows: []
             });
         }
-        const job = jobs.find(j => j.houseNumber === r.houseNumber) || {};
         map.get(effectiveKey).rows.push({
             houseNumber: r.houseNumber,
             flightNumber: flight !== "(กลุ่มใหม่)" ? flight : "",
@@ -4072,7 +4079,7 @@ function outboundGroupsByFlight() {
             awbNumber: r.awbNumber || job.awbNumber || "",
             warehouseLocation: r.warehouseLocation || "",
             jobStatus: job.status || r.jobStatus || "",
-            moved: !!overrides[r.houseNumber]
+            moved: overrideApplies
         });
     }
     return Array.from(map.values()).sort((a, b) => a.flight.localeCompare(b.flight));
@@ -6227,6 +6234,12 @@ function openObMoveModal(houseNumber, fromKey) {
 }
 
 function doMoveObJob(houseNumber, fromKey, toKey) {
+    const job = (state.dashboard?.jobs || []).find(j => j.houseNumber === houseNumber);
+    const currentFlight = String(job?.flightNo || job?.flightNumber || "").trim();
+    if (currentFlight && toKey !== "__new__" && toKey.split("|")[0] !== currentFlight) {
+        toast(`House ${houseNumber} ใช้ Flight ล่าสุด ${currentFlight} กรุณาเลือกกลุ่ม Flight เดียวกัน`, "error");
+        return;
+    }
     state.outboundGroupOverrides[houseNumber] = toKey;
     document.getElementById("obMoveModal").style.display = "none";
     renderOutboundGroups();
