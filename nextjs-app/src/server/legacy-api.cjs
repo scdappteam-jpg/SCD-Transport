@@ -18,6 +18,7 @@ const inboundReceipts = require("./inbound-receipts.cjs");
 const inboundFlight = require("./inbound-flight.cjs");
 const flightRisk = require("./flight-risk.cjs");
 const consolSchedule = require("./consol-schedule.cjs");
+const cargoIssuePlan = require("./cargo-issue-plan.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -4520,6 +4521,20 @@ async function handleApi(req, res, pathname) {
             job: normalizeJob(job),
             dashboard: buildDashboard(db)
         });
+    }
+    if (req.method === "POST" && ["/api/admin/cargo-issue-plan", "/api/admin/cargo-issue-plan/preview"].includes(pathname)) {
+        const actor = requireSessionRole(db, req, ["Admin", "Executive", "Team_Transport"]);
+        if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เปิดใบงานแบบกลุ่ม" });
+        const payload = await parseBody(req);
+        const preview = pathname.endsWith("/preview");
+        let result;
+        try { result = cargoIssuePlan.apply(db, payload, actor.id, { preview }); }
+        catch (error) { return sendJson(res, 409, { error: error.message }); }
+        if (!preview && !result.replayed) {
+            for (const job of result.jobs) logActivity(db, { userId: actor.id, houseNumber: job.houseNumber, activityType: "CargoIssued", driverId: job.driverId, vehiclePlate: job.vehiclePlate, requestId: payload.requestId });
+            writeDb(db);
+        }
+        return sendJson(res, 200, { ok: true, ...result, jobs: result.jobs.map(normalizeJob), ...preview ? {} : { dashboard: buildDashboard(db) } });
     }
     if (req.method === "POST" && pathname === "/api/admin/job-batch") {
         const payload = await parseBody(req);

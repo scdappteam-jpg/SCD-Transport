@@ -3724,13 +3724,14 @@ async function groupWizardNextOrIssue() {
         toast(`พิมพ์ใบ Cargo Transfer ${_pages.length} ใบ สำเร็จ`);
         return;
     }
-    const pages = chunkArray(jobs, HOUSES_PER_PAGE);
-    const primaryDriver = getPageDriver(0);
-    prepareAdminFormForJobs(jobs, primaryDriver);
-    const createdJobs = await issueAdminCargoFromCurrentForm();
+    const pages = computeWizardPagesAndDrivers(jobs).map(page => {
+        const driver = assignableUsers().find(user => user.id === page.driverId);
+        if (!driver) throw new Error("ไม่พบคนขับในแผน กรุณาเลือกใหม่");
+        return { jobs: page.jobs.slice(), driver };
+    });
     const meta = state.groupWizard.meta || {};
-    printMultipleCargoForms(pages.map((pageJobs, i) => {
-        const baseData = cargoDataFromJobs(pageJobs, getPageDriver(i));
+    const forms = pages.map(page => {
+        const baseData = cargoDataFromJobs(page.jobs, page.driver);
         return cargoSheetHtml({
             ...baseData,
             contact: meta.contact ?? baseData.contact,
@@ -3738,8 +3739,24 @@ async function groupWizardNextOrIssue() {
             pickupDate: meta.pickupDate ?? baseData.pickupDate,
             pickupTime: meta.pickupTime ?? baseData.pickupTime
         });
+    });
+    const planPages = pages.map(page => ({
+        driverId: page.driver.id,
+        driverName: page.driver.name || "", vehiclePlate: page.driver.vehiclePlate || "",
+        jobs: page.jobs.map(job => ({ houseNumber: job.houseNumber, updatedAt: job.updatedAt || "" }))
     }));
+    if (JSON.stringify(state.groupWizard.issuePlan?.pages) !== JSON.stringify(planPages)) {
+        state.groupWizard.issuePlan = { requestId: crypto.randomUUID(), pages: planPages };
+    }
+    const data = await api("/api/admin/cargo-issue-plan", state.groupWizard.issuePlan);
+    if (!data.ok || data.pageCount !== pages.length || data.jobs?.length !== jobs.length) throw new Error("ผลออกใบไม่ตรงแผน กรุณาโหลดข้อมูลตรวจสอบก่อนทำต่อ");
+    const createdJobs = data.jobs;
+    if (pages.some(page => page.jobs.some(job => !createdJobs.some(saved => saved.houseNumber === job.houseNumber && saved.driverId === page.driver.id && (saved.vehiclePlate || "") === (page.driver.vehiclePlate || ""))))) throw new Error("คนขับหรือทะเบียนในผลบันทึกไม่ตรง Preview กรุณาโหลดข้อมูลตรวจสอบ");
+    if (data.dashboard) state.dashboard = data.dashboard;
+    state.selectedManualHouses = state.selectedManualHouses.filter(house => !createdJobs.some(job => job.houseNumber === house));
+    printMultipleCargoForms(forms);
     closeGroupWizard();
+    renderAll();
     state.selectedHistoryHouse = createdJobs[0]?.houseNumber || jobs[0]?.houseNumber || "";
     setView("cargo-history");
     renderCargoHistory();
