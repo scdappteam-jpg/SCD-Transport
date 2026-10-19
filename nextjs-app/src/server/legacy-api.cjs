@@ -19,6 +19,7 @@ const inboundFlight = require("./inbound-flight.cjs");
 const flightRisk = require("./flight-risk.cjs");
 const consolSchedule = require("./consol-schedule.cjs");
 const cargoIssuePlan = require("./cargo-issue-plan.cjs");
+const shippingGuards = require("./shipping-guards.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -5865,6 +5866,8 @@ async function handleApi(req, res, pathname) {
         if (!job.aotApprovedAt) return sendJson(res, 409, {
             error: "AOT queue must be approved before loading"
         });
+        try { shippingGuards.load(job, payload); }
+        catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         const terminal = normalizeTerminal(job.terminalDestination || payload.terminalDestination || job.destination || "TG");
         const progressedStatuses = [ "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ];
         const alreadyArrived = Boolean(payload.arrived && (job.terminalArrivedAt || progressedStatuses.includes(job.status)));
@@ -6010,6 +6013,8 @@ async function handleApi(req, res, pathname) {
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
         });
+        try { shippingGuards.xray(job, payload); }
+        catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         job.xrayStatus = payload.hold ? "Hold" : payload.passed ? "Passed" : "Failed";
         job.requiresRescan = Boolean(payload.requiresRescan);
         job.status = job.xrayStatus === "Passed" ? "XRayPassed" : payload.hold ? "XRayHold" : "ReXRayRequired";
@@ -6051,12 +6056,9 @@ async function handleApi(req, res, pathname) {
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
         });
-        const flightJobs = db.jobs.filter(item => item.flightNo === job.flightNo);
-        if (!flightJobs.every(item => item.xrayStatus === "Passed")) {
-            return sendJson(res, 409, {
-                error: "Every house on this flight must pass X-Ray first"
-            });
-        }
+        let flightJobs;
+        try { flightJobs = shippingGuards.loading(db, job, payload); }
+        catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         if (payload.imageBase64) {
             saveBase64File(db, {
                 houseNumber: job.houseNumber,
