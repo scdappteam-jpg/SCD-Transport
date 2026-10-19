@@ -4051,12 +4051,9 @@ function outboundGroupsByFlight() {
         const origKey = `${origFlight}|${origDest}`;
         const override = overrides[r.houseNumber];
         const overrideApplies = !!override && (!currentFlight || override === "__new__" || override.split("|")[0] === currentFlight);
-        const effectiveKey = overrideApplies ? (override === "__new__" && currentFlight ? `__new__|${currentFlight}|${origDest}` : override) : origKey;
+        const effectiveKey = overrideApplies ? (override === "__new__" && currentFlight ? `${currentFlight}|` : override) : origKey;
         let flight, dest;
-        if (overrideApplies && override === "__new__" && currentFlight) {
-            flight = currentFlight;
-            dest = origDest;
-        } else if (effectiveKey === "__new__") {
+        if (effectiveKey === "__new__") {
             flight = "(กลุ่มใหม่)";
             dest = "";
         } else {

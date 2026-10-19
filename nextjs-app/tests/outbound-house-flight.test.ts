@@ -47,4 +47,8 @@ test('moving into another Flight is rejected before changing override',()=>{
 test('same Flight move and new-group move remain available',()=>{
     const f=fixture();vm.runInContext("doMoveObJob('H1','NH850/21|NRT','NH850/21|HND')",f.ctx);assert.equal(f.state.outboundGroupOverrides.H1,'NH850/21|HND');
     vm.runInContext("doMoveObJob('H1','NH850/21|HND','__new__')",f.ctx);assert.equal(f.state.outboundGroupOverrides.H1,'__new__');
+    const target=f.groups().find((g:{rows:{houseNumber:string}[]})=>g.rows.some(r=>r.houseNumber==='H1')).key;
+    f.state.dashboard.jobs[1].flightNo='NH850/21';
+    vm.runInContext(`doMoveObJob('H2','NH850/21|NRT',${JSON.stringify(target)})`,f.ctx);
+    assert.equal(f.state.outboundGroupOverrides.H2,target);assert.equal(f.groups().find((g:{key:string})=>g.key===target).rows.length,2);
 });
