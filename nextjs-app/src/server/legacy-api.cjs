@@ -20,6 +20,7 @@ const flightRisk = require("./flight-risk.cjs");
 const consolSchedule = require("./consol-schedule.cjs");
 const cargoIssuePlan = require("./cargo-issue-plan.cjs");
 const shippingGuards = require("./shipping-guards.cjs");
+const cargoTransfer = require("./cargo-transfer.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -5611,24 +5612,9 @@ async function handleApi(req, res, pathname) {
         const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ออก Cargo Transfer Form" });
         payload.userId = actor.id;
-        const houses = Array.isArray(payload.houses) ? [ ...new Set(payload.houses.map(value => String(value || "").trim()).filter(Boolean)) ] : [];
-        const jobs = houses.map(house => findJob(db, house)).filter(Boolean);
-        if (!jobs.length) return sendJson(res, 404, {
-            error: "No matching House found"
-        });
-        if (payload.action !== "return") {
-            if (!Array.isArray(payload.permitFiles) || !payload.permitFiles.length) {
-                return sendJson(res, 422, {
-                    error: "Permit document is required before issuing Cargo Transfer"
-                });
-            }
-            const lithiumJobs = jobs.filter(job => job.requiresLithiumDocs || /lithium/i.test(job.productType || ""));
-            if (lithiumJobs.length && (!Array.isArray(payload.lithiumFiles) || !payload.lithiumFiles.length)) {
-                return sendJson(res, 422, {
-                    error: `Lithium document is required for ${lithiumJobs.map(job => job.houseNumber).join(", ")}`
-                });
-            }
-        }
+        let houses, jobs;
+        try { ({ houses, jobs } = cargoTransfer.prepare(db, payload, findJob)); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
         const issuedAt = nowIso();
         jobs.forEach(job => {
             if (payload.action === "return") {
