@@ -27,6 +27,7 @@ const sharedStateMemory = require("./shared-state-memory.cjs");
 const authTestMode = require("./auth-test-mode.cjs");
 const csDispatch = require("./cs-dispatch.cjs");
 const pickupFlow = require("./pickup-flow.cjs");
+const attachmentStorageService = require("./attachment-storage.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -60,6 +61,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
     || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_API_KEY || process.env.SUPABASE_ANON_KEY || "";
 
 const SUPABASE_STATE_TABLE = process.env.SUPABASE_STATE_TABLE || "app_state";
+const durableAttachments = attachmentStorageService.createStorage({url: SUPABASE_URL, key: SUPABASE_KEY});
 
 const SUPABASE_STATE_ID = process.env.SUPABASE_STATE_ID || "scd-transport";
 
@@ -2797,6 +2799,7 @@ function saveBase64File(db, {houseNumber: houseNumber, fileType: fileType, base6
         createdAt: nowIso()
     };
     db.attachments.push(attachment);
+    durableAttachments.queue(attachment, content);
     return attachment;
 }
 
@@ -3522,6 +3525,12 @@ async function handleApi(req, res, pathname) {
                 error: `Scanner service unavailable (${err.message}) — ต้องเปิด python-scanqrcode-tps ก่อน / Run the scanner service first`
             });
         }
+    }
+    if (req.method === "POST" && pathname === "/api/admin/sit-evidence/restore") {
+        try {
+            const result = await durableAttachments.restore(db, sessionUser(db, req), await parseBody(req));
+            return sendJson(res, 200, result);
+        } catch (error) { return sendJson(res, error.statusCode || 503, {error: error.message}); }
     }
     if (req.method === "GET" && pathname === "/api/admin/db-health") {
         return sendJson(res, 200, {
@@ -8491,12 +8500,7 @@ function streamFile(res, fullPath) {
 }
 
 function attachmentStorageObjectPath(attachment) {
-    const createdAt = new Date(attachment.createdAt || Date.now());
-    const date = Number.isNaN(createdAt.getTime()) ? new Date() : createdAt;
-    const safeHouse = String(attachment.houseNumber || "unassigned").replace(/[^A-Za-z0-9_-]/g, "_");
-    const filename = String(attachment.url || "").split("/").pop() || `${attachment.fileId || "document"}.bin`;
-    const extension = path.extname(filename).toLowerCase() || ".bin";
-    return `${safeHouse}/${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, "0")}/${attachment.fileId}${extension}`;
+    return attachmentStorageService.objectPath(attachment);
 }
 
 async function streamSupabaseAttachment(res, pathname) {
@@ -8608,6 +8612,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+    flushAttachmentStorage: () => durableAttachments.flush(),
     handleApi: handleApi,
     mirrorHealth: mirrorHealth,
     loadDbFromSupabase: loadDbFromSupabase,

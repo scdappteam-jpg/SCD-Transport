@@ -22,6 +22,7 @@ type LegacyApiModule = {
   flushSupabasePersistence: () => Promise<void>;
   flushSharedStatePersistence: () => Promise<void>;
   flushAuthSessionPersistence: () => Promise<void>;
+  flushAttachmentStorage: () => Promise<void>;
 };
 
 let initialization: Promise<void> | undefined;
@@ -111,6 +112,7 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
         return new Response(Buffer.concat(chunks), { status, headers });
       }
       // app_state คือ source of truth ที่ UI ต้องรอให้บันทึกสำเร็จ
+      await legacyApi.flushAttachmentStorage();
       // relational mirror ทำงานเบื้องหลัง เพื่อไม่ให้ mutation เล็ก ๆ
       // เช่น login ถูกหน่วงด้วยการ upsert ข้อมูลทั้งระบบ
       await legacyApi.flushSharedStatePersistence();
