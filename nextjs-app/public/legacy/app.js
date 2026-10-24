@@ -1217,7 +1217,14 @@ function parsePickupLines(text) {
 
 function adminPickupRows() {
     syncAdminPickupRowsText();
-    return parsePickupLines($("#adminPickupItems").value);
+    return parsePickupLines($("#adminPickupItems").value).map(row => {
+        const job = (state.dashboard?.jobs || []).find(job => job.houseNumber === row.houseNumber);
+        if (!job) return row;
+        return {...row, invoiceNo:job.csInvoiceNo || job.invoiceNo || row.invoiceNo || "",
+            contact:job.csContactName || job.contactPerson || job.contact || row.contact || "",
+            tel:job.csContactPhone || job.pickupPhone || job.tel || row.tel || "",
+            dest:job.destAirport || row.dest || "", booking:job.booking || row.booking || ""};
+    });
 }
 
 function escapeAttr(value) {
@@ -1535,9 +1542,9 @@ function jobCargoData(job) {
         carton: job.pieceCount || "",
         pickupDate: job.pickupDate || toDateInput(job.flightTime),
         booking: job.booking || job.bookingNo || "",
-        invoiceNo: job.invoiceNo || "",
-        contact: job.contactPerson || "",
-        tel: job.pickupPhone || ""
+        invoiceNo: (job.csInvoiceNo || job.invoiceNo) || "",
+        contact: (job.csContactName || job.contactPerson || job.contact) || "",
+        tel: (job.csContactPhone || job.pickupPhone || job.tel) || ""
     } ];
     return {
         houseNumber: job.houseNumber,
@@ -1549,10 +1556,10 @@ function jobCargoData(job) {
             minute: "2-digit"
         }) : "",
         pickupLocation: job.pickupLocation,
-        contact: job.contactPerson,
-        tel: job.pickupPhone,
+        contact: (job.csContactName || job.contactPerson || job.contact),
+        tel: (job.csContactPhone || job.pickupPhone || job.tel),
         booking: job.booking || job.bookingNo,
-        invoiceNo: job.invoiceNo,
+        invoiceNo: (job.csInvoiceNo || job.invoiceNo),
         driverName: job.driverName,
         vehiclePlate: job.vehiclePlate,
         pieceCount: job.pieceCount,
@@ -6443,7 +6450,12 @@ function adminPayloadFromCurrentForm() {
             driverName: $("#adminDriverName").value.trim(),
             vehiclePlate: $("#adminVehiclePlate").value.trim(),
             pieceCount: $("#adminPieceCount").value,
-            pickupItems: $("#adminPickupItems").value,
+            pickupItems: rows,
+            invoiceNo: rows[0]?.invoiceNo || "",
+            contact: rows[0]?.contact || "",
+            contactPerson: rows[0]?.contact || "",
+            tel: rows[0]?.tel || "",
+            pickupPhone: rows[0]?.tel || "",
             packageType: $("#adminPackageType").value,
             destination: $("#adminDestination").value,
             stickerColor: $("#adminStickerColor").value.trim(),
@@ -10048,32 +10060,7 @@ function bindEvents() {
         toast("ปิดเป็น Billed แล้ว / Billed");
     }));
     $("#createJobBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
-        const rows = adminPickupRows();
-        const payload = {
-            houseNumber: $("#adminHouse").value.trim(),
-            customerId: $("#adminCustomer").value,
-            pickupCase: $("#adminPickupCase").value,
-            cargoFormMode: $("#adminPickupCase").value === "SpecialMD" ? "AdminPrepared" : "DriverWrites",
-            adminPrepared: $("#adminPickupCase").value === "SpecialMD",
-            pickupDate: rows[0]?.pickupDate || $("#adminPickupDate").value,
-            pickupLocation: $("#adminPickupLocation").value.trim(),
-            driverId: $("#adminDriverSelect").value,
-            driverName: $("#adminDriverName").value.trim(),
-            vehiclePlate: $("#adminVehiclePlate").value.trim(),
-            pieceCount: $("#adminPieceCount").value,
-            pickupItems: $("#adminPickupItems").value,
-            packageType: $("#adminPackageType").value,
-            destination: $("#adminDestination").value,
-            stickerColor: $("#adminStickerColor").value.trim(),
-            flightNo: $("#adminFlightNo").value.trim(),
-            flightTime: datetimeLocalToIso($("#adminFlightTime").value),
-            productType: $("#adminProductType").value,
-            routeType: $("#adminRouteType").value,
-            amount: $("#adminAmount").value,
-            planSource: "ManualExtra",
-            evidenceChannel: "Line/Email",
-            evidenceNote: "Manual job created before/after load plan confirmation"
-        };
+        const { rows, payload } = adminPayloadFromCurrentForm();
         const data = await api(rows.length > 1 ? "/api/admin/job-batch" : "/api/admin/job", payload);
         if (data.dashboard) state.dashboard = data.dashboard;
         const createdJobs = data.jobs || (data.job ? [ data.job ] : []);
@@ -10849,7 +10836,7 @@ function _renderCsQueueList() {
         const safeCust = customer.replace(/[^a-zA-Z0-9ก-๙]/g, "_");
         return `\n      <div class="cs-customer-block">\n        <div class="cs-customer-header">\n          <span class="cs-customer-name">${safeHtml(customer)}</span>\n          <span class="cs-customer-count">${cJobs.length} HAWB · ${cJobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0)} ชิ้น · ${dates.length} กลุ่มวัน</span>\n        </div>\n        ${dates.map(([date, dJobs], di) => {
             const gkey = `${safeCust}_${di}`;
-            return `\n          <div class="cs-date-group" data-gkey="${gkey}">\n            <div class="cs-date-head">\n              <span>${safeHtml(date)} <em>· ${dJobs.length} HAWB · ${dJobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0)} ชิ้น · 1 Invoice</em></span>\n              <button type="button" class="cs-group-select" onclick="csSelectDateGroup(this)">เลือกทั้งกลุ่ม</button>\n            </div>\n            <div class="cs-jobs-list">\n              ${dJobs.map(j => `\n                <label class="cs-job-row" data-house="${safeHtml(j.houseNumber)}">\n                  <input type="checkbox" class="cs-job-check" value="${safeHtml(j.houseNumber)}" onchange="onCsJobCheck()">\n                  <div class="cs-job-info">\n                    ${jobReferenceFieldsHtml(j)}\n                    <span>${safeHtml(j.destAirport || j.flightNo || "-")} · ${safeHtml(jobPackingLabel(j))}</span>\n                  </div>\n                  <div class="cs-job-meta">\n                    <span class="cs-status-badge pending">${safeHtml(j.manualExtra ? "Manual extra" : "Pending CS")}</span>\n                    <small>${safeHtml([ j.evidenceChannel || "", j.planRound || "" ].filter(Boolean).join(" / ") || "Need approval")}</small>\n                  </div>\n                </label>`).join("")}\n            </div>\n            <div class="cs-confirm-bar">\n              <div style="flex:1;display:flex;flex-direction:column;gap:6px">\n                <div style="font-size:11px;font-weight:600;color:#075985">โทรยืนยันแล้ว — Invoice ของกลุ่มวันนี้:</div>\n                <div style="display:flex;gap:8px;flex-wrap:wrap">\n                  <input type="text" class="cs-invoice-input" placeholder="เลข Invoice (เช่น INV-2026-0001)" id="csInvoice-${gkey}">\n                  <input type="text" class="cs-invoice-input" style="max-width:150px" placeholder="ชื่อผู้ติดต่อ" id="csContact-${gkey}">\n                  <select class="cs-invoice-input" style="max-width:130px" id="csEvidenceChannel-${gkey}">\n                    <option value="Line">Line</option>\n                    <option value="Email">Email</option>\n                    <option value="Phone">Phone</option>\n                  </select>\n                  <input type="text" class="cs-invoice-input" style="max-width:220px" placeholder="หลักฐาน/หมายเหตุ" id="csEvidenceNote-${gkey}">\n                  <input type="file" class="cs-evidence-file" accept="image/*,application/pdf" multiple id="csEvidenceFiles-${gkey}">\n                  <button class="cs-confirm-btn" onclick="submitCsConfirm('${gkey}')">✓ Confirm</button>\n                </div>\n              </div>\n            </div>\n          </div>`;
+            return `\n          <div class="cs-date-group" data-gkey="${gkey}">\n            <div class="cs-date-head">\n              <span>${safeHtml(date)} <em>· ${dJobs.length} HAWB · ${dJobs.reduce((s, j) => s + Number(j.pieceCount || 0), 0)} ชิ้น · 1 Invoice</em></span>\n              <button type="button" class="cs-group-select" onclick="csSelectDateGroup(this)">เลือกทั้งกลุ่ม</button>\n            </div>\n            <div class="cs-jobs-list">\n              ${dJobs.map(j => `\n                <label class="cs-job-row" data-house="${safeHtml(j.houseNumber)}">\n                  <input type="checkbox" class="cs-job-check" value="${safeHtml(j.houseNumber)}" onchange="onCsJobCheck()">\n                  <div class="cs-job-info">\n                    ${jobReferenceFieldsHtml(j)}\n                    <span>${safeHtml(j.destAirport || j.flightNo || "-")} · ${safeHtml(jobPackingLabel(j))}</span>\n                  </div>\n                  <div class="cs-job-meta">\n                    <span class="cs-status-badge pending">${safeHtml(j.manualExtra ? "Manual extra" : "Pending CS")}</span>\n                    <small>${safeHtml([ j.evidenceChannel || "", j.planRound || "" ].filter(Boolean).join(" / ") || "Need approval")}</small>\n                  </div>\n                </label>`).join("")}\n            </div>\n            <div class="cs-confirm-bar">\n              <div style="flex:1;display:flex;flex-direction:column;gap:6px">\n                <div style="font-size:11px;font-weight:600;color:#075985">โทรยืนยันแล้ว — Invoice ของกลุ่มวันนี้:</div>\n                <div style="display:flex;gap:8px;flex-wrap:wrap">\n                  <input type="text" class="cs-invoice-input" placeholder="เลข Invoice (เช่น INV-2026-0001)" id="csInvoice-${gkey}">\n                  <input type="text" class="cs-invoice-input" style="max-width:150px" placeholder="ชื่อผู้ติดต่อ" id="csContact-${gkey}">\n                  <input type="tel" class="cs-invoice-input" style="max-width:170px" placeholder="เบอร์โทรผู้ติดต่อ" id="csPhone-${gkey}">\n                  <select class="cs-invoice-input" style="max-width:130px" id="csEvidenceChannel-${gkey}">\n                    <option value="Line">Line</option>\n                    <option value="Email">Email</option>\n                    <option value="Phone">Phone</option>\n                  </select>\n                  <input type="text" class="cs-invoice-input" style="max-width:220px" placeholder="หลักฐาน/หมายเหตุ" id="csEvidenceNote-${gkey}">\n                  <input type="file" class="cs-evidence-file" accept="image/*,application/pdf" multiple id="csEvidenceFiles-${gkey}">\n                  <button class="cs-confirm-btn" onclick="submitCsConfirm('${gkey}')">✓ Confirm</button>\n                </div>\n              </div>\n            </div>\n          </div>`;
         }).join("")}\n      </div>`;
     }).join("") + csQueuePaginationHtml(jobs.length, _csQueuePage, CS_QUEUE_PAGE_SIZE);
     onCsJobCheck();
@@ -11116,6 +11103,13 @@ async function requestCsConfirmation(payload) {
     }
 }
 
+function mergeCsConfirmedJobs(jobs) {
+    if (!state.dashboard) state.dashboard = {jobs:[]};
+    const cache = new Map((state.dashboard.jobs || []).map(job => [job.houseNumber, job]));
+    for (const job of jobs) cache.set(job.houseNumber, {...cache.get(job.houseNumber), ...job});
+    state.dashboard.jobs = [...cache.values()];
+}
+
 const csConfirmInFlight = new Set();
 async function submitCsConfirm(gkey) {
     const grp = document.querySelector(`.cs-date-group[data-gkey="${gkey}"]`);
@@ -11133,6 +11127,7 @@ async function submitCsConfirm(gkey) {
         return;
     }
     const contactName = document.getElementById("csContact-" + gkey)?.value?.trim() || "";
+    const contactPhone = document.getElementById("csPhone-" + gkey)?.value?.trim() || "";
     const evidenceChannel = document.getElementById("csEvidenceChannel-" + gkey)?.value || "";
     const evidenceNote = document.getElementById("csEvidenceNote-" + gkey)?.value?.trim() || "";
     if (csConfirmInFlight.has(gkey)) return;
@@ -11147,6 +11142,7 @@ async function submitCsConfirm(gkey) {
                 invoiceNo: invoiceNo,
                 confirmedBy: user?.name || "CS",
                 contactName: contactName,
+                contactPhone: contactPhone,
                 evidenceChannel: evidenceChannel,
                 evidenceNote: evidenceNote,
                 evidenceFiles: evidenceFiles
@@ -11157,9 +11153,10 @@ async function submitCsConfirm(gkey) {
             // dashboard cache is also the source for the Job Opening queue.
             // Merge those records before navigating so a confirmed House is
             // immediately available to open as Cargo without a browser reload.
-            if (Array.isArray(data.jobs) && state.dashboard?.jobs) {
-                const updatedByHouse = new Map(data.jobs.map(job => [ job.houseNumber, job ]));
-                state.dashboard.jobs = state.dashboard.jobs.map(job => updatedByHouse.has(job.houseNumber) ? { ...job, ...updatedByHouse.get(job.houseNumber) } : job);
+            if (Array.isArray(data.jobs)) {
+                mergeCsConfirmedJobs(data.jobs);
+                renderAdminApprovedQueue();
+                renderAdminWorkQueue();
             }
             _csHistoryData = [];
             try {

@@ -932,10 +932,18 @@ function clearPickupItemRows() {
     syncPickupItemsText();
 }
 
+function renderDriverCsHandoff(jobs) {
+    const box = $("#driverCsHandoff");
+    if (!box) return;
+    box.hidden = !jobs.length;
+    box.innerHTML = jobs.map(job => `<div><strong>House ${escapeHtmlMobile(job.hawbNumber || job.houseNumber)}</strong><br>Onhand ${escapeHtmlMobile(job.onhandNumber || job.houseNumber)} · Master ${escapeHtmlMobile(job.mawbNumber || job.masterNumber || "รอยืนยัน")}<br>Invoice: ${escapeHtmlMobile(job.csInvoiceNo || job.invoiceNo || "-")}<br>ผู้ติดต่อ: ${escapeHtmlMobile(job.csContactName || job.contactPerson || job.contact || "-")}<br>โทร: ${escapeHtmlMobile(job.csContactPhone || job.pickupPhone || job.tel || "-")}<br>คนขับ: ${escapeHtmlMobile(job.driverName || "-")} · รถ ${escapeHtmlMobile(job.vehiclePlate || "-")}</div>`).join("<hr>");
+}
+
 function applyDriverJob(houseNumber) {
     const today = (new Date).toISOString().slice(0, 10);
     $("#driverPickupDate").value ||= today;
     const selectedJobs = jobsFromSelection(houseNumber);
+    renderDriverCsHandoff(selectedJobs);
     if (!houseNumber || !selectedJobs.length) {
         if ($("#driverGroupSummary")) $("#driverGroupSummary").hidden = true;
         state.cargoLoaded = false;

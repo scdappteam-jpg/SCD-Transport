@@ -25,6 +25,7 @@ const workflowIntegrity = require("./workflow-integrity.cjs");
 const operationsControl = require("./operations-control.cjs");
 const sharedStateMemory = require("./shared-state-memory.cjs");
 const authTestMode = require("./auth-test-mode.cjs");
+const csDispatch = require("./cs-dispatch.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -1757,6 +1758,8 @@ function upsertJob(db, payload) {
         flightTime: payload.flightTime || job.flightTime || "",
         status: payload.status || job.status || "Pending",
         driverId: payload.driverId ?? job.driverId ?? "",
+        driverName: payload.driverName ?? job.driverName ?? "",
+        vehiclePlate: payload.vehiclePlate ?? job.vehiclePlate ?? "",
         booking: payload.booking || job.booking || "",
         actualCount: payload.actualCount || job.actualCount || "",
         invoiceNo: payload.invoiceNo || job.invoiceNo || "",
@@ -4529,6 +4532,8 @@ async function handleApi(req, res, pathname) {
         const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เปิดใบงาน" });
         payload.userId = actor.id;
+        try { Object.assign(payload, csDispatch.assignment(db, payload)); }
+        catch (error) { return sendJson(res, 400, { error: error.message }); }
         payload.planSource ||= payload.sourceChannel || "ManualExtra";
         payload.evidenceChannel ||= payload.sourceChannel || "Line/Email";
         payload.manualExtra = payload.planSource !== "LoadPlan";
@@ -4572,6 +4577,8 @@ async function handleApi(req, res, pathname) {
         const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Team_Transport" ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เปิดใบงานแบบกลุ่ม" });
         payload.userId = actor.id;
+        try { Object.assign(payload, csDispatch.assignment(db, payload)); }
+        catch (error) { return sendJson(res, 400, { error: error.message }); }
         payload.planSource ||= payload.sourceChannel || "ManualExtra";
         payload.evidenceChannel ||= payload.sourceChannel || "Line/Email";
         payload.manualExtra = payload.planSource !== "LoadPlan";
@@ -7671,7 +7678,7 @@ async function handleApi(req, res, pathname) {
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ยืนยันงานแทน CS" });
         payload.confirmedBy = actor.name || actor.id;
         payload.userId = actor.id;
-        const {houseNumbers: houseNumbers, invoiceNo: invoiceNo, confirmedBy: confirmedBy, contactName: contactName, evidenceChannel: evidenceChannel, evidenceNote: evidenceNote, evidenceFiles: evidenceFiles} = payload;
+        const {houseNumbers: houseNumbers, invoiceNo: invoiceNo, confirmedBy: confirmedBy, evidenceChannel: evidenceChannel, evidenceNote: evidenceNote, evidenceFiles: evidenceFiles} = payload;
         if (!houseNumbers?.length) return sendJson(res, 400, {
             error: "houseNumbers required"
         });
@@ -7683,8 +7690,7 @@ async function handleApi(req, res, pathname) {
                 job.csRejected = false;
                 job.csConfirmedBy = confirmedBy || "CS";
                 job.csConfirmedAt = now;
-                job.csContactName = contactName || "";
-                if (invoiceNo) job.csInvoiceNo = invoiceNo;
+                csDispatch.applyCsDetails(job, payload);
                 const approvalStatus = job.manualExtra || job.afterFinalRound ? "ManualExtraApproved" : "CSApproved";
                 job.approvalStatus = approvalStatus;
                 job.csApprovalRequired = false;
@@ -7708,7 +7714,8 @@ async function handleApi(req, res, pathname) {
                     to: approvalStatus,
                     channel: job.evidenceChannel,
                     note: job.evidenceNote,
-                    invoiceNo: job.csInvoiceNo || ""
+                    invoiceNo: job.csInvoiceNo || "",
+                    contactName: job.csContactName || "", contactPhone: job.csContactPhone || ""
                 });
                 job.updatedAt = now;
                 confirmed++;
@@ -7736,6 +7743,7 @@ async function handleApi(req, res, pathname) {
             csInvoiceNo: j.csInvoiceNo || "",
             csConfirmedBy: j.csConfirmedBy || "",
             csContactName: j.csContactName || "",
+            csContactPhone: j.csContactPhone || j.pickupPhone || j.tel || "",
             csConfirmedAt: j.csConfirmedAt,
             timeLabel: formatBangkok(j.csConfirmedAt),
             pieceCount: j.pieceCount || "",
