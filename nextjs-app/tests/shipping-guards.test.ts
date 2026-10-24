@@ -6,6 +6,7 @@ import test from 'node:test';
 const require=createRequire(import.meta.url);
 const guards=require('../src/server/shipping-guards.cjs');
 const receipts=require('../src/server/inbound-receipts.cjs');
+const operations=require('../src/server/operations-control.cjs');
 const source=readFileSync(new URL('../src/server/legacy-api.cjs',import.meta.url),'utf8');
 const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 type Job=Record<string,unknown> & {houseNumber:string;flightNo:string;status:string};
@@ -67,4 +68,29 @@ test('valid close changes only current Flight; references quantities and other F
 test('valid same-Flight close still closes all three, while repeated load preserves later status',async()=>{
     const f=route();let r=await f.call('load-bay',{arrived:false});assert.equal(r.body.idempotent,true);assert.equal(f.db.jobs[0].status,'XRayPassed');
     r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png'});assert.equal(r.code,200);assert.ok(f.db.jobs.every(j=>j.status==='ReadyForBilling'));
+});
+
+test('Master weighing flows into legacy XRay without copying the total into House weights',async()=>{
+    const f=route();for(const j of f.db.jobs){delete j.terminalWeight;delete j.terminalDimension;delete j.weighEndedAt;j.status='TerminalArrived';}
+    for(const phase of ['start','complete'])operations.apply(operations.prepare(f.db,{action:'terminal',master:'205-86393230',flightNo:'NH850/20',stage:'weigh',phase,...(phase==='complete'?{weight:500,dimension:'Master total only',proof:{base64:png,mimeType:'image/png'}}:{})},{id:'test-terminal',role:'Terminal'}));
+    const r=await f.call('xray',{passed:true,requiresRescan:false});assert.equal(r.code,200);assert.equal(f.db.jobs[0].status,'XRayPassed');
+    for(const j of f.db.jobs){assert.equal(j.terminalMasterWeight,500);assert.equal(j.terminalWeight,undefined);assert.equal(j.terminalDimension,undefined);}
+});
+
+test('measurement pairs cannot mix scopes or accept blank zero negative or nonfinite weight',()=>{
+    for(const weight of ['',0,-1,'NaN',Infinity]){const j=fixture()[0];delete j.terminalWeight;delete j.terminalDimension;j.terminalMasterWeight=weight;j.terminalMasterDimension='Master';assert.throws(()=>guards.xray(j,{passed:true}),/Dimension/);}
+    const j=fixture()[0];delete j.terminalDimension;j.terminalMasterDimension='Master';assert.throws(()=>guards.xray(j,{passed:true}),/Dimension/);delete j.weighEndedAt;j.terminalMasterWeight=500;assert.throws(()=>guards.xray(j,{passed:true}),/Dimension/);
+});
+
+test('legacy close excludes a different Master on the same Flight including unready foreign jobs',async()=>{
+    const f=route(),foreign={...structuredClone(f.db.jobs[0]),houseNumber:'OTHER-HOUSE',mawbNumber:'999-99999999',status:'Pending',csConfirmed:false};f.db.jobs.push(foreign);const before=structuredClone(foreign);
+    const r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png'});assert.equal(r.code,200);assert.deepEqual(foreign,before);assert.ok(f.db.jobs.slice(0,3).every(j=>j.status==='ReadyForBilling'));
+});
+
+test('missing Master and stale Master Flight or House scope reject before any file or write',async()=>{
+    for(const scenario of ['missing-master','master','flight','houses']){const f=route();const p:Record<string,unknown>={imageBase64:png,mimeType:'image/png'};if(scenario==='missing-master')delete f.db.jobs[0].mawbNumber;if(scenario==='master')p.master='999-99999999';if(scenario==='flight')p.flightNo='CHANGED';if(scenario==='houses')p.expectedHouses=[f.db.jobs[0].houseNumber];const before=structuredClone(f.db);const r=await f.call('loading-detail',p);assert.equal(r.code,409);assert.deepEqual(f.db,before);assert.deepEqual(f.io,{writes:0,files:0,logs:0});}
+});
+
+test('Master scope normalizes separators and supports masterNumber fallback without changing stored references',()=>{
+    const jobs=fixture();jobs[1].mawbNumber='20586393230';delete jobs[2].mawbNumber;jobs[2].masterNumber='205-86393230';const before=structuredClone(jobs);assert.equal(guards.loading({jobs},jobs[0],{imageBase64:png,mimeType:'image/png',expectedHouses:jobs.map(j=>j.houseNumber)}).length,3);assert.deepEqual(jobs,before);
 });

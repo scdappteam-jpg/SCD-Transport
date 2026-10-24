@@ -21,7 +21,10 @@ function load(job, payload) {
 function measured(job) {
     received(job);
     if (!job.terminalArrivedAt) fail(`House ${job.houseNumber} ยังไม่ยืนยันถึง Terminal`);
-    if (!job.weighEndedAt || !String(job.terminalWeight || '').trim() || !String(job.terminalDimension || '').trim()) fail(`House ${job.houseNumber} ยังไม่บันทึกน้ำหนักและ Dimension ครบ`);
+    const completeMeasurement = (weight, dimension) => weight != null && String(weight).trim() !== '' && Number.isFinite(Number(weight)) && Number(weight) > 0 && String(dimension || '').trim();
+    // Keep a Master total separate from per-House weights; either completed
+    // measurement pair is valid evidence for the existing Shipping process.
+    if (!job.weighEndedAt || !(completeMeasurement(job.terminalWeight, job.terminalDimension) || completeMeasurement(job.terminalMasterWeight, job.terminalMasterDimension))) fail(`House ${job.houseNumber} ยังไม่บันทึกน้ำหนักและ Dimension ครบ`);
 }
 
 function xray(job, payload) {
@@ -48,9 +51,14 @@ function evidence(file) {
 }
 
 function loading(db, job, payload) {
+    const masterKey = value => String(value || '').replace(/[\s-]/g, '').toUpperCase();
+    const master = masterKey(job.mawbNumber || job.masterNumber);
     const flight = String(job.flightNo || '').trim();
+    if (!master) fail('House นี้ยังไม่มี Master ที่ยืนยันสำหรับปิดงาน');
     if (!flight) fail('House นี้ยังไม่มี Flight ที่ยืนยันสำหรับปิดงาน');
-    const jobs = (db.jobs || []).filter(item => item.flightNo === job.flightNo);
+    if ((payload.master && masterKey(payload.master) !== master) || (payload.flightNo && String(payload.flightNo).trim() !== flight)) fail('Master หรือ Flight เปลี่ยนแล้ว กรุณารีเฟรชก่อนปิดงาน');
+    const jobs = (db.jobs || []).filter(item => masterKey(item.mawbNumber || item.masterNumber) === master && String(item.flightNo || '').trim() === flight);
+    if (payload.expectedHouses && (!Array.isArray(payload.expectedHouses) || payload.expectedHouses.length !== jobs.length || new Set(payload.expectedHouses).size !== jobs.length || jobs.some(item => !payload.expectedHouses.includes(item.houseNumber)))) fail('ชุด House ของ Master เปลี่ยนแล้ว กรุณารีเฟรชก่อนปิดงาน');
     for (const item of jobs) {
         measured(item);
         if (item.xrayStatus !== 'Passed' || item.requiresRescan || ['XRayHold', 'ReXRayRequired'].includes(item.status)) fail(`House ${item.houseNumber} ยังไม่ผ่าน X-Ray หรือยังมี Hold/Re-X-Ray ค้างอยู่`);
