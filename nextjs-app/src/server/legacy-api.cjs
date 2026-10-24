@@ -28,6 +28,7 @@ const authTestMode = require("./auth-test-mode.cjs");
 const csDispatch = require("./cs-dispatch.cjs");
 const pickupFlow = require("./pickup-flow.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
+const warehouseReservationList = require("./warehouse-reservation-list.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -7081,10 +7082,17 @@ async function handleApi(req, res, pathname) {
             config: db.warehouseConfig
         });
     }
+    if (req.method === "GET" && pathname === "/api/warehouse/reservations") {
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff" ]);
+        if (!actor) return sendJson(res, 403, {error: "ไม่มีสิทธิ์ดูแผนจองพื้นที่คลัง"});
+        await refreshDbIfSharedStateChanged();
+        db = readDb();
+        return sendJson(res, 200, {jobs: warehouseReservationList.selectableJobs(db.jobs).map(normalizeJob)});
+    }
     if (req.method === "POST" && pathname === "/api/warehouse/reservations") {
         const payload = await parseBody(req);
         const db = readDb();
-        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ]);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff", "Team_Transport" ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จองพื้นที่คลัง" });
         payload.userId = actor.id;
         const reservations = Array.isArray(payload.reservations) ? payload.reservations : [];

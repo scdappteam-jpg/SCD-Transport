@@ -291,8 +291,9 @@ function currentWebUser() {
 }
 
 function allowedWebViews(role) {
-    if (role === "Driver" || role === "WH_Staff") return [ "dashboard", "hr", "flight-board", "dock" ];
-    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-status", "attendance", "hr", "flight-board", "dock", "service" ];
+    if (role === "Driver") return [ "dashboard", "hr", "flight-board", "dock" ];
+    if (role === "WH_Staff") return [ "dashboard", "wh-reservations", "hr", "flight-board", "dock" ];
+    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-reservations", "wh-status", "attendance", "hr", "flight-board", "dock", "service" ];
     if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr", "flight-board", "dock", "service" ];
     if (role === "EI_Customer") return [ "dashboard", "orders" ];
     if (role === "Check_House") return [ "dashboard", "orders", "alerts" ];
@@ -304,8 +305,8 @@ function allowedWebViews(role) {
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
     if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
-    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock", "service" ];
-    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
+    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock", "service" ];
+    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
 }
 
 function applyWebRoleVisibility() {
@@ -503,6 +504,10 @@ const pageCopy = {
     warehouse: {
         breadcrumb: "แผนที่คลัง / Warehouse",
         title: "แผนที่คลัง WH3 / Warehouse Map"
+    },
+    "wh-reservations": {
+        breadcrumb: "WH / Warehouse Planning",
+        title: "WH · จองพื้นที่ล่วงหน้า"
     },
     grouping: {
         breadcrumb: "จัดกลุ่มงาน / Cargo Grouping",
@@ -1001,6 +1006,7 @@ function setView(view) {
     applyLanguage();
     if (view === "warehouse") renderWarehouseMap();
     if (view === "wh-status") renderWarehouseStatus();
+    if (view === "wh-reservations") WarehouseReservationsPage.render();
     if (view === "fleet-demo") renderFleetDemo();
     if (view === "load-plan") renderLoadPlan();
     if (view === "outbound-open") renderObOpenPage();
@@ -11161,7 +11167,6 @@ async function submitCsConfirm(gkey) {
             _csHistoryData = [];
             try {
                 await renderCsQueue();
-                await openWarehouseReservationModal(data.jobs || []);
             } catch (error) {
                 toast("ยืนยันงานสำเร็จแล้ว แต่เปิดหน้าถัดไปไม่สำเร็จ: " + (error.message || "กรุณารีเฟรช") , "error");
             }
@@ -11177,6 +11182,8 @@ async function submitCsConfirm(gkey) {
 }
 
 function defaultReservationZone(job, zones) {
+    const existing = zones.find(zone => zone.id === job.warehouseReservedZoneId);
+    if (existing) return existing;
     const byPrefix = prefix => zones.find(zone => zone.prefix === prefix || zone.id === prefix);
     if (job.isLithium || job.requiresLithiumDocs || /^(L|LN)$/i.test(job.dgType || "") || /lithium/i.test(job.productType || "")) return byPrefix("LITHIUM");
     if (/western digital|\bwd\b/i.test(job.customerName || "")) return byPrefix("WD");
@@ -11204,8 +11211,8 @@ async function openWarehouseReservationModal(jobs) {
     list.forEach(job => {
         const input = modal.querySelector(`.wh-reserve-pallet[data-house="${CSS.escape(job.houseNumber)}"]`);
         if (!input) return;
-        const pallets = reservationPalletsFromJob(job);
-        if (pallets) {
+        const pallets = job.warehouseReservationStatus === "Reserved" ? Number(job.warehouseReservedPallets) || 0 : reservationPalletsFromJob(job);
+        if (pallets || job.warehouseReservationStatus === "Reserved") {
             input.value = pallets;
             input.title = "เติมจากจำนวน Pallet ในคิวงาน — แก้ไขได้";
         } else {
@@ -11247,6 +11254,7 @@ async function saveWarehouseReservations() {
         document.getElementById("warehouseReservationModal")?.remove();
         toast(`จองโซนแล้ว ${data.saved} House`);
         if (document.querySelector("#view-wh-status")?.classList.contains("active")) renderWarehouseStatus();
+        if (state.currentView === "wh-reservations") await WarehouseReservationsPage.render();
     } catch (error) {
         toast(error.message || "บันทึกการจองไม่สำเร็จ", "error");
     }
@@ -12630,3 +12638,4 @@ function enhanceAccessibility(root) {
         observer.observe(host, { childList: true, subtree: true });
     });
 })();
+

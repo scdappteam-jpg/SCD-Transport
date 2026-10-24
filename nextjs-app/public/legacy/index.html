@@ -134,6 +134,10 @@
             <i data-lucide="map" aria-hidden="true"></i>
             <b>แผนที่คลัง WH3</b>
           </button>
+          <button class="nav-item" type="button" data-view="wh-reservations">
+            <i data-lucide="calendar-plus" aria-hidden="true"></i>
+            <b>WH · จองพื้นที่ล่วงหน้า</b>
+          </button>
           <button class="nav-item" type="button" data-view="wh-status">
             <i data-lucide="boxes" aria-hidden="true"></i>
             <b>สถานะคลัง</b>
@@ -1483,6 +1487,12 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
 
 
           
+          <section class="page" id="view-wh-reservations" data-page="wh-reservations">
+            <div class="panel"><div class="panel-title"><h2>WH · จองพื้นที่ล่วงหน้า</h2><span>Warehouse planning</span></div>
+              <p>เลือกงานที่ CS Confirm แล้วเพื่อจองโซนก่อนของเข้าคลัง การจองไม่ใช่ยอดรับจริงหรือการจัดเก็บ</p>
+              <div id="warehouseReservationsPage" aria-live="polite"></div>
+            </div>
+          </section>
           <section class="page" id="view-wh-status" data-page="wh-status">
             <div class="wh-status-layout">
               <div class="wh-status-header">
@@ -2586,6 +2596,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
     <script src="shipment-references.js?v=3-three-references"></script>
     <script src="test-user-mode.js?v=1-admin-scoped"></script>
-    <script src="app.js?v=49-cs-driver-handoff"></script>
+    <script src="warehouse-reservations-page.js?v=1-wh-planning"></script>
+    <script src="app.js?v=50-wh-reservations"></script>
   </body>
 </html>
