@@ -2857,7 +2857,7 @@ function warehouseLayoutPreset202609(existingLog = []) {
     ];
     const map = {
         layoutVersion: "2026-09-01",
-        layoutName: "WH3 Layout 1-9-26",
+        layoutName: "WH3 Layout 1-9-26 · รวม WH ด้านหลัง",
         zones,
         locations,
         overlays,
@@ -2868,6 +2868,9 @@ function warehouseLayoutPreset202609(existingLog = []) {
         ],
         log: existingLog
     };
+    // The rear six-door area is part of the same physical WH3 plan, not a
+    // separate map. Keep it in the base preset so a new layout starts complete.
+    applyRearWarehouseLayout(map);
     ensureWarehouseLayoutBuildingGroups(map);
     return map;
 }
@@ -6591,7 +6594,7 @@ async function handleApi(req, res, pathname) {
         whLog(db, {
             action: "layout_apply",
             layoutVersion: "2026-09-01",
-            layoutName: "WH3 Layout 1-9-26",
+            layoutName: "WH3 Layout 1-9-26 · รวม WH ด้านหลัง",
             userId: payload.userId || "system"
         });
         writeDb(db);

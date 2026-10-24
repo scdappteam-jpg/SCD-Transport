@@ -3922,7 +3922,7 @@ async function loadWarehouseMap() {
 }
 
 async function applyWarehouseLayout202609() {
-    const confirmed = await showWhConfirm("ใช้แปลนคลัง 1-9-26 ตามเอกสารหรือไม่? ระบบจะสร้างโซน R001–R004, Lithium, เก็บสินค้า, WD, Receiving และ Dock D1–D11 ใหม่ โดยทำได้เฉพาะเมื่อยังไม่มีสินค้าอยู่ในตำแหน่งเก็บ");
+    const confirmed = await showWhConfirm("ใช้แปลนรวม WH3 ตามเอกสารหรือไม่? ระบบจะสร้างโซน R001–R004, Lithium, เก็บสินค้า, WD, Receiving, Dock D1–D11 และ WH ด้านหลัง 6 ประตูในแผนเดียวกัน โดยทำได้เฉพาะเมื่อยังไม่มีสินค้าอยู่ในตำแหน่งเก็บ");
     if (!confirmed) return;
     try {
         const data = await api("/api/warehouse/layouts/2026-09-01/apply", {
@@ -3933,7 +3933,7 @@ async function applyWarehouseLayout202609() {
         whMapState.overlays = data.map.overlays || [];
         whMapState.buildingOutlines = data.map.buildingOutlines || [];
         renderWarehouseEditor();
-        toast("ใช้แปลนคลัง 1-9-26 แล้ว");
+        toast("ใช้แปลนรวม WH3 และ WH ด้านหลังแล้ว");
     } catch (error) {
         toast(error.message || "ใช้แปลนคลังไม่ได้", "error");
     }
