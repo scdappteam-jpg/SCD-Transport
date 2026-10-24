@@ -21,6 +21,8 @@ const consolSchedule = require("./consol-schedule.cjs");
 const cargoIssuePlan = require("./cargo-issue-plan.cjs");
 const shippingGuards = require("./shipping-guards.cjs");
 const cargoTransfer = require("./cargo-transfer.cjs");
+const workflowIntegrity = require("./workflow-integrity.cjs");
+const operationsControl = require("./operations-control.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -1528,8 +1530,11 @@ function normalizeJob(job) {
         ...job,
         terminalDestination: terminal
     });
+    const publicJob = { ...job };
+    for (const key of ["transportCost", "fuelCost", "costConfirmedAt", "costConfirmedBy"]) delete publicJob[key];
+    if (publicJob.operationsEvents) publicJob.operationsEvents = publicJob.operationsEvents.filter(event => event.action !== "price");
     return {
-        ...job,
+        ...publicJob,
         inboundReceiptSummary: inboundReceipts.house(job),
         terminalProfile: TERMINAL_PROFILES[terminal],
         wh3Documents: wh3Documents,
@@ -1729,8 +1734,9 @@ function findJob(db, houseNumber) {
 
 function findPayloadJobs(db, payload) {
     const houses = Array.isArray(payload.houseNumbers) && payload.houseNumbers.length ? payload.houseNumbers : [ payload.houseNumber ];
-    const jobs = houses.map(house => findJob(db, house)).filter(Boolean);
-    return jobs.length ? jobs : [];
+    if (houses.some(house => typeof house !== "string" || !house.trim())) return [];
+    const jobs = [...new Set(houses.map(house => house.trim()))].map(house => findJob(db, house));
+    return jobs.length && jobs.every(Boolean) ? jobs : [];
 }
 
 function pickupDispatchIsReady(jobs) {
@@ -3195,7 +3201,7 @@ function generateBatchInvoiceHtml(bill, jobs, customer) {
 
 function billingDocumentStatus(db, job) {
     const files = db.attachments.filter(file => file.houseNumber === job.houseNumber);
-    const hasWeight = Boolean(job.terminalWeight || job.weight || files.some(file => /weight/i.test(file.fileType)));
+    const hasWeight = Boolean((job.weighEndedAt && (job.terminalWeight || job.terminalMasterWeight)) || files.some(file => /weight/i.test(file.fileType)));
     const hasTransfer = files.some(file => /OutboundDocument|EISignProof|CargoTransfer/i.test(file.fileType));
     const hasLoading = Boolean(job.loadingDetailUploaded || files.some(file => /LoadingDetail/i.test(file.fileType)));
     const hasFieldEvidence = files.some(file => /Pickup|InboundEvidence|PreLoadPhoto|Product|Cargo/i.test(file.fileType));
@@ -3226,7 +3232,7 @@ async function handleApi(req, res, pathname) {
     // predates a write made by another worker.  A few mutations below refresh
     // this reference before retrying a lookup from the shared source of truth.
     let db = readDb();
-    if (req.method === "GET" && [ "/api/mobile/bootstrap", "/api/bootstrap" ].includes(pathname)) {
+    if ((req.method === "GET" && [ "/api/mobile/bootstrap", "/api/bootstrap" ].includes(pathname)) || pathname === "/api/operations/control") {
         await refreshDbIfSharedStateChanged();
         db = readDb();
     }
@@ -3447,6 +3453,24 @@ async function handleApi(req, res, pathname) {
             users: publicUsers(db),
             dashboard: buildMobileDashboard(db, viewer)
         });
+    }
+    if (pathname === "/api/operations/control" && ["GET", "POST"].includes(req.method)) {
+        const actor = requireSessionRole(db, req, operationsControl.roles);
+        if (!actor) return sendJson(res, 403, { error: "เข้าสู่ระบบด้วยบัญชีที่มีสิทธิ์ Transport Terminal หรือ Billing" });
+        try {
+            if (req.method === "GET") {
+                const params = Object.fromEntries(new URL(req.url, "http://localhost").searchParams);
+                if (params.document === "weigh-slip") return sendJson(res, 200, { html: operationsControl.weighSlip(db, params) });
+                return sendJson(res, 200, { ...operationsControl.summary(db, params, undefined, ['Admin', 'Executive', 'Billing'].includes(actor.role)), actor: { id: actor.id, name: actor.name, role: actor.role } });
+            }
+            const payload = await parseBody(req);
+            const plan = operationsControl.prepare(db, payload, actor);
+            for (const job of plan.jobs) for (const file of plan.files) saveBase64File(db, { houseNumber: job.houseNumber, fileType: file.fileType, base64: file.base64, mimeType: file.mimeType });
+            operationsControl.apply(plan);
+            for (const job of plan.jobs) logActivity(db, { houseNumber: job.houseNumber, userId: actor.id, activityType: "OperationsControl", ...plan.event });
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, affected: plan.jobs.map(job => job.houseNumber), recordedAt: plan.event.at });
+        } catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
     }
     if (req.method === "GET" && pathname === "/api/bootstrap") {
         if (refreshFlightSla(db)) writeDb(db);
@@ -5013,6 +5037,12 @@ async function handleApi(req, res, pathname) {
                 error: "Closed container/vehicle door photo is required before leaving customer site"
             });
         }
+        try {
+            payload.productImages.forEach(file => operationsControl.evidence(file, "ภาพสินค้า"));
+            payload.doorClosedImages.forEach(file => operationsControl.evidence(file, "ภาพประตูปิด"));
+            if (Array.isArray(payload.cargoImages)) payload.cargoImages.forEach(file => operationsControl.evidence(file, "ใบรับสินค้าลงชื่อ"));
+            if (payload.imageBase64) operationsControl.evidence({ base64: payload.imageBase64, mimeType: payload.mimeType || "image/jpeg" }, "ใบรับสินค้าลงชื่อ");
+        } catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
         let image = null;
         for (const item of jobs) {
             saveBase64Files(db, {
@@ -5917,6 +5947,8 @@ async function handleApi(req, res, pathname) {
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
         });
+        try { workflowIntegrity.terminal(job, payload, false); }
+        catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         const terminal = normalizeTerminal(job.terminalDestination || payload.terminalDestination || job.destination || "TG");
         job.weighStartedAt = nowIso();
         job.unloadingStartedAt = job.unloadingStartedAt || job.weighStartedAt;
@@ -5949,8 +5981,10 @@ async function handleApi(req, res, pathname) {
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
         });
-        job.terminalWeight = payload.weight || "";
-        job.terminalDimension = payload.dimension || "";
+        try { workflowIntegrity.terminal(job, payload, true); }
+        catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
+        job.terminalWeight = payload.weight || (payload.packing ? job.terminalWeight : "");
+        job.terminalDimension = payload.dimension || (payload.packing ? job.terminalDimension : "");
         // A corrective re-weigh can legitimately happen after X-Ray or even
         // after Loading Detail.  Keep the later workflow state intact so the
         // job does not disappear from Billing merely because its measurement
@@ -5959,7 +5993,7 @@ async function handleApi(req, res, pathname) {
         if (payload.packing) job.status = "PackingConsolidation";
         else if (!laterTerminalStates.has(job.status)) job.status = "WeightDimensionRecorded";
         if (payload.packing) job.packingCompletedAt = nowIso();
-        if (payload.weighStartedAt) job.weighStartedAt = payload.weighStartedAt;
+        if (!payload.packing) {
         job.weighEndedAt = nowIso();
         job.unloadingCompletedAt = job.weighEndedAt;
         job.terminalWorkflowStatus = "UnloadingCompleted";
@@ -5977,6 +6011,7 @@ async function handleApi(req, res, pathname) {
             job.unloadingMinutes = Math.max(0, Math.round((endMs - startMs) / 6e4));
             job.terminalSlaMinutes = TERMINAL_PROFILES[terminal]?.slaMinutes || 180;
             job.terminalSlaStatus = job.unloadingMinutes > job.terminalSlaMinutes ? "OverSLA" : "WithinSLA";
+        }
         }
         job.updatedAt = nowIso();
         logActivity(db, {
@@ -6137,7 +6172,11 @@ async function handleApi(req, res, pathname) {
         const actor = requireBillingActor(sessionUser(db, req));
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
         payload.userId = actor.id;
-        const jobs = findPayloadJobs(db, payload);
+        let jobs;
+        try {
+            jobs = workflowIntegrity.selection(db, payload, findJob);
+            workflowIntegrity.billing(db, jobs, payload, billingDocumentStatus, { batch: true });
+        } catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         if (!jobs.length) return sendJson(res, 404, {
             error: "No matching billing jobs"
         });
@@ -6161,8 +6200,8 @@ async function handleApi(req, res, pathname) {
             billingMonth: payload.billingMonth || "",
             billingPeriod: payload.billingPeriod || "FullMonth",
             billingPlan: payload.billingPlan || "General",
-            tripCount: Number(payload.tripCount || jobs.length),
-            amount: Number(payload.amount || jobs.reduce((sum, job) => sum + Number(job.amount || 0), 0)),
+            tripCount: workflowIntegrity.tripCount(jobs, payload),
+            amount: payload.amount != null && String(payload.amount).trim() !== "" ? Number(payload.amount) : Math.round(jobs.reduce((sum, job) => sum + Number(job.amount || 0), 0) * 100) / 100,
             draftedAt: nowIso(),
             dueDate: new Date(Date.now() + Number(customer?.creditTerm || 0) * 864e5).toISOString(),
             status: "Draft"
@@ -6191,6 +6230,8 @@ async function handleApi(req, res, pathname) {
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
         });
+        try { workflowIntegrity.billing(db, [job], payload, billingDocumentStatus); }
+        catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         if (!job.readyForBilling) return sendJson(res, 409, {
             error: "Job is not ready for billing"
         });
@@ -7636,6 +7677,7 @@ async function handleApi(req, res, pathname) {
         (db.jobs || []).forEach(job => {
             if (houseNumbers.includes(job.houseNumber)) {
                 job.csConfirmed = true;
+                job.csRejected = false;
                 job.csConfirmedBy = confirmedBy || "CS";
                 job.csConfirmedAt = now;
                 job.csContactName = contactName || "";
@@ -7720,6 +7762,8 @@ async function handleApi(req, res, pathname) {
         if (!houseNumbers?.length) return sendJson(res, 400, {
             error: "houseNumbers required"
         });
+        try { workflowIntegrity.rejectCs(db, payload, findJob); }
+        catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         const now = nowIso();
         (db.jobs || []).forEach(job => {
             if (houseNumbers.includes(job.houseNumber)) {
@@ -7731,7 +7775,10 @@ async function handleApi(req, res, pathname) {
                 job.approvalStatus = "CSRejected";
                 job.csApprovalRequired = true;
                 job.evidenceRequired = true;
-                job.status = "Pending";
+                // Reject approval without erasing physical progress or transport evidence.
+                job.approvalTrail ||= [];
+                job.approvalTrail.push({ at: now, type: "CSRejected", by: payload.userId, reason: reason, physicalStatus: job.status });
+                logActivity(db, { houseNumber: job.houseNumber, userId: payload.userId, activityType: "CSRejected", reason: reason, physicalStatus: job.status });
                 job.updatedAt = now;
             }
         });
