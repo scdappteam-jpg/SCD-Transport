@@ -1215,14 +1215,12 @@ function sessionUser(db, req) {
     return session ? (db.users || []).find(user => user.id === session.userId) || null : null;
 }
 
+const bangkokLabelFormatter = new Intl.DateTimeFormat("th-TH", {timeZone: TZ, dateStyle: "short", timeStyle: "short"});
+const bangkokHourFormatter = new Intl.DateTimeFormat("en-US", {timeZone: TZ, hour: "2-digit", hour12: false});
 function formatBangkok(iso) {
     const d = new Date(iso);
     if (!iso || isNaN(d.getTime())) return "";
-    return new Intl.DateTimeFormat("th-TH", {
-        timeZone: TZ,
-        dateStyle: "short",
-        timeStyle: "short"
-    }).format(d);
+    return bangkokLabelFormatter.format(d);
 }
 
 function bangkokDate(iso = nowIso()) {
@@ -1427,11 +1425,7 @@ function normalizePlanRound(value, importedAt = nowIso()) {
 }
 
 function bangkokHour(iso = nowIso()) {
-    return Number(new Intl.DateTimeFormat("en-US", {
-        timeZone: TZ,
-        hour: "2-digit",
-        hour12: false
-    }).format(new Date(iso)));
+    return Number(bangkokHourFormatter.format(new Date(iso)));
 }
 
 function jobWorkDate(job = {}) {
