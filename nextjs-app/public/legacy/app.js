@@ -359,6 +359,8 @@ function renderWebLogin() {
     renderWebLoginUsers();
     $("#loginScreen")?.classList.toggle("hidden", isWebAuthenticated());
     renderWebSessionUser();
+    window.SCDTestUserMode?.render({users:state.users,userId:currentWebUser()?.id,authenticated:isWebAuthenticated(),
+        isAdmin:isWebAuthenticated()&&currentWebUser()?.role==='Admin',adminToken:localStorage.getItem(WEB_SESSION_TOKEN_KEY),onSwitch:establishWebLogin});
 }
 
 function quickLogin(userId) {
@@ -394,6 +396,11 @@ async function submitWebLogin() {
     }
     if (message) message.textContent = "กำลังตรวจสอบรหัสผ่าน...";
     try {
+        if (window.SCDTestUserMode?.available()) {
+            const data = await window.SCDTestUserMode.switchUser(userId);
+            await establishWebLogin(userId, data.token);
+            return;
+        }
         const res = await fetch(apiUrl("/api/auth/login"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },

@@ -98,7 +98,7 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
   // previously failed write must not make status/read endpoints unavailable.
   if (!["GET", "HEAD"].includes(request.method)) {
     try {
-      if (pathname === "/api/auth/login") {
+      if (pathname === "/api/auth/login" || pathname === "/api/auth/test-mode") {
         await legacyApi.flushAuthSessionPersistence();
         return new Response(Buffer.concat(chunks), { status, headers });
       }

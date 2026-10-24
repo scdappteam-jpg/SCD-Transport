@@ -98,6 +98,8 @@ function passwordForUser(userId) {
 
 function renderMobileAuthState() {
     const auth = isMobileAuthenticated();
+    window.SCDTestUserMode?.render({users:state.users,userId:state.currentUserId,authenticated:auth,
+        isAdmin:auth&&currentUser()?.role==='Admin',adminToken:localStorage.getItem(MOBILE_SESSION_TOKEN_KEY),onSwitch:establishMobileLogin});
     document.body.classList.toggle("mobile-locked", !auth);
     const loginCard = document.querySelector(".login-card");
     if (loginCard) loginCard.hidden = auth;
@@ -146,6 +148,11 @@ async function submitMobileLogin() {
     }
     $("#mobileLoginStatus").textContent = "กำลังตรวจสอบรหัสผ่าน...";
     try {
+        if (window.SCDTestUserMode?.available()) {
+            const data = await window.SCDTestUserMode.switchUser(userId);
+            await establishMobileLogin(userId, data.token);
+            return;
+        }
         const res = await mobileFetch(apiUrl("/api/auth/login"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -403,7 +410,7 @@ function renderMobileLogin() {
     }
     select.value = state.currentUserId;
     const user = currentUser();
-    const authText = isMobileAuthenticated() ? "เข้าสู่ระบบแล้ว" : "กรอกรหัส 1234 เพื่อเข้าใช้งาน";
+    const authText = isMobileAuthenticated() ? "เข้าสู่ระบบแล้ว" : window.SCDTestUserMode?.available() ? "โหมดทดสอบ กดเลือกยูสได้โดยไม่ใส่รหัส" : "กรอกรหัสผ่านที่ตั้งไว้เพื่อเข้าใช้งาน";
     $("#mobileLoginStatus").textContent = user ? `${authText}: ${user.name}${user.vehiclePlate ? ` / ${user.vehiclePlate}` : ""} · ${user.role}` : "ยังไม่มีผู้ใช้";
     renderMobileAuthState();
     applyRoleVisibility();

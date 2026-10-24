@@ -1,4 +1,4 @@
-const CACHE_NAME = "smart-logistics-v190";
+const CACHE_NAME = "smart-logistics-v191";
 
 // path ต้องตรงกับที่ HTML เรียกจริง (มี query string ต่อท้าย) ไม่งั้น cache ไม่ถูกใช้
 const ASSETS = [ "./", "./index.html", "./mobile.html", "./manifest.json", "./icon.svg", "./apple-touch-icon.png" ];

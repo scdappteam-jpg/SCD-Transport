@@ -24,6 +24,7 @@ const cargoTransfer = require("./cargo-transfer.cjs");
 const workflowIntegrity = require("./workflow-integrity.cjs");
 const operationsControl = require("./operations-control.cjs");
 const sharedStateMemory = require("./shared-state-memory.cjs");
+const authTestMode = require("./auth-test-mode.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -1208,8 +1209,7 @@ function publicUsers(db) {
 function sessionUser(db, req) {
     const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
     if (!token) return null;
-    const hash = crypto.createHash("sha256").update(token).digest("hex");
-    const session = (db.authSessions || []).find(item => item.tokenHash === hash && new Date(item.expiresAt).getTime() > Date.now());
+    const session = authTestMode.sessionFor(db, token);
     return session ? (db.users || []).find(user => user.id === session.userId) || null : null;
 }
 
@@ -3347,6 +3347,15 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "GET" && pathname === "/api/auth/users") {
         return sendJson(res, 200, { users: publicUsers(db) });
+    }
+    if (req.method === "POST" && pathname === "/api/auth/test-mode") {
+        const payload = await parseBody(req);
+        try {
+            const result = authTestMode.handle(db, String(req.headers.authorization || "").replace(/^Bearer\s+/i, ""), payload);
+            if (supabaseEnabled()) { dbCache = db; scheduleAuthSessionPersist(db.authSessions); }
+            else writeDb(db);
+            return sendJson(res, 200, result);
+        } catch (error) { return sendJson(res, error.statusCode || 400, {error: error.message}); }
     }
     if (req.method === "POST" && pathname === "/api/auth/login") {
         const payload = await parseBody(req);
