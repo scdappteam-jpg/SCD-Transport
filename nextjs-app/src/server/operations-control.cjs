@@ -124,7 +124,7 @@ function summary(db,filters={},at=new Date().toISOString(),includeFinance=true){
     const period=['day','month','year'].includes(filters.period)?filters.period:'day';
     const dateBasis=filters.dateBasis==='pickup'?'pickup':'work';
     const planDay=j=>dateKey(dateBasis==='pickup'?j.pickupDate:(j.workDate||j.pickupDate||j.planDate));
-    const all=(db.jobs||[]).filter(j=>!j.mergedInto),jobs=all.filter(j=>{const day=planDay(j);return(!filters.from||day>=filters.from)&&(!filters.to||day<=filters.to)&&(!filters.query||[j.houseNumber,j.onhandNumber,j.mawbNumber,j.customerName,j.vehiclePlate].some(v=>text(v).toLowerCase().includes(text(filters.query).toLowerCase())));});
+    const all=(db.jobs||[]).filter(j=>!j.mergedInto),jobs=all.filter(j=>{const day=planDay(j);return((!filters.from&&!filters.to)||!!day)&&(!filters.from||day>=filters.from)&&(!filters.to||day<=filters.to)&&(!filters.query||[j.houseNumber,j.onhandNumber,j.mawbNumber,j.customerName,j.vehiclePlate].some(v=>text(v).toLowerCase().includes(text(filters.query).toLowerCase())));});
     const drivers=(db.users||[]).filter(u=>u.role==='Driver').map(u=>({id:u.id,name:u.name,phone:u.phone||u.tel||'',vehiclePlate:u.vehiclePlate||''}));
     const selectedJobs=new Set(jobs),selectedMasters=new Set(jobs.map(j=>j.mawbNumber||j.masterNumber).filter(Boolean));
     const allRows=all.filter(j=>selectedJobs.has(j)||selectedMasters.has(j.mawbNumber||j.masterNumber)).map(j=>{
