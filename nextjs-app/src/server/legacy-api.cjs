@@ -26,6 +26,7 @@ const operationsControl = require("./operations-control.cjs");
 const sharedStateMemory = require("./shared-state-memory.cjs");
 const authTestMode = require("./auth-test-mode.cjs");
 const csDispatch = require("./cs-dispatch.cjs");
+const pickupFlow = require("./pickup-flow.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -4848,11 +4849,15 @@ async function handleApi(req, res, pathname) {
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมเริ่มรอบ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
+        let flow;
+        try { flow = pickupFlow.prepare("route-start", jobs, payload, normalizePickupItems); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
         const startedAt = nowIso();
         for (const item of jobs) {
             item.driverRouteStatus = "EnRouteToPickup";
             item.routeStartedAt = item.routeStartedAt || startedAt;
-            item.routeStartGps = payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.routeStartGps;
+            item.routeStartGps = `${Number(payload.gpsLat)},${Number(payload.gpsLong)}`;
             item.updatedAt = startedAt;
             logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "RouteStarted", startTime: startedAt });
         }
@@ -4872,6 +4877,10 @@ async function handleApi(req, res, pathname) {
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, {
             error: "งานยังไม่พร้อมรับสินค้า ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน"
         });
+        let flow;
+        try { flow = pickupFlow.prepare("checkin", jobs, payload, normalizePickupItems); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
         const checkInAt = payload.startTime || nowIso();
         const logs = [];
         for (const item of jobs) {
@@ -4890,7 +4899,7 @@ async function handleApi(req, res, pathname) {
             item.startPlace = payload.startPlace || item.startPlace;
             item.checkInAt = item.checkInAt || checkInAt;
             item.arrivedAtPickupAt = item.arrivedAtPickupAt || checkInAt;
-            item.checkInGps = payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.checkInGps;
+            item.checkInGps = `${Number(payload.gpsLat)},${Number(payload.gpsLong)}`;
             item.updatedAt = nowIso();
         }
         writeDb(db);
@@ -4966,6 +4975,10 @@ async function handleApi(req, res, pathname) {
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, {
             error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน"
         });
+        let flow;
+        try { flow = pickupFlow.prepare("load", jobs, payload, normalizePickupItems); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
         const checklist = Array.isArray(payload.checklist) ? payload.checklist : [];
         const needsSticker = payload.pickupCase === "SpecialMD" || jobs.some(item => /wd|western digital/i.test(item.customerName || ""));
         if (checklist.length < 10) return sendJson(res, 422, {
@@ -4989,7 +5002,8 @@ async function handleApi(req, res, pathname) {
                 routeNextModule: "Module2",
                 routeComplianceStatus: "MustReturnWH3",
                 loadedAt: loadedAt,
-                loadedGps: payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.loadedGps,
+                pickupLoadFingerprint: flow.fingerprint,
+                loadedGps: `${Number(payload.gpsLat)},${Number(payload.gpsLong)}`,
                 status: "Loading",
                 driverRouteStatus: "Loading",
                 updatedAt: nowIso()
@@ -5025,6 +5039,10 @@ async function handleApi(req, res, pathname) {
         if (payload.simulation === true && jobs.some(item => !/^SIT(?:UI)?[-A-Z0-9]/i.test(String(item.houseNumber || "")) || item.driverId !== payload.userId)) {
             return sendJson(res, 403, { error: "หลักฐานจำลองใช้ได้เฉพาะงาน SIT ที่มอบหมายให้คนขับเท่านั้น" });
         }
+        let flow;
+        try { flow = pickupFlow.prepare("complete", jobs, payload, normalizePickupItems); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
         if (jobs.some(item => !item.checkInAt)) return sendJson(res, 409, {
             error: "Check in before completing pickup"
         });
@@ -5105,7 +5123,9 @@ async function handleApi(req, res, pathname) {
                 pickupCase: payload.pickupCase || item.pickupCase,
                 stickerColor: payload.stickerColor || item.stickerColor,
                 pickupChecklist: Array.isArray(payload.checklist) ? payload.checklist : item.pickupChecklist,
-                pieceCount: ownRows[0]?.carton || payload.pieceCount || item.pieceCount,
+                plannedPieceCount: item.plannedPieceCount ?? item.pieceCount,
+                pickupReceivedCount: ownRows[0]?.carton || payload.pieceCount || item.pieceCount,
+                pickupCompletionFingerprint: flow.fingerprint,
                 pickupItems: ownRows.length ? ownRows : normalizePickupItems(item.pickupItems || ""),
                 packageType: payload.packageType || item.packageType,
                 inspectorName: payload.inspectorName || item.inspectorName,
@@ -5116,7 +5136,7 @@ async function handleApi(req, res, pathname) {
                 routeComplianceStatus: "MustReturnWH3",
                 doorClosedPhotoAt: completedAt,
                 completedAt: completedAt,
-                completeGps: payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.completeGps,
+                completeGps: `${Number(payload.gpsLat)},${Number(payload.gpsLong)}`,
                 status: "PickedUp",
                 driverRouteStatus: "ReturningWH3",
                 returningWh3At: completedAt,
@@ -5140,6 +5160,10 @@ async function handleApi(req, res, pathname) {
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
+        let flow;
+        try { flow = pickupFlow.prepare("arrive-wh3", jobs, payload, normalizePickupItems); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
         if (jobs.some(item => ![ "PickedUp", "ReturningWH3" ].includes(item.status))) {
             return sendJson(res, 409, { error: "รับสินค้าให้ครบก่อนยืนยันถึง WH3" });
         }
@@ -5149,7 +5173,7 @@ async function handleApi(req, res, pathname) {
                 status: "AwaitingReleaseDocument",
                 driverRouteStatus: "ArrivedWH3",
                 arrivedWh3At: arrivedAt,
-                arrivedWh3Gps: payload.gpsLat && payload.gpsLong ? `${payload.gpsLat},${payload.gpsLong}` : item.arrivedWh3Gps,
+                arrivedWh3Gps: `${Number(payload.gpsLat)},${Number(payload.gpsLong)}`,
                 updatedAt: arrivedAt
             });
             logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ArrivedWH3", endTime: arrivedAt });

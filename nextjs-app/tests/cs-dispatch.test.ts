@@ -51,7 +51,7 @@ test('Cargo renderer reads CS invoice and edited contact and phone, with escaped
  const job={...base(),pickupItems:[],csInvoiceNo:'SIM-INV',csContactName:'<SIM>',csContactPhone:'SIM-PHONE'};const data=c.jobCargoData(job);assert.equal(data.invoiceNo,'SIM-INV');assert.equal(data.rows[0].invoiceNo,'SIM-INV');assert.equal(data.contact,'<SIM>');assert.equal(data.tel,'SIM-PHONE');assert.match(c.cargoSheetHtml(data),/&lt;SIM&gt;/);
 });
 test('Driver sees the real House Onhand Master CS details and selected truck without starting any route',()=>{
- const box={hidden:true,innerHTML:''};const c=vm.createContext({$:()=>box,escapeHtmlMobile:(v:unknown)=>String(v).replaceAll('<','&lt;')});vm.runInContext(fn(mobile,'renderDriverCsHandoff'),c);
+ const box={hidden:true,innerHTML:'',setAttribute:()=>{}};const c=vm.createContext({$:()=>box,escapeHtmlMobile:(v:unknown)=>String(v).replaceAll('<','&lt;')});vm.runInContext(fn(mobile,'renderDriverCsHandoff'),c);
  c.renderDriverCsHandoff([{...base(),...payload,csInvoiceNo:'SIM-INV',csContactName:'SIM Contact',csContactPhone:'SIM-PHONE',driverName:'A',vehiclePlate:'TRUCK-A'}]);for(const text of ['484001','F001','205-86393230','SIM-INV','SIM Contact','SIM-PHONE','TRUCK-A'])assert.ok(box.innerHTML.includes(text));assert.equal(box.hidden,false);
  c.renderDriverCsHandoff([]);assert.equal(box.hidden,true);
 });

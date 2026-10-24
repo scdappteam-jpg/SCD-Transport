@@ -66,7 +66,7 @@ function applyLanguage(root = document.body) {
         acceptNode(node) {
             const parent = node.parentElement;
             if (!parent) return NodeFilter.FILTER_REJECT;
-            if ([ "SCRIPT", "STYLE", "TEXTAREA" ].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+            if (parent.closest("[data-no-i18n]") || [ "SCRIPT", "STYLE", "TEXTAREA" ].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
             return node.nodeValue.includes(" / ") || i18nOriginalText.has(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
         }
     });
@@ -840,6 +840,15 @@ function checkedPickupItems() {
     return $$(".pickup-check:checked").map(input => input.value);
 }
 
+function hasPickupSignature() {
+    const canvas = $("#signaturePad");
+    if (!canvas) return false;
+    const pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+    let ink = 0;
+    for (let i=0;i<pixels.length;i+=4) if(pixels[i+3]>16 && Math.min(pixels[i],pixels[i+1],pixels[i+2])<240 && ++ink>=8) return true;
+    return false;
+}
+
 function validatePickupFlow({requireLoaded: requireLoaded = false} = {}) {
     syncPickupItemsText();
     const missing = [];
@@ -847,6 +856,7 @@ function validatePickupFlow({requireLoaded: requireLoaded = false} = {}) {
     if ($$(".pickup-check").length && checkedPickupItems().length < 10) missing.push("ติ๊กตรวจสินค้า 10 รายการให้ครบ");
     if (isSpecialOrWd() && !$("#driverStickerColor").value.trim()) missing.push("กรอกสี Sticker สำหรับงานพิเศษ/WD");
     if (!$("#driverPickupItems").value.trim()) missing.push("เพิ่ม House/Destination อย่างน้อย 1 งาน");
+    if (requireLoaded && !hasPickupSignature()) missing.push("กรุณาลงลายเซ็นจริงก่อนยืนยันรับสินค้า");
     if (requireLoaded && !state.cargoLoaded) missing.push("กดโหลดสินค้าขึ้นรถก่อนจบงาน");
     const hasSimulatedEvidence = state.simulatedPickupEvidenceHouse === primaryHouseNumber() && isSimulatedPickupEvidenceEligible();
     if (requireLoaded && !hasSimulatedEvidence && !$("#productImages")?.files?.length) missing.push("แนบรูปสินค้าก่อนจบงาน");
@@ -936,6 +946,7 @@ function renderDriverCsHandoff(jobs) {
     const box = $("#driverCsHandoff");
     if (!box) return;
     box.hidden = !jobs.length;
+    box.setAttribute("data-no-i18n", "true");
     box.innerHTML = jobs.map(job => `<div><strong>House ${escapeHtmlMobile(job.hawbNumber || job.houseNumber)}</strong><br>Onhand ${escapeHtmlMobile(job.onhandNumber || job.houseNumber)} · Master ${escapeHtmlMobile(job.mawbNumber || job.masterNumber || "รอยืนยัน")}<br>Invoice: ${escapeHtmlMobile(job.csInvoiceNo || job.invoiceNo || "-")}<br>ผู้ติดต่อ: ${escapeHtmlMobile(job.csContactName || job.contactPerson || job.contact || "-")}<br>โทร: ${escapeHtmlMobile(job.csContactPhone || job.pickupPhone || job.tel || "-")}<br>คนขับ: ${escapeHtmlMobile(job.driverName || "-")} · รถ ${escapeHtmlMobile(job.vehiclePlate || "-")}</div>`).join("<hr>");
 }
 
@@ -1051,6 +1062,14 @@ function showOperation(target) {
     panel.querySelectorAll("[data-operation-section]").forEach(section => {
         section.classList.toggle("active", section.dataset.operationSection === target);
     });
+}
+
+async function requirePickupGps() {
+    const p = await getGps();
+    const valid = v => v !== null && v !== undefined && String(v).trim() !== "" && Number.isFinite(Number(v));
+    if (!valid(p.gpsLat) || !valid(p.gpsLong) || Math.abs(Number(p.gpsLat)) > 90 || Math.abs(Number(p.gpsLong)) > 180)
+        throw new Error("ไม่พบพิกัด GPS กรุณาเปิดตำแหน่งและลองใหม่ ยังไม่ได้บันทึกขั้นตอนนี้");
+    return p;
 }
 
 function getGps() {
@@ -1405,7 +1424,7 @@ function bindEvents() {
         if (event.target.id === "mobileActionModal") closeMobileActionModal();
     });
     $("#startPickupRouteBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
-        const gps = await getGps();
+        const gps = await requirePickupGps();
         await api("/api/pickup/route-start", {
             houseNumber: primaryHouseNumber(),
             houseNumbers: pickupHouseNumbers(),
@@ -1416,9 +1435,9 @@ function bindEvents() {
         toast("เริ่มรอบรับสินค้าแล้ว");
     }));
     $("#checkInBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
-        const gps = await getGps();
+        const gps = await requirePickupGps();
         state.pickupStartTime = (new Date).toISOString();
-        await api("/api/pickup/checkin", {
+        const saved = await api("/api/pickup/checkin", {
             houseNumber: primaryHouseNumber(),
             houseNumbers: pickupHouseNumbers(),
             userId: state.currentUserId,
@@ -1431,7 +1450,7 @@ function bindEvents() {
             hour: "2-digit",
             minute: "2-digit"
         });
-        showMobileActionModal("ถึงจุดรับสินค้าแล้ว", `บันทึกเวลา ${timeLabel} และ GPS แล้ว ขั้นตอนถัดไปคือสแกน House รับสินค้า`);
+        showMobileActionModal("ถึงจุดรับสินค้าแล้ว", `บันทึกเวลา ${timeLabel} · ${saved.job?.checkInGps ? "มีพิกัด GPS ที่บันทึกแล้ว" : "ยังไม่ยืนยันพิกัด GPS"} ขั้นตอนถัดไปคือสแกน House รับสินค้า`);
         toast("บันทึกถึงจุดรับสินค้าแล้ว");
     }));
     $("#pausePickupBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
@@ -1462,7 +1481,7 @@ function bindEvents() {
     }));
     $("#loadCargoBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         validatePickupFlow();
-        const gps = await getGps();
+        const gps = await requirePickupGps();
         await api("/api/pickup/load", {
             houseNumber: primaryHouseNumber(),
             houseNumbers: pickupHouseNumbers(),
@@ -1490,7 +1509,7 @@ function bindEvents() {
         validatePickupFlow({
             requireLoaded: true
         });
-        const gps = await getGps();
+        const gps = await requirePickupGps();
         const simulation = state.simulatedPickupEvidenceHouse === primaryHouseNumber() && isSimulatedPickupEvidenceEligible();
         const simulatedImage = { base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL7WQAAAABJRU5ErkJggg==", mimeType: "image/png" };
         const productImages = simulation ? [ simulatedImage ] : await filesToCompressedBase64($("#productImages"));
@@ -1522,7 +1541,7 @@ function bindEvents() {
         toast("รับสินค้าแล้ว · กำลังกลับ WH3");
     }));
     $("#arriveWh3Btn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
-        const gps = await getGps();
+        const gps = await requirePickupGps();
         await api("/api/pickup/arrive-wh3", {
             houseNumber: primaryHouseNumber(),
             houseNumbers: pickupHouseNumbers(),
