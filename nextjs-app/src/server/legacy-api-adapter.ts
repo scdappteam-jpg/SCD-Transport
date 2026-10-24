@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+import { storageResponse } from "./storage-response";
 
 type LegacyRequest = Readable & {
   headers: Record<string, string>;
@@ -15,6 +16,7 @@ type LegacyResponse = {
 };
 
 type LegacyApiModule = {
+  serveStatic: (request: unknown, response: unknown, pathname: string) => Promise<void>;
   handleApi: (request: LegacyRequest, response: LegacyResponse, pathname: string) => Promise<void>;
   loadDbFromSupabase: () => Promise<void>;
   flushSupabasePersistence: () => Promise<void>;
@@ -44,6 +46,12 @@ function appendHeader(headers: Headers, name: string, value: string | number | s
     return;
   }
   headers.set(name, String(value));
+}
+
+export async function handleLegacyStorageRequest(request: Request, pathname: string): Promise<Response> {
+  const legacyApi = await loadLegacyApi();
+  await initializeLegacyApi(legacyApi);
+  return storageResponse(request, pathname, legacyApi.serveStatic);
 }
 
 export async function handleLegacyApiRequest(request: Request, pathname: string): Promise<Response> {

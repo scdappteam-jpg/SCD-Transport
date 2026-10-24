@@ -1,5 +1,7 @@
 # Runtime data and uploaded evidence
 storage/
+!nextjs-app/src/app/storage/
+!nextjs-app/src/app/storage/**
 
 # Logs
 *.log
