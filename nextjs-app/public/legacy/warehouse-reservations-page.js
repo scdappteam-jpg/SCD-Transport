@@ -7,7 +7,7 @@ window.WarehouseReservationsPage = (() => {
         const current = ++generation;
         host.textContent = 'กำลังโหลดงานที่ CS ยืนยันแล้ว…';
         try {
-            const data = await api('/api/warehouse/reservations');
+            const data = await api('/api/warehouse/reservations', undefined, 'GET');
             if (current !== generation) return;
             await loadWarehouseMap();
             if (current !== generation) return;

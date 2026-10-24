@@ -4,6 +4,18 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import planning from '../src/server/warehouse-reservation-list.cjs';
 
+test('WH page requests the read-only GET contract instead of the legacy POST default', async () => {
+  const source = fs.readFileSync(new URL('../public/legacy/warehouse-reservations-page.js',import.meta.url),'utf8');
+  let requestMethod: string | undefined;
+  const host = {textContent:'',set innerHTML(_value: string){throw new Error('Stop before DOM drawing');}};
+  const context = vm.createContext({window:{},document:{getElementById:()=>host},
+    api:async (_path: string,_payload: unknown,method: string)=>{requestMethod=method;return {jobs:[]};},
+    loadWarehouseMap:async()=>{},ShipmentReferences:{createIndex:()=>({})},whMapState:{zones:[]}});
+  vm.runInContext(source,context);
+  await vm.runInContext('window.WarehouseReservationsPage.render()',context);
+  assert.equal(requestMethod,'GET');
+});
+
 test('WH planning includes confirmed unissued jobs and preserves existing reservations without writes', () => {
   const jobs = [
     {houseNumber:'4841',csConfirmed:true,status:'Pending',destination:'WH3',pieceCount:5,packageType:'Carton'},
