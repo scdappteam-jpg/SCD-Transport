@@ -617,6 +617,7 @@ async function recoverCompletedDesktopRequest(path, payload) {
 function apiErrorMessage(path, status, data, rawText) {
     const serverMessage = data?.error || data?.message || "";
     const text = rawText || data?.raw || "";
+    if (path === "/api/jobs/cs-confirm" && [502, 503, 504].includes(status)) return "การเชื่อมต่อสะดุดหลังส่งคำขอยืนยันงาน";
     if (status === 502 || /bad gateway/i.test(text)) return "ระบบบันทึกงานขัดข้องชั่วคราว กรุณากดทำรายการซ้ำอีกครั้ง หากรายการถูกบันทึกแล้วระบบจะกู้สถานะให้";
     if (status === 503 || status === 504) return "ระบบปลายทางตอบช้าหรือไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้งในอีกสักครู่";
     if (status === 401 || status === 403) return "สิทธิ์เข้าใช้งานหมดอายุหรือไม่พอ กรุณาเข้าสู่ระบบใหม่ด้วย role ที่ถูกต้อง";
@@ -10995,7 +10996,7 @@ async function csBulkConfirmFiltered() {
     }
     const user = currentWebUser();
     try {
-        const data = await api("/api/jobs/cs-confirm", {
+        const data = await requestCsConfirmation({
             houseNumbers: jobs.map(j => j.houseNumber),
             invoiceNo: invoiceNo,
             confirmedBy: user?.name || "CS",
@@ -11080,6 +11081,35 @@ async function adminPurgeOldJobsKeepToday() {
     }
 }
 
+async function requestCsConfirmation(payload) {
+    const startedAt = Date.now();
+    try {
+        const response = await fetch(apiUrl("/api/jobs/cs-confirm"), {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+        });
+        const data = await parseApiResponse(response, "/api/jobs/cs-confirm");
+        if (!data.ok || data.confirmed !== payload.houseNumbers.length) throw new Error(data.error || "ระบบยืนยันงานได้ไม่ครบ กรุณารีเฟรชตรวจสถานะก่อนยืนยันซ้ำ");
+        return data;
+    } catch (error) {
+        // A connection can fail after the shared database committed. Check
+        // this exact request's invoice, complete House set and timestamps;
+        // never retry an approval POST automatically.
+        try {
+            const response = await fetch(apiUrl("/api/jobs/cs-history"));
+            const history = await parseApiResponse(response, "/api/jobs/cs-history");
+            const jobs = payload.houseNumbers.map(house => (history.jobs || []).find(job =>
+                job.houseNumber === house && job.csInvoiceNo === payload.invoiceNo &&
+                Date.parse(job.csConfirmedAt) >= startedAt - 5000));
+            if (payload.invoiceNo && jobs.length && jobs.every(Boolean)) return {
+                ok: true, recovered: true, confirmed: jobs.length,
+                jobs: jobs.map(job => ({ ...job, csConfirmed: true, csRejected: false, csApprovalRequired: false, evidenceRequired: false }))
+            };
+        } catch (_) {}
+        throw new Error((error.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ") + " — กรุณารีเฟรชตรวจประวัติการยืนยันก่อนกดยืนยันซ้ำ");
+    }
+}
+
+const csConfirmInFlight = new Set();
 async function submitCsConfirm(gkey) {
     const grp = document.querySelector(`.cs-date-group[data-gkey="${gkey}"]`);
     if (!grp) return;
@@ -11098,15 +11128,14 @@ async function submitCsConfirm(gkey) {
     const contactName = document.getElementById("csContact-" + gkey)?.value?.trim() || "";
     const evidenceChannel = document.getElementById("csEvidenceChannel-" + gkey)?.value || "";
     const evidenceNote = document.getElementById("csEvidenceNote-" + gkey)?.value?.trim() || "";
-    const evidenceFiles = await filesToCompressedBase64(document.getElementById("csEvidenceFiles-" + gkey));
+    if (csConfirmInFlight.has(gkey)) return;
+    csConfirmInFlight.add(gkey);
+    const confirmButton = grp.querySelector(".cs-confirm-btn");
+    if (confirmButton) confirmButton.disabled = true;
     const user = currentWebUser();
     try {
-        const res = await fetch(apiUrl("/api/jobs/cs-confirm"), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
+        const evidenceFiles = await filesToCompressedBase64(document.getElementById("csEvidenceFiles-" + gkey));
+        const data = await requestCsConfirmation({
                 houseNumbers: checked,
                 invoiceNo: invoiceNo,
                 confirmedBy: user?.name || "CS",
@@ -11114,27 +11143,32 @@ async function submitCsConfirm(gkey) {
                 evidenceChannel: evidenceChannel,
                 evidenceNote: evidenceNote,
                 evidenceFiles: evidenceFiles
-            })
         });
-        const data = await res.json();
         if (data.ok) {
-            toast(`✓ Confirm แล้ว ${data.confirmed} รายการ — Invoice: ${invoiceNo}`);
+            toast(`✓ Confirm แล้ว ${data.confirmed} รายการ — Invoice: ${invoiceNo}${data.recovered ? " (ตรวจยืนยันจากประวัติหลังการเชื่อมต่อสะดุด)" : ""}`);
             // The CS endpoint returns the newly approved records, but the
             // dashboard cache is also the source for the Job Opening queue.
             // Merge those records before navigating so a confirmed House is
             // immediately available to open as Cargo without a browser reload.
             if (Array.isArray(data.jobs) && state.dashboard?.jobs) {
                 const updatedByHouse = new Map(data.jobs.map(job => [ job.houseNumber, job ]));
-                state.dashboard.jobs = state.dashboard.jobs.map(job => updatedByHouse.get(job.houseNumber) || job);
+                state.dashboard.jobs = state.dashboard.jobs.map(job => updatedByHouse.has(job.houseNumber) ? { ...job, ...updatedByHouse.get(job.houseNumber) } : job);
             }
             _csHistoryData = [];
-            renderCsQueue();
-            openWarehouseReservationModal(data.jobs || []);
+            try {
+                await renderCsQueue();
+                await openWarehouseReservationModal(data.jobs || []);
+            } catch (error) {
+                toast("ยืนยันงานสำเร็จแล้ว แต่เปิดหน้าถัดไปไม่สำเร็จ: " + (error.message || "กรุณารีเฟรช") , "error");
+            }
         } else {
             toast("เกิดข้อผิดพลาด: " + (data.error || "unknown"));
         }
     } catch (e) {
-        toast("เกิดข้อผิดพลาด");
+        toast(e.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาตรวจประวัติก่อนยืนยันซ้ำ", "error");
+    } finally {
+        csConfirmInFlight.delete(gkey);
+        if (confirmButton) confirmButton.disabled = false;
     }
 }
 

@@ -23,6 +23,7 @@ const shippingGuards = require("./shipping-guards.cjs");
 const cargoTransfer = require("./cargo-transfer.cjs");
 const workflowIntegrity = require("./workflow-integrity.cjs");
 const operationsControl = require("./operations-control.cjs");
+const sharedStateMemory = require("./shared-state-memory.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -597,7 +598,7 @@ function supabaseEnabled() {
 }
 
 function sanitizedClone(db) {
-    return JSON.parse(JSON.stringify(db, (k, v) => typeof v === "string" ? v.replace(/[\uFFFD\uFFFE\uFFFF]/g, "") : v));
+    return sharedStateMemory.sanitizedClone(db);
 }
 
 async function supabaseRequest(method, query, body) {
@@ -668,11 +669,9 @@ function chunkHash(rows) {
 }
 
 function compactStateDocument(db) {
-    const main = sanitizedClone(db);
-    const jobs = main.jobs || [];
-    const alerts = main.alerts || [];
-    delete main.jobs;
-    delete main.alerts;
+    // scheduleSupabasePersist already owns an isolated, sanitized snapshot.
+    // Splitting it must not copy the complete database a second time.
+    const { jobs = [], alerts = [], ...main } = db;
     const jobChunks = splitStateChunks(jobs);
     const alertChunks = splitStateChunks(alerts);
     main.stateChunks = { version: STATE_CHUNK_VERSION, jobs: jobChunks.length, alerts: alertChunks.length };
@@ -684,12 +683,11 @@ async function loadChunkedState(main) {
     if (!manifest || manifest.version !== STATE_CHUNK_VERSION) return main;
     const loadKind = async (kind, count) => {
         if (!count) return [];
-        const ids = Array.from({ length: count }, (_, index) => `id.eq.${encodeURIComponent(stateChunkId(kind, index))}`).join(",");
-        const rows = await supabaseRequest("GET", `?or=(${ids})&select=id,data`, null);
-        const byId = new Map((rows || []).map(row => [ row.id, row.data?.items || [] ]));
-        const chunks = Array.from({ length: count }, (_, index) => byId.get(stateChunkId(kind, index)) || []);
-        persistedChunkHashes[kind] = chunks.map(chunkHash);
-        return chunks.flat();
+        const loaded = await sharedStateMemory.loadStateChunks({kind, count, idFor: stateChunkId, hash: chunkHash,
+            fetchRows: ids => supabaseRequest("GET", `?or=(${ids.map(id => `id.eq.${encodeURIComponent(id)}`).join(",")})&select=id,data`, null)
+        });
+        persistedChunkHashes[kind] = loaded.hashes;
+        return loaded.items;
     };
     const [ jobs, alerts ] = await Promise.all([ loadKind("jobs", Number(manifest.jobs) || 0), loadKind("alerts", Number(manifest.alerts) || 0) ]);
     return { ...main, jobs, alerts };
