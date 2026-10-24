@@ -15,6 +15,19 @@ function rejectCs(db,payload,findJob) {
     if (jobs.some(job=>job.invoiceId || ['InvoiceDrafted','InvoiceSent','Billed'].includes(job.status))) fail('งานมีเอกสารวางบิลแล้ว ต้องตรวจฝ่ายบัญชีก่อนยกเลิก');
     return jobs;
 }
+// Receipt math remains reusable for previews; persisted inbound actions must
+// establish physical arrival and the warehouse document workflow first.
+function inbound(job,phase,payload={}) {
+    const recorded=value=>!!value&&Number.isFinite(new Date(value).getTime());
+    if(job.status==='Cancelled'||job.csRejected)fail('งานถูกพักหรือยกเลิก ต้องตรวจ CS ก่อนรับเข้าคลัง');
+    if(!recorded(job.arrivedWh3At))fail('ต้องยืนยันรถถึง WH3 ก่อนดำเนินการรับเข้าคลัง');
+    if(['documents','open','close'].includes(phase)&&!recorded(job.releaseDocumentReceivedAt))fail('ต้องรับใบตรวจปล่อยหลังถึง WH3 ก่อนดำเนินงานขาเข้า');
+    if(phase==='open'){
+        if(!['Found','Missing'].includes(job.inboundDocStatus))fail('ต้องตรวจเอกสารขาเข้าก่อนเปิดงาน');
+        if(job.inboundDocStatus==='Missing'&&!payload.eiConfirmed)fail('EI confirm is required before opening inbound job',422);
+    }
+    if(phase==='close'&&!recorded(job.inboundOpenedAt))fail('ต้องเปิดงานขาเข้าหลังตรวจเอกสารก่อนปิดรับ');
+}
 function terminal(job,payload={},complete=false) {
     if (!job.csConfirmed || job.csRejected) fail(`House ${job.houseNumber} ยังไม่ผ่าน CS`);
     if (!receipts.house(job).complete) fail(`House ${job.houseNumber} ยังไม่ยืนยันยอดรับจริงครบที่ WH3`);
@@ -51,4 +64,4 @@ function tripCount(jobs,payload){
     if(rounds.some(round=>!round))fail('กรุณาผูกรหัสรอบรถหรือยืนยันจำนวนรอบก่อนออกบิลรวม ห้ามนับ House เป็นรอบรถ',422);
     return new Set(rounds.map((round,i)=>`${jobs[i].workDate||jobs[i].pickupDate||''}|${round}`)).size;
 }
-module.exports={selection,rejectCs,terminal,billing,tripCount};
+module.exports={inbound,selection,rejectCs,terminal,billing,tripCount};

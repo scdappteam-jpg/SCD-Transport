@@ -58,7 +58,7 @@ function prepare(db,p,actor,at=new Date().toISOString()){
         if(!['App','Call','Radio'].includes(p.channel))fail('กรุณาระบุช่องทาง App Call หรือ Radio');
         if(p.channel!=='App'&&(!text(p.note)||!text(p.reportedBy)))fail('งานแจ้งทางโทรศัพท์หรือวิทยุต้องมีผู้แจ้งและหมายเหตุ');
         const jobs=selected(db,p),event=p.event,patches=[];
-        if(!['start','arrive','door-close','wh3-arrive','wh3-depart','wh3-load-start','available'].includes(event))fail('ขั้นตอนรถไม่ถูกต้อง');
+        if(!['start','arrive','door-close','wh3-arrive','release-document','wh3-depart','wh3-load-start','available'].includes(event))fail('ขั้นตอนรถไม่ถูกต้อง');
         if(['door-close','wh3-depart'].includes(event))evidence(p.proof,'ภาพประตูปิด');
         else if(p.proof)evidence(p.proof);
         if(event==='door-close'){evidence(p.productProof,'ภาพสินค้า');evidence(p.signedProof,'ใบรับสินค้าลงชื่อ');}
@@ -68,7 +68,8 @@ function prepare(db,p,actor,at=new Date().toISOString()){
             if(event==='start'){if(j.routeStartedAt)fail('เริ่มรอบแล้ว',409);if(!j.driverId||!j.vehiclePlate)fail('ยังไม่มีคนขับหรือทะเบียนรถ',409);Object.assign(patch,{routeStartedAt:at,driverRouteStatus:'EnRouteToPickup'});}
             if(event==='arrive'){if(!j.routeStartedAt||j.arrivedAtPickupAt)fail('ต้องเริ่มรอบและยังไม่บันทึกถึงลูกค้า',409);Object.assign(patch,{arrivedAtPickupAt:at,checkInAt:at,status:'ArrivedAtPickup',driverRouteStatus:'ArrivedAtPickup'});}
             if(event==='door-close'){if(!j.arrivedAtPickupAt||j.doorClosedPhotoAt)fail('ต้องถึงลูกค้าและยังไม่ปิดประตู',409);Object.assign(patch,{doorClosedPhotoAt:at,completedAt:at,status:'PickedUp',driverRouteStatus:'ReturningWH3',returningWh3At:at});}
-            if(event==='wh3-arrive'){if(!j.doorClosedPhotoAt||j.arrivedWh3At)fail('ต้องปิดประตูก่อนกลับถึง WH3 และไม่บันทึกซ้ำ',409);Object.assign(patch,{arrivedWh3At:at,status:'WaitingForDock',driverRouteStatus:'ArrivedWH3'});}
+            if(event==='wh3-arrive'){if(!j.doorClosedPhotoAt||j.arrivedWh3At)fail('ต้องปิดประตูก่อนกลับถึง WH3 และไม่บันทึกซ้ำ',409);Object.assign(patch,{arrivedWh3At:at,status:'AwaitingReleaseDocument',driverRouteStatus:'ArrivedWH3'});}
+            if(event==='release-document'){if(!j.arrivedWh3At||j.releaseDocumentReceivedAt||j.status!=='AwaitingReleaseDocument')fail('ต้องถึง WH3 และอยู่ระหว่างรอใบตรวจปล่อย ห้ามบันทึกซ้ำ',409);Object.assign(patch,{releaseDocumentReceivedAt:at,status:'WaitingForDock',driverRouteStatus:'ReleasedForDock'});}
             if(event==='wh3-load-start'){if(!receipts.house(j).complete||!j.aotApprovedAt||j.wh3LoadingStartedAt||j.goodsLoadedAt)fail('ต้องรับครบ อนุมัติ AOT และยังไม่เริ่มโหลด WH3',409);patch.wh3LoadingStartedAt=at;}
             if(event==='wh3-depart'){if(!receipts.house(j).complete||!j.aotApprovedAt||!j.cargoTransferIssuedAt||j.goodsLoadedAt)fail('ต้องรับครบ อนุมัติ AOT ออก Cargo Transfer และยังไม่ออก WH3',409);Object.assign(patch,{releasedWh3At:at,goodsLoadedAt:at,status:'GoodsLoaded',driverRouteStatus:'EnRouteToTerminal'});}
             if(event==='available'){if(!j.arrivedWh3At&&!j.terminalClosedAt)fail('ต้องส่งถึง WH3 หรือปิด Terminal ก่อนยืนยันรถว่าง',409);Object.assign(patch,{vehicleAvailableAt:at,driverRouteStatus:'Available'});}

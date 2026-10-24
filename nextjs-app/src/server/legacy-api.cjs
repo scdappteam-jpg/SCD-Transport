@@ -3384,6 +3384,7 @@ async function handleApi(req, res, pathname) {
             if (!job) return sendJson(res, 404, { error: "House number not found" });
             const canonical = inboundReceipts.canonical(db.jobs || []).find(row => row.key === inboundReceipts.houseKey(job));
             if (!canonical || canonical.ambiguous || canonical.job !== job) return sendJson(res, 409, { error: `กรุณาบันทึกยอดที่ House หลัก ${canonical?.job?.houseNumber || "ที่ตรวจสอบแล้ว"}` });
+            workflowIntegrity.inbound(job, 'receipt');
             inboundReceipts.receiveCounts(job, payload, actor.id);
             writeDb(db);
             return sendJson(res, 200, { ok: true, job: normalizeJob(job) });
@@ -5175,6 +5176,7 @@ async function handleApi(req, res, pathname) {
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
         });
+        try { workflowIntegrity.inbound(job, 'documents'); } catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         saveBase64Files(db, {
             houseNumber: job.houseNumber,
             fileType: "InboundDocument",
@@ -5204,11 +5206,7 @@ async function handleApi(req, res, pathname) {
         if (!job) return sendJson(res, 404, {
             error: "Job not found"
         });
-        if (job.inboundDocStatus === "Missing" && !payload.eiConfirmed) {
-            return sendJson(res, 422, {
-                error: "EI confirm is required before opening inbound job"
-            });
-        }
+        try { workflowIntegrity.inbound(job, 'open', payload); } catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         job.inboundOpenedAt = nowIso();
         job.status = "InboundOpened";
         job.updatedAt = nowIso();
@@ -5444,6 +5442,7 @@ async function handleApi(req, res, pathname) {
             error: "Job not found"
         });
         try {
+            workflowIntegrity.inbound(job, 'close');
             inboundReceipts.assertReceiptComplete(job);
         } catch (error) {
             return sendJson(res, 409, { error: error.message, receipt: inboundReceipts.house(job) });
