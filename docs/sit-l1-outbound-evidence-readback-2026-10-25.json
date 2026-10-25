@@ -1,0 +1,79 @@
+[
+  {
+    "fileType": "OutboundDocument",
+    "fileId": "FILE-1792901012031-e982eb",
+    "bytes": 25969,
+    "sha256": "2b88bb97865a2991ac53b0dce4339ff1c4cb2905380ef731d420434df7dd9c54",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "EISignProof",
+    "fileId": "FILE-1792901021060-baac9c",
+    "bytes": 24482,
+    "sha256": "f5f543b6cb91f18e91b65c4b469e421f6e833f7965fd4711e25c080f1cbbb824",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "WH3PreDispatchEvidence",
+    "fileId": "FILE-1792901036669-50b004",
+    "bytes": 25969,
+    "sha256": "2b88bb97865a2991ac53b0dce4339ff1c4cb2905380ef731d420434df7dd9c54",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "CargoTransferPermit",
+    "fileId": "FILE-1792901252173-2b880c",
+    "bytes": 25369,
+    "sha256": "38d4029a55c598a44d7041b068a0d52c19354f707b4a653b1613c76031b8ce75",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "PreLoadPhoto",
+    "fileId": "FILE-1792901274180-3d0f23",
+    "bytes": 25456,
+    "sha256": "8df0e2f6b80f10af7d556e6e8bad8541bbd7ffce05ef8b0ca5ccfcc4ce100e93",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "TerminalQueueEvidence",
+    "fileId": "FILE-1792901312466-815796",
+    "bytes": 25119,
+    "sha256": "93701bc38d35276dcde0f459b6df36254159479bfa3950db46630fb7e0f6747a",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "TerminalArrivalEvidence",
+    "fileId": "FILE-1792901329345-f7679a",
+    "bytes": 25369,
+    "sha256": "6c673b7396561348a8865ff661976e22fad778852bfd0a15e118e5acf1600405",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "MasterWeightSlip",
+    "fileId": "FILE-1792901361547-8cb03d",
+    "bytes": 26165,
+    "sha256": "9c8847127ab22a825ff9970585d5aebeb14e0836ad328399fbf17e5a4c000948",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "MasterXRayEvidence",
+    "fileId": "FILE-1792901399997-a6373c",
+    "bytes": 24723,
+    "sha256": "ca06632db1c20380e276469e53a23cdce5780ce11173ba1fd52bc700e454a309",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "LoadingDetail",
+    "fileId": "FILE-1792901455352-cd2558",
+    "bytes": 25388,
+    "sha256": "812296d1f68cefa84a2d808aa4cafe3d936309ac04dc7a0cd2ce1386e1703533",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "CargoTransferReturned",
+    "fileId": "FILE-1792901465019-99105d",
+    "bytes": 25518,
+    "sha256": "f0c1a744aebb5363528e2c561819112c810f36156937704d4a6cbb827acf4f3a",
+    "httpStatus": 200
+  }
+]

@@ -1,0 +1,810 @@
+{
+  "checkedAt": "2026-10-25T04:12:19.996Z",
+  "period": "day",
+  "dateBasis": "work",
+  "scope": "จำนวนงานเป็นราย House รอบรถนับเฉพาะงานที่ผูกรหัสรอบ ยอดรับใช้ receipt ที่ยืนยัน ไม่ใช้แผนแทนยอดจริง",
+  "rows": [
+    {
+      "id": "JOB-1792900211045",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "onhandNumber": "",
+      "master": "SIT-MASTER-20261025-L1",
+      "flight": "SIT100",
+      "customerId": "c_sit_only_meeting_safety",
+      "customerName": "SIT ONLY MEETING SAFETY",
+      "status": "ReadyForBilling",
+      "csConfirmed": true,
+      "csRejected": false,
+      "planDate": "2026-10-25",
+      "pickupDate": "2026-10-25",
+      "workDate": "2026-10-25",
+      "driverId": "sit_ui_driver",
+      "driverName": "SIT UI / Driver",
+      "phone": "",
+      "plate": "SIT-ONLY",
+      "vehicleType": "",
+      "round": "",
+      "transportState": "Available",
+      "tripStarted": true,
+      "outboundPlate": "SIT-OUT-L1",
+      "outboundDriver": "SIT UI / Driver",
+      "planCounts": {
+        "CTN": 5
+      },
+      "receipt": {
+        "houseNumber": "SIT-MEETING-20261025-L1",
+        "onhandNumber": "",
+        "master": "SIT-MASTER-20261025-L1",
+        "planned": {
+          "CTN": 5
+        },
+        "planKnown": true,
+        "received": {
+          "CTN": 5
+        },
+        "remaining": {
+          "CTN": 0
+        },
+        "over": {
+          "CTN": 0
+        },
+        "confirmed": true,
+        "complete": true,
+        "revision": 1,
+        "state": "complete"
+      },
+      "receivedCounts": {
+        "CTN": 5
+      },
+      "pickupMinutes": 1,
+      "pickupKpi": "Within30",
+      "dispatchMinutes": 0,
+      "dispatchKpi": "Within30",
+      "queueReceivedAt": "2026-10-25T04:08:32.465Z",
+      "cargoReceivedAt": "2026-10-25T04:08:49.343Z",
+      "queueWaitingMinutes": 0,
+      "weighStartedAt": "2026-10-25T04:09:06.263Z",
+      "weighEndedAt": "2026-10-25T04:09:21.545Z",
+      "terminalMasterWeight": 25,
+      "terminalMasterDimension": "60 x 40 x 40 cm x 5 CTN - SIT ONLY",
+      "xrayStartedAt": "2026-10-25T04:09:42.745Z",
+      "xrayCompletedAt": "2026-10-25T04:09:59.996Z",
+      "reXrayStartedAt": null,
+      "reXrayCompletedAt": null,
+      "loadStartedAt": "2026-10-25T04:10:36.758Z",
+      "loadEndedAt": "2026-10-25T04:10:55.349Z",
+      "readyForBilling": true,
+      "invoiceId": "",
+      "billingWaitingMinutes": 1,
+      "amount": null,
+      "cost": null,
+      "completedPickupAt": "2026-10-25T03:52:53.270Z",
+      "completedTerminalAt": "2026-10-25T04:10:55.349Z",
+      "events": [
+        {
+          "at": "2026-10-25T04:07:45.865Z",
+          "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+          "phase": "",
+          "stage": "wh3-load-start",
+          "action": "transport-event",
+          "actorId": "sit_ui_transport",
+          "channel": "App",
+          "reportedBy": "SIT UI Transport"
+        },
+        {
+          "at": "2026-10-25T04:07:54.180Z",
+          "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+          "phase": "",
+          "stage": "wh3-depart",
+          "action": "transport-event",
+          "actorId": "sit_ui_transport",
+          "channel": "App",
+          "reportedBy": "SIT UI Transport"
+        },
+        {
+          "at": "2026-10-25T04:08:32.465Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "queue",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:08:49.343Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "arrival",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:09:06.263Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "start",
+          "stage": "weigh",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:09:21.545Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "weigh",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:09:42.745Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "start",
+          "stage": "xray",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:09:59.996Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "xray",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:10:36.758Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "start",
+          "stage": "load",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:10:55.349Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "load",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:11:31.876Z",
+          "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+          "phase": "",
+          "stage": "available",
+          "action": "transport-event",
+          "actorId": "sit_ui_transport",
+          "channel": "App",
+          "reportedBy": "SIT UI Transport"
+        }
+      ]
+    }
+  ],
+  "drivers": [
+    {
+      "id": "sit_ui_driver",
+      "name": "SIT UI / Driver",
+      "phone": "",
+      "vehiclePlate": ""
+    }
+  ],
+  "plans": [
+    {
+      "date": "2026-10-25",
+      "customer": "SIT ONLY MEETING SAFETY",
+      "total": 1,
+      "planned": 0,
+      "pending": 1,
+      "received": 1
+    }
+  ],
+  "vehicles": [
+    {
+      "plate": "SIT-ONLY",
+      "jobs": 1,
+      "rounds": 0,
+      "plannedRounds": 0,
+      "unlinked": 1,
+      "planCounts": {
+        "CTN": 5
+      },
+      "receiptCounts": {
+        "CTN": 5
+      },
+      "driver": "SIT UI / Driver",
+      "phone": "",
+      "state": "Available"
+    }
+  ],
+  "series": [
+    {
+      "period": "2026-10-25",
+      "pickup": 1,
+      "terminal": 1
+    }
+  ],
+  "masters": [
+    {
+      "master": "SIT-MASTER-20261025-L1",
+      "flights": [
+        "SIT100"
+      ],
+      "houses": [
+        {
+          "id": "JOB-1792900211045",
+          "houseNumber": "SIT-MEETING-20261025-L1",
+          "onhandNumber": "",
+          "master": "SIT-MASTER-20261025-L1",
+          "flight": "SIT100",
+          "customerId": "c_sit_only_meeting_safety",
+          "customerName": "SIT ONLY MEETING SAFETY",
+          "status": "ReadyForBilling",
+          "csConfirmed": true,
+          "csRejected": false,
+          "planDate": "2026-10-25",
+          "pickupDate": "2026-10-25",
+          "workDate": "2026-10-25",
+          "driverId": "sit_ui_driver",
+          "driverName": "SIT UI / Driver",
+          "phone": "",
+          "plate": "SIT-ONLY",
+          "vehicleType": "",
+          "round": "",
+          "transportState": "Available",
+          "tripStarted": true,
+          "outboundPlate": "SIT-OUT-L1",
+          "outboundDriver": "SIT UI / Driver",
+          "planCounts": {
+            "CTN": 5
+          },
+          "receipt": {
+            "houseNumber": "SIT-MEETING-20261025-L1",
+            "onhandNumber": "",
+            "master": "SIT-MASTER-20261025-L1",
+            "planned": {
+              "CTN": 5
+            },
+            "planKnown": true,
+            "received": {
+              "CTN": 5
+            },
+            "remaining": {
+              "CTN": 0
+            },
+            "over": {
+              "CTN": 0
+            },
+            "confirmed": true,
+            "complete": true,
+            "revision": 1,
+            "state": "complete"
+          },
+          "receivedCounts": {
+            "CTN": 5
+          },
+          "pickupMinutes": 1,
+          "pickupKpi": "Within30",
+          "dispatchMinutes": 0,
+          "dispatchKpi": "Within30",
+          "queueReceivedAt": "2026-10-25T04:08:32.465Z",
+          "cargoReceivedAt": "2026-10-25T04:08:49.343Z",
+          "queueWaitingMinutes": 0,
+          "weighStartedAt": "2026-10-25T04:09:06.263Z",
+          "weighEndedAt": "2026-10-25T04:09:21.545Z",
+          "terminalMasterWeight": 25,
+          "terminalMasterDimension": "60 x 40 x 40 cm x 5 CTN - SIT ONLY",
+          "xrayStartedAt": "2026-10-25T04:09:42.745Z",
+          "xrayCompletedAt": "2026-10-25T04:09:59.996Z",
+          "reXrayStartedAt": null,
+          "reXrayCompletedAt": null,
+          "loadStartedAt": "2026-10-25T04:10:36.758Z",
+          "loadEndedAt": "2026-10-25T04:10:55.349Z",
+          "readyForBilling": true,
+          "invoiceId": "",
+          "billingWaitingMinutes": 1,
+          "amount": null,
+          "cost": null,
+          "completedPickupAt": "2026-10-25T03:52:53.270Z",
+          "completedTerminalAt": "2026-10-25T04:10:55.349Z",
+          "events": [
+            {
+              "at": "2026-10-25T04:07:45.865Z",
+              "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+              "phase": "",
+              "stage": "wh3-load-start",
+              "action": "transport-event",
+              "actorId": "sit_ui_transport",
+              "channel": "App",
+              "reportedBy": "SIT UI Transport"
+            },
+            {
+              "at": "2026-10-25T04:07:54.180Z",
+              "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+              "phase": "",
+              "stage": "wh3-depart",
+              "action": "transport-event",
+              "actorId": "sit_ui_transport",
+              "channel": "App",
+              "reportedBy": "SIT UI Transport"
+            },
+            {
+              "at": "2026-10-25T04:08:32.465Z",
+              "note": "SIT ONLY synthetic terminal event, no physical cargo",
+              "phase": "complete",
+              "stage": "queue",
+              "action": "terminal",
+              "actorId": "sit_ui_terminal",
+              "channel": "App",
+              "reportedBy": "SIT UI / Terminal"
+            },
+            {
+              "at": "2026-10-25T04:08:49.343Z",
+              "note": "SIT ONLY synthetic terminal event, no physical cargo",
+              "phase": "complete",
+              "stage": "arrival",
+              "action": "terminal",
+              "actorId": "sit_ui_terminal",
+              "channel": "App",
+              "reportedBy": "SIT UI / Terminal"
+            },
+            {
+              "at": "2026-10-25T04:09:06.263Z",
+              "note": "SIT ONLY synthetic terminal event, no physical cargo",
+              "phase": "start",
+              "stage": "weigh",
+              "action": "terminal",
+              "actorId": "sit_ui_terminal",
+              "channel": "App",
+              "reportedBy": "SIT UI / Terminal"
+            },
+            {
+              "at": "2026-10-25T04:09:21.545Z",
+              "note": "SIT ONLY synthetic terminal event, no physical cargo",
+              "phase": "complete",
+              "stage": "weigh",
+              "action": "terminal",
+              "actorId": "sit_ui_terminal",
+              "channel": "App",
+              "reportedBy": "SIT UI / Terminal"
+            },
+            {
+              "at": "2026-10-25T04:09:42.745Z",
+              "note": "SIT ONLY synthetic terminal event, no physical cargo",
+              "phase": "start",
+              "stage": "xray",
+              "action": "terminal",
+              "actorId": "sit_ui_terminal",
+              "channel": "App",
+              "reportedBy": "SIT UI / Terminal"
+            },
+            {
+              "at": "2026-10-25T04:09:59.996Z",
+              "note": "SIT ONLY synthetic terminal event, no physical cargo",
+              "phase": "complete",
+              "stage": "xray",
+              "action": "terminal",
+              "actorId": "sit_ui_terminal",
+              "channel": "App",
+              "reportedBy": "SIT UI / Terminal"
+            },
+            {
+              "at": "2026-10-25T04:10:36.758Z",
+              "note": "SIT ONLY synthetic terminal event, no physical cargo",
+              "phase": "start",
+              "stage": "load",
+              "action": "terminal",
+              "actorId": "sit_ui_terminal",
+              "channel": "App",
+              "reportedBy": "SIT UI / Terminal"
+            },
+            {
+              "at": "2026-10-25T04:10:55.349Z",
+              "note": "SIT ONLY synthetic terminal event, no physical cargo",
+              "phase": "complete",
+              "stage": "load",
+              "action": "terminal",
+              "actorId": "sit_ui_terminal",
+              "channel": "App",
+              "reportedBy": "SIT UI / Terminal"
+            },
+            {
+              "at": "2026-10-25T04:11:31.876Z",
+              "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+              "phase": "",
+              "stage": "available",
+              "action": "transport-event",
+              "actorId": "sit_ui_transport",
+              "channel": "App",
+              "reportedBy": "SIT UI Transport"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pendingBilling": [
+    {
+      "id": "JOB-1792900211045",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "onhandNumber": "",
+      "master": "SIT-MASTER-20261025-L1",
+      "flight": "SIT100",
+      "customerId": "c_sit_only_meeting_safety",
+      "customerName": "SIT ONLY MEETING SAFETY",
+      "status": "ReadyForBilling",
+      "csConfirmed": true,
+      "csRejected": false,
+      "planDate": "2026-10-25",
+      "pickupDate": "2026-10-25",
+      "workDate": "2026-10-25",
+      "driverId": "sit_ui_driver",
+      "driverName": "SIT UI / Driver",
+      "phone": "",
+      "plate": "SIT-ONLY",
+      "vehicleType": "",
+      "round": "",
+      "transportState": "Available",
+      "tripStarted": true,
+      "outboundPlate": "SIT-OUT-L1",
+      "outboundDriver": "SIT UI / Driver",
+      "planCounts": {
+        "CTN": 5
+      },
+      "receipt": {
+        "houseNumber": "SIT-MEETING-20261025-L1",
+        "onhandNumber": "",
+        "master": "SIT-MASTER-20261025-L1",
+        "planned": {
+          "CTN": 5
+        },
+        "planKnown": true,
+        "received": {
+          "CTN": 5
+        },
+        "remaining": {
+          "CTN": 0
+        },
+        "over": {
+          "CTN": 0
+        },
+        "confirmed": true,
+        "complete": true,
+        "revision": 1,
+        "state": "complete"
+      },
+      "receivedCounts": {
+        "CTN": 5
+      },
+      "pickupMinutes": 1,
+      "pickupKpi": "Within30",
+      "dispatchMinutes": 0,
+      "dispatchKpi": "Within30",
+      "queueReceivedAt": "2026-10-25T04:08:32.465Z",
+      "cargoReceivedAt": "2026-10-25T04:08:49.343Z",
+      "queueWaitingMinutes": 0,
+      "weighStartedAt": "2026-10-25T04:09:06.263Z",
+      "weighEndedAt": "2026-10-25T04:09:21.545Z",
+      "terminalMasterWeight": 25,
+      "terminalMasterDimension": "60 x 40 x 40 cm x 5 CTN - SIT ONLY",
+      "xrayStartedAt": "2026-10-25T04:09:42.745Z",
+      "xrayCompletedAt": "2026-10-25T04:09:59.996Z",
+      "reXrayStartedAt": null,
+      "reXrayCompletedAt": null,
+      "loadStartedAt": "2026-10-25T04:10:36.758Z",
+      "loadEndedAt": "2026-10-25T04:10:55.349Z",
+      "readyForBilling": true,
+      "invoiceId": "",
+      "billingWaitingMinutes": 1,
+      "amount": null,
+      "cost": null,
+      "completedPickupAt": "2026-10-25T03:52:53.270Z",
+      "completedTerminalAt": "2026-10-25T04:10:55.349Z",
+      "events": [
+        {
+          "at": "2026-10-25T04:07:45.865Z",
+          "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+          "phase": "",
+          "stage": "wh3-load-start",
+          "action": "transport-event",
+          "actorId": "sit_ui_transport",
+          "channel": "App",
+          "reportedBy": "SIT UI Transport"
+        },
+        {
+          "at": "2026-10-25T04:07:54.180Z",
+          "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+          "phase": "",
+          "stage": "wh3-depart",
+          "action": "transport-event",
+          "actorId": "sit_ui_transport",
+          "channel": "App",
+          "reportedBy": "SIT UI Transport"
+        },
+        {
+          "at": "2026-10-25T04:08:32.465Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "queue",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:08:49.343Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "arrival",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:09:06.263Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "start",
+          "stage": "weigh",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:09:21.545Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "weigh",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:09:42.745Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "start",
+          "stage": "xray",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:09:59.996Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "xray",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:10:36.758Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "start",
+          "stage": "load",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:10:55.349Z",
+          "note": "SIT ONLY synthetic terminal event, no physical cargo",
+          "phase": "complete",
+          "stage": "load",
+          "action": "terminal",
+          "actorId": "sit_ui_terminal",
+          "channel": "App",
+          "reportedBy": "SIT UI / Terminal"
+        },
+        {
+          "at": "2026-10-25T04:11:31.876Z",
+          "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+          "phase": "",
+          "stage": "available",
+          "action": "transport-event",
+          "actorId": "sit_ui_transport",
+          "channel": "App",
+          "reportedBy": "SIT UI Transport"
+        }
+      ]
+    }
+  ],
+  "billing": {
+    "count": 1,
+    "missingWaitingTime": 0,
+    "confirmedPricedJobs": 0,
+    "missingPrice": 1,
+    "missingCost": 1,
+    "quotedRevenue": 0,
+    "quotedCost": 0,
+    "quotedMargin": null,
+    "knownSubsetMargin": 0,
+    "invoiceCount": 0,
+    "invoiceAmount": 0,
+    "invoiceMargin": 0
+  },
+  "evidence": [
+    {
+      "fileId": "FILE-1792900361668-c2c0c5",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "ProductImage",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900361668-c2c0c5.png",
+      "createdAt": "2026-10-25T03:52:41.758Z"
+    },
+    {
+      "fileId": "FILE-1792900361758-b66041",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "CargoForm",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900361758-b66041.png",
+      "createdAt": "2026-10-25T03:52:41.758Z"
+    },
+    {
+      "fileId": "FILE-1792900361758-63df00",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "DoorClosedAudit",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900361758-63df00.png",
+      "createdAt": "2026-10-25T03:52:41.758Z"
+    },
+    {
+      "fileId": "FILE-1792900361758-3e710b",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "InspectorSignature",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900361758-3e710b.png",
+      "createdAt": "2026-10-25T03:52:41.759Z"
+    },
+    {
+      "fileId": "FILE-1792900361759-5225c3",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "ReceiverSignature",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900361759-5225c3.png",
+      "createdAt": "2026-10-25T03:52:41.759Z"
+    },
+    {
+      "fileId": "FILE-1792900391824-b9b0ea",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "ReleaseDocument",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900391824-b9b0ea.png",
+      "createdAt": "2026-10-25T03:53:11.825Z"
+    },
+    {
+      "fileId": "FILE-1792900401173-741605",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "InboundDocument",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900401173-741605.png",
+      "createdAt": "2026-10-25T03:53:21.173Z"
+    },
+    {
+      "fileId": "FILE-1792900452075-4d0a2f",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "TaggingBarcodeEvidence",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900452075-4d0a2f.png",
+      "createdAt": "2026-10-25T03:54:12.076Z"
+    },
+    {
+      "fileId": "FILE-1792900462950-6b2125",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "QABarcodeEvidence",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900462950-6b2125.png",
+      "createdAt": "2026-10-25T03:54:22.950Z"
+    },
+    {
+      "fileId": "FILE-1792900486094-d0dde1",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "TaggingBarcodeEvidence",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792900486094-d0dde1.png",
+      "createdAt": "2026-10-25T03:54:46.094Z"
+    },
+    {
+      "fileId": "FILE-1792901012031-e982eb",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "OutboundDocument",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901012031-e982eb.png",
+      "createdAt": "2026-10-25T04:03:32.031Z"
+    },
+    {
+      "fileId": "FILE-1792901021060-baac9c",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "EISignProof",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901021060-baac9c.png",
+      "createdAt": "2026-10-25T04:03:41.061Z"
+    },
+    {
+      "fileId": "FILE-1792901036669-50b004",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "WH3PreDispatchEvidence",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901036669-50b004.png",
+      "createdAt": "2026-10-25T04:03:56.670Z"
+    },
+    {
+      "fileId": "FILE-1792901252173-2b880c",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "CargoTransferPermit",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901252173-2b880c.png",
+      "createdAt": "2026-10-25T04:07:32.173Z"
+    },
+    {
+      "fileId": "FILE-1792901274180-3d0f23",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "PreLoadPhoto",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901274180-3d0f23.png",
+      "createdAt": "2026-10-25T04:07:54.181Z"
+    },
+    {
+      "fileId": "FILE-1792901312466-815796",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "TerminalQueueEvidence",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901312466-815796.png",
+      "createdAt": "2026-10-25T04:08:32.467Z"
+    },
+    {
+      "fileId": "FILE-1792901329345-f7679a",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "TerminalArrivalEvidence",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901329345-f7679a.png",
+      "createdAt": "2026-10-25T04:08:49.346Z"
+    },
+    {
+      "fileId": "FILE-1792901361547-8cb03d",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "MasterWeightSlip",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901361547-8cb03d.png",
+      "createdAt": "2026-10-25T04:09:21.548Z"
+    },
+    {
+      "fileId": "FILE-1792901399997-a6373c",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "MasterXRayEvidence",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901399997-a6373c.png",
+      "createdAt": "2026-10-25T04:09:59.998Z"
+    },
+    {
+      "fileId": "FILE-1792901455352-cd2558",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "LoadingDetail",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901455352-cd2558.png",
+      "createdAt": "2026-10-25T04:10:55.353Z"
+    },
+    {
+      "fileId": "FILE-1792901465019-99105d",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "fileType": "CargoTransferReturned",
+      "url": "/storage/SIT-MEETING-20261025-L1/FILE-1792901465019-99105d.png",
+      "createdAt": "2026-10-25T04:11:05.020Z"
+    }
+  ],
+  "invoices": [],
+  "customers": [
+    {
+      "id": "c_sit_only_meeting_safety",
+      "name": "SIT ONLY MEETING SAFETY",
+      "address": "SIT ONLY synthetic factory",
+      "phone": "",
+      "billingEmail": "",
+      "taxId": "",
+      "creditTerm": 0
+    }
+  ],
+  "actor": {
+    "id": "u_admin_01",
+    "name": "Admin / ผู้ดูแลระบบ",
+    "role": "Admin"
+  }
+}

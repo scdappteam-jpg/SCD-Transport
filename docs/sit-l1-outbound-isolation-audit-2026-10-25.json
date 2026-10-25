@@ -1,0 +1,24 @@
+{
+  "environment": "https://scd-transport.onrender.com",
+  "target": "SIT-MEETING-20261025-L1",
+  "syntheticMaster": "SIT-MASTER-20261025-L1",
+  "existingJobs": 3806,
+  "nonTargetJobsVerified": 3805,
+  "nonTargetJobsChanged": [],
+  "noJobsAddedOrRemoved": true,
+  "beforeNonTargetSha256": "84a67fdfee1c0719ca71b252ed2bfd5b99072dc6c7ab216157084c4da244390a",
+  "afterNonTargetSha256": "84a67fdfee1c0719ca71b252ed2bfd5b99072dc6c7ab216157084c4da244390a",
+  "geofencingEnabled": false,
+  "globalSafetyEnabled": false,
+  "geofenceLocationsUnchanged": true,
+  "policyUnchanged": true,
+  "publicUsersUnchanged": true,
+  "realDocksAndQueuesUnchanged": true,
+  "warehouseOnlyVirtualSitSlotChanged": true,
+  "changedVirtualLocationIds": [
+    "loc_zone_SITMEET25_1792900443863_1"
+  ],
+  "invoicesIssued": 0,
+  "physicalMovementVerified": false,
+  "warehouseZonesAndStructuralSettingsUnchanged": true
+}
