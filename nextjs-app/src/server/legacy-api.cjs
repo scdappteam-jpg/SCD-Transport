@@ -1523,6 +1523,7 @@ function normalizeJob(job) {
     return {
         ...publicJob,
         inboundReceiptSummary: inboundReceipts.house(job),
+        qaVerified: warehouseQuality.approved(job),
         terminalProfile: TERMINAL_PROFILES[terminal],
         wh3Documents: wh3Documents,
         processTracking: processTrackingStatus(job),
