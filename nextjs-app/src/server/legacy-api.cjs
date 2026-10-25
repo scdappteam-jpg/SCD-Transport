@@ -1,3 +1,4 @@
+const stateHttp = require('./state-http.cjs');
 const meetingPolicy=require('./meeting-policy.cjs');
 const http = require("http");
 
@@ -616,37 +617,16 @@ function sanitizedClone(db) {
 
 async function supabaseRequest(method, query, body) {
     const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_STATE_TABLE}${query}`;
-    let lastError;
-    // Render can occasionally lose an outbound connection while waking or
-    // recycling.  A bounded retry prevents a successful in-memory update
-    // from being reported as a failed user action on a transient failure.
-    for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-            const response = await fetch(url, {
-                method: method,
-                headers: {
-                    apikey: SUPABASE_KEY,
-                    Authorization: `Bearer ${SUPABASE_KEY}`,
-                    "Content-Type": "application/json",
-                    // Writes are acknowledged only after Supabase has stored
-                    // them.  Do not also serialize the full shared-state
-                    // document back to Render: callers never consume it and
-                    // on production data it turns small UI actions into a
-                    // multi-second response.
-                    Prefer: method === "GET" ? "return=representation" : "resolution=merge-duplicates,return=minimal"
-                },
-                body: body ? JSON.stringify(body) : undefined
-            });
-            if (response.ok) return method === "GET" && response.status !== 204 ? response.json() : null;
-            const message = await response.text().catch(() => response.statusText);
-            lastError = new Error(`Supabase ${method} ${response.status}: ${message}`);
-            if (response.status < 500) throw lastError;
-        } catch (err) {
-            lastError = err;
-        }
-        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
-    }
-    throw lastError || new Error("Supabase request failed");
+    return stateHttp.requestJson(url, {
+        method,
+        headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            "Content-Type": "application/json",
+            Prefer: method === "GET" ? "return=representation" : "resolution=merge-duplicates,return=minimal"
+        },
+        body: body ? JSON.stringify(body) : undefined
+    });
 }
 
 function splitStateChunks(items) {
@@ -5926,8 +5906,8 @@ async function handleApi(req, res, pathname) {
         const canBook = actor && [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ].includes(actor.role);
         const canApprove = actor && [ "Admin", "Executive" ].includes(actor.role);
         if (!canBook || payload.approved && !canApprove) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จองหรืออนุมัติคิว AOT" });
-        if (payload.approved && job.aotApprovedAt) return sendJson(res, 200, { ok: true, idempotent: true, job: normalizeJob(job), dashboard: buildDashboard(db) });
-        if (!payload.approved && job.aotBookedAt) return sendJson(res, 200, { ok: true, idempotent: true, job: normalizeJob(job), dashboard: buildDashboard(db) });
+        if (payload.approved && job.aotApprovedAt) return sendJson(res, 200, { ok: true, idempotent: true, job: normalizeJob(job), ...mutationDashboard(req, db) });
+        if (!payload.approved && job.aotBookedAt) return sendJson(res, 200, { ok: true, idempotent: true, job: normalizeJob(job), ...mutationDashboard(req, db) });
         if (payload.approved && !job.aotBookedAt) return sendJson(res, 409, {
             error: "Book the AOT queue before approval"
         });
@@ -5966,7 +5946,7 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, {
             ok: true,
             job: normalizeJob(job),
-            dashboard: buildDashboard(db)
+            ...mutationDashboard(req, db)
         });
     }
     if (req.method === "POST" && pathname === "/api/outbound/load-bay") {
@@ -8681,6 +8661,7 @@ module.exports = {
     loadDbFromSupabase: loadDbFromSupabase,
     flushSupabasePersistence: flushSupabasePersistence,
     flushSharedStatePersistence: flushSharedStatePersistence,
+    flushBookingPersistence: () => stateHttp.confirmBooking(flushSharedStatePersistence, supabaseEnabled, () => pendingSnapshot),
     flushAuthSessionPersistence: flushAuthSessionPersistence,
     serveStatic: serveStatic
 };

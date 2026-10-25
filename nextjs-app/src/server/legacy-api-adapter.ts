@@ -21,6 +21,7 @@ type LegacyApiModule = {
   loadDbFromSupabase: () => Promise<void>;
   flushSupabasePersistence: () => Promise<void>;
   flushSharedStatePersistence: () => Promise<void>;
+  flushBookingPersistence: () => Promise<void>;
   flushAuthSessionPersistence: () => Promise<void>;
   flushAttachmentStorage: () => Promise<void>;
 };
@@ -103,6 +104,11 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
   };
 
   await legacyApi.handleApi(input, output, pathname);
+  // Booking validation/auth failures did not mutate state and must not wait
+  // behind unrelated database writes before returning their original status.
+  if (pathname === "/api/outbound/aot-booking" && status >= 400) {
+    return new Response(Buffer.concat(chunks), {status, headers});
+  }
   // Only a write request needs to wait for the shared-state snapshot.  A
   // previously failed write must not make status/read endpoints unavailable.
   if (!["GET", "HEAD"].includes(request.method)) {
@@ -112,17 +118,24 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
         return new Response(Buffer.concat(chunks), { status, headers });
       }
       // app_state คือ source of truth ที่ UI ต้องรอให้บันทึกสำเร็จ
-      await legacyApi.flushAttachmentStorage();
-      // relational mirror ทำงานเบื้องหลัง เพื่อไม่ให้ mutation เล็ก ๆ
-      // เช่น login ถูกหน่วงด้วยการ upsert ข้อมูลทั้งระบบ
-      await legacyApi.flushSharedStatePersistence();
+      if (pathname === "/api/outbound/aot-booking") {
+        // Booking never writes evidence files. Do not wait for another
+        // request's uploads; still require its shared-state acknowledgement.
+        await legacyApi.flushBookingPersistence();
+      } else {
+        await legacyApi.flushAttachmentStorage();
+        await legacyApi.flushSharedStatePersistence();
+      }
     } catch (error) {
       // ถึงตรงนี้แปลว่าเขียนฐานข้อมูลหลัก (app_state) ไม่สำเร็จจริง ๆ
       // ส่วนตารางสำเนา (relational mirror) ถูกดักไว้ในฝั่ง legacy-api แล้ว ไม่ทำให้คำสั่งล้ม
       const message = error instanceof Error ? error.message : "Unknown Supabase persistence error";
       return Response.json({
         ok: false,
-        error: "Unable to save this update to the shared database.",
+        error: pathname === "/api/outbound/aot-booking"
+          ? "ยังยืนยันการบันทึกคิวกับฐานข้อมูลกลางไม่ได้ กรุณาตรวจสถานะก่อนกดซ้ำ"
+          : "Unable to save this update to the shared database.",
+        ...(pathname === "/api/outbound/aot-booking" ? { code: "BOOKING_SAVE_UNCONFIRMED" } : {}),
         detail: message
       }, { status: 503 });
     }

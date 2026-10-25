@@ -252,9 +252,11 @@ async function api(path, payload, method = "POST") {
             body: method === "GET" ? undefined : JSON.stringify(requestPayload)
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Request failed");
+        if (!res.ok) throw Object.assign(new Error(data.error || "Request failed"), {code:data.code});
         return data;
     } catch (error) {
+        // An in-memory booking is not proof that the shared database committed.
+        if (error.code === "BOOKING_SAVE_UNCONFIRMED") throw error;
         // A mobile connection can drop after Render has finished the write but
         // before its response reaches the phone. Verify the resulting status
         // first, so a driver is not told to submit the same evidence twice.
