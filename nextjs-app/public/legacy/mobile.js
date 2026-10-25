@@ -3345,7 +3345,9 @@ document.addEventListener("DOMContentLoaded", bindEscapeToSheets);
 setTimeout(bindEscapeToSheets, 500);
 
 function updatePickupSafetyButtons() {
-    if (!state.meetingSafety?.enabled || currentUser()?.role!=="Driver") return;
+    const selected=jobsFromSelection(),allowed=new Set(state.meetingSafety?.sitHouseNumbers||[]);
+    const enabled=state.meetingSafety?.enabled || selected.length>0&&selected.every(j=>/^SIT[-A-Z0-9]/i.test(j.houseNumber||'')&&allowed.has(j.houseNumber));
+    if (!enabled || currentUser()?.role!=="Driver") return;
     const ink=id=>{const c=document.getElementById(id);if(!c)return false;const pixels=c.getContext("2d").getImageData(0,0,c.width,c.height).data;let n=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>16&&Math.min(pixels[i],pixels[i+1],pixels[i+2])<240&&++n>=8)return true;return false;};
     const ready=checkedPickupItems().length===10 && ["productImages","cargoImages","doorClosedImages"].every(id=>document.getElementById(id)?.files?.length) && document.getElementById("driverInspectorName")?.value.trim() && document.getElementById("driverReceiverName")?.value.trim() && ink("signaturePad") && ink("receiverSignaturePad");
     const load=document.getElementById("loadCargoBtn"),complete=document.getElementById("completePickupBtn");

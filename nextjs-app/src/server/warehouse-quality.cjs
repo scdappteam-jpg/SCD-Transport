@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- server-only domain service */
 const crypto = require('node:crypto');
+const policy = require('./meeting-policy.cjs');
 const references = require('../../public/legacy/shipment-references.js');
 const movementPaths = new Set(['/api/inbound/twin-scan','/api/inbound/move-location','/api/warehouse/location/assign','/api/warehouse/location/release','/api/outbound/picking','/api/outbound/return','/api/outbound/load-bay','/api/outbound/transfer-form','/api/outbound/loading-detail']);
 const clean = value => String(value || '').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
@@ -74,7 +75,7 @@ function movementJobs(db,path,p) {
     return (houses || []).map(h=>db.jobs.find(j=>j.houseNumber===h)).filter(Boolean);
 }
 function enforceMovement(db,path,p) {
-    for (const job of movementJobs(db,path,p)) if (db.meetingSafety?.enabled || job.qaRequired) {
+    for (const job of movementJobs(db,path,p)) if (policy.active(db,[job]) || job.qaRequired) {
         assertApproved(job);
         if ((p.trackType && p.trackType!==(job.trackType||'Single')) || (p.stickerColor && p.stickerColor!==(job.inboundStickerColor||''))) fail('ข้อมูลแท็กเปลี่ยน ต้องลงทะเบียนและสแกน QA ใหม่ก่อนย้าย');
     }

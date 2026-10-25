@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- compatibility boundary */
 const qa=require('./warehouse-quality.cjs');
+const safety=require('./meeting-policy.cjs');
 const scanner=require('./barcode-evidence.cjs');
 const logs=require('./driver-time-log.cjs');
 const crypto=require('node:crypto');
@@ -17,7 +18,9 @@ async function handle({db,actor,path,method,payload:p={},query={},at,scanUrl,sav
         if(typeof p.enabled!=='boolean'||typeof p.geofencingEnabled!=='boolean'||!Number.isSafeInteger(p.queueMinutes)||p.queueMinutes<1||p.queueMinutes>120)fail('ระบุ enabled, Geofencing และนาทีต่อคิวให้ถูกต้อง');
         if(p.enabled&&p.acknowledgeExistingJobs!==true)fail('ต้องยืนยันว่ากติกา QA จะครอบคลุมงานเดิมที่ยังไม่ผ่าน QA ด้วย');
         if(p.geofencingEnabled&&(!(db.hr?.checkInLocations||[]).some(l=>l.active!==false)||!db.hr?.settings?.attendance?.enforceAssignedLocations))fail('ตั้งค่าพิกัดจริงและเปิดบังคับจุดเช็คอินใน HR ก่อนเปิด Geofencing');
-        db.meetingSafety={enabled:p.enabled,geofencingEnabled:p.geofencingEnabled,queueMinutes:p.queueMinutes,updatedAt:at,updatedBy:actor.id};
+        const sitHouseNumbers=p.sitHouseNumbers===undefined?(db.meetingSafety?.sitHouseNumbers||[]):p.sitHouseNumbers;
+        if(!Array.isArray(sitHouseNumbers)||sitHouseNumbers.length>100||sitHouseNumbers.some(h=>typeof h!=='string'||!/^SIT[-A-Z0-9]/i.test(h)||!db.jobs.some(j=>j.houseNumber===h)))fail('เปิดทดสอบได้เฉพาะเลข SIT ที่มีอยู่ในระบบ ห้ามระบุงานจริง');
+        db.meetingSafety={enabled:p.enabled,geofencingEnabled:p.geofencingEnabled,queueMinutes:p.queueMinutes,sitHouseNumbers:[...new Set(sitHouseNumbers)],updatedAt:at,updatedBy:actor.id};
         db.meetingSafetyHistory=[...db.meetingSafetyHistory||[],{...db.meetingSafety}];
         if(p.enabled){db.dock||={};db.dock.bays||=[];for(let n=7;n<=11;n++)if(!db.dock.bays.some(b=>b.id===`D${n}`))db.dock.bays.push({id:`D${n}`,name:`ท่า ${n}`,zone:'WH3',status:'Available',note:n===7?'Customer Direct':'Inbound'});}
         return {ok:true,policy:db.meetingSafety,mutated:true};
@@ -29,7 +32,7 @@ async function handle({db,actor,path,method,payload:p={},query={},at,scanUrl,sav
     allowed(actor,['Admin','Executive','WH3_TeamLeader','WH_Staff','Tagging_Staff','Check_House','QA_Inspector']);
     if(path==='/api/warehouse/quality'&&method==='GET'){
         const term=String(query.query||'').trim().toLowerCase();
-        return {policy,actor:{id:actor.id,role:actor.role},jobs:(db.jobs||[]).filter(j=>!['Billed','InvoiceSent','Cancelled'].includes(j.status)&&(!term||[j.houseNumber,j.hawbNumber,j.onhandNumber,j.mawbNumber,j.customerName,j.invoiceNo].some(v=>String(v||'').toLowerCase().includes(term)))).slice(0,100).map(j=>({houseNumber:j.houseNumber,hawbNumber:j.hawbNumber||'',onhandNumber:j.onhandNumber||'',master:j.mawbNumber||'',customerName:j.customerName||'',invoiceNo:j.invoiceNo||'',shipmentSource:j.shipmentSource||'SCD',status:j.status,updatedAt:j.updatedAt,trackType:j.trackType||'Single',stickerColor:j.inboundStickerColor||j.stickerColor||'',tagInspection:j.tagInspection||null,qaApproval:j.qaApproval||null,qaApproved:qa.approved(j),qaRequired:Boolean(policy.enabled||j.qaRequired)}))};
+        return {policy,actor:{id:actor.id,role:actor.role},jobs:(db.jobs||[]).filter(j=>!['Billed','InvoiceSent','Cancelled'].includes(j.status)&&(!term||[j.houseNumber,j.hawbNumber,j.onhandNumber,j.mawbNumber,j.customerName,j.invoiceNo].some(v=>String(v||'').toLowerCase().includes(term)))).slice(0,100).map(j=>({houseNumber:j.houseNumber,hawbNumber:j.hawbNumber||'',onhandNumber:j.onhandNumber||'',master:j.mawbNumber||'',customerName:j.customerName||'',invoiceNo:j.invoiceNo||'',shipmentSource:j.shipmentSource||'SCD',status:j.status,updatedAt:j.updatedAt,trackType:j.trackType||'Single',stickerColor:j.inboundStickerColor||j.stickerColor||'',tagInspection:j.tagInspection||null,qaApproval:j.qaApproval||null,qaApproved:qa.approved(j),qaRequired:Boolean(safety.active(db,[j])||j.qaRequired)}))};
     }
     if(method!=='POST')fail('Method not allowed',405);
     if(path==='/api/warehouse/external-intake'){

@@ -22,7 +22,7 @@ async function route(db,name,p={},who=actor){
  const payload={houseNumber:house,houseNumbers:[house],gpsLat:13.1,gpsLong:100.1,...p}; // SIM coordinates: copies only.
  const at=new Date(Date.parse('2026-10-24T09:00:00Z')+(minute++)*60000).toISOString();
  const save=(_db,args)=>{if(!args.base64&&!args.files?.length)return null;io.files++;const row={houseNumber:args.houseNumber,fileType:args.fileType,simulated:true};db.attachments.push(row);return row;};
- const c=vm.createContext({db,req:{method:'POST'},res:{},pathname,crypto,Date,Buffer,parseBody:async()=>payload,requireSessionRole:(_db,_req,roles)=>who&&roles.includes(who.role)?who:null,findJob:(_db,h)=>_db.jobs.find(j=>[j.houseNumber,j.hawbNumber].includes(h)),nowIso:()=>at,writeDb:()=>io.writes++,normalizeJob:j=>j,sendJson:(_r,status,body)=>({status,body}),operationsControl,pickupFlow,saveBase64Files:save,saveBase64File:save});
+ const c=vm.createContext({db,req:{method:'POST'},res:{},pathname,crypto,Date,Buffer,parseBody:async()=>payload,requireSessionRole:(_db,_req,roles)=>who&&roles.includes(who.role)?who:null,findJob:(_db,h)=>_db.jobs.find(j=>[j.houseNumber,j.hawbNumber].includes(h)),nowIso:()=>at,writeDb:()=>io.writes++,normalizeJob:j=>j,sendJson:(_r,status,body)=>({status,body}),operationsControl,pickupFlow,meetingPolicy:require(path.join(server,'meeting-policy.cjs')),saveBase64Files:save,saveBase64File:save});
  for(const name of ['findPayloadJobs','pickupDispatchIsReady','requirePickupActor','normalizePickupItems','logActivity','findOpenActivity'])vm.runInContext(fn(name),c);
  return {...await vm.runInContext(`(async()=>{${source.slice(a,b)}})()`,c),io};
 }

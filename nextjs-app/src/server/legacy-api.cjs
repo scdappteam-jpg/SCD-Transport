@@ -1,3 +1,4 @@
+const meetingPolicy=require('./meeting-policy.cjs');
 const http = require("http");
 
 const https = require("https");
@@ -482,7 +483,7 @@ function dockFindBay(db, bayId) {
 
 /* เสนอช่องเทียบที่เหมาะที่สุด: ว่างอยู่ + โซนใกล้ช่องเก็บปลายทาง */
 function dockSuggestBay(db, job) {
-    if (db.meetingSafety?.enabled) return dockPlanning.suggest(db,job,(db.dock?.queue||[]).find(e=>e.houseNumber===job?.houseNumber));
+    if (meetingPolicy.active(db,[job])) return dockPlanning.suggest(db,job,(db.dock?.queue||[]).find(e=>e.houseNumber===job?.houseNumber));
     const bays = dockBayList(db).filter(bay => bay.status === "Available" && !bay.houseNumber);
     if (!bays.length) return null;
     const target = String(job && (job.locationId || job.plannedLocationId) || "").trim().toUpperCase();
@@ -508,7 +509,7 @@ function dockBoard(db) {
         };
     });
     dockNormalizeQueue(db);
-    const queue = (db.meetingSafety?.enabled ? dockPlanning.queue(db) : db.dock.queue).map((item, index) => {
+    const queue = meetingPolicy.queue(db,dockPlanning.queue).map((item, index) => {
         const job = findJob(db, item.houseNumber);
         return {
             ...item,
@@ -4280,8 +4281,8 @@ async function handleApi(req, res, pathname) {
         if (bay.houseNumber && bay.houseNumber !== houseNumber) {
             return sendJson(res, 409, { error: `${bay.name} ถูกใช้โดย House ${bay.houseNumber}` });
         }
-        if (db.meetingSafety?.enabled) {
-            try {dockPlanning.assignment(db,job,entry||{},bay);} catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
+        if (meetingPolicy.active(db,[job])) {
+            try {dockPlanning.assignment(meetingPolicy.scoped(db),job,entry||{},bay);} catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
         }
         Object.assign(bay, {
             status: "Occupied",
@@ -4290,7 +4291,7 @@ async function handleApi(req, res, pathname) {
             driverName: payload.driverName || (entry ? entry.driverName : "") || "",
             assignedAt: nowIso(),
             assignedBy: payload.userId || "",
-            expectedMinutes: Number(payload.expectedMinutes || (db.meetingSafety?.enabled ? db.meetingSafety.queueMinutes : 30))
+            expectedMinutes: Number(payload.expectedMinutes || (meetingPolicy.active(db,[job]) ? db.meetingSafety.queueMinutes : 30))
         });
         db.dock.queue = db.dock.queue.filter(item => item.houseNumber !== houseNumber);
         if (job) {
@@ -5034,7 +5035,7 @@ async function handleApi(req, res, pathname) {
         });
         const pickupRows = normalizePickupItems(payload.pickupItems || "");
         const loadedAt = nowIso();
-        if (db.meetingSafety?.enabled) {
+        if (meetingPolicy.active(db,jobs)) {
             const fingerprint=meetingDriver.pickupEvidence(payload);
             for (const item of jobs) {
                 const recorded=[];
@@ -5254,7 +5255,7 @@ async function handleApi(req, res, pathname) {
         }
         const releasedAt = nowIso();
         for (const item of jobs) {
-            if (db.meetingSafety?.enabled) saveBase64Files(db,{houseNumber:item.houseNumber,fileType:"ReleaseDocument",files:payload.releaseDocumentFiles});
+            if (meetingPolicy.active(db,[item])) saveBase64Files(db,{houseNumber:item.houseNumber,fileType:"ReleaseDocument",files:payload.releaseDocumentFiles});
             const sla = deriveFlightSla(item, new Date(releasedAt).getTime());
             Object.assign(item, {
                 status: "WaitingForDock",
@@ -5263,7 +5264,7 @@ async function handleApi(req, res, pathname) {
                 wh3QueuePriorityMinutes: sla.minutesToAirportDue,
                 updatedAt: releasedAt
             });
-            if (db.meetingSafety?.enabled) {
+            if (meetingPolicy.active(db,[item])) {
                 db.dock||={};db.dock.queue||=[];
                 if (!db.dock.queue.some(entry=>entry.houseNumber===item.houseNumber)) db.dock.queue.push({id:crypto.randomUUID(),houseNumber:item.houseNumber,queueType:item.shipmentSource==="CustomerDirect"?"External":"Inbound",arrivedAt:item.arrivedWh3At,createdAt:releasedAt,createdBy:actor.id,vehiclePlate:item.vehiclePlate||""});
             }

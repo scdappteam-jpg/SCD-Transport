@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- server-only domain service */
 const crypto=require('node:crypto');
+const policy=require('./meeting-policy.cjs');
 const pickup=require('./pickup-flow.cjs');
 const evidence=require('./operations-control.cjs').evidence;
 const day = at => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(at));
@@ -29,7 +30,9 @@ function pickupEvidence(p) {
     return crypto.createHash('sha256').update(JSON.stringify({product:p.productImages,cargo:p.cargoImages,door:p.doorClosedImages,inspector:p.inspectorName,receiver:p.receiverName,signature:p.signatureBase64,receiverSignature:p.receiverSignatureBase64})).digest('hex');
 }
 function preflight(db,path,p,actor,at=new Date().toISOString()) {
-    if (!db.meetingSafety?.enabled) return;
+    const selected=policy.jobs(db,p);
+    if (!db.meetingSafety?.enabled && selected.some(j=>policy.active(db,[j])) && !policy.active(db,selected)) fail('ห้ามรวมชุด SIT ที่เปิดกติกากับงานอื่นในคำขอเดียวกัน',409);
+    if (!policy.active(db,selected)) return;
     if (path.startsWith('/api/dock/')) {
         const job=db.jobs.find(j=>j.houseNumber===p.houseNumber);
         if (['/api/dock/queue','/api/dock/assign'].includes(path)&&!job) fail('ไม่พบงานสำหรับเข้าคิว Dock',404);
