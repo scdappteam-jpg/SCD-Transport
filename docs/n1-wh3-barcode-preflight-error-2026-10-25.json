@@ -1,0 +1,4 @@
+{
+  "httpStatus": 503,
+  "error": "Scanner service unavailable (Unexpected token 'T', \"Too Many Requests\n\" is not valid JSON) — ต้องเปิด python-scanqrcode-tps ก่อน / Run the scanner service first"
+}

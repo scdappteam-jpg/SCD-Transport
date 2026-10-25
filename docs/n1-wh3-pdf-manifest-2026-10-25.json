@@ -1,0 +1,128 @@
+{
+  "pdf": "C:\\Users\\UsEr\\OneDrive\\Desktop\\Logistic คุณใหม่\\SCD-Transport\\output\\pdf\\SCD-N1-WH3-Inbound-Tag-QA-Stored-SIT-2026-10-25.pdf",
+  "pages": 27,
+  "screenshots": 20,
+  "images": [
+    {
+      "file": "n1-wh3-01-before-qa-2026-10-25.png",
+      "title": "ก่อนเริ่ม - รอQA",
+      "description": "Revision0 ไม่มีผู้ติดแท็ก ใช้SIT WHและค้นหาN1เท่านั้น",
+      "sha256": "ed1798d3cf41bfe35100e1142ef4fd41a6e6dd6015651738b6a33735cf755ae9"
+    },
+    {
+      "file": "n1-wh3-02-document-checked-2026-10-25.png",
+      "title": "ตรวจเอกสารแล้ว",
+      "description": "DocumentChecked ยังไม่ยืนยันยอดรับ แผน3CTN",
+      "sha256": "8dc7cd3f361a9fdf976cd6eeca82432fffadd2604e8896b1c5e6a84ce5af145e"
+    },
+    {
+      "file": "n1-wh3-03-inbound-open-2026-10-25.png",
+      "title": "หลัง Open - หน้าโมดูล",
+      "description": "ภาพส่วนบนระหว่างเปลี่ยนขั้น รายละเอียดงานอยู่ถัดลงไป ผล InboundOpened ยืนยันจาก API และเวลาในตาราง",
+      "sha256": "b7d5f71109c730482e5b2be88496ac2702da31eb72442e29a89e1b15222b3226"
+    },
+    {
+      "file": "n1-wh3-04-single-house-2026-10-25.png",
+      "title": "หลัง Scan House - หน้าโมดูล",
+      "description": "ภาพส่วนบนระหว่างเปลี่ยนขั้น ผล Single และ Flight เดิมยืนยันจากข้อมูลอ่านกลับ ไม่ได้แก้เที่ยวบิน",
+      "sha256": "c522169cfae3b6d50a95b8d9e04d5c15a7cd1cd245f94e774544ecb5fd495fd3"
+    },
+    {
+      "file": "n1-wh3-05-partial-two-of-three-2026-10-25.png",
+      "title": "รับบางส่วน2/3",
+      "description": "ตามแผน3 รับจำลอง2 ค้าง1 และปิดรับเข้าไม่ได้",
+      "sha256": "905c057294153fe39590bcf0a458410250689b1d761a3d7b9380a4407e4450b1"
+    },
+    {
+      "file": "n1-wh3-06-full-three-of-three-2026-10-25.png",
+      "title": "รับครบ3/3",
+      "description": "รับจำลอง3 ค้าง0 แต่ยังต้องผ่านQAก่อนจัดเก็บ",
+      "sha256": "d1526603fff9ef0ff665532a12c097240b06b2428677e565e9d3e9b198247f1b"
+    },
+    {
+      "file": "n1-wh3-07-tag-image-selected-2026-10-25.png",
+      "title": "ภาพแท็กAก่อนสแกน",
+      "description": "เลือกCode128จำลอง tag.png ด้วยSIT WH",
+      "sha256": "b3f9e3a1f2a0d5635ba3d30ae875a66d9b3fa5d7a4491dfacf7503ed01565e81"
+    },
+    {
+      "file": "n1-wh3-08-tag-registered-2026-10-25.png",
+      "title": "แท็กRevision1",
+      "description": "ติดแท็กโดย sit_ui_wh ยังรอQA",
+      "sha256": "b2629e5f4f8161389107350f83e85215a0966c0ce7fb22f10632f82b60995aa2"
+    },
+    {
+      "file": "n1-wh3-09-qa-independent-image-2026-10-25.png",
+      "title": "ภาพQAอิสระB",
+      "description": "แนบqa.png ภายใต้ยูส sit_ui_checkhouse คนละยูสกับผู้ติดแท็ก",
+      "sha256": "466717584321b7a03187c2ee787c630744da6292a5233ca70dedf549fd7c38eb"
+    },
+    {
+      "file": "n1-wh3-10-qa-approved-2026-10-25.png",
+      "title": "QAผ่าน",
+      "description": "QAผ่านrevision1 โดยอ่านบาร์โค้ดจากภาพจริงบนเซิร์ฟเวอร์",
+      "sha256": "3a2e57d2297fcfb5affc495ef04556c95828d807334c8f64e3f7ff9d37340197"
+    },
+    {
+      "file": "n1-wh3-11-putaway-virtual-slot-2026-10-25.png",
+      "title": "ระบุช่องเสมือน",
+      "description": "SITN1WH3-01 / 3กล่อง / 0พาเลท / ไม่มีการวัดDimensionจริง",
+      "sha256": "a7fe3c89586989632deb746725a4b9b426ef963c566eef550060b707c63c95a3"
+    },
+    {
+      "file": "n1-wh3-12-stored-receipt-location-2026-10-25.png",
+      "title": "จัดเก็บสำเร็จ",
+      "description": "Stored ยอดรับจำลองครบและLocationตรงช่องSIT",
+      "sha256": "54a2e505a022f341df1c5c2cca7666510a8d69410f99338e1b6d8cec795f6f3b"
+    },
+    {
+      "file": "n1-wh3-13-close-evidence-selected-2026-10-25.png",
+      "title": "แนบหลักฐานปิดรับเข้า",
+      "description": "เลือกclose.png ก่อนClose Inbound ผ่านUI",
+      "sha256": "f453e92286d28f9d246ac08ef0971073f7fca1f1f76e7dcbfea2fe2d593ebeae"
+    },
+    {
+      "file": "n1-wh3-14-inbound-closed-2026-10-25.png",
+      "title": "หลังปิดรับเข้า",
+      "description": "Stored/รับครบ/ช่องเดิม อ่านเวลาinboundClosedAtในตารางประกอบ",
+      "sha256": "588a797f17c209570234dc9383f02904ed3f63facb695b37a25c628baece6063"
+    },
+    {
+      "file": "n1-wh3-15-document-opened-2026-10-25.png",
+      "title": "เปิดเอกสารรับเข้า",
+      "description": "ไฟล์PNGที่เก็บจริง เป็นเอกสารจำลองSIT ONLY",
+      "sha256": "f07327d7b9a95a77d0e8f29154d11e9128d047f7accfd9b4490ae4160d0ec635"
+    },
+    {
+      "file": "n1-wh3-16-tag-evidence-2026-10-25.png",
+      "title": "เปิดภาพแท็ก",
+      "description": "Code128ภาพA ที่ระบบอ่านและบันทึกจริง",
+      "sha256": "501c2c7288de4d709884d34c1aff26895440da4212a0775ff71d832d92c4333c"
+    },
+    {
+      "file": "n1-wh3-17-qa-evidence-2026-10-25.png",
+      "title": "เปิดภาพQA",
+      "description": "Code128ภาพBแยกจากผู้ติดแท็ก มีข้อความQAจำลอง",
+      "sha256": "0c5d944a4bc8a906bb4cd251028408047d5a7536c8100c9195646d3eaef0f72d"
+    },
+    {
+      "file": "n1-wh3-18-close-evidence-2026-10-25.png",
+      "title": "เปิดหลักฐานปิดรับเข้า",
+      "description": "URLจริงเป็นJPGที่UIแปลงจากPNG เปิดได้200",
+      "sha256": "36ab5231770cca28e3c1b6f534e0329609e07f5eff0285aaf0ff9e59991b7f79"
+    },
+    {
+      "file": "n1-wh3-19-geofencing-off-2026-10-25.png",
+      "title": "Geofencingปิด",
+      "description": "อ่านค่าปัจจุบัน ไม่กดบันทึกค่าใหม่ พิกัดWH3ยังว่าง",
+      "sha256": "3bb5767aa230fd6a47cafeaae9899fd72eaeef6707f24fea09159f6187bc667d"
+    },
+    {
+      "file": "n1-wh3-20-test-mode-closed-2026-10-25.png",
+      "title": "ปิดโหมดทดสอบ",
+      "description": "กลับLoginหลังจบ ไม่แก้รหัสผ่านหรือสิทธิ์ยูส",
+      "sha256": "f6b58b38b5450551ca55de374eb005e67869fddd4b23974632d7a924b2c229c8"
+    }
+  ],
+  "sha256": "222aa45231934ce70c3a396977cb7b5ccbd7f06bf8cb8b93a951589294b42958"
+}

@@ -1,0 +1,124 @@
+{
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "otherJobsVerified": 3806,
+  "otherJobsChanged": 0,
+  "beforeHash": "3af772643e2c3946c59f89e2736fa2d1cfd9578857a2a8a25f1e4a17407cef03",
+  "afterHash": "3af772643e2c3946c59f89e2736fa2d1cfd9578857a2a8a25f1e4a17407cef03",
+  "usersCustomersInvoicesUnchanged": true,
+  "existingZonesLocationsUnchanged": true,
+  "realDockBaysUnchanged": true,
+  "policyUnchanged": true,
+  "geofencingEnabled": false,
+  "status": "Stored",
+  "virtualLocation": "SITN1WH3-01",
+  "syntheticReceiptCTN": 3,
+  "physicalReceiptVerified": false,
+  "tagger": "sit_ui_wh",
+  "qa": "sit_ui_checkhouse",
+  "qaVerified": true,
+  "files": [
+    {
+      "fileId": "FILE-1792906123395-ece044",
+      "fileType": "ProductImage",
+      "createdAt": "2026-10-25T05:28:43.396Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123395-ece044.png",
+      "httpStatus": 200,
+      "sha256": "89a944a0fc2d5c21765157d6bddce9ebff894dede5330577c079d17e583177f3",
+      "syntheticSourceVerified": false,
+      "convertedToJPEGByUI": false
+    },
+    {
+      "fileId": "FILE-1792906123396-a3241b",
+      "fileType": "CargoForm",
+      "createdAt": "2026-10-25T05:28:43.396Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123396-a3241b.png",
+      "httpStatus": 200,
+      "sha256": "0a2f9ad2e57da07042f2d0a84e88511722db25e05e1f2ec0115c8a84ffaf487e",
+      "syntheticSourceVerified": false,
+      "convertedToJPEGByUI": false
+    },
+    {
+      "fileId": "FILE-1792906123396-f0d3bd",
+      "fileType": "DoorClosedAudit",
+      "createdAt": "2026-10-25T05:28:43.396Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123396-f0d3bd.png",
+      "httpStatus": 200,
+      "sha256": "e22166a58b6cb9006e514f5e4334447d295e1f9f206c73a5cc64c5d586e7a535",
+      "syntheticSourceVerified": false,
+      "convertedToJPEGByUI": false
+    },
+    {
+      "fileId": "FILE-1792906123396-a9d255",
+      "fileType": "InspectorSignature",
+      "createdAt": "2026-10-25T05:28:43.396Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123396-a9d255.png",
+      "httpStatus": 200,
+      "sha256": "f24fbaa8f2fd129266ac3f89f2dace729c796f51d5f1cf2b28236f915385ba7f",
+      "syntheticSourceVerified": false,
+      "convertedToJPEGByUI": false
+    },
+    {
+      "fileId": "FILE-1792906123396-f0562d",
+      "fileType": "ReceiverSignature",
+      "createdAt": "2026-10-25T05:28:43.397Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123396-f0562d.png",
+      "httpStatus": 200,
+      "sha256": "8176f20a594ce86505b9cca57ae3963abda67e5f78c1e9e59cbd6e54bf0b02ac",
+      "syntheticSourceVerified": false,
+      "convertedToJPEGByUI": false
+    },
+    {
+      "fileId": "FILE-1792906260272-f5d1c6",
+      "fileType": "ReleaseDocument",
+      "createdAt": "2026-10-25T05:31:00.273Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906260272-f5d1c6.png",
+      "httpStatus": 200,
+      "sha256": "586d86e48f8be05943891b9662322b19780d997c1d87ce9b9c991fa79b429ece",
+      "syntheticSourceVerified": false,
+      "convertedToJPEGByUI": false
+    },
+    {
+      "fileId": "FILE-1792910535331-b8e3f9",
+      "fileType": "InboundDocument",
+      "createdAt": "2026-10-25T06:42:15.332Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792910535331-b8e3f9.png",
+      "httpStatus": 200,
+      "sha256": "9a4fc7bf98fd5107e10ae4e45cac090399ed07b7f1834683aeca1829f33296a0",
+      "syntheticSourceVerified": true,
+      "convertedToJPEGByUI": false
+    },
+    {
+      "fileId": "FILE-1792910871118-8e4cef",
+      "fileType": "TaggingBarcodeEvidence",
+      "createdAt": "2026-10-25T06:47:51.119Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792910871118-8e4cef.png",
+      "httpStatus": 200,
+      "sha256": "7c1df7f69a554894a1763879e647cc2177c10e5fc030944c0c34926c679a2fda",
+      "syntheticSourceVerified": true,
+      "convertedToJPEGByUI": false
+    },
+    {
+      "fileId": "FILE-1792910905718-99fde0",
+      "fileType": "QABarcodeEvidence",
+      "createdAt": "2026-10-25T06:48:25.718Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792910905718-99fde0.png",
+      "httpStatus": 200,
+      "sha256": "8b666eface012cf375209ef88ef1b7e004e39e07ac997578b0e1c881b9406660",
+      "syntheticSourceVerified": true,
+      "convertedToJPEGByUI": false
+    },
+    {
+      "fileId": "FILE-1792911030582-bad672",
+      "fileType": "InboundEvidence",
+      "createdAt": "2026-10-25T06:50:30.583Z",
+      "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792911030582-bad672.jpg",
+      "httpStatus": 200,
+      "sha256": "4e2f2bfd09d80ae44efdbba1a4976eced6611daa401a35381e33a0c5ce1b1391",
+      "syntheticSourceVerified": true,
+      "convertedToJPEGByUI": true
+    }
+  ],
+  "oldFilesPreserved": true,
+  "driverAndCSAndFlightFieldsPreserved": true,
+  "oldFileHashesUnchanged": true
+}
