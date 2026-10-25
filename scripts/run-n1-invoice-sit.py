@@ -55,7 +55,7 @@ def review():
 def generate():
  j=timeline('after-ui-generate' if sys.argv[1]=='observe-generated' else 'before-generate')['job'];assert (sys.argv[1]=='observe-generated' or not j.get('invoiceId')) and j.get('billingReviewStatus')=='Reviewed'
  if sys.argv[1]!='observe-generated':call('driver-cannot-generate-invoice','/api/billing/generate',{'houseNumber':H},'driver',403)
- 
+
  if sys.argv[1]=='observe-generated':
   register=call('read-invoice-generated-via-ui','/api/bootstrap');matches=[v for v in register['dashboard']['billing'] if v['houseNumber']==H];assert len(matches)==1;r={'bill':matches[0]}
  else:r=call('generate-sit-invoice-draft','/api/billing/generate',{'houseNumber':H},'billing')
