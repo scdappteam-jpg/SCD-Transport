@@ -1,3 +1,4 @@
+const invoiceDocument = require('./invoice-document.cjs');
 const stateHttp = require('./state-http.cjs');
 const meetingPolicy=require('./meeting-policy.cjs');
 const http = require("http");
@@ -3159,10 +3160,15 @@ async function deliverInvoiceEmail(bill, attachmentUrls = []) {
 }
 
 function generateInvoiceHtml(db, bill, job, customer) {
-    const invoiceHtml = `<!doctype html>\n<html lang="th">\n<head>\n  <meta charset="utf-8">\n  <title>${escapeHtml(bill.id)}</title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 40px; color: #17201d; }\n    h1 { color: #0f766e; margin-bottom: 4px; }\n    .meta, table { width: 100%; margin-top: 24px; }\n    .meta td { padding: 4px 0; }\n    table { border-collapse: collapse; }\n    th, td { border: 1px solid #dfe5df; padding: 10px; text-align: left; }\n    th { background: #eef8f6; }\n    .total { text-align: right; font-size: 20px; font-weight: 700; }\n  </style>\n</head>\n<body>\n  <h1>Invoice</h1>\n  <strong>${escapeHtml(bill.id)}</strong>\n  <table class="meta">\n    <tr><td>Customer</td><td>${escapeHtml(customer?.name || job.customerName)}</td></tr>\n    <tr><td>Tax ID</td><td>${escapeHtml(customer?.taxId || "-")}</td></tr>\n    <tr><td>Billing Email</td><td>${escapeHtml(bill.billingEmail || "-")}</td></tr>\n    <tr><td>House Number</td><td>${escapeHtml(job.houseNumber)}</td></tr>\n    <tr><td>Flight</td><td>${escapeHtml(job.flightNo)} / ${escapeHtml(formatBangkok(job.flightTime))}</td></tr>\n    <tr><td>Due Date</td><td>${escapeHtml(formatBangkok(bill.dueDate))}</td></tr>\n  </table>\n  <table>\n    <thead><tr><th>Description</th><th>Amount</th></tr></thead>\n    <tbody>\n      <tr><td>Air export logistics service - ${escapeHtml(job.houseNumber)}</td><td>${Number(bill.amount).toLocaleString("th-TH")} THB</td></tr>\n    </tbody>\n  </table>\n  <p class="total">Total: ${Number(bill.amount).toLocaleString("th-TH")} THB</p>\n</body>\n</html>`;
+    const invoiceHtml = invoiceDocument.render(bill, job, customer, {escapeHtml,formatBangkok});
     const filename = `${bill.id}.html`;
     const filePath = path.join(INVOICE_DIR, filename);
     fs.writeFileSync(filePath, invoiceHtml, "utf8");
+    const url = `/storage/invoices/${filename}`;
+    const fileId = `INVOICE-DOC-${bill.id}`;
+    let attachment = db.attachments.find(item=>item.fileId===fileId);
+    if (!attachment) { attachment={fileId,houseNumber:job.houseNumber,fileType:'InvoiceDocument',url,mimeType:'text/html; charset=utf-8',createdAt:bill.draftedAt};db.attachments.push(attachment); }
+    durableAttachments.queue(attachment, Buffer.from(invoiceHtml,'utf8'));
     return `/storage/invoices/${filename}`;
 }
 
@@ -6299,6 +6305,15 @@ async function handleApi(req, res, pathname) {
             bill: bill,
             dashboard: buildDashboard(db)
         });
+    }
+    if (req.method === "POST" && pathname === "/api/billing/refresh-document") {
+        const payload=await parseBody(req);
+        try {
+            const plan=invoiceDocument.refreshPlan(db,sessionUser(db,req),payload);
+            generateInvoiceHtml(db,plan.bill,plan.job,plan.customer);
+            writeDb(db);
+            return sendJson(res,200,{ok:true,invoiceId:plan.bill.id,houseNumber:plan.job.houseNumber,pdfUrl:plan.bill.pdfUrl});
+        } catch(error) { return sendJson(res,error.statusCode||409,{error:error.message}); }
     }
     if (req.method === "POST" && pathname === "/api/billing/generate") {
         const payload = await parseBody(req);
