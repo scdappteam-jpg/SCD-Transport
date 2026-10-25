@@ -1,0 +1,10 @@
+{
+  "house": "SIT-MEETING-20261025-L2",
+  "aotBookedAt": "2026-10-25T04:27:07.917Z",
+  "aotApprovedAt": "2026-10-25T04:27:20.781Z",
+  "vehiclePlate": "SIT-BOOK-L2",
+  "repeatBookingCount": 3,
+  "repeatApprovalCount": 2,
+  "bookingReplayAddedActivities": 0,
+  "syntheticEvidenceOnly": true
+}

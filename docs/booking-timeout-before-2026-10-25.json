@@ -1,0 +1,331 @@
+{
+  "ok": true,
+  "job": {
+    "id": "JOB-1792900249729",
+    "cbm": "",
+    "tel": "0000000000",
+    "amount": "",
+    "dgType": "",
+    "refsNo": "",
+    "source": "SIT ONLY - synthetic cargo; no physical movement",
+    "status": "Pending",
+    "weight": "",
+    "booking": "",
+    "carrier": "",
+    "contact": "SIT SYNTHETIC CONTACT",
+    "edocCin": "",
+    "edocInv": "",
+    "driverId": "sit_ui_driver",
+    "flightNo": "SIT100",
+    "icNumber": "",
+    "planDate": "2026-10-25",
+    "wh3DueAt": "2026-10-25T22:00:00.000Z",
+    "workDate": "2026-10-25",
+    "cargoDesc": "",
+    "cargoType": "normal",
+    "closeTime": "",
+    "createdAt": "2026-10-25T03:50:49.727Z",
+    "invoiceNo": "SIT-INV-SIT-MEETING-20261025-L2",
+    "isLithium": false,
+    "ownerCode": "",
+    "planRound": "Manual",
+    "qaHistory": [
+      {
+        "id": "d2ef3e1d-6d0c-4642-a0a1-32cc6a0a92ac",
+        "tags": [
+          {
+            "barcode": "SITMEETING20261025L2",
+            "imageHash": "cd3923e52bbbee38b67c7e7083c1b38e53464e1be9cb308ade3359755b322e8b"
+          },
+          {
+            "barcode": "SITMEETING20261025L2",
+            "imageHash": "1999186dffd9b4937e3f5bf19e47954838f03398cf4a5aa0ccde084a901d178e"
+          }
+        ],
+        "fileIds": [
+          "FILE-1792900542963-f2208c",
+          "FILE-1792900542964-d84cd6"
+        ],
+        "revision": 1,
+        "approvedAt": "2026-10-25T03:55:42.822Z",
+        "approvedBy": "sit_ui_checkhouse"
+      }
+    ],
+    "readyTime": "",
+    "trackType": "Pair",
+    "updatedAt": "2026-10-25T03:55:42.822Z",
+    "volWeight": "",
+    "csRejected": false,
+    "customerId": "c_sit_only_meeting_safety",
+    "driverName": "SIT UI / Driver",
+    "driverType": "",
+    "flightTime": "2026-10-26T12:00:00Z",
+    "mawbNumber": "",
+    "pickupDate": "2026-10-25",
+    "pieceCount": 2,
+    "planSource": "SIT",
+    "qaApproval": {
+      "id": "d2ef3e1d-6d0c-4642-a0a1-32cc6a0a92ac",
+      "tags": [
+        {
+          "barcode": "SITMEETING20261025L2",
+          "imageHash": "cd3923e52bbbee38b67c7e7083c1b38e53464e1be9cb308ade3359755b322e8b"
+        },
+        {
+          "barcode": "SITMEETING20261025L2",
+          "imageHash": "1999186dffd9b4937e3f5bf19e47954838f03398cf4a5aa0ccde084a901d178e"
+        }
+      ],
+      "fileIds": [
+        "FILE-1792900542963-f2208c",
+        "FILE-1792900542964-d84cd6"
+      ],
+      "revision": 1,
+      "approvedAt": "2026-10-25T03:55:42.822Z",
+      "approvedBy": "sit_ui_checkhouse"
+    },
+    "qaRequired": true,
+    "slaProfile": "WH3_14H",
+    "actualCount": "",
+    "csConfirmed": true,
+    "csInvoiceNo": "SIT-INV-SIT-MEETING-20261025-L2",
+    "destAirport": "",
+    "destination": "WH3",
+    "houseNumber": "SIT-MEETING-20261025-L2",
+    "manualExtra": true,
+    "packageType": "Carton",
+    "pickupItems": [],
+    "pickupPhone": "0000000000",
+    "planMatched": false,
+    "productType": "General",
+    "routePolicy": "ReturnWH3BeforeTerminal",
+    "shippingDoc": "",
+    "vehicleType": "",
+    "airportDueAt": "2026-10-25T22:00:00.000Z",
+    "customerName": "SIT ONLY MEETING SAFETY",
+    "evidenceNote": "SIT ONLY - no real shipment, photos, signatures, GPS or driving. Do not merge with real Houses.",
+    "vehiclePlate": "SIT-ONLY",
+    "adminPrepared": true,
+    "approvalTrail": [
+      {
+        "at": "2026-10-25T03:51:01.221Z",
+        "by": "Admin / ผู้ดูแลระบบ",
+        "to": "ManualExtraApproved",
+        "from": "PendingCSApproval",
+        "note": "SIT ONLY - no real shipment, photos, signatures, GPS or driving. Do not merge with real Houses.",
+        "type": "ManualExtraApproved",
+        "channel": "SIT simulation",
+        "invoiceNo": "SIT-INV-SIT-MEETING-20261025-L2",
+        "contactName": "SIT SYNTHETIC CONTACT",
+        "contactPhone": "0000000000"
+      }
+    ],
+    "cargoCutoffAt": "",
+    "cargoFormMode": "AdminPrepared",
+    "cargoIssuedAt": "2026-10-25T03:51:08.162Z",
+    "consigneeName": "",
+    "contactPerson": "SIT SYNTHETIC CONTACT",
+    "csConfirmedAt": "2026-10-25T03:51:01.221Z",
+    "csConfirmedBy": "Admin / ผู้ดูแลระบบ",
+    "csContactName": "SIT SYNTHETIC CONTACT",
+    "mustReturnWh3": true,
+    "tagInspection": {
+      "mode": "Pair",
+      "tags": [
+        {
+          "barcode": "SITMEETING20261025L2",
+          "imageHash": "00b99a295660e8940add5375cef57740f66a9d120c2d1eca8f1afe7b4bf5c002"
+        },
+        {
+          "barcode": "SITMEETING20261025L2",
+          "imageHash": "c6f171a829debb60f05113dbc7672c743aea03b9780428d67b9b50f7e681b64f"
+        }
+      ],
+      "fileIds": [
+        "FILE-1792900522766-bc73b9",
+        "FILE-1792900522767-48f118"
+      ],
+      "identity": "d759b480cd8665aa304ed65f8f97206f95dd8588f2d9d2176a174fcc417794db",
+      "revision": 1,
+      "taggedAt": "2026-10-25T03:55:22.565Z",
+      "taggedBy": "sit_ui_wh",
+      "stickerColor": ""
+    },
+    "approvalStatus": "ManualExtraApproved",
+    "csContactPhone": "0000000000",
+    "pickupLocation": "SIT ONLY synthetic factory",
+    "afterFinalRound": false,
+    "evidenceChannel": "SIT simulation",
+    "readyForBilling": false,
+    "evidenceRequired": false,
+    "flightRiskReason": "Within flight SLA",
+    "flightRiskStatus": "OnTrack",
+    "mustNotMissFlight": false,
+    "subcontractorRate": "",
+    "csApprovalRequired": false,
+    "flightNumberDigits": 3,
+    "wh3PreDispatchNote": "",
+    "inboundStickerColor": "",
+    "minutesToAirportDue": 1057.0714,
+    "requiresLithiumDocs": false,
+    "terminalDestination": "",
+    "wh3PreDispatchReady": false,
+    "slaHoursBeforeFlight": 14,
+    "tagInspectionHistory": [
+      {
+        "mode": "Pair",
+        "tags": [
+          {
+            "barcode": "SITMEETING20261025L2",
+            "imageHash": "00b99a295660e8940add5375cef57740f66a9d120c2d1eca8f1afe7b4bf5c002"
+          },
+          {
+            "barcode": "SITMEETING20261025L2",
+            "imageHash": "c6f171a829debb60f05113dbc7672c743aea03b9780428d67b9b50f7e681b64f"
+          }
+        ],
+        "fileIds": [
+          "FILE-1792900522766-bc73b9",
+          "FILE-1792900522767-48f118"
+        ],
+        "identity": "d759b480cd8665aa304ed65f8f97206f95dd8588f2d9d2176a174fcc417794db",
+        "revision": 1,
+        "taggedAt": "2026-10-25T03:55:22.565Z",
+        "taggedBy": "sit_ui_wh",
+        "stickerColor": ""
+      }
+    ],
+    "effectiveAirportDueAt": "2026-10-25T22:00:00.000Z",
+    "terminalWorkflowEvents": [],
+    "terminalWorkflowStatus": "",
+    "doorClosedPhotoRequired": true,
+    "wh3PreDispatchChecklist": [],
+    "inboundReceiptSummary": {
+      "houseNumber": "SIT-MEETING-20261025-L2",
+      "onhandNumber": "",
+      "master": "",
+      "planned": {
+        "CTN": 2
+      },
+      "planKnown": true,
+      "received": {
+        "CTN": 0
+      },
+      "remaining": {
+        "CTN": 2
+      },
+      "over": {
+        "CTN": 0
+      },
+      "confirmed": false,
+      "complete": false,
+      "revision": 0,
+      "state": "unconfirmed"
+    },
+    "terminalProfile": {
+      "label": "TG",
+      "note": "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
+      "statuses": [
+        "BookingRequested",
+        "TerminalConfirmed",
+        "LoadedFromWH3",
+        "ArrivedAtTerminal",
+        "WeighingCompleted",
+        "DimensionCompleted",
+        "XRayPassed",
+        "LoadingCompleted",
+        "LoadingDetailCompleted"
+      ],
+      "checklist": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit"
+      ],
+      "slaMinutes": 180
+    },
+    "wh3Documents": {
+      "required": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "checked": [],
+      "missing": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "ready": false,
+      "labels": [
+        {
+          "key": "outbound_weighing_slip",
+          "label": "ใบชั่งสินค้าขาออกจาก WH3",
+          "checked": false
+        },
+        {
+          "key": "security_original",
+          "label": "ใบ Security ตัวจริง",
+          "checked": false
+        },
+        {
+          "key": "airline_specific",
+          "label": "ใบ Airline ตรงสายการบิน/สาขาปลายทาง",
+          "checked": false
+        },
+        {
+          "key": "permit",
+          "label": "ใบ Permit",
+          "checked": false
+        },
+        {
+          "key": "manifest_review",
+          "label": "Manifest / ตรวจยอดก่อนโหลด",
+          "checked": false
+        }
+      ]
+    },
+    "processTracking": {
+      "planning": "ManualExtraEntered",
+      "approval": "ManualExtraApproved",
+      "wh3Documents": "DocumentPending",
+      "transport": "",
+      "terminal": "TG",
+      "terminalStatus": "Pending",
+      "closing": "",
+      "billing": ""
+    },
+    "flightTimeLabel": "26/10/69 19:00",
+    "hoursToFlight": 31.6,
+    "redFlag": false,
+    "canUploadLoadingDetail": false
+  },
+  "activities": [
+    {
+      "activityType": "QAApproved",
+      "userId": "sit_ui_checkhouse",
+      "userName": "SIT UI / Check House",
+      "createdAt": "2026-10-25T03:55:42.964Z",
+      "timeLabel": "25/10/69 10:55",
+      "startTime": "2026-10-25T03:55:42.964Z",
+      "endTime": "",
+      "location": ""
+    }
+  ],
+  "files": [
+    {
+      "fileId": "FILE-1792900542963-f2208c",
+      "fileType": "QABarcodeEvidence",
+      "createdAt": "2026-10-25T03:55:42.964Z"
+    },
+    {
+      "fileId": "FILE-1792900542964-d84cd6",
+      "fileType": "QABarcodeEvidence",
+      "createdAt": "2026-10-25T03:55:42.964Z"
+    }
+  ]
+}

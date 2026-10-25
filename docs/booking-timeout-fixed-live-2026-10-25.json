@@ -1,0 +1,478 @@
+{
+  "environment": "https://scd-transport.onrender.com",
+  "commit": "44fa954",
+  "house": "SIT-MEETING-20261025-L2",
+  "checkedAt": "2026-10-25T04:29:47.286147+00:00",
+  "syntheticEvidenceOnly": true,
+  "physicalMovementVerified": false,
+  "cases": [
+    {
+      "name": "baseline",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 5879,
+      "responseBytes": 17078797,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "policy-before",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 103,
+      "responseBytes": 374,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "users-before",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 84,
+      "responseBytes": 4013,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "dock-before",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 126,
+      "responseBytes": 2183,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "map-before",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 90,
+      "responseBytes": 39372,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "before",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 93,
+      "responseBytes": 7249,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "open-temporary-api-session",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 304,
+      "responseBytes": 120,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "existing-sit-driver",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 280,
+      "responseBytes": 191,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "existing-sit-wh",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 309,
+      "responseBytes": 191,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "existing-sit-ei",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 283,
+      "responseBytes": 188,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "existing-sit-transport",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 338,
+      "responseBytes": 205,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "synthetic-route-start",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 10675,
+      "responseBytes": 6893,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "synthetic-pickup-checkin",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 9225,
+      "responseBytes": 14301,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "synthetic-load",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 13178,
+      "responseBytes": 15732,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "synthetic-pickup-complete",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 9993,
+      "responseBytes": 16385,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "synthetic-arrive-wh3",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 8903,
+      "responseBytes": 8292,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "synthetic-release-document",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 7787,
+      "responseBytes": 8379,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "document-check",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 7548,
+      "responseBytes": 8425,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "open",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 10257,
+      "responseBytes": 8458,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "identify-existing-pair",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 15525,
+      "responseBytes": 8516,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "receive-2-synthetic-ctn",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 15848,
+      "responseBytes": 8881,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "close-inbound",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 15100,
+      "responseBytes": 8998,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "after-inbound",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 136,
+      "responseBytes": 11389,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "pick-l2-with-existing-qa",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 12070,
+      "responseBytes": 9094,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "synthetic-ei-approve",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 18361,
+      "responseBytes": 16976855,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "before-booking",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 159,
+      "responseBytes": 12176,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "complete-wh3-document-checklist",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 13182,
+      "responseBytes": 9979,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "unbooked",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 146,
+      "responseBytes": 12917,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "initial-booking",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 11818,
+      "responseBytes": 9943,
+      "idempotent": false,
+      "result": "PASS",
+      "containsDashboard": false
+    },
+    {
+      "name": "initial-booking-saved",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 369,
+      "responseBytes": 13554,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "repeat-booking-1",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 304,
+      "responseBytes": 9970,
+      "idempotent": true,
+      "result": "PASS",
+      "containsDashboard": false
+    },
+    {
+      "name": "repeat-booking-2",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 101,
+      "responseBytes": 9970,
+      "idempotent": true,
+      "result": "PASS",
+      "containsDashboard": false
+    },
+    {
+      "name": "repeat-booking-3",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 93,
+      "responseBytes": 9961,
+      "idempotent": true,
+      "result": "PASS",
+      "containsDashboard": false
+    },
+    {
+      "name": "repeated-booking-saved",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 82,
+      "responseBytes": 13554,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "transport-cannot-approve",
+      "httpStatus": 403,
+      "expected": 403,
+      "durationMs": 95,
+      "responseBytes": 100,
+      "idempotent": false,
+      "result": "PASS",
+      "containsDashboard": false
+    },
+    {
+      "name": "initial-admin-approval",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 12823,
+      "responseBytes": 10155,
+      "idempotent": false,
+      "result": "PASS",
+      "containsDashboard": false
+    },
+    {
+      "name": "repeat-approval-1",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 93,
+      "responseBytes": 10182,
+      "idempotent": true,
+      "result": "PASS",
+      "containsDashboard": false
+    },
+    {
+      "name": "repeat-approval-2",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 84,
+      "responseBytes": 10173,
+      "idempotent": true,
+      "result": "PASS",
+      "containsDashboard": false
+    },
+    {
+      "name": "final",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 85,
+      "responseBytes": 14013,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "post-test-baseline",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 13733,
+      "responseBytes": 17082823,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "policy-after",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 3600,
+      "responseBytes": 374,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "users-after",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 106,
+      "responseBytes": 4013,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "dock-after",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 203,
+      "responseBytes": 2555,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "warehouse-map-after",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 284,
+      "responseBytes": 39372,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "verify-booking-after-ui",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 144,
+      "responseBytes": 14013,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "post-test-baseline",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 4833,
+      "responseBytes": 17080420,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "policy-after",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 114,
+      "responseBytes": 374,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "users-after",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 83,
+      "responseBytes": 4013,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "dock-after",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 84,
+      "responseBytes": 2555,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "warehouse-map-after",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 97,
+      "responseBytes": 39372,
+      "idempotent": false,
+      "result": "PASS"
+    },
+    {
+      "name": "revoke-temporary-api-sessions",
+      "httpStatus": 200,
+      "expected": 200,
+      "durationMs": 399,
+      "responseBytes": 26,
+      "idempotent": false,
+      "result": "PASS"
+    }
+  ],
+  "passed": 51
+}
