@@ -134,6 +134,9 @@
             <i data-lucide="map" aria-hidden="true"></i>
             <b>แผนที่คลัง WH3</b>
           </button>
+          <button class="nav-item" type="button" data-view="wh-quality"><b>WH · สแกนแท็กและ QA</b></button>
+          <button class="nav-item" type="button" data-view="driver-time-log"><b>Driver Time Log</b></button>
+          <button class="nav-item" type="button" data-view="meeting-settings"><b>กติกาคลังและ Driver</b></button>
           <button class="nav-item" type="button" data-view="wh-reservations">
             <i data-lucide="calendar-plus" aria-hidden="true"></i>
             <b>WH · จองพื้นที่ล่วงหน้า</b>
@@ -1487,6 +1490,9 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
 
 
           
+          <section class="page" id="view-wh-quality" data-page="wh-quality"><div class="panel"><h2>สแกนแท็กและ QA</h2><div id="warehouseQualityPage"></div></div></section>
+          <section class="page" id="view-meeting-settings" data-page="meeting-settings"><div class="panel"><h2>กติกาคลังและ Driver</h2><div id="meetingSettingsPage"></div></div></section>
+          <section class="page" id="view-driver-time-log" data-page="driver-time-log"><div class="panel"><h2>Driver Time Log</h2><div id="driverTimeLogPage"></div></div></section>
           <section class="page" id="view-wh-reservations" data-page="wh-reservations">
             <div class="panel"><div class="panel-title"><h2>WH · จองพื้นที่ล่วงหน้า</h2><span>Warehouse planning</span></div>
               <p>เลือกงานที่ CS Confirm แล้วเพื่อจองโซนก่อนของเข้าคลัง การจองไม่ใช่ยอดรับจริงหรือการจัดเก็บ</p>
@@ -2597,6 +2603,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="shipment-references.js?v=3-three-references"></script>
     <script src="test-user-mode.js?v=1-admin-scoped"></script>
     <script src="warehouse-reservations-page.js?v=2-wh-planning-get"></script>
-    <script src="app.js?v=50-wh-reservations"></script>
+    <script src="meeting-workflows-ui.js?v=20261025-demo"></script>
+    <script src="app.js?v=51-meeting-safety"></script>
   </body>
 </html>

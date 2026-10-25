@@ -291,12 +291,13 @@ function currentWebUser() {
 }
 
 function allowedWebViews(role) {
-    if (role === "Driver") return [ "dashboard", "hr", "flight-board", "dock" ];
-    if (role === "WH_Staff") return [ "dashboard", "wh-reservations", "hr", "flight-board", "dock" ];
-    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-reservations", "wh-status", "attendance", "hr", "flight-board", "dock", "service" ];
-    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr", "flight-board", "dock", "service" ];
+    if (role === "Driver") return [ "dashboard", "driver-time-log", "hr", "flight-board", "dock" ];
+    if (role === "WH_Staff") return [ "dashboard", "wh-quality", "wh-reservations", "hr", "flight-board", "dock" ];
+    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "hr", "flight-board", "dock", "service" ];
+    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "hr", "flight-board", "dock", "service" ];
     if (role === "EI_Customer") return [ "dashboard", "orders" ];
-    if (role === "Check_House") return [ "dashboard", "orders", "alerts" ];
+    if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-quality", "orders", "alerts" ];
+    if (role === "Tagging_Staff") return [ "dashboard", "wh-quality" ];
     if (role === "Terminal") return [ "dashboard", "orders", "alerts", "flight-board", "dock" ];
     // Billing works in the Field Ops workspace, but only the Billing panel is
     // exposed below.  Without this entry, the account can see its KPI cards
@@ -305,8 +306,8 @@ function allowedWebViews(role) {
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
     if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
-    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock", "service" ];
-    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
+    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock", "service" ];
+    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
 }
 
 function applyWebRoleVisibility() {
@@ -505,6 +506,9 @@ const pageCopy = {
         breadcrumb: "แผนที่คลัง / Warehouse",
         title: "แผนที่คลัง WH3 / Warehouse Map"
     },
+    "wh-quality": {breadcrumb:"WH / QA",title:"สแกนแท็กและ QA"},
+    "meeting-settings": {breadcrumb:"ตั้งค่ากติกา",title:"กติกาคลังและ Driver"},
+    "driver-time-log": {breadcrumb:"รายงาน Driver",title:"Driver Time Log"},
     "wh-reservations": {
         breadcrumb: "WH / Warehouse Planning",
         title: "WH · จองพื้นที่ล่วงหน้า"
@@ -769,6 +773,17 @@ async function refresh() {
         const res = await fetch(apiUrl("/api/bootstrap"), {
             cache: "no-store"
         });
+        if (res.status === 401) {
+            localStorage.removeItem(WEB_AUTH_KEY);
+            localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
+            const usersResponse = await fetch(apiUrl("/api/auth/users"), {cache:"no-store"});
+            if (usersResponse.ok) state.users = (await usersResponse.json()).users || [];
+            renderWebLogin();
+            renderWebLoginUsers();
+            toast("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+            clearSkeletons();
+            return;
+        }
         if (res.ok) {
             const text = await res.text();
             data = JSON.parse(text);
@@ -1007,6 +1022,9 @@ function setView(view) {
     if (view === "warehouse") renderWarehouseMap();
     if (view === "wh-status") renderWarehouseStatus();
     if (view === "wh-reservations") WarehouseReservationsPage.render();
+    if (view === "wh-quality") MeetingWorkflows.quality();
+    if (view === "meeting-settings") MeetingWorkflows.settings();
+    if (view === "driver-time-log") MeetingWorkflows.driverLog();
     if (view === "fleet-demo") renderFleetDemo();
     if (view === "load-plan") renderLoadPlan();
     if (view === "outbound-open") renderObOpenPage();

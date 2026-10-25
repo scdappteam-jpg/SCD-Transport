@@ -21,7 +21,7 @@ function inbound(job,phase,payload={}) {
     const recorded=value=>!!value&&Number.isFinite(new Date(value).getTime());
     if(job.status==='Cancelled'||job.csRejected)fail('งานถูกพักหรือยกเลิก ต้องตรวจ CS ก่อนรับเข้าคลัง');
     if(!recorded(job.arrivedWh3At))fail('ต้องยืนยันรถถึง WH3 ก่อนดำเนินการรับเข้าคลัง');
-    if(['documents','open','close'].includes(phase)&&!recorded(job.releaseDocumentReceivedAt))fail('ต้องรับใบตรวจปล่อยหลังถึง WH3 ก่อนดำเนินงานขาเข้า');
+    if(['documents','open','close'].includes(phase)&&job.shipmentSource!=='CustomerDirect'&&!recorded(job.releaseDocumentReceivedAt))fail('ต้องรับใบตรวจปล่อยหลังถึง WH3 ก่อนดำเนินงานขาเข้า');
     if(phase==='open'){
         if(!['Found','Missing'].includes(job.inboundDocStatus))fail('ต้องตรวจเอกสารขาเข้าก่อนเปิดงาน');
         if(job.inboundDocStatus==='Missing'&&!payload.eiConfirmed)fail('EI confirm is required before opening inbound job',422);

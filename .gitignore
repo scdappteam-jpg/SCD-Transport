@@ -1,5 +1,6 @@
 # Runtime data and uploaded evidence
 storage/
+.sit-meeting/
 !nextjs-app/src/app/storage/
 !nextjs-app/src/app/storage/**
 

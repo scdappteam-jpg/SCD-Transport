@@ -1,0 +1,1016 @@
+{
+  "checkedAt": "2026-10-25T03:31:40.257963+00:00",
+  "environment": "Isolated localhost:3100 + Python scanner:5001",
+  "productionModified": false,
+  "physicalMovementVerified": false,
+  "syntheticEvidenceOnly": true,
+  "cases": [
+    {
+      "name": "Login sit-admin",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Login sit-driver",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Login sit-wh",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Login sit-qa",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Enable safety for isolated SIT only",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Cannot start without attendance",
+      "httpStatus": 409,
+      "expected": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "Outside geofence blocked",
+      "httpStatus": 403,
+      "expected": 403,
+      "result": "PASS"
+    },
+    {
+      "name": "Inside synthetic SIT geofence accepted",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Route starts after attendance",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Pickup GPS arrival",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "No photos/signatures blocks load",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Full evidence permits load",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read files after load",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Complete preserves recorded evidence",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Arrive WH3",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "No release-document image blocked",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Release document image and timestamp",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Inbound document check",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open inbound",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Identify House",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Confirm isolated receipt 5 CTN",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Create isolated SIT location",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Putaway blocked before QA",
+      "httpStatus": 409,
+      "expected": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "Manual approval cannot bypass scanner",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Actual Code128 image registers tag",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Tagging role cannot approve QA",
+      "httpStatus": 403,
+      "expected": 403,
+      "result": "PASS"
+    },
+    {
+      "name": "Wrong-House actual barcode refused",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Independent actual image scan approves QA",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Putaway permitted only after QA",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Retag clears earlier QA",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Move blocked after retag",
+      "httpStatus": 409,
+      "expected": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "New QA scan after retag",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Move after current QA",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Customer Direct House Invoice intake",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Dock board separates Customer Direct",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Driver Time Log readback",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Driver cannot read another driver",
+      "httpStatus": 403,
+      "expected": 403,
+      "result": "PASS"
+    },
+    {
+      "name": "Final SIT snapshot",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Leave policy in review mode",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    }
+  ],
+  "passed": 39,
+  "final": {
+    "ok": true,
+    "job": {
+      "id": "SIT-JOB",
+      "houseNumber": "SIT-QA-20261025",
+      "onhandNumber": "SIT-QA-20261025",
+      "customerName": "SIT ONLY — meeting safety test",
+      "driverId": "sit-driver",
+      "driverName": "SIT Driver",
+      "vehiclePlate": "SIT-TRUCK",
+      "destination": "WH3",
+      "routeType": "WH3",
+      "status": "Stored",
+      "driverRouteStatus": "ReleasedForDock",
+      "csConfirmed": true,
+      "cargoIssuedAt": "2026-10-25T00:00:00Z",
+      "pieceCount": 5,
+      "packageType": "Carton",
+      "plannedPieceCount": 5,
+      "pickupDate": "2026-10-25",
+      "flightNo": "SIT100",
+      "flightTime": "2026-10-26T12:00:00Z",
+      "createdAt": "2026-10-25T00:00:00Z",
+      "updatedAt": "2026-10-25T03:31:40.116Z",
+      "workDate": "2026-10-25",
+      "planDate": "2026-10-25",
+      "planRound": "Manual",
+      "planSource": "ManualExtra",
+      "planMatched": false,
+      "manualExtra": true,
+      "afterFinalRound": false,
+      "approvalStatus": "ManualExtraApproved",
+      "csApprovalRequired": false,
+      "evidenceRequired": false,
+      "evidenceChannel": "Line/Email",
+      "evidenceNote": "",
+      "mustReturnWh3": true,
+      "routePolicy": "ReturnWH3BeforeTerminal",
+      "doorClosedPhotoRequired": true,
+      "flightNumberDigits": 3,
+      "slaProfile": "WH3_14H",
+      "slaHoursBeforeFlight": 14,
+      "mustNotMissFlight": false,
+      "airportDueAt": "2026-10-25T22:00:00.000Z",
+      "effectiveAirportDueAt": "2026-10-25T22:00:00.000Z",
+      "wh3DueAt": "2026-10-25T22:00:00.000Z",
+      "minutesToAirportDue": 1108.32935,
+      "flightRiskStatus": "WH3Received",
+      "flightRiskReason": "Confirmed receipt matches every planned unit",
+      "routeStartedAt": "2026-10-25T03:31:39.634Z",
+      "routeStartGps": "13.1,100.1",
+      "checkInAt": "2026-10-25T03:31:39.664Z",
+      "arrivedAtPickupAt": "2026-10-25T03:31:39.664Z",
+      "checkInGps": "13.1,100.1",
+      "safetyPickupEvidenceFingerprint": "b9d45abc7e6674a28408fc949420bb11a934ac938e6d97d90a48495b312a569e",
+      "safetyPickupEvidenceFileIds": [
+        "FILE-1792899099716-4dee3e",
+        "FILE-1792899099717-5e1de8",
+        "FILE-1792899099717-ae0931",
+        "FILE-1792899099718-ed7235",
+        "FILE-1792899099719-92141a"
+      ],
+      "pickupPhotoRecordedAt": "2026-10-25T03:31:39.705Z",
+      "inspectorName": "SIT Inspector",
+      "receiverName": "SIT Receiver",
+      "pickupCase": "GeneralManual",
+      "pickupChecklist": [
+        "date",
+        "customer",
+        "place",
+        "driver",
+        "house",
+        "package",
+        "inspector",
+        "receiver",
+        "route-log",
+        "destination"
+      ],
+      "pickupItems": [
+        {
+          "houseNumber": "SIT-QA-20261025",
+          "carton": "5",
+          "pickupDestination": "WH3"
+        }
+      ],
+      "endPlace": "WH3",
+      "routeNextModule": "Module2",
+      "routeComplianceStatus": "MustReturnWH3",
+      "loadedAt": "2026-10-25T03:31:39.705Z",
+      "pickupLoadFingerprint": "03c951524f88202e4ddc8f88b532b18c783c9bdfc6820935829e96102b9a637f",
+      "loadedGps": "13.1,100.1",
+      "pickupReceivedCount": "5",
+      "pickupCompletionFingerprint": "03c951524f88202e4ddc8f88b532b18c783c9bdfc6820935829e96102b9a637f",
+      "doorClosedPhotoAt": "2026-10-25T03:31:39.749Z",
+      "completedAt": "2026-10-25T03:31:39.749Z",
+      "completeGps": "13.1,100.1",
+      "returningWh3At": "2026-10-25T03:31:39.749Z",
+      "arrivedWh3At": "2026-10-25T03:31:39.759Z",
+      "arrivedWh3Gps": "13.1,100.1",
+      "releaseDocumentReceivedAt": "2026-10-25T03:31:39.803Z",
+      "wh3QueuePriorityMinutes": 1108.3366166666667,
+      "inboundDocStatus": "Found",
+      "inboundDocNote": "",
+      "inboundOpenedAt": "2026-10-25T03:31:39.835Z",
+      "trackType": "Single",
+      "inboundScannedAt": "2026-10-25T03:31:39.843Z",
+      "inboundReceiptHistory": [
+        {
+          "counts": {
+            "CTN": 5
+          },
+          "revision": 1,
+          "confirmedAt": "2026-10-25T03:31:39.851Z",
+          "confirmedBy": "sit-wh",
+          "requestId": "SIT-meeting-20261025",
+          "reason": ""
+        }
+      ],
+      "inboundReceipt": {
+        "counts": {
+          "CTN": 5
+        },
+        "revision": 1,
+        "confirmedAt": "2026-10-25T03:31:39.851Z",
+        "confirmedBy": "sit-wh",
+        "requestId": "SIT-meeting-20261025",
+        "reason": ""
+      },
+      "inboundStickerColor": "",
+      "tagInspectionHistory": [
+        {
+          "revision": 1,
+          "mode": "Single",
+          "stickerColor": "",
+          "tags": [
+            {
+              "barcode": "SITQA20261025",
+              "imageHash": "35c46348ca82d9cc0488fe38875c1f91f5feaa649756350abd4e6f3dd1233c7f"
+            }
+          ],
+          "taggedBy": "sit-wh",
+          "taggedAt": "2026-10-25T03:31:39.897Z",
+          "fileIds": [
+            "FILE-1792899099918-7cb5ee"
+          ],
+          "identity": "adc4464a0f6d7c10acfb3e65876d1349834d2b4d85dd34bb4c26cd333c2d9576"
+        },
+        {
+          "revision": 2,
+          "mode": "Single",
+          "stickerColor": "",
+          "tags": [
+            {
+              "barcode": "SITQA20261025",
+              "imageHash": "35c46348ca82d9cc0488fe38875c1f91f5feaa649756350abd4e6f3dd1233c7f"
+            }
+          ],
+          "taggedBy": "sit-wh",
+          "taggedAt": "2026-10-25T03:31:40.020Z",
+          "fileIds": [
+            "FILE-1792899100033-a2a401"
+          ],
+          "identity": "adc4464a0f6d7c10acfb3e65876d1349834d2b4d85dd34bb4c26cd333c2d9576"
+        }
+      ],
+      "tagInspection": {
+        "revision": 2,
+        "mode": "Single",
+        "stickerColor": "",
+        "tags": [
+          {
+            "barcode": "SITQA20261025",
+            "imageHash": "35c46348ca82d9cc0488fe38875c1f91f5feaa649756350abd4e6f3dd1233c7f"
+          }
+        ],
+        "taggedBy": "sit-wh",
+        "taggedAt": "2026-10-25T03:31:40.020Z",
+        "fileIds": [
+          "FILE-1792899100033-a2a401"
+        ],
+        "identity": "adc4464a0f6d7c10acfb3e65876d1349834d2b4d85dd34bb4c26cd333c2d9576"
+      },
+      "qaRequired": true,
+      "qaApproval": {
+        "id": "af6e112f-b0de-478f-a9e0-b7d5de105e1d",
+        "revision": 2,
+        "approvedBy": "sit-qa",
+        "approvedAt": "2026-10-25T03:31:40.069Z",
+        "tags": [
+          {
+            "barcode": "SITQA20261025",
+            "imageHash": "5d194a84949c684c1ce680003dd6a74c3cb92913caebb0ff5d783e929aa0e371"
+          }
+        ],
+        "fileIds": [
+          "FILE-1792899100094-d9a3f8"
+        ]
+      },
+      "qaHistory": [
+        {
+          "id": "8c00cc72-d86f-4558-9ef1-19f4cdaa3075",
+          "revision": 1,
+          "approvedBy": "sit-qa",
+          "approvedAt": "2026-10-25T03:31:39.973Z",
+          "tags": [
+            {
+              "barcode": "SITQA20261025",
+              "imageHash": "5d194a84949c684c1ce680003dd6a74c3cb92913caebb0ff5d783e929aa0e371"
+            }
+          ],
+          "fileIds": [
+            "FILE-1792899100001-f161b9"
+          ]
+        },
+        {
+          "id": "af6e112f-b0de-478f-a9e0-b7d5de105e1d",
+          "revision": 2,
+          "approvedBy": "sit-qa",
+          "approvedAt": "2026-10-25T03:31:40.069Z",
+          "tags": [
+            {
+              "barcode": "SITQA20261025",
+              "imageHash": "5d194a84949c684c1ce680003dd6a74c3cb92913caebb0ff5d783e929aa0e371"
+            }
+          ],
+          "fileIds": [
+            "FILE-1792899100094-d9a3f8"
+          ]
+        }
+      ],
+      "locationId": "SITQA-01",
+      "dimensionText": "",
+      "wdChecklist": [],
+      "warehousePallets": 0,
+      "warehouseBoxes": 5,
+      "previousLocationId": "SITQA-01",
+      "locationMovedAt": "2026-10-25T03:31:40.116Z",
+      "locationMoveNote": "",
+      "inboundReceiptSummary": {
+        "houseNumber": "SIT-QA-20261025",
+        "onhandNumber": "SIT-QA-20261025",
+        "master": "",
+        "planned": {
+          "CTN": 5
+        },
+        "planKnown": true,
+        "received": {
+          "CTN": 5
+        },
+        "remaining": {
+          "CTN": 0
+        },
+        "over": {
+          "CTN": 0
+        },
+        "confirmed": true,
+        "complete": true,
+        "revision": 1,
+        "state": "complete"
+      },
+      "terminalProfile": {
+        "label": "TG",
+        "note": "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
+        "statuses": [
+          "BookingRequested",
+          "TerminalConfirmed",
+          "LoadedFromWH3",
+          "ArrivedAtTerminal",
+          "WeighingCompleted",
+          "DimensionCompleted",
+          "XRayPassed",
+          "LoadingCompleted",
+          "LoadingDetailCompleted"
+        ],
+        "checklist": [
+          "outbound_weighing_slip",
+          "security_original",
+          "airline_specific",
+          "permit"
+        ],
+        "slaMinutes": 180
+      },
+      "wh3Documents": {
+        "required": [
+          "outbound_weighing_slip",
+          "security_original",
+          "airline_specific",
+          "permit",
+          "manifest_review"
+        ],
+        "checked": [],
+        "missing": [
+          "outbound_weighing_slip",
+          "security_original",
+          "airline_specific",
+          "permit",
+          "manifest_review"
+        ],
+        "ready": false,
+        "labels": [
+          {
+            "key": "outbound_weighing_slip",
+            "label": "ใบชั่งสินค้าขาออกจาก WH3",
+            "checked": false
+          },
+          {
+            "key": "security_original",
+            "label": "ใบ Security ตัวจริง",
+            "checked": false
+          },
+          {
+            "key": "airline_specific",
+            "label": "ใบ Airline ตรงสายการบิน/สาขาปลายทาง",
+            "checked": false
+          },
+          {
+            "key": "permit",
+            "label": "ใบ Permit",
+            "checked": false
+          },
+          {
+            "key": "manifest_review",
+            "label": "Manifest / ตรวจยอดก่อนโหลด",
+            "checked": false
+          }
+        ]
+      },
+      "processTracking": {
+        "planning": "ManualExtraEntered",
+        "approval": "ManualExtraApproved",
+        "wh3Documents": "DocumentPending",
+        "transport": "",
+        "terminal": "TG",
+        "terminalStatus": "Stored",
+        "closing": "",
+        "billing": ""
+      },
+      "flightTimeLabel": "26/10/69 19:00",
+      "hoursToFlight": 32.5,
+      "redFlag": false,
+      "canUploadLoadingDetail": false
+    },
+    "activities": [
+      {
+        "activityType": "LocationMove",
+        "userId": "sit-wh",
+        "userName": "SIT WH_Staff",
+        "createdAt": "2026-10-25T03:31:40.116Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:40.116Z",
+        "endTime": "",
+        "location": ""
+      },
+      {
+        "activityType": "QAApproved",
+        "userId": "sit-qa",
+        "userName": "SIT Check_House",
+        "createdAt": "2026-10-25T03:31:40.095Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:40.095Z",
+        "endTime": "",
+        "location": ""
+      },
+      {
+        "activityType": "TaggingRecorded",
+        "userId": "sit-wh",
+        "userName": "SIT WH_Staff",
+        "createdAt": "2026-10-25T03:31:40.033Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:40.033Z",
+        "endTime": "",
+        "location": ""
+      },
+      {
+        "activityType": "TwinScan",
+        "userId": "sit-wh",
+        "userName": "SIT WH_Staff",
+        "createdAt": "2026-10-25T03:31:40.011Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:40.011Z",
+        "endTime": "",
+        "location": ""
+      },
+      {
+        "activityType": "QAApproved",
+        "userId": "sit-qa",
+        "userName": "SIT Check_House",
+        "createdAt": "2026-10-25T03:31:40.002Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:40.002Z",
+        "endTime": "",
+        "location": ""
+      },
+      {
+        "activityType": "TaggingRecorded",
+        "userId": "sit-wh",
+        "userName": "SIT WH_Staff",
+        "createdAt": "2026-10-25T03:31:39.919Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.919Z",
+        "endTime": "",
+        "location": ""
+      },
+      {
+        "activityType": "InboundHouseScan",
+        "userId": "sit-wh",
+        "userName": "SIT WH_Staff",
+        "createdAt": "2026-10-25T03:31:39.843Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.843Z",
+        "endTime": "",
+        "location": ""
+      },
+      {
+        "activityType": "InboundOpened",
+        "userId": "sit-wh",
+        "userName": "SIT WH_Staff",
+        "createdAt": "2026-10-25T03:31:39.835Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.835Z",
+        "endTime": "",
+        "location": ""
+      },
+      {
+        "activityType": "InboundDocumentCheck",
+        "userId": "sit-wh",
+        "userName": "SIT WH_Staff",
+        "createdAt": "2026-10-25T03:31:39.821Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.821Z",
+        "endTime": "",
+        "location": ""
+      },
+      {
+        "activityType": "ReleaseDocumentReceived",
+        "userId": "sit-driver",
+        "userName": "SIT Driver",
+        "createdAt": "2026-10-25T03:31:39.804Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.804Z",
+        "endTime": "2026-10-25T03:31:39.803Z",
+        "location": ""
+      },
+      {
+        "activityType": "ArrivedWH3",
+        "userId": "sit-driver",
+        "userName": "SIT Driver",
+        "createdAt": "2026-10-25T03:31:39.759Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.759Z",
+        "endTime": "2026-10-25T03:31:39.759Z",
+        "location": ""
+      },
+      {
+        "activityType": "PickupComplete",
+        "userId": "sit-driver",
+        "userName": "SIT Driver",
+        "createdAt": "2026-10-25T03:31:39.749Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.664Z",
+        "endTime": "2026-10-25T03:31:39.749Z",
+        "location": ""
+      },
+      {
+        "activityType": "Loading",
+        "userId": "sit-driver",
+        "userName": "SIT Driver",
+        "createdAt": "2026-10-25T03:31:39.720Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.705Z",
+        "endTime": "2026-10-25T03:31:39.705Z",
+        "location": ""
+      },
+      {
+        "activityType": "CheckIn",
+        "userId": "sit-driver",
+        "userName": "SIT Driver",
+        "createdAt": "2026-10-25T03:31:39.664Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.664Z",
+        "endTime": "2026-10-25T03:31:39.749Z",
+        "location": ""
+      },
+      {
+        "activityType": "RouteStarted",
+        "userId": "sit-driver",
+        "userName": "SIT Driver",
+        "createdAt": "2026-10-25T03:31:39.634Z",
+        "timeLabel": "25/10/69 10:31",
+        "startTime": "2026-10-25T03:31:39.634Z",
+        "endTime": "",
+        "location": ""
+      }
+    ],
+    "files": [
+      {
+        "fileId": "FILE-1792899099716-4dee3e",
+        "fileType": "ProductImage",
+        "createdAt": "2026-10-25T03:31:39.717Z"
+      },
+      {
+        "fileId": "FILE-1792899099717-5e1de8",
+        "fileType": "CargoForm",
+        "createdAt": "2026-10-25T03:31:39.717Z"
+      },
+      {
+        "fileId": "FILE-1792899099717-ae0931",
+        "fileType": "DoorClosedAudit",
+        "createdAt": "2026-10-25T03:31:39.718Z"
+      },
+      {
+        "fileId": "FILE-1792899099718-ed7235",
+        "fileType": "InspectorSignature",
+        "createdAt": "2026-10-25T03:31:39.719Z"
+      },
+      {
+        "fileId": "FILE-1792899099719-92141a",
+        "fileType": "ReceiverSignature",
+        "createdAt": "2026-10-25T03:31:39.719Z"
+      },
+      {
+        "fileId": "FILE-1792899099803-01301b",
+        "fileType": "ReleaseDocument",
+        "createdAt": "2026-10-25T03:31:39.804Z"
+      },
+      {
+        "fileId": "FILE-1792899099820-98ac2c",
+        "fileType": "InboundDocument",
+        "createdAt": "2026-10-25T03:31:39.820Z"
+      },
+      {
+        "fileId": "FILE-1792899099918-7cb5ee",
+        "fileType": "TaggingBarcodeEvidence",
+        "createdAt": "2026-10-25T03:31:39.918Z"
+      },
+      {
+        "fileId": "FILE-1792899100001-f161b9",
+        "fileType": "QABarcodeEvidence",
+        "createdAt": "2026-10-25T03:31:40.002Z"
+      },
+      {
+        "fileId": "FILE-1792899100033-a2a401",
+        "fileType": "TaggingBarcodeEvidence",
+        "createdAt": "2026-10-25T03:31:40.033Z"
+      },
+      {
+        "fileId": "FILE-1792899100094-d9a3f8",
+        "fileType": "QABarcodeEvidence",
+        "createdAt": "2026-10-25T03:31:40.095Z"
+      }
+    ]
+  },
+  "driverLog": {
+    "generatedAt": "2026-10-25T03:31:40.162Z",
+    "timeZone": "Asia/Bangkok",
+    "fields": [
+      [
+        "routeStartedAt",
+        "เริ่มรอบ"
+      ],
+      [
+        "checkInAt",
+        "ถึงจุดรับ"
+      ],
+      [
+        "loadedAt",
+        "ยืนยันโหลดขึ้นรถ"
+      ],
+      [
+        "completedAt",
+        "ออกจากโรงงาน/เริ่มกลับ WH3"
+      ],
+      [
+        "arrivedWh3At",
+        "ถึง WH3"
+      ],
+      [
+        "releaseDocumentReceivedAt",
+        "รับใบตรวจปล่อย"
+      ]
+    ],
+    "rows": [
+      {
+        "houseNumber": "SIT-QA-20261025",
+        "onhandNumber": "SIT-QA-20261025",
+        "houseReference": "",
+        "master": "",
+        "customerName": "SIT ONLY — meeting safety test",
+        "driverId": "sit-driver",
+        "driverName": "SIT Driver",
+        "vehiclePlate": "SIT-TRUCK",
+        "synthetic": true,
+        "photoAt": "2026-10-25T03:31:39.717Z",
+        "times": {
+          "routeStartedAt": "2026-10-25T03:31:39.634Z",
+          "checkInAt": "2026-10-25T03:31:39.664Z",
+          "loadedAt": "2026-10-25T03:31:39.705Z",
+          "completedAt": "2026-10-25T03:31:39.749Z",
+          "arrivedWh3At": "2026-10-25T03:31:39.759Z",
+          "releaseDocumentReceivedAt": "2026-10-25T03:31:39.803Z"
+        },
+        "documentWaitMinutes": 0
+      }
+    ]
+  },
+  "dock": {
+    "ok": true,
+    "bays": [
+      {
+        "id": "D1",
+        "name": "ท่า 1",
+        "zone": "A",
+        "status": "Available",
+        "note": "",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D2",
+        "name": "ท่า 2",
+        "zone": "A",
+        "status": "Available",
+        "note": "",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D3",
+        "name": "ท่า 3",
+        "zone": "A",
+        "status": "Available",
+        "note": "",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D4",
+        "name": "ท่า 4",
+        "zone": "B",
+        "status": "Available",
+        "note": "",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D5",
+        "name": "ท่า 5",
+        "zone": "B",
+        "status": "Available",
+        "note": "",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D6",
+        "name": "ท่า 6",
+        "zone": "B",
+        "status": "Available",
+        "note": "",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D7",
+        "name": "ท่า 7",
+        "zone": "C",
+        "status": "Available",
+        "note": "",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D8",
+        "name": "ท่า 8",
+        "zone": "C",
+        "status": "Available",
+        "note": "",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D9",
+        "name": "ท่า 9",
+        "zone": "WH3",
+        "status": "Available",
+        "note": "Inbound",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D10",
+        "name": "ท่า 10",
+        "zone": "WH3",
+        "status": "Available",
+        "note": "Inbound",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      },
+      {
+        "id": "D11",
+        "name": "ท่า 11",
+        "zone": "WH3",
+        "status": "Available",
+        "note": "Inbound",
+        "customerName": "",
+        "pieceCount": "",
+        "locationId": "",
+        "flightNo": ""
+      }
+    ],
+    "queue": [
+      {
+        "id": "fc91382f-1942-4a05-929d-a61745913335",
+        "houseNumber": "SIT-EXTERNAL-20261025",
+        "queueType": "External",
+        "arrivedAt": "2026-10-25T03:31:40.125Z",
+        "createdAt": "2026-10-25T03:31:40.125Z",
+        "createdBy": "sit-wh",
+        "position": 1,
+        "queueAhead": 0,
+        "estimatedWaitMinutes": 0,
+        "customerName": "SIT DIRECT",
+        "pieceCount": 3,
+        "suggestedBayId": "D7"
+      },
+      {
+        "id": "ea775810-23ec-4c41-885f-a5a49bca7567",
+        "houseNumber": "SIT-QA-20261025",
+        "queueType": "Inbound",
+        "arrivedAt": "2026-10-25T03:31:39.759Z",
+        "createdAt": "2026-10-25T03:31:39.803Z",
+        "createdBy": "sit-driver",
+        "vehiclePlate": "SIT-TRUCK",
+        "position": 1,
+        "queueAhead": 0,
+        "estimatedWaitMinutes": 0,
+        "customerName": "SIT ONLY — meeting safety test",
+        "pieceCount": 5,
+        "suggestedBayId": "D8"
+      }
+    ],
+    "summary": {
+      "total": 11,
+      "available": 11,
+      "busy": 0,
+      "reserved": 0,
+      "closed": 0,
+      "waiting": 2,
+      "avgWaitMinutes": 0
+    },
+    "updatedAt": "2026-10-25T03:31:40.135Z"
+  }
+}

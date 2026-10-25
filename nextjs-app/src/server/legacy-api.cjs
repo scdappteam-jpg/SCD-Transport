@@ -29,6 +29,10 @@ const csDispatch = require("./cs-dispatch.cjs");
 const pickupFlow = require("./pickup-flow.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
+const meetingApi = require("./meeting-api.cjs");
+const meetingDriver = require("./meeting-driver-policy.cjs");
+const warehouseQuality = require("./warehouse-quality.cjs");
+const dockPlanning = require("./dock-planning.cjs");
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -478,6 +482,7 @@ function dockFindBay(db, bayId) {
 
 /* เสนอช่องเทียบที่เหมาะที่สุด: ว่างอยู่ + โซนใกล้ช่องเก็บปลายทาง */
 function dockSuggestBay(db, job) {
+    if (db.meetingSafety?.enabled) return dockPlanning.suggest(db,job,(db.dock?.queue||[]).find(e=>e.houseNumber===job?.houseNumber));
     const bays = dockBayList(db).filter(bay => bay.status === "Available" && !bay.houseNumber);
     if (!bays.length) return null;
     const target = String(job && (job.locationId || job.plannedLocationId) || "").trim().toUpperCase();
@@ -502,11 +507,12 @@ function dockBoard(db) {
             flightNo: job ? job.flightNo : ""
         };
     });
-    const queue = dockNormalizeQueue(db).map((item, index) => {
+    dockNormalizeQueue(db);
+    const queue = (db.meetingSafety?.enabled ? dockPlanning.queue(db) : db.dock.queue).map((item, index) => {
         const job = findJob(db, item.houseNumber);
         return {
             ...item,
-            position: index + 1,
+            position: item.position || index + 1,
             customerName: job ? job.customerName : item.customerName || "",
             pieceCount: job ? job.pieceCount : item.pieceCount || "",
             suggestedBayId: (dockSuggestBay(db, job) || {}).id || ""
@@ -1124,7 +1130,8 @@ function readRawBody(req, limit = 20 * 1024 * 1024) {
 }
 
 function parseBody(req) {
-    return new Promise((resolve, reject) => {
+    if (req.scdJsonBodyPromise) return req.scdJsonBodyPromise;
+    req.scdJsonBodyPromise = new Promise((resolve, reject) => {
         let data = "";
         req.on("data", chunk => {
             data += chunk;
@@ -1143,6 +1150,7 @@ function parseBody(req) {
         });
         req.on("error", reject);
     });
+    return req.scdJsonBodyPromise;
 }
 
 function nowIso() {
@@ -3390,6 +3398,28 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    // All legacy and modern entry points cross this boundary before any file,
+    // inventory, location or workflow mutation. Keep the parsed body reusable.
+    if (req.method === "POST" && (pathname.startsWith("/api/pickup/") || pathname.startsWith("/api/dock/") || pathname === "/api/attendance/checkin" || warehouseQuality.movementPaths.has(pathname) || pathname === "/api/operations/control")) {
+        try {
+            const payload = await parseBody(req);
+            meetingDriver.preflight(db, pathname, payload, sessionUser(db, req));
+            warehouseQuality.enforceMovement(db, pathname, payload);
+        } catch (error) { return sendJson(res, error.statusCode || 422, {error:error.message}); }
+    }
+    if (meetingApi.paths.has(pathname)) {
+        try {
+            const payload = req.method === "POST" ? await parseBody(req) : {};
+            const result = await meetingApi.handle({db,actor:sessionUser(db,req),path:pathname,method:req.method,payload,query:Object.fromEntries(new URL(req.url,"http://localhost").searchParams),at:nowIso(),scanUrl:SCAN_SERVICE_URL,
+                saveFiles:(houseNumber,fileType,files)=>saveBase64Files(db,{houseNumber,fileType,files}),alert:message=>createAlert(db,message,"warning")});
+            if (result.mutated) {
+                const houseNumber=result.houseNumber || payload.houseNumber;
+                if (houseNumber) logActivity(db,{houseNumber,userId:sessionUser(db,req).id,activityType:pathname.endsWith('/tag')?'TaggingRecorded':pathname.endsWith('/scan')?'QAApproved':pathname.endsWith('/external-intake')?'ExternalInvoiceLinked':'SafetyPolicyUpdated'});
+                writeDb(db);
+            }
+            return sendJson(res,200,result);
+        } catch (error) {return sendJson(res,error.statusCode || 503,{error:error.message});}
+    }
     if (req.method === "POST" && ["/api/inbound/receive-counts", "/api/inbound/receipts/preview"].includes(pathname)) {
         await refreshDbIfSharedStateChanged();
         db = readDb();
@@ -3464,6 +3494,7 @@ async function handleApi(req, res, pathname) {
         const viewer = sessionUser(db, req);
         return sendJson(res, 200, {
             users: publicUsers(db),
+            meetingSafety: db.meetingSafety || {enabled:false,geofencingEnabled:false},
             dashboard: buildMobileDashboard(db, viewer)
         });
     }
@@ -4249,6 +4280,9 @@ async function handleApi(req, res, pathname) {
         if (bay.houseNumber && bay.houseNumber !== houseNumber) {
             return sendJson(res, 409, { error: `${bay.name} ถูกใช้โดย House ${bay.houseNumber}` });
         }
+        if (db.meetingSafety?.enabled) {
+            try {dockPlanning.assignment(db,job,entry||{},bay);} catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
+        }
         Object.assign(bay, {
             status: "Occupied",
             houseNumber: houseNumber,
@@ -4256,7 +4290,7 @@ async function handleApi(req, res, pathname) {
             driverName: payload.driverName || (entry ? entry.driverName : "") || "",
             assignedAt: nowIso(),
             assignedBy: payload.userId || "",
-            expectedMinutes: Number(payload.expectedMinutes || 30)
+            expectedMinutes: Number(payload.expectedMinutes || (db.meetingSafety?.enabled ? db.meetingSafety.queueMinutes : 30))
         });
         db.dock.queue = db.dock.queue.filter(item => item.houseNumber !== houseNumber);
         if (job) {
@@ -4308,7 +4342,8 @@ async function handleApi(req, res, pathname) {
             ok: true,
             bay: bay,
             queue: queued,
-            ahead: queued ? Math.max(0, queued.position - 1) : 0,
+            ahead: queued ? queued.queueAhead ?? Math.max(0, queued.position - 1) : 0,
+            estimatedWaitMinutes: queued?.estimatedWaitMinutes ?? null,
             summary: board.summary
         });
     }
@@ -4999,6 +5034,19 @@ async function handleApi(req, res, pathname) {
         });
         const pickupRows = normalizePickupItems(payload.pickupItems || "");
         const loadedAt = nowIso();
+        if (db.meetingSafety?.enabled) {
+            const fingerprint=meetingDriver.pickupEvidence(payload);
+            for (const item of jobs) {
+                const recorded=[];
+                for (const [key,fileType] of [["productImages","ProductImage"],["cargoImages","CargoForm"],["doorClosedImages","DoorClosedAudit"]]) recorded.push(...saveBase64Files(db,{houseNumber:item.houseNumber,fileType,files:payload[key]}));
+                recorded.push(saveBase64File(db,{houseNumber:item.houseNumber,fileType:"InspectorSignature",base64:payload.signatureBase64,mimeType:"image/png"}));
+                recorded.push(saveBase64File(db,{houseNumber:item.houseNumber,fileType:"ReceiverSignature",base64:payload.receiverSignatureBase64,mimeType:"image/png"}));
+                item.safetyPickupEvidenceFingerprint=fingerprint;
+                item.safetyPickupEvidenceFileIds=recorded.map(file=>file.fileId);
+                item.pickupPhotoRecordedAt=loadedAt;
+                item.inspectorName=payload.inspectorName;item.receiverName=payload.receiverName;
+            }
+        }
         for (const item of jobs) {
             const ownRows = pickupRows.filter(row => row.houseNumber === item.houseNumber);
             const rowDestination = "WH3";
@@ -5085,6 +5133,7 @@ async function handleApi(req, res, pathname) {
         } catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
         let image = null;
         for (const item of jobs) {
+            if (item.safetyPickupEvidenceFingerprint) continue;
             saveBase64Files(db, {
                 houseNumber: item.houseNumber,
                 fileType: "ProductImage",
@@ -5205,6 +5254,7 @@ async function handleApi(req, res, pathname) {
         }
         const releasedAt = nowIso();
         for (const item of jobs) {
+            if (db.meetingSafety?.enabled) saveBase64Files(db,{houseNumber:item.houseNumber,fileType:"ReleaseDocument",files:payload.releaseDocumentFiles});
             const sla = deriveFlightSla(item, new Date(releasedAt).getTime());
             Object.assign(item, {
                 status: "WaitingForDock",
@@ -5213,6 +5263,10 @@ async function handleApi(req, res, pathname) {
                 wh3QueuePriorityMinutes: sla.minutesToAirportDue,
                 updatedAt: releasedAt
             });
+            if (db.meetingSafety?.enabled) {
+                db.dock||={};db.dock.queue||=[];
+                if (!db.dock.queue.some(entry=>entry.houseNumber===item.houseNumber)) db.dock.queue.push({id:crypto.randomUUID(),houseNumber:item.houseNumber,queueType:item.shipmentSource==="CustomerDirect"?"External":"Inbound",arrivedAt:item.arrivedWh3At,createdAt:releasedAt,createdBy:actor.id,vehiclePlate:item.vehiclePlate||""});
+            }
             logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ReleaseDocumentReceived", endTime: releasedAt });
         }
         writeDb(db);

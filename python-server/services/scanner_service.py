@@ -7,7 +7,15 @@ try:
 except Exception:  # easyocr is optional (heavy); barcode scanning works without it
     easyocr = None
 
-from pyzbar.pyzbar import decode
+try:
+    from pyzbar.pyzbar import decode
+except (ImportError, OSError):
+    decode = None
+
+try:
+    import zxingcpp
+except ImportError:
+    zxingcpp = None
 
 reader = None
 
@@ -27,11 +35,16 @@ class ScannerService:
         return re.sub(r"[^A-Za-z0-9]", "", text)
 
     @staticmethod
-    def scan_barcodes_from_path(filepath: str) -> list[str]:
+    def scan_barcodes_from_path(filepath: str, strict_barcode: bool = False) -> list[str]:
         results = set()
         image = cv2.imread(filepath)
         if image is None:
             return []
+
+        if strict_barcode or decode is None:
+            if zxingcpp is None:
+                raise RuntimeError("zxing-cpp is required for strict barcode scanning")
+            return sorted({ScannerService.normalize(result.text) for result in zxingcpp.read_barcodes(image) if result.valid and result.text})
 
         rotations = (
             image,

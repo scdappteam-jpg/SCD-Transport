@@ -2,7 +2,7 @@ import asyncio
 import os
 import tempfile
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from services.scanner_service import ScannerService
 
@@ -25,7 +25,7 @@ async def health():
 
 
 @app.post("/scan")
-async def scan_barcodes(image: UploadFile = File(...)):
+async def scan_barcodes(image: UploadFile = File(...), strict_barcode: bool = Form(False)):
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
@@ -38,8 +38,8 @@ async def scan_barcodes(image: UploadFile = File(...)):
         temporary_path = temporary_file.name
 
     try:
-        barcodes = await asyncio.to_thread(ScannerService.scan_barcodes_from_path, temporary_path)
-        return {"success": True, "count": len(barcodes), "barcodes": barcodes}
+        barcodes = await asyncio.to_thread(ScannerService.scan_barcodes_from_path, temporary_path, strict_barcode)
+        return {"success": True, "count": len(barcodes), "barcodes": barcodes, "strictBarcode": strict_barcode}
     finally:
         os.unlink(temporary_path)
 

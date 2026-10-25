@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-10-25T03:31:40.162Z",
+  "timeZone": "Asia/Bangkok",
+  "fields": [
+    [
+      "routeStartedAt",
+      "เริ่มรอบ"
+    ],
+    [
+      "checkInAt",
+      "ถึงจุดรับ"
+    ],
+    [
+      "loadedAt",
+      "ยืนยันโหลดขึ้นรถ"
+    ],
+    [
+      "completedAt",
+      "ออกจากโรงงาน/เริ่มกลับ WH3"
+    ],
+    [
+      "arrivedWh3At",
+      "ถึง WH3"
+    ],
+    [
+      "releaseDocumentReceivedAt",
+      "รับใบตรวจปล่อย"
+    ]
+  ],
+  "rows": [
+    {
+      "houseNumber": "SIT-QA-20261025",
+      "onhandNumber": "SIT-QA-20261025",
+      "houseReference": "",
+      "master": "",
+      "customerName": "SIT ONLY — meeting safety test",
+      "driverId": "sit-driver",
+      "driverName": "SIT Driver",
+      "vehiclePlate": "SIT-TRUCK",
+      "synthetic": true,
+      "photoAt": "2026-10-25T03:31:39.717Z",
+      "times": {
+        "routeStartedAt": "2026-10-25T03:31:39.634Z",
+        "checkInAt": "2026-10-25T03:31:39.664Z",
+        "loadedAt": "2026-10-25T03:31:39.705Z",
+        "completedAt": "2026-10-25T03:31:39.749Z",
+        "arrivedWh3At": "2026-10-25T03:31:39.759Z",
+        "releaseDocumentReceivedAt": "2026-10-25T03:31:39.803Z"
+      },
+      "documentWaitMinutes": 0
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "environment": "Isolated localhost A3",
+  "syntheticEvidenceOnly": true,
+  "productionModified": false,
+  "cases": [
+    {
+      "name": "Login sit-wh",
+      "httpStatus": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Login sit-qa",
+      "httpStatus": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Create separate synthetic Pair job",
+      "httpStatus": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair refuses only one tag photo",
+      "httpStatus": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair refuses reused identical photo",
+      "httpStatus": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair registers two actual Code128 captures",
+      "httpStatus": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair QA refuses only one capture",
+      "httpStatus": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair QA refuses tagger original captures",
+      "httpStatus": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair QA approves two independent captures",
+      "httpStatus": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair current QA and color verified",
+      "httpStatus": 200,
+      "result": "PASS"
+    }
+  ],
+  "passed": 10,
+  "job": {
+    "houseNumber": "SIT-PAIR-20261025",
+    "hawbNumber": "SIT-PAIR-20261025",
+    "onhandNumber": "",
+    "master": "",
+    "customerName": "SIT ONLY PAIR",
+    "invoiceNo": "SIT-PAIR-INV",
+    "shipmentSource": "CustomerDirect",
+    "status": "PendingEI",
+    "updatedAt": "2026-10-25T03:31:59.160Z",
+    "trackType": "Pair",
+    "stickerColor": "Red",
+    "tagInspection": {
+      "revision": 1,
+      "mode": "Pair",
+      "stickerColor": "Red",
+      "tags": [
+        {
+          "barcode": "SITPAIR20261025",
+          "imageHash": "59ebf4f7dbfa9cecbe22f19ab4850be7ce90f9bcdff497d8abb71b6b8a378842"
+        },
+        {
+          "barcode": "SITPAIR20261025",
+          "imageHash": "6250b62d2585ed5abae3c76af4c1c3c62d4634e6a60d3948417f9f77f2156040"
+        }
+      ],
+      "taggedBy": "sit-wh",
+      "taggedAt": "2026-10-25T03:31:59.028Z",
+      "fileIds": [
+        "FILE-1792899119060-129070",
+        "FILE-1792899119060-df019e"
+      ],
+      "identity": "1459ec2ca675343be92be05d2d8b1805e2064501b9799946196b5e494ae9d9e2"
+    },
+    "qaApproval": {
+      "id": "59b671d5-bab4-47ce-85bc-7163cee15608",
+      "revision": 1,
+      "approvedBy": "sit-qa",
+      "approvedAt": "2026-10-25T03:31:59.160Z",
+      "tags": [
+        {
+          "barcode": "SITPAIR20261025",
+          "imageHash": "9414f516444cd36b5e75eb6c81f1c48fc703836bbdafe42609bce6539b82cef2"
+        },
+        {
+          "barcode": "SITPAIR20261025",
+          "imageHash": "1cc8cf369c36e7e71aacf8854f63f01f8750a155c49c500bde5147cbd1b18bd3"
+        }
+      ],
+      "fileIds": [
+        "FILE-1792899119202-8eedc0",
+        "FILE-1792899119203-824ab1"
+      ]
+    },
+    "qaApproved": true,
+    "qaRequired": true
+  }
+}

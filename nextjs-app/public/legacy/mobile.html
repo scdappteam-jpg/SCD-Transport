@@ -131,7 +131,9 @@
         <label>วันที่ / Pickup Date</label>
         <input id="driverPickupDate" type="date">
         <label>ใบงาน / Assigned Job</label>
+        <input id="driverJobSearch" type="search" placeholder="ค้นหารหัสงาน / House / ลูกค้า เช่น ABC" aria-label="ค้นหาใบงานคนขับ">
         <select id="driverJobSelect"></select>
+        <a href="index.html?view=driver-time-log">Driver Time Log / รายงานเวลาคนขับ</a>
         <div id="driverCsHandoff" class="flow-notice" hidden></div>
         <div id="driverGroupSummary" class="group-summary" hidden></div>
         <div id="driverFlowNotice" class="flow-notice">
@@ -230,8 +232,11 @@
         <small id="simulatePickupEvidenceHint" hidden>สร้างเฉพาะรูปหลักฐานจำลองสำหรับทดสอบ Full Loop ของ House SIT — ใช้กับงานจริงไม่ได้</small>
         </div>
         <div class="mwf-step" data-mstep="4" hidden>
-        <label>ลายเซ็น / Signature</label>
+        <label>ลายเซ็นผู้ตรวจ / Inspector signature</label>
         <canvas id="signaturePad" width="680" height="220"></canvas>
+        <label>ลายเซ็นเจ้าหน้าที่รับของ / Receiver signature</label>
+        <canvas id="receiverSignaturePad" width="680" height="220" style="width:100%;touch-action:none;border:1px solid #cbd5e1"></canvas>
+        <button id="clearReceiverSignature" type="button" class="soft">ล้างลายเซ็นผู้รับ</button>
         <button id="loadCargoBtn" type="button" class="load-button">โหลดสินค้าขึ้นรถ / Load Cargo</button>
         <div class="button-row">
           <button id="clearSignature" type="button" class="soft">ล้าง / Clear</button>
@@ -240,6 +245,8 @@
         <div id="driverReturnActions" class="guided-workflow-details" hidden>
           <div class="flow-notice soft-note"><strong>รับ House ครบแล้ว</strong><span>ระบบเปลี่ยนสถานะเป็นกำลังกลับ WH3 อัตโนมัติ</span></div>
           <button id="arriveWh3Btn" type="button">ถึง WH3 แล้ว</button>
+          <label>ภาพใบตรวจปล่อย / Release document</label>
+          <input id="releaseDocumentFiles" type="file" accept="image/*" capture="environment" multiple>
           <button id="releaseDocumentBtn" type="button" class="soft">ได้รับใบตรวจปล่อยแล้ว</button>
         </div>
         </div>
@@ -805,7 +812,7 @@
     <script src="inbound-receipt-ui.js?v=3-preview-labels"></script>
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
   <script src="test-user-mode.js?v=1-admin-scoped"></script>
-  <script src="mobile.js?v=20261024-pickup-integrity"></script>
+  <script src="mobile.js?v=20261025-meeting-safety"></script>
   </body>
 </html>
 

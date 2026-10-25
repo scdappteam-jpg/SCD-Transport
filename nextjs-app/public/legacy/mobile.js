@@ -230,6 +230,7 @@ async function recoverCompletedRequest(path, payload) {
         if (!payload.flightChanged || !FlightUI.committed(job, payload)) return null;
     } else if (!expectedStatuses.includes(job.status)) return null;
     if (path === "/api/inbound/close" && !InboundReceipts.closeConfirmed(job, payload)) return null;
+    state.meetingSafety = data.meetingSafety || {enabled:false};
     state.dashboard = data.dashboard;
     state.users = data.users || state.users;
     return job;
@@ -312,9 +313,11 @@ async function refresh() {
         data = window.SMART_LOGISTICS_DEMO;
         toast("Demo mode: แสดงข้อมูลงานตัวอย่าง 10 งาน");
     }
+    state.meetingSafety = data.meetingSafety || {enabled:false};
     state.dashboard = data.dashboard;
     state.users = data.users || [];
     render();
+    updatePickupSafetyButtons();
 }
 
 function render() {
@@ -430,11 +433,15 @@ function renderDriverJobSelect() {
     }
     const current = select.value;
     const groups = pickupGroups();
-    const jobs = visibleDriverJobs();
-    select.innerHTML = [ `<option value="manual">กรอกเอง / Manual form</option>`, ...groups.filter(group => group.jobs.length > 1).map(group => `<option value="group::${encodeURIComponent(group.key)}">กลุ่มรับงาน: ${group.customerName} · ${group.pickupLocation} (${group.jobs.length} งาน)</option>`), ...jobs.map(job => `<option value="${job.houseNumber}">${job.houseNumber} · ${job.customerName}</option>`) ].join("");
+    const allJobs = visibleDriverJobs();
+    const query = String($("#driverJobSearch")?.value || "").trim().toLowerCase();
+    const matches = job => !query || [job.houseNumber,job.onhandNumber,job.hawbNumber,job.mawbNumber,job.id,job.customerName].some(v=>String(v||"").toLowerCase().includes(query));
+    const jobs = allJobs.filter(job=>matches(job)||job.houseNumber===current);
+    select.innerHTML = [ `<option value="manual">กรอกเอง / Manual form</option>`, ...groups.filter(group => group.jobs.length > 1 && (group.jobs.some(matches)||current===`group::${encodeURIComponent(group.key)}`)).map(group => `<option value="group::${encodeURIComponent(group.key)}">กลุ่มรับงาน: ${group.customerName} · ${group.pickupLocation} (${group.jobs.length} งาน)</option>`), ...jobs.map(job => `<option value="${job.houseNumber}">${job.houseNumber} · ${job.customerName}${query&&!matches(job)?" (กำลังเลือกอยู่)":""}</option>`) ].join("");
     const validValues = Array.from(select.options).map(option => option.value);
     select.value = validValues.includes(current) ? current : "";
-    applyDriverJob(select.value);
+    if (select.value !== current) applyDriverJob(select.value);
+    updatePickupSafetyButtons();
 }
 
 function findJob(houseNumber) {
@@ -1137,8 +1144,8 @@ async function filesToCompressedBase64(input) {
     return results;
 }
 
-function setupSignaturePad() {
-    const canvas = $("#signaturePad");
+function setupSignaturePad(canvasId="signaturePad",clearId="clearSignature") {
+    const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext("2d");
     let drawing = false;
     function point(event) {
@@ -1176,11 +1183,12 @@ function setupSignaturePad() {
         passive: false
     });
     canvas.addEventListener("touchend", () => drawing = false);
-    $("#clearSignature").addEventListener("click", () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+    document.getElementById(clearId).addEventListener("click", () => {ctx.clearRect(0, 0, canvas.width, canvas.height);updatePickupSafetyButtons();});
 }
 
 async function runAction(button, task) {
     button.disabled = true;
+    button.scdBusy = true;
     try {
         await task();
         await refresh();
@@ -1191,7 +1199,9 @@ async function runAction(button, task) {
         showMobileActionModal("ยังดำเนินการไม่สำเร็จ", message);
         toast(message);
     } finally {
+        button.scdBusy = false;
         button.disabled = false;
+        updatePickupSafetyButtons();
     }
 }
 
@@ -1491,12 +1501,19 @@ function bindEvents() {
             checklist: checkedPickupItems(),
             pickupItems: syncPickupItemsText(),
             endPlace: computedEndPlace(),
+            inspectorName: $("#driverInspectorName").value.trim(),
+            receiverName: $("#driverReceiverName").value.trim(),
+            productImages: await filesToCompressedBase64($("#productImages")),
+            cargoImages: await filesToCompressedBase64($("#cargoImages")),
+            doorClosedImages: await filesToCompressedBase64($("#doorClosedImages")),
+            signatureBase64: $("#signaturePad").toDataURL("image/png"),
+            receiverSignatureBase64: $("#receiverSignaturePad").toDataURL("image/png"),
             ...gps
         });
         state.cargoLoaded = true;
         $("#loadCargoBtn").classList.add("loaded");
         $("#loadCargoBtn").textContent = "โหลดขึ้นรถแล้ว / Cargo loaded";
-        showMobileActionModal("โหลดสินค้าขึ้นรถแล้ว", `บันทึกปลายทาง ${computedEndPlace()} แล้ว ขั้นตอนถัดไปคือถ่ายรูปใบ Cargo/ลายเซ็น และกดจบงาน`);
+        showMobileActionModal("โหลดสินค้าขึ้นรถแล้ว", `บันทึกปลายทาง ${computedEndPlace()} แล้ว เก็บ Checklist รูปและลายเซ็นครบแล้ว กดจบรับเพื่อเริ่มกลับ WH3`);
         toast("โหลดสินค้าขึ้นรถแล้ว / Cargo loaded");
     }));
     $("#simulatePickupEvidenceBtn")?.addEventListener("click", () => {
@@ -1525,6 +1542,7 @@ function bindEvents() {
             cargoImages: cargoImages,
             doorClosedImages: doorClosedImages,
             signatureBase64: $("#signaturePad").toDataURL("image/png"),
+            receiverSignatureBase64: $("#receiverSignaturePad").toDataURL("image/png"),
             pickupCase: $("#driverPickupCase").value,
             stickerColor: $("#driverStickerColor").value.trim(),
             checklist: checkedPickupItems(),
@@ -1553,6 +1571,7 @@ function bindEvents() {
     }));
     $("#releaseDocumentBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/pickup/release-document", {
+            releaseDocumentFiles: await filesToCompressedBase64($("#releaseDocumentFiles")),
             houseNumber: primaryHouseNumber(),
             houseNumbers: pickupHouseNumbers(),
             userId: state.currentUserId
@@ -1899,6 +1918,11 @@ if ("serviceWorker" in navigator) {
 }
 
 setupSignaturePad();
+setupSignaturePad("receiverSignaturePad","clearReceiverSignature");
+document.addEventListener("change",updatePickupSafetyButtons);
+document.addEventListener("input",updatePickupSafetyButtons);
+document.addEventListener("pointerup",()=>setTimeout(updatePickupSafetyButtons,0));
+$("#driverJobSearch")?.addEventListener("input",renderDriverJobSelect);
 
 bindEvents();
 
@@ -2376,8 +2400,8 @@ function showConfirmSheet(title, desc, onOk) {
         });
         stepper.innerHTML = labels.map((l, i) => {
             const n = i + 1;
-            const cls = n === cur ? "active" : n < cur ? "done" : "";
-            return `<button type="button" class="mwf-dot ${cls}" data-goto="${n}" onclick="setPickupStep(${n})"><span>${n < cur ? "✓" : n}</span><small>${l}</small></button>`;
+            const cls = n === cur ? "active" : "";
+            return `<button type="button" class="mwf-dot ${cls}" data-goto="${n}" onclick="setPickupStep(${n})"><span>${n}</span><small>${l}</small></button>`;
         }).join("");
         const prev = document.getElementById("mwfPrev");
         const next = document.getElementById("mwfNext");
@@ -2599,7 +2623,7 @@ async function renderMDock() {
         box.innerHTML = `
           <div class="fo-dock-lbl">อยู่ในคิวรอช่องเทียบท่า</div>
           <div class="fo-dock-no">คิวที่ ${data.queue.position}</div>
-          <div class="fo-dock-sub">${escapeHtmlMobile(data.queue.houseNumber)} · รออีก ${data.ahead} คัน</div>
+          <div class="fo-dock-sub">${escapeHtmlMobile(data.queue.houseNumber)} · รออีก ${data.ahead} คัน${data.estimatedWaitMinutes!=null ? ` · ประมาณ ${data.estimatedWaitMinutes} นาที` : ""}</div>
           ${data.queue.suggestedBayId ? `<div class="fo-dock-kv"><span>ช่องที่ระบบเสนอ</span><b>${escapeHtmlMobile(data.queue.suggestedBayId)}</b></div>` : ""}
           <div class="fo-dock-kv"><span>ท่าว่างตอนนี้</span><b>${data.summary?.available ?? "-"} ท่า</b></div>
           <button type="button" class="fo-primary-btn outline" onclick="renderMDock()">รีเฟรชสถานะ</button>`;
@@ -3319,3 +3343,14 @@ function bindEscapeToSheets() {
 }
 document.addEventListener("DOMContentLoaded", bindEscapeToSheets);
 setTimeout(bindEscapeToSheets, 500);
+
+function updatePickupSafetyButtons() {
+    if (!state.meetingSafety?.enabled || currentUser()?.role!=="Driver") return;
+    const ink=id=>{const c=document.getElementById(id);if(!c)return false;const pixels=c.getContext("2d").getImageData(0,0,c.width,c.height).data;let n=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>16&&Math.min(pixels[i],pixels[i+1],pixels[i+2])<240&&++n>=8)return true;return false;};
+    const ready=checkedPickupItems().length===10 && ["productImages","cargoImages","doorClosedImages"].every(id=>document.getElementById(id)?.files?.length) && document.getElementById("driverInspectorName")?.value.trim() && document.getElementById("driverReceiverName")?.value.trim() && ink("signaturePad") && ink("receiverSignaturePad");
+    const load=document.getElementById("loadCargoBtn"),complete=document.getElementById("completePickupBtn");
+    if(load&&!load.scdBusy)load.disabled=Boolean(state.cargoLoaded)||!ready;
+    if(complete&&!complete.scdBusy)complete.disabled=!state.cargoLoaded||!ready;
+    const release=document.getElementById("releaseDocumentBtn");
+    if(release&&!release.scdBusy&&jobsFromSelection().some(j=>j.driverRouteStatus==="ArrivedWH3"))release.disabled=!document.getElementById("releaseDocumentFiles")?.files?.length;
+}
