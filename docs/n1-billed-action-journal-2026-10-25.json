@@ -1,0 +1,16 @@
+{
+  "invoiceId": "INV-2026-0002",
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "actions": [
+    "Baseline read Draft 1000",
+    "UI mark Billed click once; CDP timed out",
+    "getJsDialog returned undefined; AX and screenshot timed out",
+    "Read-back initially Draft; closed blocked tab",
+    "Fallback guard read Billed and aborted before any POST",
+    "Read-only final audit PASS; final UI preview and register Billed"
+  ],
+  "emailEndpointCalled": false,
+  "fallbackApiClosePosts": 0,
+  "confirmationScreenshotCaptured": false,
+  "source": "Tool observations in this task; final billedDate is server evidence, not simulated time"
+}

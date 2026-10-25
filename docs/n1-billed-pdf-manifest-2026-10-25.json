@@ -1,0 +1,42 @@
+{
+  "pdf": "C:\\Users\\UsEr\\OneDrive\\Desktop\\Logistic คุณใหม่\\SCD-Transport\\output\\pdf\\SCD-N1-Invoice-Draft-to-Billed-SIT-2026-10-25.pdf",
+  "pages": 14,
+  "images": [
+    {
+      "file": "n1-billed-01-geofencing-before-2026-10-25.png",
+      "title": "ก่อนทดสอบ: Geofencing ปิด",
+      "sha256": "d00a7cbdd1493ef02f9c2e1fe5f4c10ec341f067249bd5d79dbf92be8e66546e"
+    },
+    {
+      "file": "n1-billed-02-draft-preview-2026-10-25.png",
+      "title": "ก่อนปิด: Draft ใบเดิม",
+      "sha256": "274f18e0f51ee0ae0ae38272c724978556f29df0a43b3bf628acc2bd5abe969c"
+    },
+    {
+      "file": "n1-billed-03-register-2026-10-25.png",
+      "title": "หลังปิด: ทะเบียน Billed",
+      "sha256": "7790899decb954c2d7d6953a85df452bdcfe32384077416bdafaec32273cd397"
+    },
+    {
+      "file": "n1-billed-04-billed-preview-2026-10-25.png",
+      "title": "หลังปิด: Preview Billed",
+      "sha256": "ac7d35a70bff9fdc9fe678cd98bfc661f5ad90724c5ca06bf1ec174434ad8ffd"
+    },
+    {
+      "file": "n1-billed-05-job-2026-10-25.png",
+      "title": "หลังปิด: รายการงาน Transport",
+      "sha256": "1d2174b34e211ca49594ac4f9ca2685f33c12f3ee1396a9d63569d075483fda4"
+    },
+    {
+      "file": "n1-billed-06-document-2026-10-25.png",
+      "title": "เอกสารเดิมยังเปิดได้",
+      "sha256": "85f54b3ccbd41f0227056f797f90040ca107c86f7e926d1b8729a6732d4cb31d"
+    },
+    {
+      "file": "n1-billed-07-geofencing-after-2026-10-25.png",
+      "title": "หลังทดสอบ: Geofencing ปิด",
+      "sha256": "54dcb630779d8a3dc7bb5b1d6c022cbe43b3bfd483d2d27d55006991c1433e01"
+    }
+  ],
+  "sha256": "c324251abeae207bef3d3345177105f578a9a075e6963a01981a6e351ac788e8"
+}

@@ -1,0 +1,8 @@
+{
+  "attachmentCount": 22,
+  "invoiceDocuments": 1,
+  "invoiceId": "INV-2026-0002",
+  "markBilledButtonEnabled": true,
+  "preview": "S.C.D.TRANSPORT\nInvoice / ใบวางบิล\nINV-2026-0002\nBilled\nBill To / ลูกค้า\nSIT ONLY N1 INVOICE - NOT FOR PAYMENT\nSIT N1 SYNTHETIC ADDRESS - NOT FOR DELIVERY OR PAYMENT\nContact\n-\n-\nTax ID: -\nHOUSE\tFLIGHT\tSTATUS\tAMOUNT\nSIT-CS-DRIVER-20261025-N1\tSIT200\tBilled\t1,000\nCredit Term: 0 วัน\nDue Date: 25/10/2569\nTotal 1,000 บาท\nเปิดเอกสาร Invoice",
+  "readyListContainsN1": false
+}

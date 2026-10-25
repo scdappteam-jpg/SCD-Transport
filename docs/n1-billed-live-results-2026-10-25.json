@@ -1,0 +1,88 @@
+{
+  "environment": "https://scd-transport.onrender.com",
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "invoiceId": "INV-2026-0002",
+  "syntheticOnly": true,
+  "checkedAt": "2026-10-25T09:42:50.487115+00:00",
+  "emailEndpointCalled": false,
+  "cases": [
+    {
+      "name": "check-no-outbound-notifications",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "baseline",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "policy-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "dock-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "map-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "guard-before-single-close",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "policy-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "map-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "dock-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "filtered-billing-summary",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    }
+  ],
+  "passed": 11
+}
