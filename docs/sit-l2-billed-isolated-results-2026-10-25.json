@@ -1,0 +1,34 @@
+{
+  "environment": "isolated VM copy of actual production handler",
+  "productionMutation": false,
+  "networkCalls": 0,
+  "house": "SIT-MEETING-20261025-L2",
+  "invoiceId": "INV-2026-0001",
+  "cases": [
+    {
+      "name": "isolated-driver-denied",
+      "expected": 403,
+      "actual": 403,
+      "result": "PASS"
+    },
+    {
+      "name": "isolated-draft-to-billed-without-email",
+      "expected": "Billed",
+      "actual": "Billed",
+      "result": "PASS"
+    },
+    {
+      "name": "isolated-repeat-close-preserves-first-billed-date",
+      "expected": "409 or idempotent 200 with original billedDate",
+      "actual": {
+        "httpStatus": 200,
+        "firstBilledDate": "2026-10-25T06:00:01.000Z",
+        "repeatedBilledDate": "2026-10-25T06:00:03.000Z"
+      },
+      "result": "FAIL",
+      "message": "Actual handler overwrites billedDate on a repeat. Not repeated against production."
+    }
+  ],
+  "passed": 2,
+  "failed": 1
+}

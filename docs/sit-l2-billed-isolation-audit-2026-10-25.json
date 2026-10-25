@@ -1,0 +1,22 @@
+{
+  "target": "SIT-MEETING-20261025-L2",
+  "invoiceId": "INV-2026-0001",
+  "status": "Billed",
+  "amount": 1000,
+  "billedDate": "2026-10-25T05:12:34.183Z",
+  "nonTargetJobsVerified": 3805,
+  "nonTargetJobsChanged": 0,
+  "beforeNonTargetSha256": "eec8aefc8b497df3a906941c0a6555728d926b8592e73f35e7701e5228a5b1d6",
+  "afterNonTargetSha256": "eec8aefc8b497df3a906941c0a6555728d926b8592e73f35e7701e5228a5b1d6",
+  "noInvoicesAddedOrRemoved": true,
+  "otherInvoicesUnchanged": true,
+  "targetInvoiceOnlyStatusAndBilledDateChanged": true,
+  "customerUsersPolicyWarehouseUnchanged": true,
+  "dockBaysAndQueuesUnchanged": true,
+  "invoiceDocumentSha256": "ef567b4b72c764f4eef095adfefbdbcee08971349cba38728b9ffc928b2a251d",
+  "invoiceDocumentUnchanged": true,
+  "noEmailEndpointCalled": true,
+  "noEmailSentOrQueuedMetadata": true,
+  "geofencingEnabled": false,
+  "physicalPaymentVerified": false
+}

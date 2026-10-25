@@ -1,0 +1,137 @@
+{
+  "environment": "https://scd-transport.onrender.com",
+  "house": "SIT-MEETING-20261025-L2",
+  "invoiceId": "INV-2026-0001",
+  "syntheticOnly": true,
+  "checkedAt": "2026-10-25T05:14:33.085649+00:00",
+  "emailEndpointCalled": false,
+  "cases": [
+    {
+      "name": "check-no-outbound-notifications",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "baseline",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "policy-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "dock-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "map-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "temporary-api-session",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "existing-driver",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "existing-transport",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "driver-cannot-mark-billed",
+      "expected": 403,
+      "httpStatus": 403,
+      "result": "PASS",
+      "message": "ไม่มีสิทธิ์ดำเนินการวางบิล"
+    },
+    {
+      "name": "transport-cannot-mark-billed",
+      "expected": 403,
+      "httpStatus": 403,
+      "result": "PASS",
+      "message": "ไม่มีสิทธิ์ดำเนินการวางบิล"
+    },
+    {
+      "name": "guard-before-single-close",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "close-sit-invoice-once",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "policy-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "map-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "dock-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "filtered-billing-summary",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "revoke-temporary-api-sessions",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    }
+  ],
+  "passed": 18
+}

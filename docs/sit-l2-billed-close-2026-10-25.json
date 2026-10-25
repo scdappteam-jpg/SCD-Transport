@@ -1,0 +1,156 @@
+{
+  "id": "INV-2026-0001",
+  "amount": 1000,
+  "pdfUrl": "/storage/invoices/INV-2026-0001.html",
+  "status": "Billed",
+  "dueDate": "2026-10-25T04:42:50.282Z",
+  "draftedAt": "2026-10-25T04:42:50.282Z",
+  "customerId": "c_sit_only_l2_invoice_not_for_",
+  "houseNumber": "SIT-MEETING-20261025-L2",
+  "billingEmail": "",
+  "customerName": "SIT ONLY L2 INVOICE - NOT FOR PAYMENT",
+  "documentStatus": {
+    "files": [
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792900542963-f2208c.png",
+        "fileId": "FILE-1792900542963-f2208c",
+        "fileType": "QABarcodeEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T03:55:42.964Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792900542964-d84cd6.png",
+        "fileId": "FILE-1792900542964-d84cd6",
+        "fileType": "QABarcodeEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T03:55:42.964Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902236024-6eee63.png",
+        "fileId": "FILE-1792902236024-6eee63",
+        "fileType": "ReleaseDocument",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:23:56.025Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902243809-392b97.png",
+        "fileId": "FILE-1792902243809-392b97",
+        "fileType": "InboundDocument",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:24:03.810Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902299823-600006.png",
+        "fileId": "FILE-1792902299823-600006",
+        "fileType": "InboundEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:24:59.824Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902318939-72a2c1.png",
+        "fileId": "FILE-1792902318939-72a2c1",
+        "fileType": "OutboundDocument",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:25:18.939Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902330964-eee794.png",
+        "fileId": "FILE-1792902330964-eee794",
+        "fileType": "EISignProof",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:25:30.964Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902349514-9b6210.png",
+        "fileId": "FILE-1792902349514-9b6210",
+        "fileType": "WH3PreDispatchEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:25:49.515Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902760461-d129b1.png",
+        "fileId": "FILE-1792902760461-d129b1",
+        "fileType": "CargoTransferPermit",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:32:40.462Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902795306-637802.png",
+        "fileId": "FILE-1792902795306-637802",
+        "fileType": "PreLoadPhoto",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:33:15.307Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902818401-d3122a.png",
+        "fileId": "FILE-1792902818401-d3122a",
+        "fileType": "TerminalQueueEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:33:38.401Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902838888-0e404a.png",
+        "fileId": "FILE-1792902838888-0e404a",
+        "fileType": "TerminalArrivalEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:33:58.889Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902861520-ea4660.png",
+        "fileId": "FILE-1792902861520-ea4660",
+        "fileType": "MasterWeightSlip",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:34:21.520Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792902895408-1d6cd6.png",
+        "fileId": "FILE-1792902895408-1d6cd6",
+        "fileType": "MasterXRayEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:34:55.408Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792903001569-52193e.png",
+        "fileId": "FILE-1792903001569-52193e",
+        "fileType": "LoadingDetail",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:36:41.569Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      },
+      {
+        "url": "/storage/SIT-MEETING-20261025-L2/FILE-1792903010274-76c735.png",
+        "fileId": "FILE-1792903010274-76c735",
+        "fileType": "CargoTransferReturned",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T04:36:50.275Z",
+        "houseNumber": "SIT-MEETING-20261025-L2"
+      }
+    ],
+    "ready": true,
+    "blockers": [],
+    "hasWeight": true,
+    "hasLoading": true,
+    "hasTransfer": true,
+    "hasWorkDate": true,
+    "hasCsEvidence": true,
+    "hasPlanVersion": true,
+    "hasWh3Dispatch": true,
+    "hasPlanApproval": true,
+    "hasFieldEvidence": true
+  },
+  "billedDate": "2026-10-25T05:12:34.183Z"
+}
