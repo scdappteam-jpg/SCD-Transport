@@ -2559,7 +2559,8 @@ function foJobStatusMeta(job) {
 function foDriverJobCard(job, index = 0) {
     const meta = foJobStatusMeta(job);
     const destination = String(job.routeType || job.destination || "").trim().toUpperCase();
-    const direction = destination === "WH3" || destination.includes("INBOUND") ? "ขาเข้า WH3" : ["TG", "TGINT", "BFS", "OUTBOUND"].includes(destination) ? "ขาออก Terminal" : "ยังไม่ระบุเส้นทาง";
+    const outboundLeg = Boolean(job.goodsLoadedAt || job.releasedWh3At || job.terminalArrivedAt || job.terminalClosedAt);
+    const direction = outboundLeg ? "ขาออก Terminal" : destination === "WH3" || destination.includes("INBOUND") ? "ขาเข้า WH3" : ["TG", "TGINT", "BFS", "OUTBOUND"].includes(destination) ? "ขาออก Terminal" : "ยังไม่ระบุเส้นทาง";
     const receipt = InboundReceipts.house(job);
     const qaLabel = job.qaVerified === true ? "QA อนุมัติแล้ว" : "QA ยังไม่อนุมัติ";
     const receiptLabel = receipt.complete ? "รับคลังครบแล้ว" : receipt.confirmed ? "รับคลังยังไม่ครบ" : "ยังไม่ยืนยันรับคลัง";
