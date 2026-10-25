@@ -662,6 +662,7 @@ async function parseApiResponse(res, path) {
         const error = new Error(apiErrorMessage(path, res.status, data, rawText));
         error.status = res.status;
         error.data = data;
+        error.code = data.code;
         throw error;
     }
     return data;
@@ -685,6 +686,7 @@ async function api(path, payload, method) {
         const res = await fetch(apiUrl(path), opts);
         return await parseApiResponse(res, path);
     } catch (error) {
+        if (error.code === "BOOKING_SAVE_UNCONFIRMED") throw error;
         try {
             const job = await recoverCompletedDesktopRequest(path, payload);
             if (job) {
