@@ -1,0 +1,90 @@
+[
+  {
+    "fileType": "OutboundDocument",
+    "fileId": "FILE-1792912540131-b39a6a",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912540131-b39a6a.png",
+    "bytes": 26754,
+    "sha256": "9a4cf497d92ab492b393a29cda2e5d7df2ca362e0bfe623447d10237a5de2c26",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "EISignProof",
+    "fileId": "FILE-1792912550615-9d2daf",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912550615-9d2daf.png",
+    "bytes": 25271,
+    "sha256": "a045162ea31a894640085de2eff0884325e42482da4553715ec58e7a3a1fba44",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "WH3PreDispatchEvidence",
+    "fileId": "FILE-1792912564544-8e5ff0",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912564544-8e5ff0.png",
+    "bytes": 26754,
+    "sha256": "9a4cf497d92ab492b393a29cda2e5d7df2ca362e0bfe623447d10237a5de2c26",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "CargoTransferPermit",
+    "fileId": "FILE-1792912609320-9a84b6",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912609320-9a84b6.png",
+    "bytes": 26154,
+    "sha256": "03b63e9edb4c698f5888a2b591336cf296bc8e8acf459061c1fcc4a06f1ef7f9",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "PreLoadPhoto",
+    "fileId": "FILE-1792912648130-03b936",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912648130-03b936.png",
+    "bytes": 26239,
+    "sha256": "caa945a6c94e9a343f0e2d461a95ed55601d17641591dcef81f60cf5dde3edfa",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "TerminalQueueEvidence",
+    "fileId": "FILE-1792912796456-430652",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912796456-430652.png",
+    "bytes": 25906,
+    "sha256": "b80f0b8c11a76f6ab665e37fcfed2a09cbcb28232b46026fd1256c0f473d028f",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "TerminalArrivalEvidence",
+    "fileId": "FILE-1792912807518-95203e",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912807518-95203e.png",
+    "bytes": 26156,
+    "sha256": "dd48665b6de9cc721fb99b7f128cda69c62c5a88a28d0e6c4ef4223972913efd",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "MasterWeightSlip",
+    "fileId": "FILE-1792912849709-a6be83",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912849709-a6be83.png",
+    "bytes": 26702,
+    "sha256": "bbce580219e53b4cc35b0d399eea1a229642bcd56c907980dbf1732d7a258d00",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "MasterXRayEvidence",
+    "fileId": "FILE-1792912887535-726c26",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912887535-726c26.png",
+    "bytes": 25512,
+    "sha256": "8985a2d65ba688ee6055aa6aefa70f31d273effe1570fcaf8df8593c2c5c707c",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "LoadingDetail",
+    "fileId": "FILE-1792912942083-4fd372",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912942083-4fd372.png",
+    "bytes": 26177,
+    "sha256": "d5100602ee26f2ca7d50532f6983a15509f011590893e6c17621a5256cde3472",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "CargoTransferReturned",
+    "fileId": "FILE-1792912951637-f55012",
+    "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912951637-f55012.png",
+    "bytes": 26306,
+    "sha256": "6cc674b8764046571c4042bbf0697673cf51f89d7395d3338a0124845ecea40d",
+    "httpStatus": 200
+  }
+]

@@ -1,0 +1,512 @@
+{
+  "environment": "https://scd-transport.onrender.com",
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "syntheticMaster": "SIT-MASTER-20261025-N1",
+  "flight": "SIT200",
+  "checkedAt": "2026-10-25T07:25:17.684088+00:00",
+  "syntheticEvidenceOnly": true,
+  "physicalMovementVerified": false,
+  "cases": [
+    {
+      "name": "baseline",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "policy-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "users-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "map-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "dock-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "before",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "notifications-preflight",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "open-api-test-session",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "use-existing-sit-wh",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "use-existing-sit-transport",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "use-existing-sit-ei",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "use-existing-sit-terminal",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "use-existing-sit-driver",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "set-isolated-synthetic-master",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "verify-qa-remains-approved",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "picking-before-location-blocked",
+      "expected": 409,
+      "httpStatus": 409,
+      "message": "Confirm location and scan label before picking",
+      "result": "PASS"
+    },
+    {
+      "name": "wrong-label-blocked",
+      "expected": 409,
+      "httpStatus": 409,
+      "message": "Scanned label does not match SIT-CS-DRIVER-20261025-N1",
+      "result": "PASS"
+    },
+    {
+      "name": "confirm-correct-sit-location-label",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "validate-outbound-documents",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "pick-only-l1-free-virtual-sit-slot",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "ei-without-evidence-blocked",
+      "expected": 422,
+      "httpStatus": 422,
+      "message": "EI signed document photo is required",
+      "result": "PASS"
+    },
+    {
+      "name": "ei-release-with-synthetic-signature",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "wh3-missing-document-checklist-blocked",
+      "expected": 422,
+      "httpStatus": 422,
+      "message": "WH3 pre-dispatch documents incomplete: ใบชั่งสินค้าขาออกจาก WH3, ใบ Security ตัวจริง, ใบ Airline ตรงสายการบิน/สาขาปลายทาง, ใบ Permit, Manifest / ตรวจยอดก่อนโหลด",
+      "result": "PASS"
+    },
+    {
+      "name": "after-picking",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "complete-wh3-document-checklist",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "after-wh-release",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "aot-approval-before-booking-blocked",
+      "expected": 409,
+      "httpStatus": 409,
+      "message": "Book the AOT queue before approval",
+      "result": "PASS"
+    },
+    {
+      "name": "assign-synthetic-outbound-vehicle-and-book-internal-queue",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "transport-cannot-approve-aot",
+      "expected": 403,
+      "httpStatus": 403,
+      "message": "ไม่มีสิทธิ์จองหรืออนุมัติคิว AOT",
+      "result": "PASS"
+    },
+    {
+      "name": "admin-approves-only-sit-internal-aot",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "cargo-transfer-missing-permit-blocked",
+      "expected": 422,
+      "httpStatus": 422,
+      "message": "ต้องแนบเอกสาร Permit ก่อนออก Cargo Transfer",
+      "result": "PASS"
+    },
+    {
+      "name": "issue-synthetic-cargo-transfer",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "start-synthetic-wh3-outbound-loading",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "depart-wh3-without-photo-blocked",
+      "expected": 422,
+      "httpStatus": 422,
+      "message": "ต้องแนบภาพประตูปิด",
+      "result": "PASS"
+    },
+    {
+      "name": "depart-wh3-with-synthetic-vehicle-photo",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "after-departure",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "weigh-before-terminal-arrival-blocked",
+      "expected": 409,
+      "httpStatus": 409,
+      "message": "ต้องถึง Terminal ก่อนเริ่มขั้นตอน",
+      "result": "PASS"
+    },
+    {
+      "name": "receive-synthetic-terminal-queue",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "receive-synthetic-cargo-at-terminal",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "load-before-xray-blocked",
+      "expected": 409,
+      "httpStatus": 409,
+      "message": "House SIT-CS-DRIVER-20261025-N1 ยังไม่ผ่าน X-Ray",
+      "result": "PASS"
+    },
+    {
+      "name": "start-master-weighing",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "zero-weight-blocked",
+      "expected": 422,
+      "httpStatus": 422,
+      "message": "ต้องมีน้ำหนักจริงมากกว่าศูนย์และ Dimension ของ Master",
+      "result": "PASS"
+    },
+    {
+      "name": "complete-synthetic-master-weight-15kg",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "generate-reference-master-weigh-slip",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "start-synthetic-xray",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "xray-without-evidence-blocked",
+      "expected": 422,
+      "httpStatus": 422,
+      "message": "ต้องแนบภาพหรือเอกสาร xray",
+      "result": "PASS"
+    },
+    {
+      "name": "complete-synthetic-xray-passed",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "after-xray",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "start-terminal-load",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "close-without-loading-evidence-blocked",
+      "expected": 422,
+      "httpStatus": 422,
+      "message": "ต้องแนบภาพหรือเอกสาร load",
+      "result": "PASS"
+    },
+    {
+      "name": "close-terminal-with-synthetic-loading-detail",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "return-synthetic-signed-cargo-transfer",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "release-synthetic-vehicle-after-terminal-close",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "repeated-terminal-close-blocked",
+      "expected": 409,
+      "httpStatus": 409,
+      "message": "Master นี้มีงานปิด Terminal หรือเข้าวางบิลแล้ว ต้องตรวจแก้ไขเฉพาะรายการ",
+      "result": "PASS"
+    },
+    {
+      "name": "final",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "final-terminal-summary",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-OutboundDocument",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-EISignProof",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-WH3PreDispatchEvidence",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-CargoTransferPermit",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-PreLoadPhoto",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-TerminalQueueEvidence",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-TerminalArrivalEvidence",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-MasterWeightSlip",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-MasterXRayEvidence",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-LoadingDetail",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "open-sit-outbound-evidence-CargoTransferReturned",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "post-test-baseline",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "verify-geofencing-still-off",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "verify-public-users-unchanged",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "verify-real-docks-and-queues-unchanged",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "verify-only-target-sit-slot-released",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "revoke-api-test-sessions",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    }
+  ],
+  "passed": 73
+}

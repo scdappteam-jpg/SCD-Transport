@@ -1,0 +1,82 @@
+[
+  {
+    "file": "n1-outbound-01-geofencing-off-2026-10-25.png",
+    "title": "ก่อนเริ่ม: Geofencing ปิด",
+    "description": "Admin อ่าน policy ก่อนทดสอบ ไม่มีพิกัด WH3 และใช้กติกาเฉพาะชุด SIT"
+  },
+  {
+    "file": "n1-outbound-02-departed-wh3-2026-10-25.png",
+    "title": "หลังออก WH3",
+    "description": "GoodsLoaded / EnRouteToTerminal รถส่งSIT-OUT-N1 ยอดรับเดิม3CTN พร้อมlogเริ่มโหลดและออกWH3"
+  },
+  {
+    "file": "n1-outbound-03-dispatch-evidence-2026-10-25.png",
+    "title": "เอกสารเบิกออกที่เก็บจริง",
+    "description": "เปิด OutboundDocument จากstorage ไฟล์จำลองมีข้อความSIT ONLY"
+  },
+  {
+    "file": "n1-outbound-04-ei-proof-2026-10-25.png",
+    "title": "หลักฐาน EI ที่เก็บจริง",
+    "description": "ภาพลายเซ็น EI จำลองบนproduction ไม่ใช่ลายเซ็นจริง"
+  },
+  {
+    "file": "n1-outbound-05-terminal-arrived-2026-10-25.png",
+    "title": "รับ Terminal และเริ่มชั่ง",
+    "description": "ตารางเวลารับคิว/รับสินค้าและเริ่มชั่ง ณ เวลาถ่าย ยังไม่มีจบชั่งหรือX-Rayในภาพนี้"
+  },
+  {
+    "file": "n1-outbound-06-xray-passed-times-2026-10-25.png",
+    "title": "หน้าขอบเขต Master และ Flight",
+    "description": "ภาพส่วนบนของ Terminal หลังอ่านข้อมูลใหม่ รายละเอียดเวลาอยู่ภาพถัดไป หมายเลขMasterเต็มดูในคำบรรยายและตาราง"
+  },
+  {
+    "file": "n1-outbound-07-weight-proof-2026-10-25.png",
+    "title": "หลักฐานน้ำหนัก Master จำลอง",
+    "description": "เปิด MasterWeightSlip บนproduction ระบุ15KG เป็นผลชั่งจำลอง ไม่ใช่เครื่องชั่งจริง"
+  },
+  {
+    "file": "n1-outbound-08-xray-proof-2026-10-25.png",
+    "title": "หลักฐาน X-Ray จำลอง",
+    "description": "เปิด MasterXRayEvidence ที่ระบบเก็บจริง ข้อความระบุSIT ONLY"
+  },
+  {
+    "file": "n1-outbound-09-terminal-load-completed-2026-10-25.png",
+    "title": "พร้อมวางบิล1งาน",
+    "description": "ภาพส่วนบนหลังปิดLoad แสดง1รอวางบิล ขอบเขตมี1HouseN1 การมีช่องกรอกว่างไม่ใช่น้ำหนักที่บันทึก"
+  },
+  {
+    "file": "n1-outbound-10-loading-detail-proof-2026-10-25.png",
+    "title": "Loading Detail จำลอง",
+    "description": "เปิดไฟล์ที่แนบตอนปิดLoadจากstorageจริง"
+  },
+  {
+    "file": "n1-outbound-11-returned-ctf-proof-2026-10-25.png",
+    "title": "Cargo Transfer คืนจำลอง",
+    "description": "เปิดไฟล์รับคืนที่บันทึกจริง ไม่ใช่เอกสารส่งให้ลูกค้าจริง"
+  },
+  {
+    "file": "n1-outbound-12-terminal-final-times-2026-10-25.png",
+    "title": "เวลาสุดท้าย Terminal",
+    "description": "ตารางเริ่ม/จบชั่ง X-Ray และLoad ของN1 ไม่มีการใช้เวลาแผนแทนเวลาที่บันทึก"
+  },
+  {
+    "file": "n1-outbound-13-order-receipt-preserved-2026-10-25.png",
+    "title": "ติดตามงานและยอดรับเดิม",
+    "description": "หน้าติดตามแสดงN1 พร้อมวางบิล แผน3CTN รับจำลอง3ค้าง0 จอแคบจึงเห็นรายละเอียดด้านขวาบางส่วน ไม่ใช้ภาพนี้ยืนยันทุกคอลัมน์"
+  },
+  {
+    "file": "n1-outbound-14-final-ready-available-2026-10-25.png",
+    "title": "ผลสุดท้ายพร้อมวางบิลและรถว่าง",
+    "description": "ReadyForBilling / Available รถส่งSIT-OUT-N1 ยอดเดิม3CTN พร้อมlogterminalและคืนรถ"
+  },
+  {
+    "file": "n1-outbound-15-geofencing-still-off-2026-10-25.png",
+    "title": "หลังจบ: Geofencing ยังปิด",
+    "description": "อ่านpolicyหลังทดสอบ ค่าเดิมไม่เปลี่ยน ไม่กดบันทึก"
+  },
+  {
+    "file": "n1-outbound-16-test-mode-closed-2026-10-25.png",
+    "title": "ปิดเซสชันทดสอบ",
+    "description": "กลับหน้าLoginหลังปิดโหมดเลือกยูส ไม่เปลี่ยนบัญชีหรือรหัสผ่าน"
+  }
+]

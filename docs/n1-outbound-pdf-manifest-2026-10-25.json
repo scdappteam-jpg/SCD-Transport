@@ -1,0 +1,104 @@
+{
+  "pdf": "C:\\Users\\UsEr\\OneDrive\\Desktop\\Logistic คุณใหม่\\SCD-Transport\\output\\pdf\\SCD-N1-WH3-Outbound-Terminal-SIT-2026-10-25.pdf",
+  "pages": 32,
+  "screenshots": 16,
+  "images": [
+    {
+      "file": "n1-outbound-01-geofencing-off-2026-10-25.png",
+      "title": "ก่อนเริ่ม: Geofencing ปิด",
+      "description": "Admin อ่าน policy ก่อนทดสอบ ไม่มีพิกัด WH3 และใช้กติกาเฉพาะชุด SIT",
+      "sha256": "d00a7cbdd1493ef02f9c2e1fe5f4c10ec341f067249bd5d79dbf92be8e66546e"
+    },
+    {
+      "file": "n1-outbound-02-departed-wh3-2026-10-25.png",
+      "title": "หลังออก WH3",
+      "description": "GoodsLoaded / EnRouteToTerminal รถส่งSIT-OUT-N1 ยอดรับเดิม3CTN พร้อมlogเริ่มโหลดและออกWH3",
+      "sha256": "3534e04efa53a7de585eb94a5f4c350336c65f859ca80f07c599dbec5750f8ad"
+    },
+    {
+      "file": "n1-outbound-03-dispatch-evidence-2026-10-25.png",
+      "title": "เอกสารเบิกออกที่เก็บจริง",
+      "description": "เปิด OutboundDocument จากstorage ไฟล์จำลองมีข้อความSIT ONLY",
+      "sha256": "ee745478c98fd931907748348adbecc300727f62f7f9e5e2b5e5db50c245dd65"
+    },
+    {
+      "file": "n1-outbound-04-ei-proof-2026-10-25.png",
+      "title": "หลักฐาน EI ที่เก็บจริง",
+      "description": "ภาพลายเซ็น EI จำลองบนproduction ไม่ใช่ลายเซ็นจริง",
+      "sha256": "6a5421e5b3da566c689707e1bb9f4f88937b3f1a93b776f2583e2bbeb6c300b0"
+    },
+    {
+      "file": "n1-outbound-05-terminal-arrived-2026-10-25.png",
+      "title": "รับ Terminal และเริ่มชั่ง",
+      "description": "ตารางเวลารับคิว/รับสินค้าและเริ่มชั่ง ณ เวลาถ่าย ยังไม่มีจบชั่งหรือX-Rayในภาพนี้",
+      "sha256": "a4e8ae7efcdb0683603ccae5d5bb0ab2a66e1b210b662af809def5f34da504db"
+    },
+    {
+      "file": "n1-outbound-06-xray-passed-times-2026-10-25.png",
+      "title": "หน้าขอบเขต Master และ Flight",
+      "description": "ภาพส่วนบนของ Terminal หลังอ่านข้อมูลใหม่ รายละเอียดเวลาอยู่ภาพถัดไป หมายเลขMasterเต็มดูในคำบรรยายและตาราง",
+      "sha256": "6009bfeef7411508724c622327a90647fc7f4766650edfbe476be7c426e6da61"
+    },
+    {
+      "file": "n1-outbound-07-weight-proof-2026-10-25.png",
+      "title": "หลักฐานน้ำหนัก Master จำลอง",
+      "description": "เปิด MasterWeightSlip บนproduction ระบุ15KG เป็นผลชั่งจำลอง ไม่ใช่เครื่องชั่งจริง",
+      "sha256": "3cad7789caa1cafbd8668ceb0939ffaefa537e0386575531bcafef2b904abad8"
+    },
+    {
+      "file": "n1-outbound-08-xray-proof-2026-10-25.png",
+      "title": "หลักฐาน X-Ray จำลอง",
+      "description": "เปิด MasterXRayEvidence ที่ระบบเก็บจริง ข้อความระบุSIT ONLY",
+      "sha256": "48b6bd538df3e0616ec0eda5cb21176ee9a22d75d946ebd349d77a254067a506"
+    },
+    {
+      "file": "n1-outbound-09-terminal-load-completed-2026-10-25.png",
+      "title": "พร้อมวางบิล1งาน",
+      "description": "ภาพส่วนบนหลังปิดLoad แสดง1รอวางบิล ขอบเขตมี1HouseN1 การมีช่องกรอกว่างไม่ใช่น้ำหนักที่บันทึก",
+      "sha256": "e7ebbe8f5a80bdb11c864566be509c7beae3f332d0a215f1020140b4b1e7c791"
+    },
+    {
+      "file": "n1-outbound-10-loading-detail-proof-2026-10-25.png",
+      "title": "Loading Detail จำลอง",
+      "description": "เปิดไฟล์ที่แนบตอนปิดLoadจากstorageจริง",
+      "sha256": "9819f542e1f4d90dd101a88cfe95cc6c0d4fe6b175286dc8e0109afe35ea59fa"
+    },
+    {
+      "file": "n1-outbound-11-returned-ctf-proof-2026-10-25.png",
+      "title": "Cargo Transfer คืนจำลอง",
+      "description": "เปิดไฟล์รับคืนที่บันทึกจริง ไม่ใช่เอกสารส่งให้ลูกค้าจริง",
+      "sha256": "d8d5d0c12b0a4a7d275ee490cec02043ae9eb9221b3b3c7f2f0b8f83a8b74ebd"
+    },
+    {
+      "file": "n1-outbound-12-terminal-final-times-2026-10-25.png",
+      "title": "เวลาสุดท้าย Terminal",
+      "description": "ตารางเริ่ม/จบชั่ง X-Ray และLoad ของN1 ไม่มีการใช้เวลาแผนแทนเวลาที่บันทึก",
+      "sha256": "b9de637e6d6987aff4b724cfe58c0def1a83b2ed5ef5c5e73c94011dc5f71de8"
+    },
+    {
+      "file": "n1-outbound-13-order-receipt-preserved-2026-10-25.png",
+      "title": "ติดตามงานและยอดรับเดิม",
+      "description": "หน้าติดตามแสดงN1 พร้อมวางบิล แผน3CTN รับจำลอง3ค้าง0 จอแคบจึงเห็นรายละเอียดด้านขวาบางส่วน ไม่ใช้ภาพนี้ยืนยันทุกคอลัมน์",
+      "sha256": "a97bda00ab179323db3fcfdf1deb176e481b69a7f17efac3fa8bc09559f383dc"
+    },
+    {
+      "file": "n1-outbound-14-final-ready-available-2026-10-25.png",
+      "title": "ผลสุดท้ายพร้อมวางบิลและรถว่าง",
+      "description": "ReadyForBilling / Available รถส่งSIT-OUT-N1 ยอดเดิม3CTN พร้อมlogterminalและคืนรถ",
+      "sha256": "8301b266ba7353e0b7421da4ac8459aca6384e96f204eae6bbad76d32a49d00a"
+    },
+    {
+      "file": "n1-outbound-15-geofencing-still-off-2026-10-25.png",
+      "title": "หลังจบ: Geofencing ยังปิด",
+      "description": "อ่านpolicyหลังทดสอบ ค่าเดิมไม่เปลี่ยน ไม่กดบันทึก",
+      "sha256": "4a8eeb46e916024acbbcc9a79d73605a289ee610377bf212526b966e20d2ff65"
+    },
+    {
+      "file": "n1-outbound-16-test-mode-closed-2026-10-25.png",
+      "title": "ปิดเซสชันทดสอบ",
+      "description": "กลับหน้าLoginหลังปิดโหมดเลือกยูส ไม่เปลี่ยนบัญชีหรือรหัสผ่าน",
+      "sha256": "2a3c4f1d3c05152a8dc993dc19bcbfc5b40f0109845c2034d53dce43d3db8af9"
+    }
+  ],
+  "sha256": "1339559e2a796e73977be5cd9a822de413621f7bcef058e842bdb94ca7bcdb45"
+}

@@ -1,0 +1,26 @@
+{
+  "environment": "https://scd-transport.onrender.com",
+  "target": "SIT-CS-DRIVER-20261025-N1",
+  "syntheticMaster": "SIT-MASTER-20261025-N1",
+  "existingJobs": 3807,
+  "nonTargetJobsVerified": 3806,
+  "nonTargetJobsChanged": [],
+  "noJobsAddedOrRemoved": true,
+  "beforeNonTargetSha256": "954bec49db4ca80d6645e694abaa8f015d3ae4f818f697c8b9b6f0c0bb434b1a",
+  "afterNonTargetSha256": "954bec49db4ca80d6645e694abaa8f015d3ae4f818f697c8b9b6f0c0bb434b1a",
+  "geofencingEnabled": false,
+  "globalSafetyEnabled": false,
+  "geofenceLocationsUnchanged": true,
+  "policyUnchanged": true,
+  "publicUsersUnchanged": true,
+  "realDocksAndQueuesUnchanged": true,
+  "warehouseOnlyVirtualSitSlotChanged": true,
+  "changedVirtualLocationIds": [
+    "loc_zone_SITN1WH3_1792910662535_1"
+  ],
+  "invoicesIssued": 0,
+  "physicalMovementVerified": false,
+  "allPersistedNonTargetFieldsUnchanged": true,
+  "usersCustomersBillingUnchanged": true,
+  "protectedInboundCsFlightUnchanged": true
+}
