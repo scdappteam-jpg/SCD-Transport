@@ -7968,6 +7968,43 @@ function billingCustomerForJob(job) {
     return state.customers.find(customer => customer.id === job?.customerId) || state.customers.find(customer => customer.name === job?.customerName) || {};
 }
 
+function confirmBillingClose(invoice) {
+    return new Promise(resolve => {
+        const dialog = document.createElement("dialog");
+        dialog.className = "billing-close-dialog";
+        dialog.setAttribute("aria-labelledby", "billingCloseTitle");
+        dialog.innerHTML = '<h2 id="billingCloseTitle"></h2><p class="billing-close-detail"></p><div class="billing-close-actions"><button type="button" data-close-cancel></button><button type="button" data-close-confirm>ยืนยันปิด Billed</button></div>';
+        const alreadyBilled = invoice.status === "Billed";
+        dialog.querySelector("h2").textContent = alreadyBilled ? `${invoice.id} ปิดเป็น Billed แล้ว` : `ปิด ${invoice.id} เป็น Billed?`;
+        dialog.querySelector("p").textContent = alreadyBilled ? `เวลาปิดครั้งแรก: ${invoice.billedDate ? new Date(invoice.billedDate).toLocaleString("th-TH") : "ไม่มีเวลาที่บันทึกไว้"} ไม่ปิดซ้ำและไม่เปลี่ยนเวลาเดิม` : "รายการจะออกจากคิวรอวางบิล ตรวจย้อนหลังได้จากทะเบียน Invoice การปิดครั้งนี้ไม่ใช่การรับชำระเงิน";
+        const cancel = dialog.querySelector("[data-close-cancel]");
+        const confirm = dialog.querySelector("[data-close-confirm]");
+        cancel.textContent = alreadyBilled ? "ปิด" : "ยกเลิก";
+        confirm.hidden = alreadyBilled;
+        confirm.disabled = alreadyBilled;
+        let settled = false;
+        const finish = value => {
+            if (settled) return;
+            settled = true;
+            dialog.close();
+            dialog.remove();
+            resolve(value);
+        };
+        cancel.addEventListener("click", () => finish(false));
+        confirm.addEventListener("click", () => { if (!alreadyBilled) finish(true); });
+        dialog.addEventListener("cancel", event => { event.preventDefault(); finish(false); });
+        dialog.addEventListener("close", () => finish(false));
+        document.body.append(dialog);
+        dialog.showModal();
+        cancel.focus();
+    });
+}
+
+function updateBillingCloseButton() {
+    const invoice = state.dashboard?.billing.find(bill => bill.id === $("#invoiceId")?.value.trim());
+    $("#markBilledBtn").textContent = invoice?.status === "Billed" ? "ดูสถานะ Billed" : "ปิดเป็น Billed";
+}
+
 function billingAttachmentFiles(invoice, files) {
     const fallback = invoice?.pdfUrl ? [{
         fileId: invoice.id ? `INVOICE-DOC-${invoice.id}` : "",
@@ -7992,6 +8029,7 @@ function billingAttachmentFiles(invoice, files) {
 }
 
 function renderBillingContext(preserveCustomerInputs = false) {
+    updateBillingCloseButton();
     const job = billingSelectedJob();
     const customer = billingCustomerForJob(job);
     if ($("#billingCustomerName") && !preserveCustomerInputs) {
@@ -10090,10 +10128,17 @@ function bindEvents() {
         $("#billingResult").innerHTML = `<strong>${data.bill.id}</strong><br>${data.bill.status} · ${data.bill.billingEmail} · แนบ ${data.bill.emailAttachments?.length || 0} ไฟล์`;
         toast("บันทึกสถานะส่งอีเมลแล้ว / Email status saved");
     }));
-    $("#markBilledBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
+    $("#invoiceId").addEventListener("input", updateBillingCloseButton);
+    $("#markBilledBtn").addEventListener("click", async event => {
+        const button = event.currentTarget;
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
         const invoiceId = $("#invoiceId").value.trim();
         if (!invoiceId) throw new Error("กรุณาระบุเลขใบแจ้งหนี้ก่อนปิดวางบิล");
-        if (!window.confirm(`ปิดใบแจ้งหนี้ ${invoiceId} เป็น Billed?\n\nรายการจะหายจากคิวรอวางบิลทันที และต้องดูย้อนหลังจาก Tracking / Cargo History / รายงานวางบิล`)) return;
+        const invoice = state.dashboard?.billing.find(bill => bill.id === invoiceId);
+        if (!invoice) throw new Error("ไม่พบ Invoice กรุณารีเฟรชและตรวจเลขใบแจ้งหนี้");
+        if (!await confirmBillingClose(invoice)) return;
         const data = await api("/api/billing/mark-billed", {
             invoiceId: invoiceId
         });
@@ -10102,7 +10147,15 @@ function bindEvents() {
         $("#invoiceId").value = data.bill.id;
         $("#billingResult").innerHTML = `<strong>${data.bill.id}</strong><br>Billed · Due ${data.bill.dueDate}`;
         toast("ปิดเป็น Billed แล้ว / Billed");
-    }));
+        await refresh();
+        } catch (error) {
+            toast(error.message);
+        } finally {
+            button.disabled = false;
+            updateBillingCloseButton();
+            button.focus();
+        }
+    });
     $("#createJobBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const { rows, payload } = adminPayloadFromCurrentForm();
         const data = await api(rows.length > 1 ? "/api/admin/job-batch" : "/api/admin/job", payload);

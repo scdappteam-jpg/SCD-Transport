@@ -692,3 +692,10 @@ input.has-error,select.has-error,textarea.has-error{border-color:#E0A6A0!importa
 @media (max-width: 600px) {
   #billingPanel { padding: 14px; }
 }
+
+.billing-close-dialog { width:min(480px,calc(100vw - 32px)); box-sizing:border-box; border:1px solid #cbd5e1; border-radius:16px; padding:24px; color:#183650; background:white; box-shadow:0 20px 60px #0f172a40; }
+.billing-close-dialog::backdrop { background:#0f172a80; }
+.billing-close-dialog h2 { font-size:20px; overflow-wrap:anywhere; }
+.billing-close-detail { line-height:1.7; overflow-wrap:anywhere; }
+.billing-close-actions { display:flex; gap:12px; justify-content:flex-end; flex-wrap:wrap; }
+.billing-close-actions button { min-height:44px; padding:10px 16px; }

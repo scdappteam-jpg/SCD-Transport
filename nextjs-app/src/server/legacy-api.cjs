@@ -1,4 +1,5 @@
 const invoiceDocument = require('./invoice-document.cjs');
+const billingClose = require('./billing-close.cjs');
 const stateHttp = require('./state-http.cjs');
 const meetingPolicy=require('./meeting-policy.cjs');
 const http = require("http");
@@ -6444,6 +6445,13 @@ async function handleApi(req, res, pathname) {
         const actor = requireBillingActor(sessionUser(db, req));
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดำเนินการวางบิล" });
         payload.userId = actor.id;
+        // Refresh even when a warm worker has an older Draft for this invoice.
+        const closedBill = db.billing.find(item => item.id === payload.invoiceId && item.status === "Billed");
+        if (closedBill) return sendJson(res, 200, { ok: true, bill: closedBill, dashboard: buildDashboard(db) });
+        if (supabaseEnabled()) {
+            await loadDbFromSupabase();
+            db = readDb();
+        }
         let bill = db.billing.find(item => item.id === payload.invoiceId);
         // Same stale-worker recovery as email delivery: never reject a
         // committed invoice just because this request landed on another
@@ -6456,18 +6464,10 @@ async function handleApi(req, res, pathname) {
         if (!bill) return sendJson(res, 404, {
             error: "Invoice not found"
         });
-        const billJobs = (bill.houseNumbers || [ bill.houseNumber ]).map(houseNumber => findJob(db, houseNumber)).filter(Boolean);
-        bill.status = "Billed";
-        bill.billedDate = nowIso();
-        billJobs.forEach(job => {
-            job.status = "Billed";
-            job.billingStatus = "Billed";
-            job.readyForBilling = false;
-            job.dueDate = bill.dueDate;
-            job.updatedAt = nowIso();
-        });
-        await createAlert(db, `Billed: ${bill.id}`, "info");
-        writeDb(db);
+        if (billingClose.closeInvoice(db, bill, { nowIso, findJob })) {
+            await createAlert(db, `Billed: ${bill.id}`, "info");
+            writeDb(db);
+        }
         return sendJson(res, 200, {
             ok: true,
             bill: bill,
