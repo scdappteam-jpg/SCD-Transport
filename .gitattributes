@@ -1,0 +1,2 @@
+# Generated PDF reports are binary documents, including ASCII85-encoded PDFs.
+output/pdf/*.pdf binary

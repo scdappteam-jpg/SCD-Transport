@@ -1,0 +1,12 @@
+{
+  "commit": "2f51a760c564515ad15899887e8bb85426612b7b",
+  "baseFixCommit": "728d2ce44bc25b6a5f190f5774fce19f31fd869a",
+  "status": "Live",
+  "deployId": "dep-dbeph4dg1s2s739kl3m0",
+  "serviceId": "srv-d9ffq0btqb8s73d0ip3g",
+  "url": "https://dashboard.render.com/web/srv-d9ffq0btqb8s73d0ip3g/deploys/dep-dbeph4dg1s2s739kl3m0",
+  "duration": "1m36s",
+  "source": "Observed authenticated Render UI: last successfully deployed commit and Live status",
+  "geofencingEnabled": false,
+  "testsPassed": 274
+}

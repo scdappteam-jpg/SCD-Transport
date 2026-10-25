@@ -1,0 +1,15 @@
+
+C:\Users\UsEr\OneDrive\Desktop\Logistic คุณใหม่\SCD-Transport\nextjs-app\scripts\generate-auth-password-hash.cjs
+  3:16  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+C:\Users\UsEr\OneDrive\Desktop\Logistic คุณใหม่\SCD-Transport\nextjs-app\scripts\provision-supabase-auth.cjs
+  24:10  warning  '_' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\UsEr\OneDrive\Desktop\Logistic คุณใหม่\SCD-Transport\nextjs-app\src\server\production-relational-mirror.cjs
+   7:16  error    A `require()` style import is forbidden          @typescript-eslint/no-require-imports
+   9:12  error    A `require()` style import is forbidden          @typescript-eslint/no-require-imports
+  11:14  error    A `require()` style import is forbidden          @typescript-eslint/no-require-imports
+  64:17  warning  'created_at' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  64:29  warning  'updated_at' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 7 problems (4 errors, 3 warnings)
