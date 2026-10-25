@@ -1,0 +1,43 @@
+{
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "invoiceId": "INV-2026-0002",
+  "layout": {
+    "invoiceDocumentLinks": [
+      {
+        "href": "/storage/invoices/INV-2026-0002.html",
+        "text": "InvoiceDocument25/10/2569 14:37:22\n        เปิดดู"
+      },
+      {
+        "href": "/storage/invoices/INV-2026-0002.html",
+        "text": "InvoiceDocument25/10/2569 14:37:22\n        เปิดดู"
+      }
+    ],
+    "preview": {
+      "height": 1595.1875,
+      "width": 148.421875
+    },
+    "viewport": {
+      "height": 884,
+      "width": 894
+    }
+  },
+  "findings": [
+    {
+      "id": "UI-01",
+      "result": "FAIL",
+      "summary": "Invoice Preview squeezed and text overlaps in narrow viewport",
+      "evidence": [
+        "n1-invoice-04-preview-before-review-2026-10-25.png",
+        "n1-invoice-06-draft-preview-ui-2026-10-25.png"
+      ]
+    },
+    {
+      "id": "UI-02",
+      "result": "FAIL",
+      "summary": "InvoiceDocument appears twice in attachment gallery; persisted file count is one",
+      "evidence": [
+        "n1-invoice-10-duplicate-attachment-ui-2026-10-25.png"
+      ]
+    }
+  ]
+}

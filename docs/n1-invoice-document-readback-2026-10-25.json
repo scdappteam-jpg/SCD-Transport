@@ -1,0 +1,11 @@
+{
+  "url": "/storage/invoices/INV-2026-0002.html",
+  "httpStatus": 200,
+  "bytes": 1444,
+  "sha256": "388e1222ffe07c2bf4617e708326a672fd345102067532956f5e6f82a925575c",
+  "format": "HTML (pdfUrl field; not a PDF)",
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "invoiceId": "INV-2026-0002",
+  "amount": 1000,
+  "syntheticOnly": true
+}

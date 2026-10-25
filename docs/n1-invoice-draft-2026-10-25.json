@@ -1,0 +1,195 @@
+{
+  "id": "INV-2026-0002",
+  "amount": 1000,
+  "pdfUrl": "/storage/invoices/INV-2026-0002.html",
+  "status": "Draft",
+  "dueDate": "2026-10-25T07:37:22.418Z",
+  "draftedAt": "2026-10-25T07:37:22.418Z",
+  "customerId": "c_sit_only_n1_invoice_not_for_",
+  "houseNumber": "SIT-CS-DRIVER-20261025-N1",
+  "billingEmail": "",
+  "customerName": "SIT ONLY N1 INVOICE - NOT FOR PAYMENT",
+  "documentStatus": {
+    "files": [
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123395-ece044.png",
+        "fileId": "FILE-1792906123395-ece044",
+        "fileType": "ProductImage",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T05:28:43.396Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123396-a3241b.png",
+        "fileId": "FILE-1792906123396-a3241b",
+        "fileType": "CargoForm",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T05:28:43.396Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123396-f0d3bd.png",
+        "fileId": "FILE-1792906123396-f0d3bd",
+        "fileType": "DoorClosedAudit",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T05:28:43.396Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123396-a9d255.png",
+        "fileId": "FILE-1792906123396-a9d255",
+        "fileType": "InspectorSignature",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T05:28:43.396Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906123396-f0562d.png",
+        "fileId": "FILE-1792906123396-f0562d",
+        "fileType": "ReceiverSignature",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T05:28:43.397Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792906260272-f5d1c6.png",
+        "fileId": "FILE-1792906260272-f5d1c6",
+        "fileType": "ReleaseDocument",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T05:31:00.273Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792910535331-b8e3f9.png",
+        "fileId": "FILE-1792910535331-b8e3f9",
+        "fileType": "InboundDocument",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T06:42:15.332Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792910871118-8e4cef.png",
+        "fileId": "FILE-1792910871118-8e4cef",
+        "fileType": "TaggingBarcodeEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T06:47:51.119Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792910905718-99fde0.png",
+        "fileId": "FILE-1792910905718-99fde0",
+        "fileType": "QABarcodeEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T06:48:25.718Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792911030582-bad672.jpg",
+        "fileId": "FILE-1792911030582-bad672",
+        "fileType": "InboundEvidence",
+        "mimeType": "image/jpeg",
+        "createdAt": "2026-10-25T06:50:30.583Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912540131-b39a6a.png",
+        "fileId": "FILE-1792912540131-b39a6a",
+        "fileType": "OutboundDocument",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:15:40.131Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912550615-9d2daf.png",
+        "fileId": "FILE-1792912550615-9d2daf",
+        "fileType": "EISignProof",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:15:50.615Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912564544-8e5ff0.png",
+        "fileId": "FILE-1792912564544-8e5ff0",
+        "fileType": "WH3PreDispatchEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:16:04.545Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912609320-9a84b6.png",
+        "fileId": "FILE-1792912609320-9a84b6",
+        "fileType": "CargoTransferPermit",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:16:49.320Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912648130-03b936.png",
+        "fileId": "FILE-1792912648130-03b936",
+        "fileType": "PreLoadPhoto",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:17:28.130Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912796456-430652.png",
+        "fileId": "FILE-1792912796456-430652",
+        "fileType": "TerminalQueueEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:19:56.527Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912807518-95203e.png",
+        "fileId": "FILE-1792912807518-95203e",
+        "fileType": "TerminalArrivalEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:20:07.519Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912849709-a6be83.png",
+        "fileId": "FILE-1792912849709-a6be83",
+        "fileType": "MasterWeightSlip",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:20:49.710Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912887535-726c26.png",
+        "fileId": "FILE-1792912887535-726c26",
+        "fileType": "MasterXRayEvidence",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:21:27.535Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912942083-4fd372.png",
+        "fileId": "FILE-1792912942083-4fd372",
+        "fileType": "LoadingDetail",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:22:22.084Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      },
+      {
+        "url": "/storage/SIT-CS-DRIVER-20261025-N1/FILE-1792912951637-f55012.png",
+        "fileId": "FILE-1792912951637-f55012",
+        "fileType": "CargoTransferReturned",
+        "mimeType": "image/png",
+        "createdAt": "2026-10-25T07:22:31.638Z",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1"
+      }
+    ],
+    "ready": true,
+    "blockers": [],
+    "hasWeight": true,
+    "hasLoading": true,
+    "hasTransfer": true,
+    "hasWorkDate": true,
+    "hasCsEvidence": true,
+    "hasPlanVersion": true,
+    "hasWh3Dispatch": true,
+    "hasPlanApproval": true,
+    "hasFieldEvidence": true
+  }
+}

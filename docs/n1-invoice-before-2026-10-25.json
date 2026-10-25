@@ -1,0 +1,1017 @@
+{
+  "ok": true,
+  "job": {
+    "id": "JOB-1792905539328",
+    "cbm": "",
+    "tel": "0000000000",
+    "amount": "0",
+    "dgType": "",
+    "refsNo": "",
+    "source": "",
+    "status": "ReadyForBilling",
+    "weight": "",
+    "booking": "",
+    "carrier": "",
+    "contact": "SIT CONTACT N1",
+    "edocCin": "",
+    "edocInv": "",
+    "driverId": "sit_ui_driver",
+    "endPlace": "WH3",
+    "flightNo": "SIT200",
+    "icNumber": "",
+    "loadedAt": "2026-10-25T05:28:43.193Z",
+    "planDate": "2026-10-25",
+    "wh3DueAt": "2026-10-25T22:00:00.000Z",
+    "workDate": "2026-10-25",
+    "cargoDesc": "",
+    "cargoType": "normal",
+    "checkInAt": "2026-10-25T05:28:16.464Z",
+    "closeTime": "",
+    "createdAt": "2026-10-25T05:18:59.327Z",
+    "invoiceNo": "SIT-CS-INV-20261025-N1",
+    "isLithium": false,
+    "loadedGps": "13.1,100.1",
+    "ownerCode": "",
+    "planRound": "Manual",
+    "qaHistory": [
+      {
+        "id": "61564dd6-d7b7-4b32-b4a0-f9720293f7e2",
+        "tags": [
+          {
+            "barcode": "SITCSDRIVER20261025N1",
+            "imageHash": "8b666eface012cf375209ef88ef1b7e004e39e07ac997578b0e1c881b9406660"
+          }
+        ],
+        "fileIds": [
+          "FILE-1792910905718-99fde0"
+        ],
+        "revision": 1,
+        "approvedAt": "2026-10-25T06:48:25.388Z",
+        "approvedBy": "sit_ui_checkhouse"
+      }
+    ],
+    "readyTime": "",
+    "trackType": "Single",
+    "updatedAt": "2026-10-25T07:23:08.052Z",
+    "volWeight": "",
+    "checkInGps": "13.1,100.1",
+    "csRejected": false,
+    "customerId": "c_sit_only_cs_driver_e2e_20261",
+    "driverName": "SIT UI / Driver",
+    "driverType": "",
+    "eiApproved": true,
+    "flightTime": "2026-10-26T12:00:00.000Z",
+    "locationId": "SITN1WH3-01",
+    "mawbNumber": "SIT-MASTER-20261025-N1",
+    "pickupCase": "GeneralManual",
+    "pickupDate": "2026-10-25",
+    "pieceCount": "3",
+    "planSource": "SIT",
+    "qaApproval": {
+      "id": "61564dd6-d7b7-4b32-b4a0-f9720293f7e2",
+      "tags": [
+        {
+          "barcode": "SITCSDRIVER20261025N1",
+          "imageHash": "8b666eface012cf375209ef88ef1b7e004e39e07ac997578b0e1c881b9406660"
+        }
+      ],
+      "fileIds": [
+        "FILE-1792910905718-99fde0"
+      ],
+      "revision": 1,
+      "approvedAt": "2026-10-25T06:48:25.388Z",
+      "approvedBy": "sit_ui_checkhouse"
+    },
+    "qaRequired": true,
+    "slaProfile": "WH3_14H",
+    "xrayStatus": "Passed",
+    "actualCount": "",
+    "aotBookedAt": "2026-10-25T07:16:25.249Z",
+    "completeGps": "13.1,100.1",
+    "completedAt": "2026-10-25T05:29:38.396Z",
+    "csConfirmed": true,
+    "csInvoiceNo": "SIT-CS-INV-20261025-N1",
+    "destAirport": "",
+    "destination": "WH3",
+    "houseNumber": "SIT-CS-DRIVER-20261025-N1",
+    "loadEndedAt": "2026-10-25T07:22:22.082Z",
+    "manualExtra": true,
+    "packageType": "Carton",
+    "pickupItems": [
+      {
+        "carton": "3",
+        "houseNumber": "SIT-CS-DRIVER-20261025-N1",
+        "pickupDestination": "WH3"
+      }
+    ],
+    "pickupPhone": "0000000000",
+    "planMatched": false,
+    "productType": "General",
+    "reXrayCount": 0,
+    "routePolicy": "ReturnWH3BeforeTerminal",
+    "shippingDoc": "",
+    "vehicleType": "",
+    "wdChecklist": [],
+    "airportDueAt": "2026-10-25T22:00:00.000Z",
+    "arrivedWh3At": "2026-10-25T05:30:27.216Z",
+    "customerName": "SIT ONLY CS DRIVER E2E 20261025 N1",
+    "eiApprovedAt": "2026-10-25T07:15:50.615Z",
+    "evidenceNote": "SIT ONLY synthetic Master and outbound continuation. No physical shipment or real AOT booking.",
+    "receiverName": "SIT SYNTHETIC RECEIVER",
+    "vehiclePlate": "SIT-ONLY",
+    "weighEndedAt": "2026-10-25T07:20:49.708Z",
+    "adminPrepared": false,
+    "aotApprovedAt": "2026-10-25T07:16:36.503Z",
+    "aotDriverName": "SIT UI / Driver",
+    "approvalTrail": [
+      {
+        "at": "2026-10-25T05:20:49.786Z",
+        "by": "SIT UI / CS",
+        "to": "ManualExtraApproved",
+        "from": "PendingCSApproval",
+        "note": "SIT ONLY - บันทึกทดสอบ ไม่ได้โทรจริง ไม่ส่งข้อความหาลูกค้า",
+        "type": "ManualExtraApproved",
+        "channel": "Phone",
+        "invoiceNo": "SIT-CS-INV-20261025-N1",
+        "contactName": "SIT CONTACT N1",
+        "contactPhone": "0000000000"
+      }
+    ],
+    "arrivedWh3Gps": "13.1,100.1",
+    "cargoCutoffAt": "",
+    "cargoIssuedAt": "2026-10-25T05:24:07.096Z",
+    "consigneeName": "",
+    "contactPerson": "SIT CONTACT N1",
+    "csConfirmedAt": "2026-10-25T05:20:49.786Z",
+    "csConfirmedBy": "SIT UI / CS",
+    "csContactName": "SIT CONTACT N1",
+    "dimensionText": "SIT ONLY virtual putaway - no physical dimensions measured",
+    "goodsLoadedAt": "2026-10-25T07:17:28.129Z",
+    "inspectorName": "SIT SYNTHETIC INSPECTOR",
+    "loadStartedAt": "2026-10-25T07:22:10.455Z",
+    "mustReturnWh3": true,
+    "releasedWh3At": "2026-10-25T07:17:28.129Z",
+    "routeStartGps": "13.1,100.1",
+    "tagInspection": {
+      "mode": "Single",
+      "tags": [
+        {
+          "barcode": "SITCSDRIVER20261025N1",
+          "imageHash": "7c1df7f69a554894a1763879e647cc2177c10e5fc030944c0c34926c679a2fda"
+        }
+      ],
+      "fileIds": [
+        "FILE-1792910871118-8e4cef"
+      ],
+      "identity": "f750a6f79f6d8879aeaf25873e7ebd6d84e516ec07b3ed34249fff8451f53f79",
+      "revision": 1,
+      "taggedAt": "2026-10-25T06:47:50.746Z",
+      "taggedBy": "sit_ui_wh",
+      "stickerColor": ""
+    },
+    "xrayStartedAt": "2026-10-25T07:21:07.904Z",
+    "aotQueueStatus": "Approved",
+    "aotVehicleType": "4W-SIT",
+    "approvalStatus": "ManualExtraApproved",
+    "csContactPhone": "0000000000",
+    "inboundDocNote": "SIT ONLY - synthetic WH3 receipt; no physical cargo or warehouse movement",
+    "inboundReceipt": {
+      "counts": {
+        "CTN": 3
+      },
+      "reason": "SIT ONLY - simulated cumulative receipt 3/3 CTN; no physical cargo",
+      "revision": 2,
+      "requestId": "012d9a3d-bc65-4fae-a95c-e60147165eff",
+      "confirmedAt": "2026-10-25T06:44:15.124Z",
+      "confirmedBy": "sit_ui_wh"
+    },
+    "pickupLocation": "SIT ONLY SYNTHETIC FACTORY - NO REAL MOVEMENT",
+    "requiresRescan": false,
+    "returningWh3At": "2026-10-25T05:29:38.396Z",
+    "routeStartedAt": "2026-10-25T05:27:35.036Z",
+    "warehouseBoxes": 3,
+    "weighStartedAt": "2026-10-25T07:20:29.824Z",
+    "afterFinalRound": false,
+    "aotVehicleModel": "SIT ONLY virtual outbound vehicle",
+    "aotVehiclePlate": "SIT-OUT-N1",
+    "cargoReceivedAt": "2026-10-25T07:20:07.450Z",
+    "documentReadyAt": "2026-10-25T07:16:04.544Z",
+    "documentReadyBy": "sit_ui_wh",
+    "evidenceChannel": "Line/Email",
+    "inboundClosedAt": "2026-10-25T06:50:30.583Z",
+    "inboundOpenedAt": "2026-10-25T06:43:15.696Z",
+    "outboundFoundAt": "2026-10-25T07:15:14.220Z",
+    "outboundFoundBy": "sit_ui_wh",
+    "pickupChecklist": [
+      "date",
+      "customer",
+      "place",
+      "driver",
+      "house",
+      "package",
+      "inspector",
+      "receiver",
+      "route-log",
+      "destination"
+    ],
+    "queueReceivedAt": "2026-10-25T07:19:56.453Z",
+    "readyForBilling": true,
+    "routeNextModule": "Module2",
+    "xrayCompletedAt": "2026-10-25T07:21:27.531Z",
+    "evidenceRequired": false,
+    "flightRiskReason": "Cargo has reached the terminal workflow",
+    "flightRiskStatus": "TerminalReached",
+    "inboundDocStatus": "Found",
+    "inboundScannedAt": "2026-10-25T06:43:42.329Z",
+    "operationsEvents": [
+      {
+        "at": "2026-10-25T07:17:06.027Z",
+        "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+        "phase": "",
+        "stage": "wh3-load-start",
+        "action": "transport-event",
+        "actorId": "sit_ui_transport",
+        "channel": "App",
+        "reportedBy": "SIT UI Transport"
+      },
+      {
+        "at": "2026-10-25T07:17:28.129Z",
+        "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+        "phase": "",
+        "stage": "wh3-depart",
+        "action": "transport-event",
+        "actorId": "sit_ui_transport",
+        "channel": "App",
+        "reportedBy": "SIT UI Transport"
+      },
+      {
+        "at": "2026-10-25T07:19:56.453Z",
+        "note": "SIT ONLY synthetic terminal event, no physical cargo",
+        "phase": "complete",
+        "stage": "queue",
+        "action": "terminal",
+        "actorId": "sit_ui_terminal",
+        "channel": "App",
+        "reportedBy": "SIT UI / Terminal"
+      },
+      {
+        "at": "2026-10-25T07:20:07.450Z",
+        "note": "SIT ONLY synthetic terminal event, no physical cargo",
+        "phase": "complete",
+        "stage": "arrival",
+        "action": "terminal",
+        "actorId": "sit_ui_terminal",
+        "channel": "App",
+        "reportedBy": "SIT UI / Terminal"
+      },
+      {
+        "at": "2026-10-25T07:20:29.824Z",
+        "note": "SIT ONLY synthetic terminal event, no physical cargo",
+        "phase": "start",
+        "stage": "weigh",
+        "action": "terminal",
+        "actorId": "sit_ui_terminal",
+        "channel": "App",
+        "reportedBy": "SIT UI / Terminal"
+      },
+      {
+        "at": "2026-10-25T07:20:49.708Z",
+        "note": "SIT ONLY synthetic terminal event, no physical cargo",
+        "phase": "complete",
+        "stage": "weigh",
+        "action": "terminal",
+        "actorId": "sit_ui_terminal",
+        "channel": "App",
+        "reportedBy": "SIT UI / Terminal"
+      },
+      {
+        "at": "2026-10-25T07:21:07.904Z",
+        "note": "SIT ONLY synthetic terminal event, no physical cargo",
+        "phase": "start",
+        "stage": "xray",
+        "action": "terminal",
+        "actorId": "sit_ui_terminal",
+        "channel": "App",
+        "reportedBy": "SIT UI / Terminal"
+      },
+      {
+        "at": "2026-10-25T07:21:27.531Z",
+        "note": "SIT ONLY synthetic terminal event, no physical cargo",
+        "phase": "complete",
+        "stage": "xray",
+        "action": "terminal",
+        "actorId": "sit_ui_terminal",
+        "channel": "App",
+        "reportedBy": "SIT UI / Terminal"
+      },
+      {
+        "at": "2026-10-25T07:22:10.455Z",
+        "note": "SIT ONLY synthetic terminal event, no physical cargo",
+        "phase": "start",
+        "stage": "load",
+        "action": "terminal",
+        "actorId": "sit_ui_terminal",
+        "channel": "App",
+        "reportedBy": "SIT UI / Terminal"
+      },
+      {
+        "at": "2026-10-25T07:22:22.082Z",
+        "note": "SIT ONLY synthetic terminal event, no physical cargo",
+        "phase": "complete",
+        "stage": "load",
+        "action": "terminal",
+        "actorId": "sit_ui_terminal",
+        "channel": "App",
+        "reportedBy": "SIT UI / Terminal"
+      },
+      {
+        "at": "2026-10-25T07:23:08.052Z",
+        "note": "SIT ONLY synthetic outbound vehicle movement; no real truck",
+        "phase": "",
+        "stage": "available",
+        "action": "transport-event",
+        "actorId": "sit_ui_transport",
+        "channel": "App",
+        "reportedBy": "SIT UI Transport"
+      }
+    ],
+    "outboundPickedAt": "2026-10-25T07:15:40.133Z",
+    "terminalClosedAt": "2026-10-25T07:22:22.082Z",
+    "warehousePallets": 0,
+    "wh3PreDispatchAt": "2026-10-25T07:16:04.544Z",
+    "wh3PreDispatchBy": "sit_ui_wh",
+    "arrivedAtPickupAt": "2026-10-25T05:28:16.464Z",
+    "cargoTransferDate": "2026-10-25",
+    "cargoTransferFrom": "WH3",
+    "cargoTransferNote": "SIT ONLY release from virtual SITN1WH3-01; 3 simulated CTN",
+    "cargoTransferTime": "12:00",
+    "documentValidated": true,
+    "doorClosedPhotoAt": "2026-10-25T05:29:38.396Z",
+    "driverRouteStatus": "Available",
+    "mustNotMissFlight": false,
+    "plannedPieceCount": "3",
+    "readyForBillingAt": "2026-10-25T07:22:22.082Z",
+    "subcontractorRate": "",
+    "terminalArrivedAt": "2026-10-25T07:20:07.450Z",
+    "cargoTransferGroup": [
+      "SIT-CS-DRIVER-20261025-N1"
+    ],
+    "csApprovalRequired": false,
+    "eiBarcodeReference": "SIT-CS-DRIVER-20261025-N1",
+    "flightNumberDigits": 3,
+    "locationReleasedAt": "2026-10-25T07:15:40.133Z",
+    "releasedLocationId": "SITN1WH3-01",
+    "vehicleAvailableAt": "2026-10-25T07:23:08.052Z",
+    "wh3PreDispatchNote": "SIT ONLY simulated original documents, not real airline documents",
+    "inboundStickerColor": "",
+    "minutesToAirportDue": 868.1701666666667,
+    "pickupReceivedCount": "3",
+    "requiresLithiumDocs": false,
+    "terminalDestination": "TG",
+    "terminalProfileNote": "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
+    "wh3LoadingStartedAt": "2026-10-25T07:17:06.027Z",
+    "wh3PreDispatchReady": true,
+    "slaHoursBeforeFlight": 14,
+    "tagInspectionHistory": [
+      {
+        "mode": "Single",
+        "tags": [
+          {
+            "barcode": "SITCSDRIVER20261025N1",
+            "imageHash": "7c1df7f69a554894a1763879e647cc2177c10e5fc030944c0c34926c679a2fda"
+          }
+        ],
+        "fileIds": [
+          "FILE-1792910871118-8e4cef"
+        ],
+        "identity": "f750a6f79f6d8879aeaf25873e7ebd6d84e516ec07b3ed34249fff8451f53f79",
+        "revision": 1,
+        "taggedAt": "2026-10-25T06:47:50.746Z",
+        "taggedBy": "sit_ui_wh",
+        "stickerColor": ""
+      }
+    ],
+    "terminalDocChecklist": [
+      "house_match",
+      "master_match",
+      "invoice_match"
+    ],
+    "terminalMasterWeight": 15,
+    "cargoTransferIssuedAt": "2026-10-25T07:16:49.319Z",
+    "effectiveAirportDueAt": "2026-10-25T22:00:00.000Z",
+    "inboundCloseRequestId": "3348bda2-56f8-4d4a-8e43-ab36269cdd04",
+    "inboundClosedRevision": 2,
+    "inboundReceiptHistory": [
+      {
+        "counts": {
+          "CTN": 2
+        },
+        "reason": "SIT ONLY - simulated cumulative receipt 2/3 CTN; no physical cargo",
+        "revision": 1,
+        "requestId": "980f66a4-2f2f-4d05-8cee-f9d814394c0a",
+        "confirmedAt": "2026-10-25T06:43:54.523Z",
+        "confirmedBy": "sit_ui_wh"
+      },
+      {
+        "counts": {
+          "CTN": 3
+        },
+        "reason": "SIT ONLY - simulated cumulative receipt 3/3 CTN; no physical cargo",
+        "revision": 2,
+        "requestId": "012d9a3d-bc65-4fae-a95c-e60147165eff",
+        "confirmedAt": "2026-10-25T06:44:15.124Z",
+        "confirmedBy": "sit_ui_wh"
+      }
+    ],
+    "loadingDetailUploaded": true,
+    "pickupLoadFingerprint": "ed62d4572651b87ba8a9bd2ec264cb718bb0b53a6d5032cf7d96c114f3720b71",
+    "pickupPhotoRecordedAt": "2026-10-25T05:28:43.193Z",
+    "routeComplianceStatus": "MustReturnWH3",
+    "cargoTransferReleaseBy": "SIT WH Staff",
+    "terminalWorkflowEvents": [
+      {
+        "at": "2026-10-25T07:16:25.249Z",
+        "status": "BookingRequested",
+        "userId": "sit_ui_transport",
+        "terminal": "TG",
+        "driverName": "SIT UI / Driver",
+        "vehiclePlate": "SIT-OUT-N1"
+      },
+      {
+        "at": "2026-10-25T07:16:36.503Z",
+        "status": "TerminalConfirmed",
+        "userId": "u_admin_01",
+        "terminal": "TG",
+        "driverName": "SIT UI / Driver",
+        "vehiclePlate": "SIT-OUT-N1"
+      }
+    ],
+    "terminalWorkflowStatus": "TerminalConfirmed",
+    "cargoTransferReturnedAt": "2026-10-25T07:22:31.637Z",
+    "doorClosedPhotoRequired": true,
+    "terminalMasterDimension": "60 x 40 x 40 cm x 3 CTN - SIT ONLY",
+    "wh3PreDispatchChecklist": [
+      "outbound_weighing_slip",
+      "security_original",
+      "airline_specific",
+      "permit",
+      "manifest_review"
+    ],
+    "wh3QueuePriorityMinutes": 988.9954666666666,
+    "releaseDocumentReceivedAt": "2026-10-25T05:31:00.272Z",
+    "cargoTransferPermitAttached": true,
+    "pickupCompletionFingerprint": "ed62d4572651b87ba8a9bd2ec264cb718bb0b53a6d5032cf7d96c114f3720b71",
+    "safetyPickupEvidenceFileIds": [
+      "FILE-1792906123395-ece044",
+      "FILE-1792906123396-a3241b",
+      "FILE-1792906123396-f0d3bd",
+      "FILE-1792906123396-a9d255",
+      "FILE-1792906123396-f0562d"
+    ],
+    "cargoTransferLithiumAttached": false,
+    "safetyPickupEvidenceFingerprint": "66218bd1b055b75befd34a57c029a23b539ad0b5c0aff7643a0ecf01da6c2062",
+    "inboundReceiptSummary": {
+      "houseNumber": "SIT-CS-DRIVER-20261025-N1",
+      "onhandNumber": "",
+      "master": "SIT-MASTER-20261025-N1",
+      "planned": {
+        "CTN": 3
+      },
+      "planKnown": true,
+      "received": {
+        "CTN": 3
+      },
+      "remaining": {
+        "CTN": 0
+      },
+      "over": {
+        "CTN": 0
+      },
+      "confirmed": true,
+      "complete": true,
+      "revision": 2,
+      "state": "complete"
+    },
+    "qaVerified": true,
+    "terminalProfile": {
+      "label": "TG",
+      "note": "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
+      "statuses": [
+        "BookingRequested",
+        "TerminalConfirmed",
+        "LoadedFromWH3",
+        "ArrivedAtTerminal",
+        "WeighingCompleted",
+        "DimensionCompleted",
+        "XRayPassed",
+        "LoadingCompleted",
+        "LoadingDetailCompleted"
+      ],
+      "checklist": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit"
+      ],
+      "slaMinutes": 180
+    },
+    "wh3Documents": {
+      "required": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "checked": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "missing": [],
+      "ready": true,
+      "labels": [
+        {
+          "key": "outbound_weighing_slip",
+          "label": "ใบชั่งสินค้าขาออกจาก WH3",
+          "checked": true
+        },
+        {
+          "key": "security_original",
+          "label": "ใบ Security ตัวจริง",
+          "checked": true
+        },
+        {
+          "key": "airline_specific",
+          "label": "ใบ Airline ตรงสายการบิน/สาขาปลายทาง",
+          "checked": true
+        },
+        {
+          "key": "permit",
+          "label": "ใบ Permit",
+          "checked": true
+        },
+        {
+          "key": "manifest_review",
+          "label": "Manifest / ตรวจยอดก่อนโหลด",
+          "checked": true
+        }
+      ]
+    },
+    "processTracking": {
+      "planning": "ManualExtraEntered",
+      "approval": "ManualExtraApproved",
+      "wh3Documents": "DocumentReady",
+      "transport": "TerminalConfirmed",
+      "terminal": "TG",
+      "terminalStatus": "XRayPassed",
+      "closing": "LoadingDetailCompleted",
+      "billing": "ReadyForBilling"
+    },
+    "flightTimeLabel": "26/10/69 19:00",
+    "hoursToFlight": 28.5,
+    "redFlag": false,
+    "canUploadLoadingDetail": false
+  },
+  "activities": [
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_transport",
+      "userName": "SIT UI / Transport",
+      "createdAt": "2026-10-25T07:23:08.053Z",
+      "timeLabel": "25/10/69 14:23",
+      "startTime": "2026-10-25T07:23:08.053Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "CargoTransferReturned",
+      "userId": "sit_ui_transport",
+      "userName": "SIT UI / Transport",
+      "createdAt": "2026-10-25T07:22:31.638Z",
+      "timeLabel": "25/10/69 14:22",
+      "startTime": "2026-10-25T07:22:31.638Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_terminal",
+      "userName": "SIT UI / Terminal",
+      "createdAt": "2026-10-25T07:22:22.084Z",
+      "timeLabel": "25/10/69 14:22",
+      "startTime": "2026-10-25T07:22:22.084Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_terminal",
+      "userName": "SIT UI / Terminal",
+      "createdAt": "2026-10-25T07:22:10.457Z",
+      "timeLabel": "25/10/69 14:22",
+      "startTime": "2026-10-25T07:22:10.457Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_terminal",
+      "userName": "SIT UI / Terminal",
+      "createdAt": "2026-10-25T07:21:27.536Z",
+      "timeLabel": "25/10/69 14:21",
+      "startTime": "2026-10-25T07:21:27.536Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_terminal",
+      "userName": "SIT UI / Terminal",
+      "createdAt": "2026-10-25T07:21:07.906Z",
+      "timeLabel": "25/10/69 14:21",
+      "startTime": "2026-10-25T07:21:07.906Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_terminal",
+      "userName": "SIT UI / Terminal",
+      "createdAt": "2026-10-25T07:20:49.710Z",
+      "timeLabel": "25/10/69 14:20",
+      "startTime": "2026-10-25T07:20:49.710Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_terminal",
+      "userName": "SIT UI / Terminal",
+      "createdAt": "2026-10-25T07:20:29.825Z",
+      "timeLabel": "25/10/69 14:20",
+      "startTime": "2026-10-25T07:20:29.825Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_terminal",
+      "userName": "SIT UI / Terminal",
+      "createdAt": "2026-10-25T07:20:07.519Z",
+      "timeLabel": "25/10/69 14:20",
+      "startTime": "2026-10-25T07:20:07.519Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_terminal",
+      "userName": "SIT UI / Terminal",
+      "createdAt": "2026-10-25T07:19:56.527Z",
+      "timeLabel": "25/10/69 14:19",
+      "startTime": "2026-10-25T07:19:56.527Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_transport",
+      "userName": "SIT UI / Transport",
+      "createdAt": "2026-10-25T07:17:28.130Z",
+      "timeLabel": "25/10/69 14:17",
+      "startTime": "2026-10-25T07:17:28.130Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OperationsControl",
+      "userId": "sit_ui_transport",
+      "userName": "SIT UI / Transport",
+      "createdAt": "2026-10-25T07:17:06.029Z",
+      "timeLabel": "25/10/69 14:17",
+      "startTime": "2026-10-25T07:17:06.029Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "CargoTransferIssued",
+      "userId": "sit_ui_transport",
+      "userName": "SIT UI / Transport",
+      "createdAt": "2026-10-25T07:16:49.320Z",
+      "timeLabel": "25/10/69 14:16",
+      "startTime": "2026-10-25T07:16:49.320Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "AOTQueueApproved",
+      "userId": "u_admin_01",
+      "userName": "Admin / ผู้ดูแลระบบ",
+      "createdAt": "2026-10-25T07:16:36.503Z",
+      "timeLabel": "25/10/69 14:16",
+      "startTime": "2026-10-25T07:16:36.503Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "AOTQueueBooked",
+      "userId": "sit_ui_transport",
+      "userName": "SIT UI / Transport",
+      "createdAt": "2026-10-25T07:16:25.250Z",
+      "timeLabel": "25/10/69 14:16",
+      "startTime": "2026-10-25T07:16:25.250Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "WH3PreDispatchChecked",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T07:16:04.545Z",
+      "timeLabel": "25/10/69 14:16",
+      "startTime": "2026-10-25T07:16:04.545Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "EIApproved",
+      "userId": "sit_ui_ei",
+      "userName": "SIT UI / EI",
+      "createdAt": "2026-10-25T07:15:50.615Z",
+      "timeLabel": "25/10/69 14:15",
+      "startTime": "2026-10-25T07:15:50.615Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OutboundPicking",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T07:15:40.133Z",
+      "timeLabel": "25/10/69 14:15",
+      "startTime": "2026-10-25T07:15:40.133Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "TerminalDocValidated",
+      "userId": "unknown",
+      "userName": "unknown",
+      "createdAt": "2026-10-25T07:15:25.518Z",
+      "timeLabel": "25/10/69 14:15",
+      "startTime": "2026-10-25T07:15:25.518Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OutboundLocationFound",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T07:15:14.220Z",
+      "timeLabel": "25/10/69 14:15",
+      "startTime": "2026-10-25T07:15:14.220Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "InboundClosed",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T06:50:30.583Z",
+      "timeLabel": "25/10/69 13:50",
+      "startTime": "2026-10-25T06:50:30.583Z",
+      "endTime": "2026-10-25T06:50:30.583Z",
+      "location": ""
+    },
+    {
+      "activityType": "TwinScan",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T06:49:28.926Z",
+      "timeLabel": "25/10/69 13:49",
+      "startTime": "2026-10-25T06:49:28.926Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "QAApproved",
+      "userId": "sit_ui_checkhouse",
+      "userName": "SIT UI / Check House",
+      "createdAt": "2026-10-25T06:48:25.719Z",
+      "timeLabel": "25/10/69 13:48",
+      "startTime": "2026-10-25T06:48:25.719Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "TaggingRecorded",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T06:47:51.119Z",
+      "timeLabel": "25/10/69 13:47",
+      "startTime": "2026-10-25T06:47:51.119Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "InboundHouseScan",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T06:43:42.329Z",
+      "timeLabel": "25/10/69 13:43",
+      "startTime": "2026-10-25T06:43:42.329Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "InboundOpened",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T06:43:15.697Z",
+      "timeLabel": "25/10/69 13:43",
+      "startTime": "2026-10-25T06:43:15.697Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "InboundDocumentCheck",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T06:42:15.332Z",
+      "timeLabel": "25/10/69 13:42",
+      "startTime": "2026-10-25T06:42:15.332Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "ReleaseDocumentReceived",
+      "userId": "sit_ui_driver",
+      "userName": "SIT UI / Driver",
+      "createdAt": "2026-10-25T05:31:00.274Z",
+      "timeLabel": "25/10/69 12:31",
+      "startTime": "2026-10-25T05:31:00.274Z",
+      "endTime": "2026-10-25T05:31:00.272Z",
+      "location": ""
+    },
+    {
+      "activityType": "ArrivedWH3",
+      "userId": "sit_ui_driver",
+      "userName": "SIT UI / Driver",
+      "createdAt": "2026-10-25T05:30:27.289Z",
+      "timeLabel": "25/10/69 12:30",
+      "startTime": "2026-10-25T05:30:27.289Z",
+      "endTime": "2026-10-25T05:30:27.216Z",
+      "location": ""
+    },
+    {
+      "activityType": "PickupComplete",
+      "userId": "sit_ui_driver",
+      "userName": "SIT UI / Driver",
+      "createdAt": "2026-10-25T05:29:38.397Z",
+      "timeLabel": "25/10/69 12:29",
+      "startTime": "2026-10-25T05:28:16.464Z",
+      "endTime": "2026-10-25T05:29:38.396Z",
+      "location": ""
+    },
+    {
+      "activityType": "Loading",
+      "userId": "sit_ui_driver",
+      "userName": "SIT UI / Driver",
+      "createdAt": "2026-10-25T05:28:43.397Z",
+      "timeLabel": "25/10/69 12:28",
+      "startTime": "2026-10-25T05:28:43.193Z",
+      "endTime": "2026-10-25T05:28:43.193Z",
+      "location": ""
+    },
+    {
+      "activityType": "CheckIn",
+      "userId": "sit_ui_driver",
+      "userName": "SIT UI / Driver",
+      "createdAt": "2026-10-25T05:28:16.465Z",
+      "timeLabel": "25/10/69 12:28",
+      "startTime": "2026-10-25T05:28:16.464Z",
+      "endTime": "2026-10-25T05:29:38.396Z",
+      "location": ""
+    },
+    {
+      "activityType": "RouteStarted",
+      "userId": "sit_ui_driver",
+      "userName": "SIT UI / Driver",
+      "createdAt": "2026-10-25T05:27:35.037Z",
+      "timeLabel": "25/10/69 12:27",
+      "startTime": "2026-10-25T05:27:35.036Z",
+      "endTime": "",
+      "location": ""
+    }
+  ],
+  "files": [
+    {
+      "fileId": "FILE-1792906123395-ece044",
+      "fileType": "ProductImage",
+      "createdAt": "2026-10-25T05:28:43.396Z"
+    },
+    {
+      "fileId": "FILE-1792906123396-a3241b",
+      "fileType": "CargoForm",
+      "createdAt": "2026-10-25T05:28:43.396Z"
+    },
+    {
+      "fileId": "FILE-1792906123396-f0d3bd",
+      "fileType": "DoorClosedAudit",
+      "createdAt": "2026-10-25T05:28:43.396Z"
+    },
+    {
+      "fileId": "FILE-1792906123396-a9d255",
+      "fileType": "InspectorSignature",
+      "createdAt": "2026-10-25T05:28:43.396Z"
+    },
+    {
+      "fileId": "FILE-1792906123396-f0562d",
+      "fileType": "ReceiverSignature",
+      "createdAt": "2026-10-25T05:28:43.397Z"
+    },
+    {
+      "fileId": "FILE-1792906260272-f5d1c6",
+      "fileType": "ReleaseDocument",
+      "createdAt": "2026-10-25T05:31:00.273Z"
+    },
+    {
+      "fileId": "FILE-1792910535331-b8e3f9",
+      "fileType": "InboundDocument",
+      "createdAt": "2026-10-25T06:42:15.332Z"
+    },
+    {
+      "fileId": "FILE-1792910871118-8e4cef",
+      "fileType": "TaggingBarcodeEvidence",
+      "createdAt": "2026-10-25T06:47:51.119Z"
+    },
+    {
+      "fileId": "FILE-1792910905718-99fde0",
+      "fileType": "QABarcodeEvidence",
+      "createdAt": "2026-10-25T06:48:25.718Z"
+    },
+    {
+      "fileId": "FILE-1792911030582-bad672",
+      "fileType": "InboundEvidence",
+      "createdAt": "2026-10-25T06:50:30.583Z"
+    },
+    {
+      "fileId": "FILE-1792912540131-b39a6a",
+      "fileType": "OutboundDocument",
+      "createdAt": "2026-10-25T07:15:40.131Z"
+    },
+    {
+      "fileId": "FILE-1792912550615-9d2daf",
+      "fileType": "EISignProof",
+      "createdAt": "2026-10-25T07:15:50.615Z"
+    },
+    {
+      "fileId": "FILE-1792912564544-8e5ff0",
+      "fileType": "WH3PreDispatchEvidence",
+      "createdAt": "2026-10-25T07:16:04.545Z"
+    },
+    {
+      "fileId": "FILE-1792912609320-9a84b6",
+      "fileType": "CargoTransferPermit",
+      "createdAt": "2026-10-25T07:16:49.320Z"
+    },
+    {
+      "fileId": "FILE-1792912648130-03b936",
+      "fileType": "PreLoadPhoto",
+      "createdAt": "2026-10-25T07:17:28.130Z"
+    },
+    {
+      "fileId": "FILE-1792912796456-430652",
+      "fileType": "TerminalQueueEvidence",
+      "createdAt": "2026-10-25T07:19:56.527Z"
+    },
+    {
+      "fileId": "FILE-1792912807518-95203e",
+      "fileType": "TerminalArrivalEvidence",
+      "createdAt": "2026-10-25T07:20:07.519Z"
+    },
+    {
+      "fileId": "FILE-1792912849709-a6be83",
+      "fileType": "MasterWeightSlip",
+      "createdAt": "2026-10-25T07:20:49.710Z"
+    },
+    {
+      "fileId": "FILE-1792912887535-726c26",
+      "fileType": "MasterXRayEvidence",
+      "createdAt": "2026-10-25T07:21:27.535Z"
+    },
+    {
+      "fileId": "FILE-1792912942083-4fd372",
+      "fileType": "LoadingDetail",
+      "createdAt": "2026-10-25T07:22:22.084Z"
+    },
+    {
+      "fileId": "FILE-1792912951637-f55012",
+      "fileType": "CargoTransferReturned",
+      "createdAt": "2026-10-25T07:22:31.638Z"
+    }
+  ]
+}

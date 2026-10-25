@@ -1,0 +1,313 @@
+{
+  "environment": "https://scd-transport.onrender.com",
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "checkedAt": "2026-10-25T07:42:26.777410+00:00",
+  "syntheticBillingOnly": true,
+  "emailSent": false,
+  "markedBilled": false,
+  "cases": [
+    {
+      "name": "baseline",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 4915,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "invoice-register-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 2341,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "policy-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 386,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "users-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 102,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "dock-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 192,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "map-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 87,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "before",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 86,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "integrations-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 95,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "temporary-api-session",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 318,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "existing-sit-billing",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 272,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "existing-sit-driver",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 281,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "existing-sit-transport",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 308,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "driver-cannot-review-billing",
+      "expected": 403,
+      "httpStatus": 403,
+      "durationMs": 121,
+      "result": "PASS",
+      "message": "ไม่มีสิทธิ์ดำเนินการวางบิล"
+    },
+    {
+      "name": "invoice-before-review-blocked",
+      "expected": 409,
+      "httpStatus": 409,
+      "durationMs": 96,
+      "result": "PASS",
+      "message": "House SIT-CS-DRIVER-20261025-N1 ต้องผ่านการตรวจเอกสารก่อนสร้าง Invoice"
+    },
+    {
+      "name": "force-draft-cannot-bypass-review",
+      "expected": 409,
+      "httpStatus": 409,
+      "durationMs": 91,
+      "result": "PASS",
+      "message": "House SIT-CS-DRIVER-20261025-N1 ต้องผ่านการตรวจเอกสารก่อนสร้าง Invoice"
+    },
+    {
+      "name": "dedicated-synthetic-customer",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 18961,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "transport-cannot-set-price",
+      "expected": 403,
+      "httpStatus": 403,
+      "durationMs": 7311,
+      "result": "PASS",
+      "message": "ไม่มีสิทธิ์ดำเนินการขั้นตอนนี้"
+    },
+    {
+      "name": "negative-price-blocked",
+      "expected": 422,
+      "httpStatus": 422,
+      "durationMs": 123,
+      "result": "PASS",
+      "message": "ต้องยืนยันราคางานและต้นทุนเป็นตัวเลขไม่ติดลบ"
+    },
+    {
+      "name": "confirm-synthetic-price-and-cost",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 10632,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "priced",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 120,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "reviewed",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 136,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "before-generate",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 126,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "driver-cannot-generate-invoice",
+      "expected": 403,
+      "httpStatus": 403,
+      "durationMs": 83,
+      "result": "PASS",
+      "message": "ไม่มีสิทธิ์ดำเนินการวางบิล"
+    },
+    {
+      "name": "after-ui-generate",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 137,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "read-invoice-generated-via-ui",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 5445,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "duplicate-invoice-blocked",
+      "expected": 409,
+      "httpStatus": 409,
+      "durationMs": 140,
+      "result": "PASS",
+      "message": "House SIT-CS-DRIVER-20261025-N1 มี Invoice แล้ว ห้ามสร้างซ้ำ"
+    },
+    {
+      "name": "price-change-after-invoice-blocked",
+      "expected": 409,
+      "httpStatus": 409,
+      "durationMs": 84,
+      "result": "PASS",
+      "message": "มี Invoice แล้ว ต้องตรวจเอกสารเดิมก่อนแก้ราคา"
+    },
+    {
+      "name": "final",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 85,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "open-generated-invoice-document",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "invoice-address-matches-preview",
+      "expected": "Customer address shown, as in Preview",
+      "actual": "SIT N1 SYNTHETIC ADDRESS - NOT FOR DELIVERY OR PAYMENT",
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": "Compare the saved customer address in Preview with generated Invoice HTML."
+    },
+    {
+      "name": "post-test-baseline",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 5978,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "invoice-register-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 2437,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "policy-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 294,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "users-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 103,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "map-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 203,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "verify-real-dock-and-other-queues",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 183,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "sit-finance-summary",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 563,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "name": "revoke-temporary-api-sessions",
+      "expected": 200,
+      "httpStatus": 200,
+      "durationMs": 316,
+      "result": "PASS",
+      "message": ""
+    }
+  ],
+  "passed": 38
+}
