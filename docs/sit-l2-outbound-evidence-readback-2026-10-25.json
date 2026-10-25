@@ -1,0 +1,58 @@
+[
+  {
+    "fileType": "CargoTransferPermit",
+    "fileId": "FILE-1792902760461-d129b1",
+    "bytes": 25403,
+    "sha256": "7102d7c924992190fc95e43c420d13ff74c6b2d87f4baa49ccdb28d3d3505025",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "PreLoadPhoto",
+    "fileId": "FILE-1792902795306-637802",
+    "bytes": 25489,
+    "sha256": "a4f5b36d88c92f88a1840eaaf40d6f1b8c161188d644de412b6826560e575275",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "TerminalQueueEvidence",
+    "fileId": "FILE-1792902818401-d3122a",
+    "bytes": 25152,
+    "sha256": "35b59d02a3cd214a8edd76c39603c06f2961bb32402e814096b59cf0f85e4fb4",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "TerminalArrivalEvidence",
+    "fileId": "FILE-1792902838888-0e404a",
+    "bytes": 25400,
+    "sha256": "b5bcc6ec45ba387e2b694a38f8d512b9cb5a2f0f527e0e58d178ff6182702aeb",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "MasterWeightSlip",
+    "fileId": "FILE-1792902861520-ea4660",
+    "bytes": 25949,
+    "sha256": "e0799073c499e6430f2463fd243805da97db306170c86f5a391a91fa39653215",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "MasterXRayEvidence",
+    "fileId": "FILE-1792902895408-1d6cd6",
+    "bytes": 24759,
+    "sha256": "3fff4f10e1ea8f593b93f6d5ed8b53067459ae2ab816e6c73d9d23452b49a95a",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "LoadingDetail",
+    "fileId": "FILE-1792903001569-52193e",
+    "bytes": 25424,
+    "sha256": "1f345652ed8f3da1af52ae3a2c2d448ce7e011c9af798dddc4b54261e08c4615",
+    "httpStatus": 200
+  },
+  {
+    "fileType": "CargoTransferReturned",
+    "fileId": "FILE-1792903010274-76c735",
+    "bytes": 25552,
+    "sha256": "0795f294eefd70df0bdb7ee5a41fa6289d500b482cf56dda01aafca4d4598fd9",
+    "httpStatus": 200
+  }
+]

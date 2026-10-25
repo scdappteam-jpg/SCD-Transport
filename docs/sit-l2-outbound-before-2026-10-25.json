@@ -1,0 +1,602 @@
+{
+  "ok": true,
+  "job": {
+    "id": "JOB-1792900249729",
+    "cbm": "",
+    "tel": "0000000000",
+    "amount": "",
+    "dgType": "",
+    "refsNo": "",
+    "source": "SIT ONLY - synthetic cargo; no physical movement",
+    "status": "AOTQueueApproved",
+    "weight": "",
+    "booking": "",
+    "carrier": "",
+    "contact": "SIT SYNTHETIC CONTACT",
+    "edocCin": "",
+    "edocInv": "",
+    "driverId": "sit_ui_driver",
+    "endPlace": "WH3",
+    "flightNo": "SIT100",
+    "icNumber": "",
+    "loadedAt": "2026-10-25T04:23:24.620Z",
+    "planDate": "2026-10-25",
+    "wh3DueAt": "2026-10-25T22:00:00.000Z",
+    "workDate": "2026-10-25",
+    "cargoDesc": "",
+    "cargoType": "normal",
+    "checkInAt": "2026-10-25T04:23:15.212Z",
+    "closeTime": "",
+    "createdAt": "2026-10-25T03:50:49.727Z",
+    "invoiceNo": "SIT-INV-SIT-MEETING-20261025-L2",
+    "isLithium": false,
+    "loadedGps": "13.1,100.1",
+    "ownerCode": "",
+    "planRound": "Manual",
+    "qaHistory": [
+      {
+        "id": "d2ef3e1d-6d0c-4642-a0a1-32cc6a0a92ac",
+        "tags": [
+          {
+            "barcode": "SITMEETING20261025L2",
+            "imageHash": "cd3923e52bbbee38b67c7e7083c1b38e53464e1be9cb308ade3359755b322e8b"
+          },
+          {
+            "barcode": "SITMEETING20261025L2",
+            "imageHash": "1999186dffd9b4937e3f5bf19e47954838f03398cf4a5aa0ccde084a901d178e"
+          }
+        ],
+        "fileIds": [
+          "FILE-1792900542963-f2208c",
+          "FILE-1792900542964-d84cd6"
+        ],
+        "revision": 1,
+        "approvedAt": "2026-10-25T03:55:42.822Z",
+        "approvedBy": "sit_ui_checkhouse"
+      }
+    ],
+    "readyTime": "",
+    "trackType": "Pair",
+    "updatedAt": "2026-10-25T04:27:20.781Z",
+    "volWeight": "",
+    "checkInGps": "13.1,100.1",
+    "csRejected": false,
+    "customerId": "c_sit_only_meeting_safety",
+    "driverName": "SIT UI / Driver",
+    "driverType": "",
+    "eiApproved": true,
+    "flightTime": "2026-10-26T12:00:00Z",
+    "mawbNumber": "",
+    "pickupCase": "GeneralManual",
+    "pickupDate": "2026-10-25",
+    "pieceCount": 2,
+    "planSource": "SIT",
+    "qaApproval": {
+      "id": "d2ef3e1d-6d0c-4642-a0a1-32cc6a0a92ac",
+      "tags": [
+        {
+          "barcode": "SITMEETING20261025L2",
+          "imageHash": "cd3923e52bbbee38b67c7e7083c1b38e53464e1be9cb308ade3359755b322e8b"
+        },
+        {
+          "barcode": "SITMEETING20261025L2",
+          "imageHash": "1999186dffd9b4937e3f5bf19e47954838f03398cf4a5aa0ccde084a901d178e"
+        }
+      ],
+      "fileIds": [
+        "FILE-1792900542963-f2208c",
+        "FILE-1792900542964-d84cd6"
+      ],
+      "revision": 1,
+      "approvedAt": "2026-10-25T03:55:42.822Z",
+      "approvedBy": "sit_ui_checkhouse"
+    },
+    "qaRequired": true,
+    "slaProfile": "WH3_14H",
+    "actualCount": "",
+    "aotBookedAt": "2026-10-25T04:27:07.917Z",
+    "completeGps": "13.1,100.1",
+    "completedAt": "2026-10-25T04:23:37.323Z",
+    "csConfirmed": true,
+    "csInvoiceNo": "SIT-INV-SIT-MEETING-20261025-L2",
+    "destAirport": "",
+    "destination": "WH3",
+    "houseNumber": "SIT-MEETING-20261025-L2",
+    "manualExtra": true,
+    "packageType": "Carton",
+    "pickupItems": [
+      {
+        "carton": "2",
+        "houseNumber": "SIT-MEETING-20261025-L2",
+        "pickupDestination": "WH3"
+      }
+    ],
+    "pickupPhone": "0000000000",
+    "planMatched": false,
+    "productType": "General",
+    "routePolicy": "ReturnWH3BeforeTerminal",
+    "shippingDoc": "",
+    "vehicleType": "",
+    "airportDueAt": "2026-10-25T22:00:00.000Z",
+    "arrivedWh3At": "2026-10-25T04:23:47.132Z",
+    "customerName": "SIT ONLY MEETING SAFETY",
+    "eiApprovedAt": "2026-10-25T04:25:30.964Z",
+    "evidenceNote": "SIT ONLY - no real shipment, photos, signatures, GPS or driving. Do not merge with real Houses.",
+    "receiverName": "SIT SYNTHETIC RECEIVER",
+    "vehiclePlate": "SIT-ONLY",
+    "adminPrepared": true,
+    "aotApprovedAt": "2026-10-25T04:27:20.781Z",
+    "aotDriverName": "SIT UI / Driver",
+    "approvalTrail": [
+      {
+        "at": "2026-10-25T03:51:01.221Z",
+        "by": "Admin / ผู้ดูแลระบบ",
+        "to": "ManualExtraApproved",
+        "from": "PendingCSApproval",
+        "note": "SIT ONLY - no real shipment, photos, signatures, GPS or driving. Do not merge with real Houses.",
+        "type": "ManualExtraApproved",
+        "channel": "SIT simulation",
+        "invoiceNo": "SIT-INV-SIT-MEETING-20261025-L2",
+        "contactName": "SIT SYNTHETIC CONTACT",
+        "contactPhone": "0000000000"
+      }
+    ],
+    "arrivedWh3Gps": "13.1,100.1",
+    "cargoCutoffAt": "",
+    "cargoFormMode": "AdminPrepared",
+    "cargoIssuedAt": "2026-10-25T03:51:08.162Z",
+    "consigneeName": "",
+    "contactPerson": "SIT SYNTHETIC CONTACT",
+    "csConfirmedAt": "2026-10-25T03:51:01.221Z",
+    "csConfirmedBy": "Admin / ผู้ดูแลระบบ",
+    "csContactName": "SIT SYNTHETIC CONTACT",
+    "inspectorName": "SIT SYNTHETIC INSPECTOR",
+    "mustReturnWh3": true,
+    "routeStartGps": "13.1,100.1",
+    "tagInspection": {
+      "mode": "Pair",
+      "tags": [
+        {
+          "barcode": "SITMEETING20261025L2",
+          "imageHash": "00b99a295660e8940add5375cef57740f66a9d120c2d1eca8f1afe7b4bf5c002"
+        },
+        {
+          "barcode": "SITMEETING20261025L2",
+          "imageHash": "c6f171a829debb60f05113dbc7672c743aea03b9780428d67b9b50f7e681b64f"
+        }
+      ],
+      "fileIds": [
+        "FILE-1792900522766-bc73b9",
+        "FILE-1792900522767-48f118"
+      ],
+      "identity": "d759b480cd8665aa304ed65f8f97206f95dd8588f2d9d2176a174fcc417794db",
+      "revision": 1,
+      "taggedAt": "2026-10-25T03:55:22.565Z",
+      "taggedBy": "sit_ui_wh",
+      "stickerColor": ""
+    },
+    "aotQueueStatus": "Approved",
+    "aotVehicleType": "4W-SIT",
+    "approvalStatus": "ManualExtraApproved",
+    "csContactPhone": "0000000000",
+    "inboundDocNote": "",
+    "inboundReceipt": {
+      "counts": {
+        "CTN": 2
+      },
+      "reason": "",
+      "revision": 1,
+      "requestId": "SIT-BOOK-L2-20261025",
+      "confirmedAt": "2026-10-25T04:24:43.815Z",
+      "confirmedBy": "sit_ui_wh"
+    },
+    "pickupLocation": "SIT ONLY synthetic factory",
+    "returningWh3At": "2026-10-25T04:23:37.323Z",
+    "routeStartedAt": "2026-10-25T04:23:04.116Z",
+    "afterFinalRound": false,
+    "aotVehicleModel": "SIT ONLY virtual vehicle",
+    "aotVehiclePlate": "SIT-BOOK-L2",
+    "documentReadyAt": "2026-10-25T04:25:49.514Z",
+    "documentReadyBy": "sit_ui_wh",
+    "evidenceChannel": "SIT simulation",
+    "inboundClosedAt": "2026-10-25T04:24:59.824Z",
+    "inboundOpenedAt": "2026-10-25T04:24:11.389Z",
+    "pickupChecklist": [
+      "date",
+      "customer",
+      "place",
+      "driver",
+      "house",
+      "package",
+      "inspector",
+      "receiver",
+      "route-log",
+      "destination"
+    ],
+    "readyForBilling": false,
+    "routeNextModule": "Module2",
+    "evidenceRequired": false,
+    "flightRiskReason": "Confirmed receipt matches every planned unit",
+    "flightRiskStatus": "WH3Received",
+    "inboundDocStatus": "Found",
+    "inboundScannedAt": "2026-10-25T04:24:29.215Z",
+    "outboundPickedAt": "2026-10-25T04:25:18.940Z",
+    "wh3PreDispatchAt": "2026-10-25T04:25:49.514Z",
+    "wh3PreDispatchBy": "sit_ui_wh",
+    "arrivedAtPickupAt": "2026-10-25T04:23:15.212Z",
+    "cargoTransferNote": "SIT ONLY synthetic booking regression",
+    "doorClosedPhotoAt": "2026-10-25T04:23:37.323Z",
+    "driverRouteStatus": "ReleasedForDock",
+    "mustNotMissFlight": false,
+    "plannedPieceCount": 2,
+    "subcontractorRate": "",
+    "csApprovalRequired": false,
+    "flightNumberDigits": 3,
+    "wh3PreDispatchNote": "SIT ONLY synthetic documents",
+    "inboundStickerColor": "",
+    "minutesToAirportDue": 1047.7735,
+    "pickupReceivedCount": "2",
+    "requiresLithiumDocs": false,
+    "terminalDestination": "TG",
+    "terminalProfileNote": "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
+    "wh3PreDispatchReady": true,
+    "slaHoursBeforeFlight": 14,
+    "tagInspectionHistory": [
+      {
+        "mode": "Pair",
+        "tags": [
+          {
+            "barcode": "SITMEETING20261025L2",
+            "imageHash": "00b99a295660e8940add5375cef57740f66a9d120c2d1eca8f1afe7b4bf5c002"
+          },
+          {
+            "barcode": "SITMEETING20261025L2",
+            "imageHash": "c6f171a829debb60f05113dbc7672c743aea03b9780428d67b9b50f7e681b64f"
+          }
+        ],
+        "fileIds": [
+          "FILE-1792900522766-bc73b9",
+          "FILE-1792900522767-48f118"
+        ],
+        "identity": "d759b480cd8665aa304ed65f8f97206f95dd8588f2d9d2176a174fcc417794db",
+        "revision": 1,
+        "taggedAt": "2026-10-25T03:55:22.565Z",
+        "taggedBy": "sit_ui_wh",
+        "stickerColor": ""
+      }
+    ],
+    "effectiveAirportDueAt": "2026-10-25T22:00:00.000Z",
+    "inboundCloseRequestId": "SIT-BOOK-L2-CLOSE",
+    "inboundClosedRevision": 1,
+    "inboundReceiptHistory": [
+      {
+        "counts": {
+          "CTN": 2
+        },
+        "reason": "",
+        "revision": 1,
+        "requestId": "SIT-BOOK-L2-20261025",
+        "confirmedAt": "2026-10-25T04:24:43.815Z",
+        "confirmedBy": "sit_ui_wh"
+      }
+    ],
+    "pickupLoadFingerprint": "d623c8a05a33ba3692379290b48867c0cca9ce7a3feec4c8ab776daf12f6dd76",
+    "pickupPhotoRecordedAt": "2026-10-25T04:23:24.620Z",
+    "routeComplianceStatus": "MustReturnWH3",
+    "terminalWorkflowEvents": [
+      {
+        "at": "2026-10-25T04:27:07.917Z",
+        "status": "BookingRequested",
+        "userId": "sit_ui_transport",
+        "terminal": "TG",
+        "driverName": "SIT UI / Driver",
+        "vehiclePlate": "SIT-BOOK-L2"
+      },
+      {
+        "at": "2026-10-25T04:27:20.781Z",
+        "status": "TerminalConfirmed",
+        "userId": "u_admin_01",
+        "terminal": "TG",
+        "driverName": "SIT UI / Driver",
+        "vehiclePlate": "SIT-BOOK-L2"
+      }
+    ],
+    "terminalWorkflowStatus": "TerminalConfirmed",
+    "doorClosedPhotoRequired": true,
+    "wh3PreDispatchChecklist": [
+      "outbound_weighing_slip",
+      "security_original",
+      "airline_specific",
+      "permit",
+      "manifest_review"
+    ],
+    "wh3QueuePriorityMinutes": 1056.0662666666667,
+    "releaseDocumentReceivedAt": "2026-10-25T04:23:56.024Z",
+    "pickupCompletionFingerprint": "d623c8a05a33ba3692379290b48867c0cca9ce7a3feec4c8ab776daf12f6dd76",
+    "safetyPickupEvidenceFileIds": [
+      "FILE-1792902205111-8135b6",
+      "FILE-1792902205210-c82aed",
+      "FILE-1792902205211-a50440",
+      "FILE-1792902205211-f2ed24",
+      "FILE-1792902205211-998f0e"
+    ],
+    "safetyPickupEvidenceFingerprint": "8802aa11dd4c63643ad6aa42102a63875b2283a351c9f8f84f7f1f10a718039b",
+    "inboundReceiptSummary": {
+      "houseNumber": "SIT-MEETING-20261025-L2",
+      "onhandNumber": "",
+      "master": "",
+      "planned": {
+        "CTN": 2
+      },
+      "planKnown": true,
+      "received": {
+        "CTN": 2
+      },
+      "remaining": {
+        "CTN": 0
+      },
+      "over": {
+        "CTN": 0
+      },
+      "confirmed": true,
+      "complete": true,
+      "revision": 1,
+      "state": "complete"
+    },
+    "terminalProfile": {
+      "label": "TG",
+      "note": "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
+      "statuses": [
+        "BookingRequested",
+        "TerminalConfirmed",
+        "LoadedFromWH3",
+        "ArrivedAtTerminal",
+        "WeighingCompleted",
+        "DimensionCompleted",
+        "XRayPassed",
+        "LoadingCompleted",
+        "LoadingDetailCompleted"
+      ],
+      "checklist": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit"
+      ],
+      "slaMinutes": 180
+    },
+    "wh3Documents": {
+      "required": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "checked": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "missing": [],
+      "ready": true,
+      "labels": [
+        {
+          "key": "outbound_weighing_slip",
+          "label": "ใบชั่งสินค้าขาออกจาก WH3",
+          "checked": true
+        },
+        {
+          "key": "security_original",
+          "label": "ใบ Security ตัวจริง",
+          "checked": true
+        },
+        {
+          "key": "airline_specific",
+          "label": "ใบ Airline ตรงสายการบิน/สาขาปลายทาง",
+          "checked": true
+        },
+        {
+          "key": "permit",
+          "label": "ใบ Permit",
+          "checked": true
+        },
+        {
+          "key": "manifest_review",
+          "label": "Manifest / ตรวจยอดก่อนโหลด",
+          "checked": true
+        }
+      ]
+    },
+    "processTracking": {
+      "planning": "ManualExtraEntered",
+      "approval": "ManualExtraApproved",
+      "wh3Documents": "DocumentReady",
+      "transport": "TerminalConfirmed",
+      "terminal": "TG",
+      "terminalStatus": "AOTQueueApproved",
+      "closing": "",
+      "billing": ""
+    },
+    "flightTimeLabel": "26/10/69 19:00",
+    "hoursToFlight": 31.5,
+    "redFlag": false,
+    "canUploadLoadingDetail": false
+  },
+  "activities": [
+    {
+      "activityType": "AOTQueueApproved",
+      "userId": "u_admin_01",
+      "userName": "Admin / ผู้ดูแลระบบ",
+      "createdAt": "2026-10-25T04:27:20.781Z",
+      "timeLabel": "25/10/69 11:27",
+      "startTime": "2026-10-25T04:27:20.781Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "AOTQueueBooked",
+      "userId": "sit_ui_transport",
+      "userName": "SIT UI / Transport",
+      "createdAt": "2026-10-25T04:27:07.918Z",
+      "timeLabel": "25/10/69 11:27",
+      "startTime": "2026-10-25T04:27:07.918Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "WH3PreDispatchChecked",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T04:25:49.515Z",
+      "timeLabel": "25/10/69 11:25",
+      "startTime": "2026-10-25T04:25:49.515Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "EIApproved",
+      "userId": "sit_ui_ei",
+      "userName": "SIT UI / EI",
+      "createdAt": "2026-10-25T04:25:30.964Z",
+      "timeLabel": "25/10/69 11:25",
+      "startTime": "2026-10-25T04:25:30.964Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "OutboundPicking",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T04:25:18.940Z",
+      "timeLabel": "25/10/69 11:25",
+      "startTime": "2026-10-25T04:25:18.940Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "InboundClosed",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T04:24:59.824Z",
+      "timeLabel": "25/10/69 11:24",
+      "startTime": "2026-10-25T04:24:59.824Z",
+      "endTime": "2026-10-25T04:24:59.824Z",
+      "location": ""
+    },
+    {
+      "activityType": "InboundHouseScan",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T04:24:29.310Z",
+      "timeLabel": "25/10/69 11:24",
+      "startTime": "2026-10-25T04:24:29.310Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "InboundOpened",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T04:24:11.389Z",
+      "timeLabel": "25/10/69 11:24",
+      "startTime": "2026-10-25T04:24:11.389Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "InboundDocumentCheck",
+      "userId": "sit_ui_wh",
+      "userName": "SIT UI / WH Staff",
+      "createdAt": "2026-10-25T04:24:03.810Z",
+      "timeLabel": "25/10/69 11:24",
+      "startTime": "2026-10-25T04:24:03.810Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "ReleaseDocumentReceived",
+      "userId": "sit_ui_driver",
+      "userName": "SIT UI / Driver",
+      "createdAt": "2026-10-25T04:23:56.025Z",
+      "timeLabel": "25/10/69 11:23",
+      "startTime": "2026-10-25T04:23:56.025Z",
+      "endTime": "2026-10-25T04:23:56.024Z",
+      "location": ""
+    },
+    {
+      "activityType": "CheckIn",
+      "userId": "sit_ui_driver",
+      "userName": "SIT UI / Driver",
+      "createdAt": "2026-10-25T04:23:15.212Z",
+      "timeLabel": "25/10/69 11:23",
+      "startTime": "2026-10-25T04:23:15.212Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "RouteStarted",
+      "userId": "sit_ui_driver",
+      "userName": "SIT UI / Driver",
+      "createdAt": "2026-10-25T04:23:04.116Z",
+      "timeLabel": "25/10/69 11:23",
+      "startTime": "2026-10-25T04:23:04.116Z",
+      "endTime": "",
+      "location": ""
+    },
+    {
+      "activityType": "QAApproved",
+      "userId": "sit_ui_checkhouse",
+      "userName": "SIT UI / Check House",
+      "createdAt": "2026-10-25T03:55:42.964Z",
+      "timeLabel": "25/10/69 10:55",
+      "startTime": "2026-10-25T03:55:42.964Z",
+      "endTime": "",
+      "location": ""
+    }
+  ],
+  "files": [
+    {
+      "fileId": "FILE-1792900542963-f2208c",
+      "fileType": "QABarcodeEvidence",
+      "createdAt": "2026-10-25T03:55:42.964Z"
+    },
+    {
+      "fileId": "FILE-1792900542964-d84cd6",
+      "fileType": "QABarcodeEvidence",
+      "createdAt": "2026-10-25T03:55:42.964Z"
+    },
+    {
+      "fileId": "FILE-1792902236024-6eee63",
+      "fileType": "ReleaseDocument",
+      "createdAt": "2026-10-25T04:23:56.025Z"
+    },
+    {
+      "fileId": "FILE-1792902243809-392b97",
+      "fileType": "InboundDocument",
+      "createdAt": "2026-10-25T04:24:03.810Z"
+    },
+    {
+      "fileId": "FILE-1792902299823-600006",
+      "fileType": "InboundEvidence",
+      "createdAt": "2026-10-25T04:24:59.824Z"
+    },
+    {
+      "fileId": "FILE-1792902318939-72a2c1",
+      "fileType": "OutboundDocument",
+      "createdAt": "2026-10-25T04:25:18.939Z"
+    },
+    {
+      "fileId": "FILE-1792902330964-eee794",
+      "fileType": "EISignProof",
+      "createdAt": "2026-10-25T04:25:30.964Z"
+    },
+    {
+      "fileId": "FILE-1792902349514-9b6210",
+      "fileType": "WH3PreDispatchEvidence",
+      "createdAt": "2026-10-25T04:25:49.515Z"
+    }
+  ]
+}
