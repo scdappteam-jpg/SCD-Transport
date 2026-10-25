@@ -1,0 +1,63 @@
+{
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "invoiceId": "INV-2026-0002",
+  "commit": "b78b6fdb9ae4adc0479b03d933ef0da726abaf3f",
+  "measurements": [
+    {
+      "requestedWidth": 375,
+      "viewportWidth": 366,
+      "viewportHeight": 844,
+      "previewWidth": 290,
+      "previewClientWidth": 288,
+      "previewScrollWidth": 288,
+      "attachmentItems": 22,
+      "invoiceDocumentLinks": 1,
+      "expectedTextsPresent": true,
+      "overflowElements": [],
+      "overlaps": [],
+      "house": "SIT-CS-DRIVER-20261025-N1",
+      "label": "mobile-final",
+      "result": "PASS"
+    },
+    {
+      "requestedWidth": 903,
+      "viewportWidth": 894,
+      "viewportHeight": 885,
+      "previewWidth": 670,
+      "previewClientWidth": 668,
+      "previewScrollWidth": 668,
+      "attachmentItems": 22,
+      "invoiceDocumentLinks": 1,
+      "expectedTextsPresent": true,
+      "overflowElements": [],
+      "overlaps": [],
+      "house": "SIT-CS-DRIVER-20261025-N1",
+      "label": "tablet-final",
+      "result": "PASS"
+    },
+    {
+      "requestedWidth": 1280,
+      "viewportWidth": 1271,
+      "viewportHeight": 900,
+      "previewWidth": 855,
+      "previewClientWidth": 853,
+      "previewScrollWidth": 853,
+      "attachmentItems": 22,
+      "invoiceDocumentLinks": 1,
+      "expectedTextsPresent": true,
+      "overflowElements": [],
+      "overlaps": [],
+      "house": "SIT-CS-DRIVER-20261025-N1",
+      "label": "desktop-final",
+      "result": "PASS"
+    }
+  ],
+  "repeatedRender": {
+    "attachmentItems": 22,
+    "invoiceDocumentLinks": 1,
+    "rounds": 2,
+    "result": "PASS"
+  },
+  "dataSource": "production DOM; read-only selection; no invoice mutation",
+  "recordingNote": "Measurements transcribed from the three successful production DOM tool results; the REPL helper returned measurements but its array mutation was not retained across calls."
+}

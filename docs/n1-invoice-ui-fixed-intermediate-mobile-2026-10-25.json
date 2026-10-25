@@ -1,0 +1,12 @@
+{
+  "commit": "74fa4f7ddaff20e0720d7c76026ba1cf81fec49e",
+  "measurements": [
+    {
+      "requestedWidth": 375,
+      "result": "FAIL",
+      "minimumTableWidth": 480,
+      "finding": "Live mobile Preview overflow confirmed in screenshot; full intermediate DOM payload was not retained in REPL array."
+    }
+  ],
+  "reason": "Mobile global table minimum width 480px forces implicit grid track; found during live 375px retest"
+}

@@ -1,0 +1,21 @@
+{
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "invoiceId": "INV-2026-0002",
+  "allJobsVerified": 3807,
+  "otherJobsVerified": 3806,
+  "allJobsUnchanged": true,
+  "jobHashBefore": "4e2ca2a7a5a809fc9dd29a8f5bd97b06078891b9b334937df697d24d8ee58b14",
+  "jobHashAfter": "4e2ca2a7a5a809fc9dd29a8f5bd97b06078891b9b334937df697d24d8ee58b14",
+  "usersCustomersAndInvoiceRegisterUnchanged": true,
+  "mapDockAndPolicyUnchanged": true,
+  "geofencingEnabled": false,
+  "invoiceStatus": "Draft",
+  "amount": 1000,
+  "emailSent": false,
+  "markedBilled": false,
+  "invoiceFiles": 1,
+  "evidenceFiles": 22,
+  "evidenceHashesUnchanged": true,
+  "invoiceDocumentSha256": "388e1222ffe07c2bf4617e708326a672fd345102067532956f5e6f82a925575c",
+  "checkedAt": "2026-10-25T08:19:05.359759+00:00"
+}

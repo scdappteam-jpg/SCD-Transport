@@ -1,0 +1,86 @@
+{
+  "pdf": "C:\\Users\\UsEr\\OneDrive\\Desktop\\Logistic คุณใหม่\\SCD-Transport\\output\\pdf\\SCD-N1-Invoice-UI-Fixed-SIT-2026-10-25.pdf",
+  "pages": 20,
+  "screenshots": 13,
+  "images": [
+    {
+      "file": "n1-invoice-04-preview-before-review-2026-10-25.png",
+      "title": "ก่อนแก้: Preview แคบ",
+      "description": "ภาพจริงจากรอบก่อน deploy ใช้เป็นประวัติข้อพบ ไม่ใช่ผลตรวจรุ่นล่าสุด",
+      "sha256": "3f13839331101d351d5b9428b7c103345e8efa77a93d5d924aa78cd4236237d7"
+    },
+    {
+      "file": "n1-invoice-10-duplicate-attachment-ui-2026-10-25.png",
+      "title": "ก่อนแก้: InvoiceDocument แสดงซ้ำ",
+      "description": "ภาพจริงก่อนแก้ UI แสดงลิงก์สำรองซ้ำกับไฟล์ในทะเบียน ไม่ใช่การสร้างเอกสารสองใบ",
+      "sha256": "9035f1bf0681a6d8f0fe74241583459d9d0f35f1a071d5cd32c5553dc31e67c2"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-01-render-live-2026-10-25.png",
+      "title": "Deploy ระบบจริงสำเร็จ",
+      "description": "Render รุ่น b78b6fd แสดง Deploy succeeded และ Live หลัง build จริงสำเร็จ",
+      "sha256": "a8366f35bd4eac6c4a24aa3af778d50dd0102433f1b27e54934918fd925aac89"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-02-preview-903-2026-10-25.png",
+      "title": "หลังแก้: Preview จอ 903 พิกเซล",
+      "description": "INV-2026-0002 ของ N1 บนระบบจริง Preview กว้าง 670 พิกเซล ข้อความไม่ล้นหรือซ้อนกัน ยอดจำลองเดิม 1,000 บาท",
+      "sha256": "d803a73597b96ffb1375a7c3388ef770ac8833a54d8d7e003995eaeaf55d8c74"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-03-single-attachment-903-2026-10-25.png",
+      "title": "หลังแก้: InvoiceDocument หนึ่งรายการ",
+      "description": "แกลเลอรีระบบจริงแสดง InvoiceDocument หนึ่งรายการจากหลักฐานเดิมทั้งหมด 22 รายการ ไม่มีการลบไฟล์ต้นฉบับ",
+      "sha256": "1911e3a855f603b37aa62fdb0bf954424539ce7e16193e03343ab7e3d78a6118"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-04-preview-375-header-2026-10-25.png",
+      "title": "หลังแก้: มือถือ 375 พิกเซล ส่วนหัว",
+      "description": "Preview แยกส่วนหัวและที่อยู่เป็นแนวตั้งตามพื้นที่จริง ข้อมูลลูกค้าและที่อยู่เป็นข้อมูลจำลอง SIT เท่านั้น",
+      "sha256": "76f819953b616e46e0eefafa3dfa1ecf91fa0e7e692e7229bd2bf386489229c5"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-05-preview-375-totals-2026-10-25.png",
+      "title": "หลังแก้: มือถือ 375 พิกเซล ยอดและรายละเอียด",
+      "description": "ตารางไม่ติดความกว้างขั้นต่ำ 480 พิกเซลแล้ว พื้นที่ Preview 290 พิกเซล ไม่ล้นแนวนอน ไม่แก้ยอดหรือสร้าง Invoice ใหม่",
+      "sha256": "9f7e8375bac2c31403ce479e97e56aacd7486f33719c4f028a385a19ebf1899c"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-06-preview-1280-2026-10-25.png",
+      "title": "หลังแก้: จอ 1280 พิกเซล",
+      "description": "Preview บนระบบจริงกว้าง 855 พิกเซล ตรวจเลข Invoice House ชื่อลูกค้า ที่อยู่ และยอดครบ",
+      "sha256": "3c77f6c433ae8a6a6f0842e728a2ee7bb55525f451705b579886f99f07771b69"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-07-repeated-render-2026-10-25.png",
+      "title": "เลือก House ซ้ำสองรอบ",
+      "description": "ล้างและเลือก N1 ซ้ำสองรอบ การวาด UI ซ้ำยังคง InvoiceDocument หนึ่งรายการและหลักฐาน 22 รายการ",
+      "sha256": "9193f5ed4bf8fffe958cfacea4672aa046ca9082b96c09b23cd545cdbcbd330a"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-08-original-invoice-2026-10-25.png",
+      "title": "เปิดเอกสาร Invoice เดิมจริง",
+      "description": "URL INV-2026-0002.html เดิมเปิดได้ ชื่อ ที่อยู่ House Flight และยอด 1,000 บาทตรงเดิม SHA256 เอกสารไม่เปลี่ยน เอกสารนี้เป็นข้อมูลจำลอง SIT ไม่ใช้เรียกเก็บเงินจริง",
+      "sha256": "85f54b3ccbd41f0227056f797f90040ca107c86f7e926d1b8729a6732d4cb31d"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-09-finance-register-2026-10-25.png",
+      "title": "ทะเบียนการเงิน N1 คงเดิม",
+      "description": "กรองเฉพาะ N1 บนระบบจริง พบ INV-2026-0002 สถานะ Draft ยอด 1,000 ต้นทุน 700 ส่วนต่าง 300 บาท ไม่มีการส่งอีเมลหรือปิด Billed",
+      "sha256": "3d440441a5517b1fbca012e900308790d4a902dad7df5f1aefbb7c5eb275d0ea"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-10-geofencing-off-2026-10-25.png",
+      "title": "Geofencing ยังคงปิด",
+      "description": "หน้า Admin แสดง Geofencing ไม่เลือกและพิกัดจริง 0 จุด เปิดอ่านอย่างเดียว ไม่กดบันทึกนโยบาย",
+      "sha256": "b9fbc98fdc69a2ff88bee1e693048a90e78b48a0f4bfb6668a510bf8377be119"
+    },
+    {
+      "file": "n1-invoice-ui-fixed-11-test-mode-closed-2026-10-25.png",
+      "title": "จบการทดสอบและออกจากระบบ",
+      "description": "ปิดโหมดเลือกยูสทดสอบแล้ว กลับหน้า Login และคืนขนาดหน้าต่างเดิม",
+      "sha256": "457b86e420813d88988568bd14a6e5f4c6be59403e455084b0ec7eeb12217ade"
+    }
+  ],
+  "sha256": "e14fe15b36811cf00ca4056551b0a90d9a4b2ced84a1979ece5a86824c490610"
+}

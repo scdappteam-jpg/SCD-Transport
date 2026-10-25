@@ -1,0 +1,36 @@
+{
+  "commit": "b78b6fdb9ae4adc0479b03d933ef0da726abaf3f",
+  "unitTests": {
+    "passed": 280,
+    "failed": 0,
+    "newInvoiceAttachmentCases": 6
+  },
+  "typecheck": "PASS",
+  "changedTestLint": "PASS",
+  "appJsSyntax": "PASS",
+  "fullLint": {
+    "result": "FAIL_PREEXISTING",
+    "errors": 4,
+    "warnings": 3,
+    "files": [
+      "scripts/generate-auth-password-hash.cjs",
+      "scripts/provision-supabase-auth.cjs",
+      "src/server/production-relational-mirror.cjs"
+    ],
+    "reason": "CommonJS require imports forbidden by ESLint and existing unused values; these files are unchanged"
+  },
+  "localDefaultBuild": {
+    "result": "FAIL",
+    "reason": "Windows Turbopack compiler child process exited before connection (exit0), including outside sandbox"
+  },
+  "localWebpackBuild": "PASS",
+  "renderDefaultTurbopackBuild": "PASS for b78b6fd; Build successful and Deploy succeeded Live observed",
+  "noBackendOrInvoiceMutationCodeChanged": true,
+  "initialCommit": "74fa4f7ddaff20e0720d7c76026ba1cf81fec49e",
+  "finalTests": {
+    "passed": 280,
+    "failed": 0
+  },
+  "mobileFollowup": "First live 375px test found a global 480px minimum; final patch bounds the paper grid and table width. Final live verification follows.",
+  "finalWebpackBuild": "PASS"
+}
