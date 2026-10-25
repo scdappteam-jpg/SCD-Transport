@@ -7968,6 +7968,29 @@ function billingCustomerForJob(job) {
     return state.customers.find(customer => customer.id === job?.customerId) || state.customers.find(customer => customer.name === job?.customerName) || {};
 }
 
+function billingAttachmentFiles(invoice, files) {
+    const fallback = invoice?.pdfUrl ? [{
+        fileId: invoice.id ? `INVOICE-DOC-${invoice.id}` : "",
+        fileType: "InvoiceDocument",
+        url: invoice.pdfUrl,
+        createdAt: invoice.draftedAt || invoice.sentAt || new Date().toISOString()
+    }] : [];
+    const seenIds = new Set();
+    const seenUrls = new Set();
+    return [...files, ...fallback].filter(file => {
+        if (file.fileType !== "InvoiceDocument") return true;
+        const id = String(file.fileId || "");
+        let url = String(file.url || "");
+        if (url) {
+            try { url = new URL(url, window.location.href).href; } catch { /* Keep the original URL if it cannot be resolved. */ }
+        }
+        const duplicate = (id && seenIds.has(id)) || (url && seenUrls.has(url));
+        if (id) seenIds.add(id);
+        if (url) seenUrls.add(url);
+        return !duplicate;
+    });
+}
+
 function renderBillingContext(preserveCustomerInputs = false) {
     const job = billingSelectedJob();
     const customer = billingCustomerForJob(job);
@@ -7996,12 +8019,7 @@ function renderBillingContext(preserveCustomerInputs = false) {
     if (attachmentList) {
         const invoice = selectedInvoice();
         const files = (state.dashboard.attachments || []).filter(file => file.houseNumber === job?.houseNumber);
-        const invoiceFile = invoice?.pdfUrl ? [ {
-            fileType: "InvoiceDocument",
-            url: invoice.pdfUrl,
-            createdAt: invoice.draftedAt || invoice.sentAt || (new Date).toISOString()
-        } ] : [];
-        const allFiles = [ ...invoiceFile, ...files ];
+        const allFiles = billingAttachmentFiles(invoice, files);
         attachmentList.innerHTML = allFiles.length ? allFiles.map(file => `\n      <article class="attachment-item">\n        <div><strong>${file.fileType}</strong><br><span>${new Date(file.createdAt).toLocaleString("th-TH")}</span></div>\n        <a href="${assetUrl(file.url)}" target="_blank" rel="noreferrer">เปิดดู</a>\n      </article>\n    `).join("") : `<article class="attachment-item"><div><strong>ยังไม่มีเอกสารแนบ</strong><br><span>No attachments</span></div></article>`;
     }
 }

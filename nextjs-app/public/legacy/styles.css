@@ -623,3 +623,68 @@ input.has-error,select.has-error,textarea.has-error{border-color:#E0A6A0!importa
 #selectedOrderReferences .shipment-reference-fields { display: flex; gap: 8px 20px; flex-wrap: wrap; }
 .cs-job-info .shipment-reference-fields .shipment-reference-field { display: grid; }
 .cs-job-info .shipment-reference-field > b { font-size: 12px; }
+
+/* Billing owns the full operations row; preview columns follow the panel, not the viewport. */
+#view-mobile .operations-grid:has(> #billingPanel.active) {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+#billingPanel {
+  container: scd-billing / inline-size;
+  width: 100%;
+  min-width: 0;
+}
+#billingPanel .billing-workspace {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+}
+#billingPanel .billing-card,
+#billingPanel .billing-preview,
+#billingPanel .invoice-paper-preview {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+#billingPanel .billing-card:has(> #billingPreview),
+#billingPanel .billing-card:has(> #billingAttachmentList) {
+  grid-column: 1 / -1;
+}
+#billingPanel .invoice-paper-preview header,
+#billingPanel .invoice-paper-preview .invoice-party,
+#billingPanel .invoice-paper-preview footer {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+#billingPanel .invoice-paper-preview :is(header, .invoice-party, footer) > *,
+#billingPanel .invoice-paper-preview :is(strong, b, span, small, a) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#billingPanel .invoice-paper-preview table {
+  display: table;
+  table-layout: fixed;
+  width: 100%;
+  white-space: normal;
+}
+#billingPanel .invoice-paper-preview :is(th, td) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@container scd-billing (min-width: 1000px) {
+  #billingPanel .billing-workspace {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container scd-billing (max-width: 560px) {
+  #billingPanel .billing-card { padding: 12px; }
+  #billingPanel .billing-preview { padding: 12px; }
+  #billingPanel .invoice-paper-preview header,
+  #billingPanel .invoice-paper-preview .invoice-party,
+  #billingPanel .invoice-paper-preview footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #billingPanel .invoice-paper-preview :is(header b, footer strong) { text-align: left; }
+  #billingPanel .invoice-paper-preview :is(th, td) { padding: 7px 4px; font-size: 12px; }
+}
+@media (max-width: 600px) {
+  #billingPanel { padding: 14px; }
+}
