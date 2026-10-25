@@ -1,0 +1,38 @@
+[
+  {
+    "fileId": "FILE-1792906123395-ece044",
+    "fileType": "ProductImage",
+    "httpStatus": 200,
+    "sha256": "89a944a0fc2d5c21765157d6bddce9ebff894dede5330577c079d17e583177f3"
+  },
+  {
+    "fileId": "FILE-1792906123396-a3241b",
+    "fileType": "CargoForm",
+    "httpStatus": 200,
+    "sha256": "0a2f9ad2e57da07042f2d0a84e88511722db25e05e1f2ec0115c8a84ffaf487e"
+  },
+  {
+    "fileId": "FILE-1792906123396-f0d3bd",
+    "fileType": "DoorClosedAudit",
+    "httpStatus": 200,
+    "sha256": "e22166a58b6cb9006e514f5e4334447d295e1f9f206c73a5cc64c5d586e7a535"
+  },
+  {
+    "fileId": "FILE-1792906123396-a9d255",
+    "fileType": "InspectorSignature",
+    "httpStatus": 200,
+    "sha256": "f24fbaa8f2fd129266ac3f89f2dace729c796f51d5f1cf2b28236f915385ba7f"
+  },
+  {
+    "fileId": "FILE-1792906123396-f0562d",
+    "fileType": "ReceiverSignature",
+    "httpStatus": 200,
+    "sha256": "8176f20a594ce86505b9cca57ae3963abda67e5f78c1e9e59cbd6e54bf0b02ac"
+  },
+  {
+    "fileId": "FILE-1792906260272-f5d1c6",
+    "fileType": "ReleaseDocument",
+    "httpStatus": 200,
+    "sha256": "586d86e48f8be05943891b9662322b19780d997c1d87ce9b9c991fa79b429ece"
+  }
+]

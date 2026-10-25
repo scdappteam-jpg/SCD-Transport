@@ -1,0 +1,339 @@
+{
+  "house": "SIT-CS-DRIVER-20261025-N1",
+  "environment": "https://scd-transport.onrender.com",
+  "syntheticOnly": true,
+  "physicalMovementVerified": false,
+  "checkedAt": "2026-10-25T05:36:05.723217+00:00",
+  "cases": [
+    {
+      "name": "integrations-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "baseline",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "policy-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "dock-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "map-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "new-sit-does-not-exist",
+      "expected": 404,
+      "httpStatus": 404,
+      "message": "Job not found",
+      "result": "PASS"
+    },
+    {
+      "name": "scope-new-driver-safety-to-sit-only",
+      "expected": 200,
+      "httpStatus": 422,
+      "message": "เปิดทดสอบได้เฉพาะเลข SIT ที่มีอยู่ในระบบ ห้ามระบุงานจริง",
+      "result": "FAIL"
+    },
+    {
+      "name": "new-sit-does-not-exist",
+      "expected": 404,
+      "httpStatus": 404,
+      "message": "Job not found",
+      "result": "PASS"
+    },
+    {
+      "name": "create-unconfirmed-unassigned-sit",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "scope-new-driver-safety-to-sit-only",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "created",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "temporary-api-grant",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "existing-sit-driver",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "existing-sit-cs",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "existing-sit-transport",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "cs-confirmed",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "dispatched",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-scope-assignment",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-start",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-start",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-checkin",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-checkin",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-load",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-load",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-complete",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-complete",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-arrive",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-arrive",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-release",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "driver-release",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "policy-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "policy-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "warehouse-map-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "map-audit-inspect",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "dock-audit-inspect",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "policy-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "warehouse-map-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "policy-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "warehouse-map-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "dock-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "final",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "revoke-api-grant",
+      "expected": 200,
+      "httpStatus": 200,
+      "message": "",
+      "result": "PASS"
+    },
+    {
+      "name": "stopped-driver-session-denied",
+      "expected": 401,
+      "httpStatus": 401,
+      "message": "กรุณาเข้าสู่ระบบใหม่",
+      "result": "PASS"
+    }
+  ],
+  "passed": 46
+}

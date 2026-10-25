@@ -1,0 +1,216 @@
+{
+  "ok": true,
+  "job": {
+    "id": "JOB-1792905539328",
+    "cbm": "",
+    "tel": "0000000000",
+    "amount": "",
+    "dgType": "",
+    "refsNo": "",
+    "source": "",
+    "status": "Pending",
+    "weight": "",
+    "booking": "",
+    "carrier": "",
+    "contact": "SIT CONTACT N1",
+    "edocCin": "",
+    "edocInv": "",
+    "driverId": "",
+    "flightNo": "SIT200",
+    "icNumber": "",
+    "planDate": "2026-10-25",
+    "wh3DueAt": "2026-10-25T22:00:00.000Z",
+    "workDate": "2026-10-25",
+    "cargoDesc": "",
+    "cargoType": "normal",
+    "closeTime": "",
+    "createdAt": "2026-10-25T05:18:59.327Z",
+    "invoiceNo": "SIT-CS-INV-20261025-N1",
+    "isLithium": false,
+    "ownerCode": "",
+    "planRound": "Manual",
+    "readyTime": "",
+    "updatedAt": "2026-10-25T05:20:49.786Z",
+    "volWeight": "",
+    "customerId": "c_sit_only_cs_driver_e2e_20261",
+    "driverName": "",
+    "driverType": "",
+    "flightTime": "2026-10-26T12:00:00Z",
+    "mawbNumber": "",
+    "pickupDate": "2026-10-25",
+    "pieceCount": 3,
+    "planSource": "SIT",
+    "slaProfile": "WH3_14H",
+    "actualCount": "",
+    "csConfirmed": true,
+    "destAirport": "",
+    "destination": "WH3",
+    "houseNumber": "SIT-CS-DRIVER-20261025-N1",
+    "manualExtra": true,
+    "packageType": "Carton",
+    "pickupItems": [],
+    "pickupPhone": "0000000000",
+    "planMatched": false,
+    "productType": "General",
+    "routePolicy": "ReturnWH3BeforeTerminal",
+    "shippingDoc": "",
+    "vehicleType": "",
+    "airportDueAt": "2026-10-25T22:00:00.000Z",
+    "customerName": "SIT ONLY CS DRIVER E2E 20261025 N1",
+    "evidenceNote": "SIT ONLY - บันทึกทดสอบ ไม่ได้โทรจริง ไม่ส่งข้อความหาลูกค้า",
+    "vehiclePlate": "",
+    "adminPrepared": false,
+    "cargoCutoffAt": "",
+    "consigneeName": "",
+    "contactPerson": "SIT CONTACT N1",
+    "mustReturnWh3": true,
+    "approvalStatus": "ManualExtraApproved",
+    "pickupLocation": "SIT ONLY SYNTHETIC FACTORY - NO REAL MOVEMENT",
+    "afterFinalRound": false,
+    "evidenceChannel": "Phone",
+    "readyForBilling": false,
+    "evidenceRequired": false,
+    "flightRiskReason": "Within flight SLA",
+    "flightRiskStatus": "OnTrack",
+    "mustNotMissFlight": false,
+    "subcontractorRate": "",
+    "csApprovalRequired": false,
+    "flightNumberDigits": 3,
+    "wh3PreDispatchNote": "",
+    "minutesToAirportDue": 998.1302,
+    "requiresLithiumDocs": false,
+    "terminalDestination": "",
+    "wh3PreDispatchReady": false,
+    "slaHoursBeforeFlight": 14,
+    "effectiveAirportDueAt": "2026-10-25T22:00:00.000Z",
+    "terminalWorkflowEvents": [],
+    "terminalWorkflowStatus": "",
+    "doorClosedPhotoRequired": true,
+    "wh3PreDispatchChecklist": [],
+    "csRejected": false,
+    "csConfirmedBy": "SIT UI / CS",
+    "csConfirmedAt": "2026-10-25T05:20:49.786Z",
+    "csInvoiceNo": "SIT-CS-INV-20261025-N1",
+    "csContactName": "SIT CONTACT N1",
+    "csContactPhone": "0000000000",
+    "approvalTrail": [
+      {
+        "at": "2026-10-25T05:20:49.786Z",
+        "type": "ManualExtraApproved",
+        "by": "SIT UI / CS",
+        "from": "PendingCSApproval",
+        "to": "ManualExtraApproved",
+        "channel": "Phone",
+        "note": "SIT ONLY - บันทึกทดสอบ ไม่ได้โทรจริง ไม่ส่งข้อความหาลูกค้า",
+        "invoiceNo": "SIT-CS-INV-20261025-N1",
+        "contactName": "SIT CONTACT N1",
+        "contactPhone": "0000000000"
+      }
+    ],
+    "inboundReceiptSummary": {
+      "houseNumber": "SIT-CS-DRIVER-20261025-N1",
+      "onhandNumber": "",
+      "master": "",
+      "planned": {
+        "CTN": 3
+      },
+      "planKnown": true,
+      "received": {
+        "CTN": 0
+      },
+      "remaining": {
+        "CTN": 3
+      },
+      "over": {
+        "CTN": 0
+      },
+      "confirmed": false,
+      "complete": false,
+      "revision": 0,
+      "state": "unconfirmed"
+    },
+    "terminalProfile": {
+      "label": "TG",
+      "note": "TG flow: booking, plate/bay confirm, original documents, weighing, dimension, X-Ray, Re-X-Ray, loading.",
+      "statuses": [
+        "BookingRequested",
+        "TerminalConfirmed",
+        "LoadedFromWH3",
+        "ArrivedAtTerminal",
+        "WeighingCompleted",
+        "DimensionCompleted",
+        "XRayPassed",
+        "LoadingCompleted",
+        "LoadingDetailCompleted"
+      ],
+      "checklist": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit"
+      ],
+      "slaMinutes": 180
+    },
+    "wh3Documents": {
+      "required": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "checked": [],
+      "missing": [
+        "outbound_weighing_slip",
+        "security_original",
+        "airline_specific",
+        "permit",
+        "manifest_review"
+      ],
+      "ready": false,
+      "labels": [
+        {
+          "key": "outbound_weighing_slip",
+          "label": "ใบชั่งสินค้าขาออกจาก WH3",
+          "checked": false
+        },
+        {
+          "key": "security_original",
+          "label": "ใบ Security ตัวจริง",
+          "checked": false
+        },
+        {
+          "key": "airline_specific",
+          "label": "ใบ Airline ตรงสายการบิน/สาขาปลายทาง",
+          "checked": false
+        },
+        {
+          "key": "permit",
+          "label": "ใบ Permit",
+          "checked": false
+        },
+        {
+          "key": "manifest_review",
+          "label": "Manifest / ตรวจยอดก่อนโหลด",
+          "checked": false
+        }
+      ]
+    },
+    "processTracking": {
+      "planning": "ManualExtraEntered",
+      "approval": "ManualExtraApproved",
+      "wh3Documents": "DocumentPending",
+      "transport": "",
+      "terminal": "TG",
+      "terminalStatus": "Pending",
+      "closing": "",
+      "billing": ""
+    },
+    "flightTimeLabel": "26/10/69 19:00",
+    "hoursToFlight": 30.6,
+    "redFlag": false,
+    "canUploadLoadingDetail": false
+  },
+  "activities": [],
+  "files": []
+}

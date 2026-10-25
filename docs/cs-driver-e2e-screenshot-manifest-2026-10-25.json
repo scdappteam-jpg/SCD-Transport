@@ -1,0 +1,302 @@
+[
+  {
+    "number": 1,
+    "file": "cs-driver-e2e-01-cs-pending-2026-10-25.png",
+    "title": "CS: เลือกงานที่ยังไม่ Confirm",
+    "description": "ติ๊กเลือกชุด SIT เพื่อเปิดช่อง Invoice และข้อมูลผู้ติดต่อ ก่อนบันทึก",
+    "source": "actual production browser screenshot",
+    "width": 1543,
+    "height": 884,
+    "sha256": "7b769f439222d10821d47c461ec3be17ba5efc3fd6fe0226e1fca033bebe310c"
+  },
+  {
+    "number": 2,
+    "file": "cs-driver-e2e-02-cs-filled-2026-10-25.png",
+    "title": "CS: กรอก Invoice ผู้ติดต่อและเบอร์",
+    "description": "กรอกข้อมูลจำลองครบ เลือกช่องทาง Phone และหมายเหตุว่าไม่ได้โทรจริง ภาพก่อนกด Confirm",
+    "source": "actual production browser screenshot",
+    "width": 1543,
+    "height": 884,
+    "sha256": "3e664e69f5759edacf59296cab4839102285d58734b1d82c2e0d1d5b003df05f"
+  },
+  {
+    "number": 3,
+    "file": "cs-driver-e2e-03-cs-confirmed-2026-10-25.png",
+    "title": "CS: Confirm และประวัติส่งต่อ",
+    "description": "ผลหลังบันทึกจริงด้วยยูส SIT UI / CS ตรวจ Invoice และข้อมูลผู้ติดต่ออ่านกลับตรงกัน",
+    "source": "actual production browser screenshot",
+    "width": 1543,
+    "height": 884,
+    "sha256": "e468935fa1d00589bcdae94f2afb7bca64420c65319ac9cbaa059e9480001631"
+  },
+  {
+    "number": 4,
+    "file": "cs-driver-e2e-04-transport-job-2026-10-25.png",
+    "title": "Transport: เปิดใบงานจากคิว CS",
+    "description": "เลือกงานชุดเดิมเพื่อออก Cargo ไม่สร้างงานซ้ำ",
+    "source": "actual production browser screenshot",
+    "width": 1534,
+    "height": 879,
+    "sha256": "2287f16f5b5451736991567ee8b196cf47ae243b9c07a410fbab90eefdac194d"
+  },
+  {
+    "number": 5,
+    "file": "cs-driver-e2e-05-vehicle-driver-2026-10-25.png",
+    "title": "Transport: เลือกคนขับและทะเบียน",
+    "description": "เลือก SIT UI / Driver และ SIT-ONLY ตั้ง Pickup Case เป็น GeneralManual",
+    "source": "actual production browser screenshot",
+    "width": 1534,
+    "height": 879,
+    "sha256": "6a9ac9c89f2775ceff04bfcea25f10f461649086700d064a6fdf8e8d66fb1437"
+  },
+  {
+    "number": 6,
+    "file": "cs-driver-e2e-06-cargo-preview-2026-10-25.png",
+    "title": "Transport: Preview ใบ Cargo",
+    "description": "ตรวจ Invoice ผู้ติดต่อ เบอร์โทร และรายละเอียดก่อนออกใบ ไม่ต้องพิมพ์ซ้ำ",
+    "source": "actual production browser screenshot",
+    "width": 1534,
+    "height": 879,
+    "sha256": "5f4423f0a4f28ad3b7e5965a4769fa2df75eb12fe3bb465a055579ded66eb685"
+  },
+  {
+    "number": 7,
+    "file": "cs-driver-e2e-07-dispatched-2026-10-25.png",
+    "title": "Transport: ออกใบงานสำเร็จ",
+    "description": "กด Create Job ครั้งเดียว บันทึก cargoIssuedAt และเปิด Print/Track ได้",
+    "source": "actual production browser screenshot",
+    "width": 1534,
+    "height": 879,
+    "sha256": "148d9b0d8de315c55ab506c5ccdc6d4fed242cba56cbee06dd06df13cb3ba9b1"
+  },
+  {
+    "number": 8,
+    "file": "cs-driver-e2e-08-driver-assignment-2026-10-25.png",
+    "title": "Driver: เปิดใบงานที่ได้รับ",
+    "description": "แสดงลูกค้า รถ และจุดรับจำลอง ก่อนเริ่มรอบ ปุ่มถึงจุดรับยังไม่เปิด",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "0364d0b5dd9caa0c30a50b798989736de90320642654f1d697214edfc74e62b1"
+  },
+  {
+    "number": 9,
+    "file": "cs-driver-e2e-09-driver-items-2026-10-25.png",
+    "title": "Driver: รายละเอียดสินค้า",
+    "description": "3 Carton / House เดียว / ปลายทาง WH3 เป็นยอดแผน ยังไม่ใช่ยอดรับเข้าคลัง",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "4b6db94de37d4ce35a5470b8e30ac0bf4b3153fcfabc5d7d125add71c2d122a4"
+  },
+  {
+    "number": 10,
+    "file": "cs-driver-e2e-10-checklist-form-2026-10-25.png",
+    "title": "Driver: ฟอร์ม Checklist และรูป 3 หมวด",
+    "description": "แสดงฟอร์มตรวจ 10 รายการ ภาพสินค้า Cargo และประตู ภาพนี้ยังเป็นฟอร์มก่อนบันทึกหลักฐานผ่าน API",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "5f9dfc10ca184d3d58b936035263c7da7363160af6537a6eaa8199f96eee4f05"
+  },
+  {
+    "number": 11,
+    "file": "cs-driver-e2e-11-signature-form-2026-10-25.png",
+    "title": "Driver: ฟอร์มลายเซ็น",
+    "description": "แสดงลายเซ็นสองฝ่ายและปุ่มโหลด/ยืนยันที่ยังปิดในฟอร์มว่าง ไม่อ้างว่าได้วาดลายเซ็นจริงบนมือถือ",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "adea7311dca25ceb6434a79d3e9ad7403a7d3dc1072c32d66a341ca2ade1045b"
+  },
+  {
+    "number": 12,
+    "file": "cs-driver-e2e-12-route-started-2026-10-25.png",
+    "title": "Driver: เริ่มรอบบันทึกแล้ว",
+    "description": "POST route-start แบบ simulation สำเร็จ อ่านกลับผ่าน UI ปุ่มเริ่มรอบปิดและถึงจุดรับเปิด",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "2b4d8673c80755d816e6a9b1c11f2c98c924c111d0d682d278c56634af2b945e"
+  },
+  {
+    "number": 13,
+    "file": "cs-driver-e2e-13-driver-contact-invoice-2026-10-25.png",
+    "title": "Driver: ข้อมูลที่ CS ส่งถึงคนขับ",
+    "description": "Invoice SIT-CS-INV-20261025-N1 / SIT CONTACT N1 / 0000000000 / SIT-ONLY ครบ",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "4c460db3751246cb0fa68dc03796586551a28823436488959135307e989c4d6d"
+  },
+  {
+    "number": 14,
+    "file": "cs-driver-e2e-14-arrived-pickup-2026-10-25.png",
+    "title": "Driver: ถึงจุดรับบันทึกแล้ว",
+    "description": "POST checkin แบบ simulation สำเร็จ ปุ่มเริ่มรอบและถึงจุดรับปิดเพื่อไม่กดซ้ำ",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "31106646c68d5f4459810bfba0ba1f8ac15ff00171628f937a2a4489f674d50b"
+  },
+  {
+    "number": 15,
+    "file": "cs-driver-e2e-15-loading-2026-10-25.png",
+    "title": "Driver: Loading",
+    "description": "บันทึก Checklist 10 รายการ รูปจำลอง 3 หมวด ลายเซ็นจำลอง 2 ฝั่ง และจำนวน 3 CTN ผ่าน API อ่านสถานะ Loading บน UI",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "c7809eda750d5b1f6843d76223c04db763bbc209371b5a732e131649e261be6b"
+  },
+  {
+    "number": 16,
+    "file": "cs-driver-e2e-16-returning-wh3-2026-10-25.png",
+    "title": "Driver: PickedUp และเริ่มกลับ WH3",
+    "description": "ยืนยันรับด้วย payload หลักฐานชุดเดียวกับตอน Load ได้ completedAt และ returningWh3At ไม่ยืนยัน receipt ของคลัง",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "e43db740e8bc91a574b011da8ff977b23652af20bab01544a3faead559eef583"
+  },
+  {
+    "number": 17,
+    "file": "cs-driver-e2e-17-arrived-wh3-2026-10-25.png",
+    "title": "Driver: ถึง WH3 รอใบตรวจปล่อย",
+    "description": "สถานะ AwaitingReleaseDocument หลังบันทึก arrivedWh3At ด้วย GPS จำลอง",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "83d0dc4be5aa7752a10c3517f2921e82598fb079e4bd23fb5a3e663ef8307b2e"
+  },
+  {
+    "number": 18,
+    "file": "cs-driver-e2e-18-wh3-waiting-dock-2026-10-25.png",
+    "title": "Driver: ส่งใบตรวจปล่อยและรอ Dock",
+    "description": "สถานะ WaitingForDock หลังแนบใบตรวจปล่อยจำลอง ไม่มีการจอง/เข้าช่องจริง",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "b548a9e2808bcedc3d067cdd247dd67532c59fab80ebe4da80f887623e4123ea"
+  },
+  {
+    "number": 19,
+    "file": "cs-driver-e2e-19-transport-readback-2026-10-25.png",
+    "title": "Transport: อ่านแผนและรถหลังจบรอบ",
+    "description": "แผน 3 CTN / รับเข้าคลังยังไม่ยืนยัน พบสรุปจัดรถ 0 และยังไม่ผูกรอบ 1 แม้มีคนขับและเริ่มรอบแล้ว",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "008f4001d9dc038a70ac86f12e352258ebc828318f31540eec1fc270e3a5018e"
+  },
+  {
+    "number": 20,
+    "file": "cs-driver-e2e-20-evidence-register-2026-10-25.png",
+    "title": "Transport: ทะเบียนหลักฐาน 6 ไฟล์",
+    "description": "มีลิงก์ ProductImage CargoForm DoorClosedAudit InspectorSignature ReceiverSignature ReleaseDocument ส่วนตารางประวัติ Transport ยังว่าง",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "bbe9ea05715203af0d9b44dd7c71dc765f79b9d929c79237383f736debd46377"
+  },
+  {
+    "number": 21,
+    "file": "cs-driver-e2e-21-final-kpi-2026-10-25.png",
+    "title": "Transport: สถานะสุดท้ายและ KPI",
+    "description": "WaitingForDock / ReleasedForDock แผน 3 CTN รับยังไม่ยืนยัน KPI จากนาฬิกาการจำลอง ไม่ใช้วัดผลงานคนขับจริง",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "202ab9dc57ff656f6ed1dd4ae5b77cbaa35b093edbfebeba1d41a1b0e6658c29"
+  },
+  {
+    "number": 22,
+    "file": "cs-driver-e2e-22-product-proof-2026-10-25.png",
+    "title": "เปิดไฟล์ ProductImage จริง",
+    "description": "ภาพหน้าจอเบราว์เซอร์เปิดไฟล์ที่เก็บบน production เป็นภาพจำลองติดป้าย SIT ONLY",
+    "source": "actual production browser screenshot",
+    "width": 1280,
+    "height": 720,
+    "sha256": "c5b93b79c677af1a7606d47b5ae46a0549d0f39c4225243d3ed84c3ad6915c26"
+  },
+  {
+    "number": 23,
+    "file": "cs-driver-e2e-23-cargo-proof-2026-10-25.png",
+    "title": "เปิดไฟล์ CargoForm จริง",
+    "description": "เอกสาร Cargo จำลอง ไม่ใช่ใบรับสินค้าที่ลงชื่อจริง",
+    "source": "actual production browser screenshot",
+    "width": 1280,
+    "height": 720,
+    "sha256": "0436a4a21413bb993093e1dc4404fd07fe7e1d50b844d1a8d13f803b381039ab"
+  },
+  {
+    "number": 24,
+    "file": "cs-driver-e2e-24-door-proof-2026-10-25.png",
+    "title": "เปิดไฟล์ DoorClosedAudit จริง",
+    "description": "ภาพแทนการปิดประตูจำลอง ไม่มีการปิดรถจริง",
+    "source": "actual production browser screenshot",
+    "width": 1280,
+    "height": 720,
+    "sha256": "ddf2c57f044dd9863cdc70ef4641c5a0c42a4f8a237bb8f027bb1ca6089b5777"
+  },
+  {
+    "number": 25,
+    "file": "cs-driver-e2e-25-inspector-proof-2026-10-25.png",
+    "title": "เปิดไฟล์ InspectorSignature จริง",
+    "description": "แผ่นหลักฐานจำลองแทนลายเซ็นผู้ตรวจ ไม่ใช่ลายเซ็นบุคคลจริง",
+    "source": "actual production browser screenshot",
+    "width": 1280,
+    "height": 720,
+    "sha256": "0d343f54881a621c216e4bac81206d21b639ed9716b390012f45ae6ed14e35e8"
+  },
+  {
+    "number": 26,
+    "file": "cs-driver-e2e-26-receiver-proof-2026-10-25.png",
+    "title": "เปิดไฟล์ ReceiverSignature จริง",
+    "description": "แผ่นหลักฐานจำลองแทนลายเซ็นผู้รับ ไม่ใช่ลายเซ็นบุคคลจริง",
+    "source": "actual production browser screenshot",
+    "width": 1280,
+    "height": 720,
+    "sha256": "76ee180647c862f2bd80e3943c68afdb688908fedab2dbfca242ce8bd38cf13d"
+  },
+  {
+    "number": 27,
+    "file": "cs-driver-e2e-27-release-proof-2026-10-25.png",
+    "title": "เปิดไฟล์ ReleaseDocument จริง",
+    "description": "ใบตรวจปล่อยจำลอง เปิดจาก storage ได้ ไม่พบ 404",
+    "source": "actual production browser screenshot",
+    "width": 1280,
+    "height": 720,
+    "sha256": "75a95832bf048286565d2c3efe7c1f7d1620ea32c0f05738148a08f6847a0323"
+  },
+  {
+    "number": 28,
+    "file": "cs-driver-e2e-28-driver-time-log-2026-10-25.png",
+    "title": "Driver Time Log: เวลาครบทุกขั้น",
+    "description": "รายงานจริงในระบบติดป้าย SIT — ข้อมูลจำลอง แสดงเริ่มรอบ ถึงจุดรับ โหลด ออกโรงงาน ถึง WH3 และรับใบตรวจปล่อย",
+    "source": "actual production browser screenshot",
+    "width": 1534,
+    "height": 879,
+    "sha256": "4fb6cee1bd26ef0951acacfe85c64292001f2bc5f8c750804326a0ebad388dc4"
+  },
+  {
+    "number": 29,
+    "file": "cs-driver-e2e-29-driver-log-full-2026-10-25.png",
+    "title": "Driver Time Log: ภาพเต็มหน้า",
+    "description": "เก็บบริบทตัวกรอง รวม SIT และรายงาน ไม่สั่งพิมพ์ใบ Cargo ซ้ำ",
+    "source": "actual production browser screenshot",
+    "width": 1534,
+    "height": 1301,
+    "sha256": "e769fb535469bb711095537f05516a7b9b770f9703797329fd397ea6c56d0eff"
+  },
+  {
+    "number": 30,
+    "file": "cs-driver-e2e-30-test-mode-closed-2026-10-25.png",
+    "title": "ปิดโหมดทดสอบเบราว์เซอร์",
+    "description": "ออกจากระบบหลังจบงาน ปิดตัวเลือกยูสชั่วคราว ไม่เปลี่ยนรหัสผ่านหรือสิทธิ์ยูสเดิม",
+    "source": "actual production browser screenshot",
+    "width": 1265,
+    "height": 712,
+    "sha256": "da289c9544d760a3a225b7047190f62439c24ed5012cf7e1ee9bc2a010fa3427"
+  }
+]

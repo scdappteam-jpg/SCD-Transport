@@ -1,0 +1,21 @@
+{
+  "newHouse": "SIT-CS-DRIVER-20261025-N1",
+  "existingJobsVerified": 3806,
+  "existingJobsChanged": 0,
+  "newJobs": 1,
+  "newSyntheticCustomerOnly": true,
+  "beforeSha256": "5a200e7fb06dfe1f080c2adab42d83daba035e34387c5699e2b2cdf4c9699efb",
+  "afterExistingSha256": "5a200e7fb06dfe1f080c2adab42d83daba035e34387c5699e2b2cdf4c9699efb",
+  "existingInvoicesUnchanged": true,
+  "usersUnchanged": true,
+  "existingCustomerRecordsUnchanged": true,
+  "geofencingEnabled": false,
+  "globalSafetyEnabled": false,
+  "onlyPolicyChange": "append named new SIT House to enforcement allowlist",
+  "warehouseMapAndRealDocksUnchanged": true,
+  "physicalMovementVerified": false,
+  "warehouseReceiptConfirmed": false,
+  "noFinancialInvoiceCreated": true,
+  "invoiceContactPhonePreserved": true,
+  "newEvidenceFilesOpened": 6
+}
