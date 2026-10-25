@@ -3164,11 +3164,7 @@ function generateInvoiceHtml(db, bill, job, customer) {
     const filename = `${bill.id}.html`;
     const filePath = path.join(INVOICE_DIR, filename);
     fs.writeFileSync(filePath, invoiceHtml, "utf8");
-    const url = `/storage/invoices/${filename}`;
-    const fileId = `INVOICE-DOC-${bill.id}`;
-    let attachment = db.attachments.find(item=>item.fileId===fileId);
-    if (!attachment) { attachment={fileId,houseNumber:job.houseNumber,fileType:'InvoiceDocument',url,mimeType:'text/html; charset=utf-8',createdAt:bill.draftedAt};db.attachments.push(attachment); }
-    durableAttachments.queue(attachment, Buffer.from(invoiceHtml,'utf8'));
+    invoiceDocument.register(db, bill, job, invoiceHtml);
     return `/storage/invoices/${filename}`;
 }
 
@@ -8591,6 +8587,12 @@ async function serveStatic(req, res, pathname) {
             error: "Forbidden"
         });
         if (fs.existsSync(filePath)) return streamFile(res, filePath);
+        const savedInvoice = invoiceDocument.savedHtml(readDb(), pathname);
+        if (savedInvoice !== null) {
+            const bytes = Buffer.from(savedInvoice, 'utf8');
+            res.writeHead(200, {'Content-Type':'text/html; charset=utf-8','Content-Length':bytes.length,'Cache-Control':'private, no-store'});
+            res.end(bytes); return;
+        }
         if (await streamSupabaseAttachment(res, pathname)) return;
         return sendJson(res, 404, { error: "File not found" });
     }

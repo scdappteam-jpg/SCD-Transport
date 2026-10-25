@@ -12,4 +12,19 @@ function refreshPlan(db,actor,payload) {
  if(!/^INV-[A-Za-z0-9-]+$/.test(bill.id)||bill.pdfUrl!==`/storage/invoices/${bill.id}.html`)fail('Unsupported invoice document path');
  return {bill,job,customer};
 }
-module.exports={render,refreshPlan};
+function register(db,bill,job,htmlContent) {
+ const fileId=`INVOICE-DOC-${bill.id}`;
+ let file=(db.attachments||=[]).find(f=>f.fileId===fileId);
+ if(!file){file={fileId,houseNumber:job.houseNumber,fileType:'InvoiceDocument',url:`/storage/invoices/${bill.id}.html`,mimeType:'text/html; charset=utf-8',createdAt:bill.draftedAt};db.attachments.push(file);}
+ // Generated HTML stays in the existing shared-state store. Evidence buckets
+ // may restrict MIME types to images/PDF; do not mislabel HTML or weaken that policy.
+ file.htmlContent=htmlContent;
+ return file;
+}
+function savedHtml(db,pathname){
+ const file=(db.attachments||[]).find(f=>f.url===pathname&&f.fileType==='InvoiceDocument');
+ if(!file||typeof file.htmlContent!=='string')return null;
+ const bill=(db.billing||[]).find(b=>b.pdfUrl===pathname&&file.fileId===`INVOICE-DOC-${b.id}`&&file.houseNumber===b.houseNumber);
+ return bill?file.htmlContent:null;
+}
+module.exports={render,refreshPlan,register,savedHtml};
