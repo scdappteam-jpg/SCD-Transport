@@ -1,0 +1,11 @@
+{
+  "url": "/storage/invoices/INV-2026-0001.html",
+  "httpStatus": 200,
+  "bytes": 1248,
+  "sha256": "b81017fb34fe84d0f2ce2c7853429a8ab2624b4c654bbd3cd16ab8d2c9dbd4f9",
+  "format": "HTML (pdfUrl field; not a PDF)",
+  "house": "SIT-MEETING-20261025-L2",
+  "invoiceId": "INV-2026-0001",
+  "amount": 1000,
+  "syntheticOnly": true
+}
