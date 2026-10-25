@@ -1,0 +1,20 @@
+{
+  "requestedCommit": "6d39745be7d8c865a59bcbb3ca688b001468385b",
+  "testedCommit": "b27f6e8cf6805054a77a20a69afdafe34b797ef3",
+  "web": {
+    "serviceId": "srv-d9ffq0btqb8s73d0ip3g",
+    "deployId": "dep-dbennilg1s2s739jd580",
+    "status": "Live",
+    "url": "https://dashboard.render.com/web/srv-d9ffq0btqb8s73d0ip3g/deploys/dep-dbennilg1s2s739jd580"
+  },
+  "scanner": {
+    "serviceId": "srv-d9vgktjl550s738ivq70",
+    "deployId": "dep-dbennilg1s2s739jd5gg",
+    "status": "Live",
+    "url": "https://dashboard.render.com/web/srv-d9vgktjl550s738ivq70/deploys/dep-dbennilg1s2s739jd5gg"
+  },
+  "geofencingEnabled": false,
+  "globalSafetyEnabled": false,
+  "automatedTestsPassed": 246,
+  "evidence": "Render UI observations and production HTTP SIT results; all synthetic evidence scoped to SIT only"
+}

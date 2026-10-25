@@ -1,0 +1,518 @@
+{
+  "environment": "https://scd-transport.onrender.com",
+  "checkedAt": "2026-10-25T03:57:28.245906+00:00",
+  "houses": [
+    "SIT-MEETING-20261025-L1",
+    "SIT-MEETING-20261025-L2",
+    "SIT-MEETING-20261025-L3"
+  ],
+  "syntheticEvidenceOnly": true,
+  "physicalMovementVerified": false,
+  "cases": [
+    {
+      "name": "Open temporary Admin test-role session",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Use existing SIT role driver",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Use existing SIT role wh",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Use existing SIT role qa",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Capture pre-test production snapshot",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read production safety settings",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Capture existing user roles",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Capture pre-test dock state",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open temporary Admin test-role session",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Use existing SIT role driver",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Use existing SIT role wh",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Use existing SIT role qa",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Capture pre-test production snapshot",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read production safety settings",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Capture existing user roles",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Capture pre-test dock state",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Create synthetic job SIT-MEETING-20261025-L1",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "CS confirms synthetic job SIT-MEETING-20261025-L1",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Issue synthetic Cargo SIT-MEETING-20261025-L1",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Create synthetic job SIT-MEETING-20261025-L2",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "CS confirms synthetic job SIT-MEETING-20261025-L2",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Issue synthetic Cargo SIT-MEETING-20261025-L2",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Customer Direct synthetic front-desk intake",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Enable only named SIT Houses; global safety and Geofencing remain off",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Driver cannot start without an attendance record when simulation omitted",
+      "httpStatus": 409,
+      "expected": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "Synthetic SIT route starts without a real attendance/GPS record",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Synthetic arrival at pickup",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Missing photos and signatures blocks Load on production",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Missing Receiver signature blocks Load",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Complete synthetic checklist and five evidence images permits Load",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read SIT timeline SIT-MEETING-20261025-L1",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Changed evidence after Load is refused",
+      "httpStatus": 409,
+      "expected": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "Complete pickup with exact recorded synthetic evidence",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read SIT timeline SIT-MEETING-20261025-L1",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Synthetic arrival WH3",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Missing release-document blocks confirmation",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Synthetic release-document and server timestamp saved",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Document check",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open inbound",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Identify Single House",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Receive synthetic 5 CTN",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read warehouse map for isolated SIT location",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Create isolated virtual SIT storage location",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "QA hard-lock blocks putaway before any scan",
+      "httpStatus": 409,
+      "expected": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "Manual approved flag cannot bypass QA",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Production scanner registers actual Code128 decoding for synthetic tag",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Tagging role cannot approve QA",
+      "httpStatus": 403,
+      "expected": 403,
+      "result": "PASS"
+    },
+    {
+      "name": "Wrong House barcode refused",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "QA must not reuse tagger capture",
+      "httpStatus": 409,
+      "expected": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "Independent synthetic barcode image passes QA",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "QA permits putaway into virtual SIT slot",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Retag synthetic job invalidates its old QA",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Relocation blocked again after retag",
+      "httpStatus": 409,
+      "expected": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "Current revision independent QA scan",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Current QA permits virtual relocation",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair refuses one image",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair refuses duplicate image",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair registers two synthetic images decoded in production",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair QA refuses one image",
+      "httpStatus": 422,
+      "expected": 422,
+      "result": "PASS"
+    },
+    {
+      "name": "Pair QA approves two independent images",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read Customer Direct matching data",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Conflicting Invoice cannot overwrite synthetic Customer Direct",
+      "httpStatus": 409,
+      "expected": 409,
+      "result": "PASS"
+    },
+    {
+      "name": "Queue only synthetic Customer Direct",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read dock suggestions without occupying real Dock",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Driver Log shows recorded SIT times only",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "SIT Driver cannot read another driver log",
+      "httpStatus": 403,
+      "expected": 403,
+      "result": "PASS"
+    },
+    {
+      "name": "Render Driver Log HTML from real production timestamps",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read SIT timeline SIT-MEETING-20261025-L1",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence ProductImage",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence CargoForm",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence DoorClosedAudit",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence InspectorSignature",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence ReceiverSignature",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence ReleaseDocument",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence InboundDocument",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence TaggingBarcodeEvidence",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence QABarcodeEvidence",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Open saved SIT evidence TaggingBarcodeEvidence",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Read post-test production snapshot",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Verify global and Geofencing remain off",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Verify public user roster and roles unchanged",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Verify no real dock occupied by SIT",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Next.js image upload proxy reaches production Python scanner",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    },
+    {
+      "name": "Revoke temporary API test-role sessions",
+      "httpStatus": 200,
+      "expected": 200,
+      "result": "PASS"
+    }
+  ],
+  "passed": 84
+}

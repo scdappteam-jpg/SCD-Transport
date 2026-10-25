@@ -1,0 +1,24 @@
+{
+  "environment": "https://scd-transport.onrender.com",
+  "checkedAt": "2026-10-25T03:56:53.326806+00:00",
+  "baselineExistingJobs": 3803,
+  "existingJobsChanged": [],
+  "newSyntheticJobsOnly": [
+    "SIT-MEETING-20261025-L1",
+    "SIT-MEETING-20261025-L2",
+    "SIT-MEETING-20261025-L3"
+  ],
+  "beforeBusinessSha256": "b054557ed08b67eb0967ca6919c3cc3a12d056caed11186acc48420f74d47fba",
+  "afterExistingBusinessSha256": "b054557ed08b67eb0967ca6919c3cc3a12d056caed11186acc48420f74d47fba",
+  "geofenceLocationsUnchanged": true,
+  "geofencingEnabled": false,
+  "globalSafetyEnabled": false,
+  "realDockBaysUnchanged": true,
+  "preexistingQueueUnchanged": true,
+  "usersUnchanged": true,
+  "scope": [
+    "SIT-MEETING-20261025-L1",
+    "SIT-MEETING-20261025-L2",
+    "SIT-MEETING-20261025-L3"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "queue": [
+    {
+      "id": "91a505f4-8c8e-46bb-a33e-1a4a7dccb95f",
+      "arrivedAt": "2026-10-25T03:53:02.698Z",
+      "createdAt": "2026-10-25T03:53:11.824Z",
+      "createdBy": "sit_ui_driver",
+      "queueType": "Inbound",
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "vehiclePlate": "SIT-ONLY",
+      "position": 1,
+      "queueAhead": 0,
+      "estimatedWaitMinutes": 0,
+      "customerName": "SIT ONLY MEETING SAFETY",
+      "pieceCount": 5,
+      "suggestedBayId": "D8"
+    },
+    {
+      "id": "DQ-1792900554210-da92",
+      "houseNumber": "SIT-MEETING-20261025-L3",
+      "customerName": "SIT ONLY DIRECT - NO REAL CARGO",
+      "pieceCount": 3,
+      "vehiclePlate": "",
+      "driverName": "",
+      "etaAt": "",
+      "arrivedAt": "2026-10-25T03:55:54.210Z",
+      "note": "SIT ONLY no truck physically present",
+      "createdBy": "sit_ui_wh",
+      "createdAt": "2026-10-25T03:55:54.210Z",
+      "queueType": "External",
+      "position": 1,
+      "queueAhead": 0,
+      "estimatedWaitMinutes": 0,
+      "suggestedBayId": "D7"
+    }
+  ],
+  "note": "Suggestions only; no physical dock assigned"
+}

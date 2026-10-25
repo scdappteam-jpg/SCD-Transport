@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-10-25T03:56:04.462Z",
+  "timeZone": "Asia/Bangkok",
+  "fields": [
+    [
+      "routeStartedAt",
+      "เริ่มรอบ"
+    ],
+    [
+      "checkInAt",
+      "ถึงจุดรับ"
+    ],
+    [
+      "loadedAt",
+      "ยืนยันโหลดขึ้นรถ"
+    ],
+    [
+      "completedAt",
+      "ออกจากโรงงาน/เริ่มกลับ WH3"
+    ],
+    [
+      "arrivedWh3At",
+      "ถึง WH3"
+    ],
+    [
+      "releaseDocumentReceivedAt",
+      "รับใบตรวจปล่อย"
+    ]
+  ],
+  "rows": [
+    {
+      "houseNumber": "SIT-MEETING-20261025-L1",
+      "onhandNumber": "",
+      "houseReference": "",
+      "master": "",
+      "customerName": "SIT ONLY MEETING SAFETY",
+      "driverId": "sit_ui_driver",
+      "driverName": "SIT UI / Driver",
+      "vehiclePlate": "SIT-ONLY",
+      "synthetic": true,
+      "photoAt": "2026-10-25T03:52:41.758Z",
+      "times": {
+        "routeStartedAt": "2026-10-25T03:51:57.359Z",
+        "checkInAt": "2026-10-25T03:52:16.470Z",
+        "loadedAt": "2026-10-25T03:52:41.558Z",
+        "completedAt": "2026-10-25T03:52:53.270Z",
+        "arrivedWh3At": "2026-10-25T03:53:02.698Z",
+        "releaseDocumentReceivedAt": "2026-10-25T03:53:11.824Z"
+      },
+      "documentWaitMinutes": 0
+    }
+  ]
+}
