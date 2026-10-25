@@ -9,7 +9,9 @@ function index(db) {
     const byHouse = new Map(), users = new Map((db.users || []).map(u => [u.id, u.name]));
     for (const log of db.activityLogs || []) {
         if (!labels[log.activityType] || !log.houseNumber) continue;
-        const at = validTime(log.startTime) ? log.startTime : log.createdAt;
+        const endMilestone = ['PickupComplete','ArrivedWH3','ReleaseDocumentReceived'].includes(log.activityType);
+        const candidates = endMilestone ? [log.endTime,log.startTime,log.createdAt] : [log.startTime,log.createdAt];
+        const at = candidates.find(validTime);
         if (!validTime(at)) continue;
         if (!byHouse.has(log.houseNumber)) byHouse.set(log.houseNumber, []);
         byHouse.get(log.houseNumber).push({at, action:'driver-event', stage:labels[log.activityType],
