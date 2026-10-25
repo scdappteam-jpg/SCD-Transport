@@ -1,0 +1,200 @@
+{
+  "house": "SIT-MEETING-20261025-L2",
+  "invoiceId": "INV-2026-0001",
+  "commit": "166af83",
+  "cases": [
+    {
+      "name": "baseline",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": "",
+      "commit": "d85c560"
+    },
+    {
+      "name": "policy-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": "",
+      "commit": "d85c560"
+    },
+    {
+      "name": "dock-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": "",
+      "commit": "d85c560"
+    },
+    {
+      "name": "map-before",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": "",
+      "commit": "d85c560"
+    },
+    {
+      "name": "temporary-api-session",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": "",
+      "commit": "d85c560"
+    },
+    {
+      "name": "existing-billing",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": "",
+      "commit": "d85c560"
+    },
+    {
+      "name": "existing-driver",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": "",
+      "commit": "d85c560"
+    },
+    {
+      "name": "driver-refresh-denied",
+      "expected": 403,
+      "httpStatus": 403,
+      "result": "PASS",
+      "message": "ไม่มีสิทธิ์อัปเดตเอกสาร Invoice",
+      "commit": "d85c560"
+    },
+    {
+      "name": "refresh-existing-draft-document",
+      "expected": 200,
+      "httpStatus": 503,
+      "result": "FAIL",
+      "message": "Unable to save this update to the shared database.",
+      "commit": "d85c560"
+    },
+    {
+      "commit": "166af83",
+      "name": "driver-refresh-denied",
+      "expected": 403,
+      "httpStatus": 403,
+      "result": "PASS",
+      "message": "ไม่มีสิทธิ์อัปเดตเอกสาร Invoice"
+    },
+    {
+      "commit": "166af83",
+      "name": "refresh-existing-draft-document",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "repeat-refresh-no-new-invoice",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "address-matches-preview-in-generated-document",
+      "expected": "SIT SYNTHETIC ADDRESS - NOT FOR DELIVERY OR PAYMENT",
+      "actual": "SIT SYNTHETIC ADDRESS - NOT FOR DELIVERY OR PAYMENT",
+      "result": "PASS"
+    },
+    {
+      "commit": "166af83",
+      "name": "after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "policy-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "dock-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "inspect-dock-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "inspect-dock-summary",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "policy-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "map-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "verify-dock-operational-fields",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "timeline-after",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    },
+    {
+      "commit": "166af83",
+      "name": "revoke-temporary-sessions",
+      "expected": 200,
+      "httpStatus": 200,
+      "result": "PASS",
+      "message": ""
+    }
+  ],
+  "passed": 23,
+  "syntheticOnly": true
+}

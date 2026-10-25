@@ -1,0 +1,10 @@
+{
+  "url": "/storage/invoices/INV-2026-0001.html",
+  "httpStatus": 200,
+  "bytes": 1437,
+  "sha256": "ef567b4b72c764f4eef095adfefbdbcee08971349cba38728b9ffc928b2a251d",
+  "address": "SIT SYNTHETIC ADDRESS - NOT FOR DELIVERY OR PAYMENT",
+  "addressMatchesPreview": true,
+  "invoiceId": "INV-2026-0001",
+  "amount": 1000
+}

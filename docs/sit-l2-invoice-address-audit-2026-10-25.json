@@ -1,0 +1,22 @@
+{
+  "jobsVerified": 3806,
+  "allJobBusinessFieldsUnchanged": true,
+  "invoiceRegisterUnchanged": true,
+  "customersAndUsersUnchanged": true,
+  "dockAndWarehouseUnchanged": true,
+  "excludedClockDerivedDockFields": [
+    "updatedAt",
+    "summary.avgWaitMinutes"
+  ],
+  "geofencingEnabled": false,
+  "policyUnchanged": true,
+  "invoiceId": "INV-2026-0001",
+  "amount": 1000,
+  "status": "Draft",
+  "newInvoices": 0,
+  "onlyNewAttachment": "INVOICE-DOC-INV-2026-0001",
+  "jobFieldsSha256Before": "de83788a45350dea10e19ac988d2067e1a649e0c38127bb56e4dd1e3eaa59eee",
+  "jobFieldsSha256After": "de83788a45350dea10e19ac988d2067e1a649e0c38127bb56e4dd1e3eaa59eee",
+  "emailSent": false,
+  "markedBilled": false
+}
