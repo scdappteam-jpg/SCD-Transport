@@ -649,6 +649,9 @@ input.has-error,select.has-error,textarea.has-error{border-color:#E0A6A0!importa
 #billingPanel .billing-card:has(> #billingAttachmentList) {
   grid-column: 1 / -1;
 }
+#billingPanel .invoice-paper-preview {
+  grid-template-columns: minmax(0, 1fr);
+}
 #billingPanel .invoice-paper-preview header,
 #billingPanel .invoice-paper-preview .invoice-party,
 #billingPanel .invoice-paper-preview footer {
@@ -663,6 +666,7 @@ input.has-error,select.has-error,textarea.has-error{border-color:#E0A6A0!importa
   display: table;
   table-layout: fixed;
   width: 100%;
+  min-width: 0 !important;
   white-space: normal;
 }
 #billingPanel .invoice-paper-preview :is(th, td) {
