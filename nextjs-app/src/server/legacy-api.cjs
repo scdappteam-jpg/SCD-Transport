@@ -871,6 +871,12 @@ async function flushSharedStatePersistence() {
     }
 }
 
+// A mutation is only acknowledged after its source-of-truth snapshot reaches
+// Supabase.  Keep a stalled retry queue from holding a field screen forever.
+async function flushMutationPersistence() {
+    await stateHttp.confirmBooking(flushSharedStatePersistence, supabaseEnabled, () => pendingSnapshot);
+}
+
 async function flushAuthSessionPersistence() {
     await authSessionPersistPromise;
 }
@@ -8679,6 +8685,7 @@ module.exports = {
     loadDbFromSupabase: loadDbFromSupabase,
     flushSupabasePersistence: flushSupabasePersistence,
     flushSharedStatePersistence: flushSharedStatePersistence,
+    flushMutationPersistence: flushMutationPersistence,
     flushBookingPersistence: () => stateHttp.confirmBooking(flushSharedStatePersistence, supabaseEnabled, () => pendingSnapshot),
     flushAuthSessionPersistence: flushAuthSessionPersistence,
     serveStatic: serveStatic

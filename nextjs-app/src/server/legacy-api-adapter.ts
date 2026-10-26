@@ -21,12 +21,19 @@ type LegacyApiModule = {
   loadDbFromSupabase: () => Promise<void>;
   flushSupabasePersistence: () => Promise<void>;
   flushSharedStatePersistence: () => Promise<void>;
+  flushMutationPersistence: () => Promise<void>;
   flushBookingPersistence: () => Promise<void>;
   flushAuthSessionPersistence: () => Promise<void>;
   flushAttachmentStorage: () => Promise<void>;
 };
 
 let initialization: Promise<void> | undefined;
+const noEvidenceMutationPaths = new Set([
+  "/api/inbound/twin-scan",
+  "/api/inbound/move-location",
+  "/api/warehouse/location/assign",
+  "/api/warehouse/location/release"
+]);
 
 async function loadLegacyApi(): Promise<LegacyApiModule> {
   const imported = await import("./legacy-api.cjs");
@@ -123,8 +130,10 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
         // request's uploads; still require its shared-state acknowledgement.
         await legacyApi.flushBookingPersistence();
       } else {
-        await legacyApi.flushAttachmentStorage();
-        await legacyApi.flushSharedStatePersistence();
+        // These location-only operations never create evidence. Do not make a
+        // driver wait behind an unrelated upload queue before recording a scan.
+        if (!noEvidenceMutationPaths.has(pathname)) await legacyApi.flushAttachmentStorage();
+        await legacyApi.flushMutationPersistence();
       }
     } catch (error) {
       // ถึงตรงนี้แปลว่าเขียนฐานข้อมูลหลัก (app_state) ไม่สำเร็จจริง ๆ
@@ -135,7 +144,7 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
         error: pathname === "/api/outbound/aot-booking"
           ? "ยังยืนยันการบันทึกคิวกับฐานข้อมูลกลางไม่ได้ กรุณาตรวจสถานะก่อนกดซ้ำ"
           : "Unable to save this update to the shared database.",
-        ...(pathname === "/api/outbound/aot-booking" ? { code: "BOOKING_SAVE_UNCONFIRMED" } : {}),
+        code: pathname === "/api/outbound/aot-booking" ? "BOOKING_SAVE_UNCONFIRMED" : "STATE_SAVE_UNCONFIRMED",
         detail: message
       }, { status: 503 });
     }
