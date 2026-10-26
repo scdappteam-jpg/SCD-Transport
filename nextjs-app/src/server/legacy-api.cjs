@@ -3483,6 +3483,7 @@ async function handleApi(req, res, pathname) {
     // application; this endpoint is intentionally role-scoped.
     if (req.method === "GET" && pathname === "/api/mobile/bootstrap") {
         const viewer = sessionUser(db, req);
+        if (!viewer) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
         return sendJson(res, 200, {
             users: publicUsers(db),
             meetingSafety: db.meetingSafety || {enabled:false,geofencingEnabled:false},

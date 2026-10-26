@@ -207,6 +207,11 @@ async function mobileFetch(url, options = {}, timeoutMs = 45000) {
     }
 }
 
+function mobileSessionHeaders() {
+    const token = localStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function recoverCompletedRequest(path, payload) {
     const expectedStatuses = {
         "/api/pickup/complete": [ "PickedUp", "ReturningWH3" ],
@@ -220,7 +225,7 @@ async function recoverCompletedRequest(path, payload) {
         "/api/billing/mark-billed": [ "Billed" ]
     }[path];
     if (!expectedStatuses || !payload?.houseNumber) return null;
-    const res = await mobileFetch(apiUrl("/api/mobile/bootstrap"), {}, 8000);
+    const res = await mobileFetch(apiUrl("/api/mobile/bootstrap"), { headers: mobileSessionHeaders() }, 8000);
     if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) return null;
     const data = await res.json();
     const house = normalizeHouseBarcode(payload.houseNumber);
@@ -243,9 +248,7 @@ async function api(path, payload, method = "POST") {
         // (thousands of jobs) even though Mobile immediately refreshes its
         // role-scoped bootstrap.  Ask for the concise response so field
         // actions do not spend most of their time downloading unused data.
-        const headers = { "Content-Type": "application/json", "X-SCD-Mobile-Compact": "1" };
-        const sessionToken = localStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
-        if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
+        const headers = { "Content-Type": "application/json", "X-SCD-Mobile-Compact": "1", ...mobileSessionHeaders() };
         const res = await mobileFetch(apiUrl(path), {
             method,
             headers,
@@ -293,7 +296,7 @@ async function api(path, payload, method = "POST") {
 async function refresh() {
     let data;
     try {
-        const res = await fetch(apiUrl("/api/mobile/bootstrap"));
+        const res = await fetch(apiUrl("/api/mobile/bootstrap"), { headers: mobileSessionHeaders() });
         if (res.status === 401) {
             state.dashboard = null;
             state.users = [];
