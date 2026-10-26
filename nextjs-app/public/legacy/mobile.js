@@ -662,7 +662,7 @@ function renderInboundGuide() {
     let target = "inbound-doc";
     if ([ "InboundOpened" ].includes(job.status)) target = "inbound-scan";
     if ([ "HouseIdentified" ].includes(job.status)) target = job.trackType === "Pair" && InboundReceipts.house(job).complete ? "inbound-close" : "inbound-putaway";
-    if ([ "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status)) target = InboundReceipts.house(job).complete ? "inbound-close" : "inbound-putaway";
+    if ([ "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status)) target = "inbound-close";
     const targetIndex = {
         "inbound-doc": 1,
         "inbound-scan": 2,

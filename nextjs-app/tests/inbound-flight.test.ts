@@ -163,6 +163,17 @@ test('mobile permits Flight review after storage without unlocking Scan for jobs
     context.job = { ...context.job, status: 'Pending', locationId: '', inboundClosedAt: '' };
     render(); assert.equal(buttons[1].disabled, true);
 });
+test('mobile keeps a received single-track House at putaway until its location is locked', () => {
+    const source = readFileSync(new URL('../public/legacy/mobile.js', import.meta.url), 'utf8');
+    const start = source.indexOf('function renderInboundGuide()');
+    const end = source.indexOf('function renderBillingGuide()', start);
+    const buttons = ['inbound-doc', 'inbound-scan', 'inbound-putaway', 'inbound-close'].map(target => ({ dataset: { operationTarget: target }, disabled: true }));
+    const job = { ...fixture()[0], status: 'HouseIdentified', locationId: '', inboundClosedAt: '' };
+    const context = { job, state: { inboundUnlockedHouse: job.houseNumber }, findAnyJob: () => context.job, $: (selector: string) => selector === '#scanHouse' ? { value: job.houseNumber } : { querySelectorAll: () => [] }, $$: () => buttons, InboundReceipts: receipts, showOperation: () => {} };
+    vm.runInNewContext(source.slice(start, end) + ';renderInboundGuide();', context);
+    assert.equal(buttons[2].disabled, false);
+    assert.equal(buttons[3].disabled, true);
+});
 test('Flight changes show old and new details with history and no printing controls', () => {
     const nodes: Record<string, { value: string; innerHTML: string; dataset: Record<string, string>; hidden?: boolean; textContent?: string }> = {};
     for (const key of ['flightHistoryPanel', 'flightChanged', 'updatedFlightNo', 'updatedFlightTime', 'updatedCargoCutoffAt', 'flightChangeReason', 'flightPreviewResult', 'flightChangeFields', 'houseScanBtn']) nodes['#' + key] = { value: '', innerHTML: '', dataset: {} };
