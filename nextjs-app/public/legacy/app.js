@@ -11530,6 +11530,8 @@ function _renderDockHtml() {
         '<div class="dock-kpi pur"><span>เวลารอเฉลี่ย</span><b>' + (s.avgWaitMinutes || 0) + ' น.</b><em>เป้าหมาย 20 นาที</em></div>' +
       '</div>' +
       '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>สถานะช่องเทียบท่า</h3>' +
+        '<a class="dock-btn ghost" href="/dock-display" target="_blank" rel="noopener">จอประกาศคิวหน้าคลัง</a>' +
+        '<a class="dock-btn ghost" href="/dock-display?scope=sit" target="_blank" rel="noopener">จอคิว SIT</a>' +
         '<button type="button" class="dock-btn ghost" onclick="dockConfigOpen()">ตั้งค่าช่องเทียบท่า</button>' + '<button type="button" class="dock-btn ghost" onclick="_dockData=null;renderDockBoard()">รีเฟรช</button></div>' +
         '<div class="dock-grid">' + d.bays.map(function (bay) {
             var cls = dockBayClass(bay);
@@ -11547,7 +11549,7 @@ function _renderDockHtml() {
         '<div class="card"><div class="card-head"><h3>คิวรถรอจัดช่อง</h3>' +
           '<button type="button" class="dock-btn" onclick="dockAddQueue()">+ เพิ่มรถเข้าคิว</button></div>' +
           (d.queue.length ? d.queue.map(function (q) {
-            return '<div class="dock-q"><div class="dock-q-n">' + q.position + '</div>' +
+            return '<div class="dock-q"><div class="dock-q-n">' + (q.queueNumber || q.position) + '</div>' +
               '<div class="dock-q-t"><b>' + safeHtml(q.houseNumber) + ' · ' + safeHtml(q.customerName || "-") + '</b>' +
               '<span>' + safeHtml(q.vehiclePlate || "ไม่ระบุทะเบียน") + (q.driverName ? " · " + safeHtml(q.driverName) : "") +
               (q.suggestedBayId ? " · แนะนำ " + safeHtml(q.suggestedBayId) : "") + '</span></div>' +
@@ -11592,6 +11594,7 @@ function _renderDockConfig() {
     wrap.innerHTML = '<div class="dock-modal-box"><div class="dock-modal-h"><div><b>ตั้งค่าช่องเทียบท่า</b>' +
       '<span>เพิ่ม ลบ เปลี่ยนชื่อ หรือปิดใช้ชั่วคราวได้ · ช่องที่มีรถเทียบอยู่จะแก้ไม่ได้</span></div>' +
       '<button type="button" class="dock-x" onclick="dockConfigClose()">✕</button></div>' +
+      '<div class="dock-cfg-add"><button type="button" class="dock-btn" onclick="dockSendConfig({action:\'ensure-inbound\'},\'เพิ่มท่า 9–11 แล้ว โดยคงท่าเดิม\')">เพิ่มท่ารับเข้า 9–11</button><span>เพิ่มเฉพาะท่าที่ยังไม่มี ไม่ล้างค่าท่าเดิม</span></div>' +
       '<div class="dock-cfg-add"><input id="dockNewName" placeholder="ชื่อช่อง เช่น ท่า 9 / Dock A1">' +
       '<input id="dockNewZone" placeholder="โซน (A/B/C)" maxlength="4">' +
       '<button type="button" class="dock-btn" onclick="dockBayAdd()">+ เพิ่มช่อง</button></div>' +

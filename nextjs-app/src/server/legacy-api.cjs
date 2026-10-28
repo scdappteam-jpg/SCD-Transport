@@ -38,6 +38,7 @@ const meetingApi = require("./meeting-api.cjs");
 const meetingDriver = require("./meeting-driver-policy.cjs");
 const warehouseQuality = require("./warehouse-quality.cjs");
 const dockPlanning = require("./dock-planning.cjs");
+const dockDisplay = require('./dock-display.cjs');
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -468,7 +469,7 @@ const DEFAULT_DOCK_BAYS = [ {
     zone: "C",
     status: "Available",
     note: ""
-} ];
+}, ...[9,10,11].map(n=>({id:`D${n}`,name:`ท่า ${n}`,zone:'WH3',status:'Available',note:'Inbound'})) ];
 
 function dockBayList(db) {
     if (!db.dock || !Array.isArray(db.dock.bays) || !db.dock.bays.length) {
@@ -512,7 +513,7 @@ function dockBoard(db) {
         };
     });
     dockNormalizeQueue(db);
-    const queue = meetingPolicy.queue(db,dockPlanning.queue).map((item, index) => {
+    const queue = meetingPolicy.queue(db,dockPlanning.queue).filter(item=>dockPlanning.isActive(findJob(db,item.houseNumber),item)).map((item, index) => {
         const job = findJob(db, item.houseNumber);
         return {
             ...item,
@@ -3963,6 +3964,15 @@ async function handleApi(req, res, pathname) {
         const bays = dockBayList(db);
         const action = String(payload.action || "").toLowerCase();
 
+        if (action === 'ensure-inbound') {
+            try {
+                const added = dockDisplay.ensureInboundBays(db);
+                db.dock.log=[...db.dock.log||[],{at:nowIso(),action:'InboundBaysEnsured',added,by:actor.id}].slice(-200);
+                writeDb(db);
+                return sendJson(res,200,{ok:true,added,...dockBoard(db)});
+            } catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
+        }
+
         if (action === "add") {
             const name = String(payload.name || "").trim() || `ท่า ${bays.length + 1}`;
             if (bays.some(bay => bay.name === name)) return sendJson(res, 409, { error: `มีช่องชื่อ "${name}" อยู่แล้ว` });
@@ -4218,6 +4228,13 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, { ok: true, bills: created, summary });
     }
 
+    if (req.method === 'GET' && pathname === '/api/dock/display') {
+        res.setHeader('Cache-Control','no-store');
+        try {
+            const query=new URL(req.url,`http://localhost:${PORT}`).searchParams;
+            return sendJson(res,200,dockDisplay.board(db,sessionUser(db,req),query.get('scope')||'live'));
+        } catch(error){return sendJson(res,error.statusCode||500,{error:error.message});}
+    }
     if (req.method === "GET" && pathname === "/api/dock/board") {
         return sendJson(res, 200, { ok: true, ...dockBoard(db) });
     }
@@ -4247,6 +4264,7 @@ async function handleApi(req, res, pathname) {
             createdAt: nowIso()
         };
         db.dock.queue.push(entry);
+        dockDisplay.ensureTickets(db);
         db.dock.log = [ ...db.dock.log || [], { at: nowIso(), action: "Queued", houseNumber: houseNumber, by: payload.userId || "" } ].slice(-200);
         logActivity(db, { houseNumber: houseNumber, activityType: "DockQueued", vehiclePlate: entry.vehiclePlate });
         writeDb(db);
@@ -4268,7 +4286,10 @@ async function handleApi(req, res, pathname) {
         if (meetingPolicy.active(db,[job])) {
             try {dockPlanning.assignment(meetingPolicy.scoped(db),job,entry||{},bay);} catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
         }
+        dockDisplay.ensureTickets(db);
         Object.assign(bay, {
+            queueNumber: entry?.queueNumber || null,
+            queueType: dockPlanning.kind(job,entry||{}),
             status: "Occupied",
             houseNumber: houseNumber,
             vehiclePlate: payload.vehiclePlate || (entry ? entry.vehiclePlate : "") || "",
@@ -4308,6 +4329,8 @@ async function handleApi(req, res, pathname) {
             vehiclePlate: "",
             driverName: "",
             assignedAt: "",
+            queueNumber: null,
+            queueType: "",
             assignedBy: "",
             note: payload.note || bay.note || ""
         });
@@ -5251,6 +5274,7 @@ async function handleApi(req, res, pathname) {
             if (meetingPolicy.active(db,[item])) {
                 db.dock||={};db.dock.queue||=[];
                 if (!db.dock.queue.some(entry=>entry.houseNumber===item.houseNumber)) db.dock.queue.push({id:crypto.randomUUID(),houseNumber:item.houseNumber,queueType:item.shipmentSource==="CustomerDirect"?"External":"Inbound",arrivedAt:item.arrivedWh3At,createdAt:releasedAt,createdBy:actor.id,vehiclePlate:item.vehiclePlate||""});
+                dockDisplay.ensureTickets(db);
             }
             logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ReleaseDocumentReceived", endTime: releasedAt });
         }

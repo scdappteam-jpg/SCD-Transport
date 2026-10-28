@@ -2,9 +2,15 @@ const timestamp = value => value && Number.isFinite(Date.parse(value)) ? Date.pa
 const fail = message => {throw Object.assign(new Error(message),{statusCode:409});};
 function kind(job,entry={}) {return entry.queueType==='Outbound'?'Outbound':job?.shipmentSource==='CustomerDirect'?'External':'Inbound';}
 function bayKind(bay) {const n=Number(String(bay.id).replace(/^D/i,''));return n===7?'External':n>=8&&n<=11?'Inbound':'Outbound';}
+function isActive(job,entry={}) {
+    if(!job)return true; // Preserve unmatched legacy entries for staff review.
+    if(['Cancelled','Completed','Rejected','Billed','InvoiceSent'].includes(job.status))return false;
+    if(kind(job,entry)!=='Outbound' && ['TerminalArrived','WeightDimensionRecorded','XRayPassed','PackingConsolidation','ReadyForBilling','BillingReviewed','InvoiceDrafted'].includes(job.status))return false;
+    return true;
+}
 function queue(db) {
     const jobs=new Map((db.jobs||[]).map(j=>[j.houseNumber,j]));
-    const entries=(db.dock?.queue||[]).map(e=>({...e,queueType:kind(jobs.get(e.houseNumber),e)}));
+    const entries=(db.dock?.queue||[]).filter(e=>isActive(jobs.get(e.houseNumber),e)).map(e=>({...e,queueType:kind(jobs.get(e.houseNumber),e)}));
     entries.sort((a,b)=>{
         if (a.queueType!==b.queueType) return a.queueType.localeCompare(b.queueType);
         if (a.queueType===b.queueType && a.queueType!=='External') {
@@ -24,4 +30,4 @@ function assignment(db,job,entry,bay) {
     const eligible=queue(db).filter(e=>e.queueType===kind(job,entry));
     if (eligible.length && eligible[0].houseNumber!==job?.houseNumber) fail('ต้องเรียกคิวที่มี Flight ด่วนที่สุดในประเภทนี้ก่อน');
 }
-module.exports={kind,bayKind,queue,suggest,assignment};
+module.exports={kind,bayKind,queue,suggest,assignment,isActive};
