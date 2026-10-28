@@ -1,6 +1,7 @@
 const invoiceDocument = require('./invoice-document.cjs');
 const billingClose = require('./billing-close.cjs');
 const stateHttp = require('./state-http.cjs');
+const supabaseServiceAuth = require('./supabase-service-auth.cjs');
 const meetingPolicy=require('./meeting-policy.cjs');
 const http = require("http");
 
@@ -66,8 +67,7 @@ const IMPORT_INTERVAL_MS = Number(process.env.IMPORT_INTERVAL_MS || 2 * 60 * 60 
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY
-    || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_API_KEY || process.env.SUPABASE_ANON_KEY || "";
+const SUPABASE_KEY = supabaseServiceAuth.serviceKey();
 
 const SUPABASE_STATE_TABLE = process.env.SUPABASE_STATE_TABLE || "app_state";
 const durableAttachments = attachmentStorageService.createStorage({url: SUPABASE_URL, key: SUPABASE_KEY});
@@ -622,8 +622,7 @@ async function supabaseRequest(method, query, body) {
     return stateHttp.requestJson(url, {
         method,
         headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
+            ...supabaseServiceAuth.serviceHeaders(SUPABASE_KEY),
             "Content-Type": "application/json",
             Prefer: method === "GET" ? "return=representation" : "resolution=merge-duplicates,return=minimal"
         },
@@ -767,13 +766,7 @@ let pendingSnapshot = null;
 let retryTimer = null;
 
 function describeSupabaseError(message) {
-    const text = String(message || "");
-    if (/PGRST303|JWT issued at future|JWT expired/i.test(text)) {
-        return "กุญแจ Supabase ใช้ไม่ได้ (เวลาออกบัตรไม่ตรงกับนาฬิกาเซิร์ฟเวอร์) — ต้องสร้างคีย์ใหม่แล้วใส่ใน Render";
-    }
-    if (/401|403|Invalid API key/i.test(text)) return "กุญแจ Supabase ไม่ถูกต้องหรือหมดสิทธิ์ — ตรวจค่าใน Render Environment";
-    if (/fetch failed|ENOTFOUND|ECONNREFUSED|timeout/i.test(text)) return "ต่อ Supabase ไม่ได้ชั่วคราว — ระบบจะลองใหม่ให้เอง";
-    return "ซิงก์ข้อมูลขึ้นฐานข้อมูลกลางไม่สำเร็จ";
+    return supabaseServiceAuth.syncErrorHint(message);
 }
 
 function markSupabaseOk() {
@@ -1174,7 +1167,7 @@ async function authenticateWithSupabaseAuth(user, password) {
     let profileResponse;
     try {
         profileResponse = await fetch(profileUrl, {
-            headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+            headers: supabaseServiceAuth.serviceHeaders(SUPABASE_KEY)
         });
     } catch (_) {
         return { managed: false, valid: false, unavailable: true };
@@ -8571,10 +8564,7 @@ async function streamSupabaseAttachment(res, pathname) {
     if (!attachment) return false;
     const objectPath = attachmentStorageObjectPath(attachment).split("/").map(encodeURIComponent).join("/");
     const response = await fetch(`${SUPABASE_URL}/storage/v1/object/scd-documents/${objectPath}`, {
-        headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`
-        }
+        headers: supabaseServiceAuth.serviceHeaders(SUPABASE_KEY)
     });
     if (!response.ok) return false;
     const body = Buffer.from(await response.arrayBuffer());

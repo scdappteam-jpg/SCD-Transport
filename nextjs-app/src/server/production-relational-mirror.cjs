@@ -9,6 +9,8 @@ const crypto = require("crypto");
 const fs = require("fs");
 
 const path = require("path");
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- shared server-only CommonJS helper
+const { serviceHeaders } = require('./supabase-service-auth.cjs');
 
 function asText(value, fallback = "") {
     return value === undefined || value === null ? fallback : String(value);
@@ -49,8 +51,7 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
 
     const baseUrl = String(url).replace(/\/$/, "");
     const headers = {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
+        ...serviceHeaders(key),
         "Content-Type": "application/json"
     };
 
@@ -100,8 +101,7 @@ function createProductionRelationalMirror({ url, key, storageDir, storageBucket 
         const response = await fetch(`${baseUrl}/storage/v1/object/${encodeURIComponent(storageBucket)}/${encodedPath}`, {
             method: "PUT",
             headers: {
-                apikey: key,
-                Authorization: `Bearer ${key}`,
+                ...serviceHeaders(key),
                 "Content-Type": mimeType || "application/octet-stream",
                 "x-upsert": "true"
             },

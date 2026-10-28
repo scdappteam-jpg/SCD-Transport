@@ -168,7 +168,7 @@ test('mobile keeps a received single-track House at putaway until its location i
     const start = source.indexOf('function renderInboundGuide()');
     const end = source.indexOf('function renderBillingGuide()', start);
     const buttons = ['inbound-doc', 'inbound-scan', 'inbound-putaway', 'inbound-close'].map(target => ({ dataset: { operationTarget: target }, disabled: true }));
-    const job = { ...fixture()[0], status: 'HouseIdentified', locationId: '', inboundClosedAt: '' };
+    const job: Record<string, unknown> = { ...fixture()[0], status: 'HouseIdentified', locationId: '', inboundClosedAt: '' };
     const context = { job, state: { inboundUnlockedHouse: job.houseNumber }, findAnyJob: () => context.job, $: (selector: string) => selector === '#scanHouse' ? { value: job.houseNumber } : { querySelectorAll: () => [] }, $$: () => buttons, InboundReceipts: receipts, showOperation: () => {} };
     vm.runInNewContext(source.slice(start, end) + ';renderInboundGuide();', context);
     assert.equal(buttons[2].disabled, false);

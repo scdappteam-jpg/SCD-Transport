@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- server-only storage service */
 const crypto = require('node:crypto');
 const path = require('node:path');
+const { serviceHeaders } = require('./supabase-service-auth.cjs');
 function objectPath(file) {
     const date = new Date(file.createdAt);
     if (!file.fileId || Number.isNaN(date.getTime())) throw new Error('Invalid attachment metadata');
@@ -10,7 +11,7 @@ function objectPath(file) {
 function createStorage({url, key, fetcher = fetch}) {
     const pending = new Map();
     const enabled = Boolean(url && key);
-    const headers = {apikey:key, Authorization:`Bearer ${key}`};
+    const headers = serviceHeaders(key);
     const endpoint = file => `${url}/storage/v1/object/scd-documents/${objectPath(file).split('/').map(encodeURIComponent).join('/')}`;
     async function put(file, bytes) {
         const response = await fetcher(endpoint(file), {method:'PUT',headers:{...headers,'Content-Type':file.mimeType,'x-upsert':'true'},body:bytes,signal:AbortSignal.timeout(30000)});
