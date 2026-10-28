@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- compatibility boundary */
 const qa=require('./warehouse-quality.cjs');
-const safety=require('./meeting-policy.cjs');
 const scanner=require('./barcode-evidence.cjs');
 const logs=require('./driver-time-log.cjs');
 const crypto=require('node:crypto');
@@ -32,7 +31,7 @@ async function handle({db,actor,path,method,payload:p={},query={},at,scanUrl,sav
     allowed(actor,['Admin','Executive','WH3_TeamLeader','WH_Staff','Tagging_Staff','Check_House','QA_Inspector']);
     if(path==='/api/warehouse/quality'&&method==='GET'){
         const term=String(query.query||'').trim().toLowerCase();
-        return {policy,actor:{id:actor.id,role:actor.role},jobs:(db.jobs||[]).filter(j=>!['Billed','InvoiceSent','Cancelled'].includes(j.status)&&(!term||[j.houseNumber,j.hawbNumber,j.onhandNumber,j.mawbNumber,j.customerName,j.invoiceNo].some(v=>String(v||'').toLowerCase().includes(term)))).slice(0,100).map(j=>({houseNumber:j.houseNumber,hawbNumber:j.hawbNumber||'',onhandNumber:j.onhandNumber||'',master:j.mawbNumber||'',customerName:j.customerName||'',invoiceNo:j.invoiceNo||'',shipmentSource:j.shipmentSource||'SCD',status:j.status,updatedAt:j.updatedAt,trackType:j.trackType||'Single',stickerColor:j.inboundStickerColor||j.stickerColor||'',tagInspection:j.tagInspection||null,qaApproval:j.qaApproval||null,qaApproved:qa.approved(j),qaRequired:Boolean(safety.active(db,[j])||j.qaRequired)}))};
+        return {policy,actor:{id:actor.id,role:actor.role},jobs:(db.jobs||[]).filter(j=>!['Billed','InvoiceSent','Cancelled'].includes(j.status)&&(!term||[j.houseNumber,j.hawbNumber,j.onhandNumber,j.mawbNumber,j.customerName,j.invoiceNo].some(v=>String(v||'').toLowerCase().includes(term)))).slice(0,100).map(j=>({houseNumber:j.houseNumber,hawbNumber:j.hawbNumber||'',onhandNumber:j.onhandNumber||'',master:j.mawbNumber||'',customerName:j.customerName||'',invoiceNo:j.invoiceNo||'',shipmentSource:j.shipmentSource||'SCD',status:j.status,updatedAt:j.updatedAt,trackType:j.trackType||'Single',stickerColor:j.inboundStickerColor||j.stickerColor||'',tagInspection:j.tagInspection||null,qaApproval:j.qaApproval||null,qaApproved:qa.approved(j),qaRequired:true}))};
     }
     if(method!=='POST')fail('Method not allowed',405);
     if(path==='/api/warehouse/external-intake'){

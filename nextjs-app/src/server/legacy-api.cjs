@@ -5318,6 +5318,8 @@ async function handleApi(req, res, pathname) {
             files: payload.documentFiles
         });
         job.inboundDocStatus = payload.documentStatus || "Found";
+        job.inboundDocumentCheckedAt = nowIso();
+        job.inboundDocumentCheckedBy = actor.id;
         job.inboundDocNote = payload.note || "";
         job.status = job.inboundDocStatus === "Missing" ? "PendingEI" : "DocumentChecked";
         job.updatedAt = nowIso();
@@ -5342,7 +5344,10 @@ async function handleApi(req, res, pathname) {
             error: "Job not found"
         });
         try { workflowIntegrity.inbound(job, 'open', payload); } catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
+        if(Number.isFinite(Date.parse(job.inboundOpenedAt))&&Date.parse(job.inboundOpenedAt)>=Date.parse(job.arrivedWh3At)&&(job.shipmentSource==='CustomerDirect'||Date.parse(job.inboundOpenedAt)>=Date.parse(job.releaseDocumentReceivedAt))&&(!job.inboundDocumentCheckedAt||Date.parse(job.inboundOpenedAt)>=Date.parse(job.inboundDocumentCheckedAt))&&(job.inboundDocStatus!=='Missing'||job.inboundEiConfirmedAt===job.inboundOpenedAt))return sendJson(res,200,{ok:true,replayed:true,job:normalizeJob(job)});
         job.inboundOpenedAt = nowIso();
+        job.inboundEiConfirmedAt = job.inboundDocStatus==='Missing'&&payload.eiConfirmed===true?job.inboundOpenedAt:null;
+        job.inboundEiConfirmedBy = job.inboundEiConfirmedAt?actor.id:null;
         job.status = "InboundOpened";
         job.updatedAt = nowIso();
         logActivity(db, {
@@ -5577,12 +5582,14 @@ async function handleApi(req, res, pathname) {
             error: "Job not found"
         });
         try {
+            if (inboundReceipts.closeConfirmed(job, payload)) return sendJson(res, 200, { ok: true, replayed: true, job: normalizeJob(job) });
             workflowIntegrity.inbound(job, 'close');
             inboundReceipts.assertReceiptComplete(job);
+            warehouseQuality.assertStoredLocation(db,job);
         } catch (error) {
             return sendJson(res, 409, { error: error.message, receipt: inboundReceipts.house(job) });
         }
-        if (payload.requestId && job.inboundCloseRequestId === payload.requestId && job.inboundClosedRevision === job.inboundReceipt.revision) return sendJson(res, 200, { ok: true, job: normalizeJob(job) });
+        if(!/^[A-Za-z0-9-]{8,100}$/.test(String(payload.requestId||'')))return sendJson(res,422,{error:'ต้องมีรหัสคำขอปิดรับเพื่อป้องกันการบันทึกซ้ำ'});
         if (!Array.isArray(payload.evidenceFiles) || !payload.evidenceFiles.length) {
             return sendJson(res, 422, {
                 error: "Cargo Pickup Form or EI confirmation evidence is required"
@@ -6981,6 +6988,7 @@ async function handleApi(req, res, pathname) {
         const job = (db.jobs || []).find(j => j.houseNumber === houseNumber);
         if (job) {
             job.warehouseLocation = isFlexible ? loc.code : `${loc.code}-L${lvl}`;
+            job.locationId = loc.code || loc.id;
             job.warehouseZoneId = loc.zoneId;
             job.warehouseReservedZoneId = "";
             job.warehouseReservedPallets = 0;

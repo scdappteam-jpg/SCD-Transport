@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const policy = require('./meeting-policy.cjs');
 const references = require('../../public/legacy/shipment-references.js');
 const movementPaths = new Set(['/api/inbound/twin-scan','/api/inbound/move-location','/api/warehouse/location/assign','/api/warehouse/location/release','/api/outbound/picking','/api/outbound/return','/api/outbound/load-bay','/api/outbound/transfer-form','/api/outbound/loading-detail']);
+const inboundPutawayPaths=new Set(['/api/inbound/twin-scan','/api/inbound/move-location','/api/warehouse/location/assign']);
 const clean = value => String(value || '').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
 const identity = job => crypto.createHash('sha256').update(JSON.stringify([job.houseNumber,job.hawbNumber||'',job.onhandNumber||'',job.trackType||'Single',job.stickerColor||'',job.inboundStickerColor||''])).digest('hex');
 function fail(message, statusCode=409) { throw Object.assign(new Error(message),{statusCode}); }
@@ -62,6 +63,19 @@ function approved(job) {
     return Boolean(tag && qa && tag.identity===identity(job) && qa.revision===tag.revision && qa.approvedBy && qa.approvedBy!==tag.taggedBy && qa.tags?.length===tag.tags?.length && qa.tags.every((t,i)=>t.barcode===tag.tags[i].barcode));
 }
 function assertApproved(job) { if (!approved(job)) fail('ไม่อนุญาตให้ย้ายของจนกว่า QA จะอนุมัติ'); }
+function assertStoredLocation(db,job){
+    assertApproved(job);
+    const key=String(job.locationId||job.warehouseLocation||'').trim().toLowerCase();
+    if(!key)fail('ยังปิดรับเป็น Stored ไม่ได้: ต้องจัด Location หลังผ่าน QA');
+    const level=key.match(/-l(\d+)$/i),base=level?key.slice(0,level.index):key;
+    const matches=l=>[l.id,l.code].some(v=>String(v||'').trim().toLowerCase()===base);
+    const legacy=(db.locations||[]).find(matches);
+    const mapped=[...db.warehouseMap?.locations||[],...(db.warehouseMaps||[]).flatMap(m=>(m.zones||[]).flatMap(z=>z.slots||[]))].filter(matches);
+    const legacyOwned=legacy?.status==='Occupied'&&legacy.currentHouseId===job.houseNumber;
+    const mapOwned=mapped.some(l=>l.active!==false&&!['Closed','Blocked'].includes(l.status)&&(l.occupiedBy||[]).some(o=>o.houseNumber===job.houseNumber&&(!level||Number(o.level)===Number(level[1]))));
+    if(legacy?.status==='Occupied'&&legacy.currentHouseId!==job.houseNumber)fail('Location ถูกใช้งานโดย House อื่น ต้องตรวจตำแหน่งก่อนปิดรับ');
+    if(!legacyOwned&&!mapOwned)fail('Location ไม่พบการจัดเก็บของ House นี้ ต้องตรวจตำแหน่งก่อนปิดรับ');
+}
 function movementJobs(db,path,p) {
     let moves = movementPaths.has(path);
     if (path==='/api/operations/control') moves = (['driver-event','transport-event'].includes(p.action)&&['wh3-load-start','wh3-depart'].includes(p.event)) || (p.action==='terminal'&&['arrival','load'].includes(p.stage));
@@ -75,9 +89,9 @@ function movementJobs(db,path,p) {
     return (houses || []).map(h=>db.jobs.find(j=>j.houseNumber===h)).filter(Boolean);
 }
 function enforceMovement(db,path,p) {
-    for (const job of movementJobs(db,path,p)) if (policy.active(db,[job]) || job.qaRequired) {
+    for (const job of movementJobs(db,path,p)) if (inboundPutawayPaths.has(path) || policy.active(db,[job]) || job.qaRequired) {
         assertApproved(job);
         if ((p.trackType && p.trackType!==(job.trackType||'Single')) || (p.stickerColor && p.stickerColor!==(job.inboundStickerColor||''))) fail('ข้อมูลแท็กเปลี่ยน ต้องลงทะเบียนและสแกน QA ใหม่ก่อนย้าย');
     }
 }
-module.exports={tagPlan,approvalPlan,applyTag,approved,assertApproved,enforceMovement,movementPaths};
+module.exports={tagPlan,approvalPlan,applyTag,approved,assertApproved,assertStoredLocation,enforceMovement,movementPaths};
