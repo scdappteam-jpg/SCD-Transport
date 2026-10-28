@@ -1,4 +1,4 @@
-const fields=[['routeStartedAt','เริ่มรอบ'],['checkInAt','ถึงจุดรับ'],['loadedAt','ยืนยันโหลดขึ้นรถ'],['completedAt','ออกจากโรงงาน/เริ่มกลับ WH3'],['arrivedWh3At','ถึง WH3'],['releaseDocumentReceivedAt','รับใบตรวจปล่อย']];
+const fields=[['routeStartedAt','เริ่มรอบ'],['checkInAt','ถึงจุดรับ'],['loadedAt','ยืนยันโหลดขึ้นรถ'],['completedAt','ออกจากโรงงาน/เริ่มกลับ WH3'],['arrivedWh3At','ถึง WH3'],['releaseDocumentReceivedAt','รับใบตรวจปล่อย'],['dockArrivedAt','เข้าท่า Dock'],['wh3UnloadStartedAt','เริ่มลงสินค้า WH3'],['wh3UnloadCompletedAt','ลงสินค้า WH3 เสร็จ']];
 const date = value => value && Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value)) : '';
 const escape = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function report(db,actor,filters={}) {

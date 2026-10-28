@@ -40,6 +40,7 @@ const warehouseQuality = require("./warehouse-quality.cjs");
 const dockPlanning = require("./dock-planning.cjs");
 const dockDisplay = require('./dock-display.cjs');
 const driverDock = require('../../public/legacy/driver-dock-core.js');
+const driverDockEvents = require('./driver-dock-events.cjs');
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -4340,6 +4341,19 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, { ok: true, bay: bay, ...dockBoard(db) });
     }
+    if(req.method==='POST'&&pathname==='/api/driver/dock-event'){
+        await refreshDbIfSharedStateChanged();db=readDb();
+        try{
+            const p=await parseBody(req),actor=sessionUser(db,req);
+            const plan=driverDockEvents.prepare(db,actor,p);
+            if(plan.replayed)return sendJson(res,200,{ok:true,replayed:true,record:plan.record,progress:plan.progress});
+            const files=p.event==='unload-complete'?[saveBase64File(db,{houseNumber:plan.job.houseNumber,fileType:'WH3UnloadEvidence',base64:p.evidence.base64,mimeType:p.evidence.mimeType})]:[];
+            const record=driverDockEvents.apply(plan,files);
+            logActivity(db,{houseNumber:plan.job.houseNumber,userId:actor.id,activityType:'DriverDock:'+record.event,dockBay:record.bayId,simulation:record.simulation,endTime:record.at});
+            writeDb(db);
+            return sendJson(res,200,{ok:true,record,progress:driverDock.progress(plan.job,plan.bay)});
+        }catch(error){return sendJson(res,error.statusCode||422,{error:error.message});}
+    }
     if (req.method === "GET" && pathname === "/api/dock/my") {
         const url = new URL(req.url, `http://localhost:${PORT}`);
         const house = String(url.searchParams.get("houseNumber") || "").trim();
@@ -4349,9 +4363,13 @@ async function handleApi(req, res, pathname) {
         const allowed = actor?.role==='Driver'?new Set(db.jobs.filter(job=>job.driverId===actor.id).map(job=>job.houseNumber)):null;
         if(allowed&&house&&!allowed.has(house))return sendJson(res,403,{error:'ดู Dock ได้เฉพาะงานที่มอบหมายให้คุณ'});
         const {bay,queue:queued}=driverDock.lookup(board,house,plate,allowed);
+        const progress=bay?driverDock.progress(findJob(db,bay.houseNumber),bay):null;
+        if(progress)progress.events=progress.events.map(e=>({...e,evidence:(db.attachments||[]).filter(f=>f.houseNumber===bay.houseNumber&&e.evidenceFileIds?.includes(f.fileId)).map(f=>({fileId:f.fileId,url:f.url}))}));
         return sendJson(res, 200, {
             ok: true,
             bay: bay,
+            progress,
+            receiptConfirmedAt: bay?findJob(db,bay.houseNumber)?.inboundReceipt?.confirmedAt||null:null,
             queue: queued,
             ahead: queued ? queued.queueAhead ?? Math.max(0, queued.position - 1) : 0,
             estimatedWaitMinutes: queued?.estimatedWaitMinutes ?? null,

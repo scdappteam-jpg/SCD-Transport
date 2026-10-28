@@ -2541,6 +2541,9 @@ function foUntaggedBadge(rec) {
 }
 
 function foJobStatusMeta(job) {
+    if(job?.driverDock?.work?.unloadCompletedAt)return {th:'ลงสินค้าเสร็จ',en:'Unloaded',tone:'green'};
+    if(job?.driverDock?.work?.unloadStartedAt)return {th:'กำลังลงสินค้า',en:'Unloading',tone:'amber'};
+    if(job?.driverDock?.work?.arrivedAt)return {th:'เข้าท่าแล้ว',en:'At Dock',tone:'green'};
     if(job?.driverDock?.phase==='Called')return {th:'เรียกเข้าท่าแล้ว',en:'Called to Dock',tone:'green'};
     const status = job?.status || "Pending";
     const map = {
@@ -2604,10 +2607,45 @@ function foOpenRequeue(houseToken) {
 
 
 /* ══════════ ช่องเทียบท่าของฉัน (มือถือ) ══════════ */
-let mobileDockRequest=0;
+let mobileDockRequest=0,mobileDockBusy=false;
+function driverDockControls(data,house){
+    if(currentUser()?.role!=='Driver')return '';
+    const p=data.progress||{},sit=/^SIT(?:UI)?[-A-Z0-9]/i.test(house);
+    const steps=[['arrive','ยืนยันเข้าท่า '+data.bay.id,Boolean(p.arrivedAt),false],['unload-start','เริ่มลงสินค้า',Boolean(p.unloadStartedAt),!p.arrivedAt],['unload-complete','ลงสินค้าเสร็จ',Boolean(p.unloadCompletedAt),!p.unloadStartedAt]];
+    const time=v=>v?escapeHtmlMobile(formatBangkokMobile(v)):'ยังไม่บันทึก';
+    return `<section class="soft-note" style="margin:12px 0;text-align:left" data-no-i18n><b>${p.unloadCompletedAt?'ลงสินค้าเสร็จแล้ว':p.unloadStartedAt?'กำลังลงสินค้า':p.arrivedAt?'เข้าท่าแล้ว':'รอยืนยันเข้าท่า'}</b>
+      <p>ยืนยันด้วยปุ่ม บันทึกเวลาจากเซิร์ฟเวอร์ ไม่ใช่การยืนยันพิกัด GPS</p>
+      ${sit?'<p><b>SIT ONLY — ข้อมูลจำลอง ไม่ใช่สินค้าเคลื่อนจริง</b></p>':''}
+      ${data.receiptConfirmedAt?'<p>มียอดรับเข้าคลังยืนยันไว้แล้ว ขั้นตอน Dock นี้ไม่แก้ยอดหรือเวลารับเดิม</p>':''}
+      <p>เข้าท่า: ${time(p.arrivedAt)}<br>เริ่มลง: ${time(p.unloadStartedAt)}<br>ลงเสร็จ: ${time(p.unloadCompletedAt)}</p>
+      ${sit&&!p.unloadCompletedAt?'<label><input type="checkbox" data-dock-simulation> ยืนยันใช้ข้อมูลจำลองเฉพาะ SIT นี้</label>':''}
+      ${p.unloadStartedAt&&!p.unloadCompletedAt?`<label>${sit?'หลักฐานลงสินค้าเสร็จจำลองเฉพาะ SIT':'ภาพหรือเอกสารยืนยันลงสินค้าเสร็จ'}<input type="file" data-dock-proof accept="image/png,image/jpeg,image/webp,application/pdf"></label>`:''}
+      ${steps.map(([event,label,done,blocked])=>`<button type="button" class="fo-primary-btn" style="margin-top:8px" data-driver-dock-event="${event}" ${done||blocked||mobileDockBusy?'disabled':''}>${label}${done?' · บันทึกแล้ว':''}</button>`).join('')}
+      ${(p.events||[]).filter(e=>e.evidence?.length).map(e=>'<p>'+e.evidence.map(f=>`<a href="${escapeHtmlMobile(f.url)}" target="_blank" rel="noopener">เปิดหลักฐานลงสินค้าเสร็จ</a>`).join(' · ')+'</p>').join('')}
+      </section>`;
+}
+function driverDockStep(button){
+    if(mobileDockBusy)return;
+    const box=$('#foDockCard'),context=box?.dockContext;
+    if(!context)return;
+    const event=button.dataset.driverDockEvent,sit=/^SIT(?:UI)?[-A-Z0-9]/i.test(context.house);
+    const simulation=sit&&Boolean(box.querySelector('[data-dock-simulation]')?.checked);
+    if(sit&&!simulation)return showMobileActionModal('ต้องยืนยันข้อมูล SIT','เลือกยืนยันใช้ข้อมูลจำลองเฉพาะ SIT ก่อนบันทึก');
+    const input=box.querySelector('[data-dock-proof]');
+    if(event==='unload-complete'&&!input?.files?.length)return showMobileActionModal('ยังไม่มีหลักฐาน','แนบภาพหรือเอกสารลงสินค้าเสร็จก่อนบันทึก');
+    showConfirmSheet(button.textContent,`House ${context.house} / ${context.bay.id} / คิว ${DriverDock.ticket(context.bay.queueNumber)}${sit?' / SIT จำลองเท่านั้น':''}`,()=>{
+        mobileDockBusy=true;
+        void runAction(button,async()=>{
+            const files=event==='unload-complete'?await filesToCompressedBase64(input):[];
+            await api('/api/driver/dock-event',{houseNumber:context.house,bayId:context.bay.id,assignedAt:context.bay.assignedAt,expectedRevision:context.progress?.revision||0,event,simulation,requestId:crypto.randomUUID(),evidence:files[0],note:sit?'SIT ONLY: simulated driver Dock event, no physical goods movement.':''});
+            toast('บันทึกขั้นตอน Dock แล้ว');
+        }).finally(()=>{mobileDockBusy=false;void renderMDock();});
+    });
+}
 async function renderMDock() {
     const box = $("#foDockCard");
     if (!box) return;
+    if(!box.dataset.driverDockBound){box.dataset.driverDockBound='1';box.addEventListener('click',event=>{const button=event.target.closest('[data-driver-dock-event]');if(button&&!button.disabled)driverDockStep(button);});}
     const request=++mobileDockRequest;
     const user = currentUser();
     const house = driverDockSelection()?.houseNumber || "";
@@ -2625,6 +2663,7 @@ async function renderMDock() {
     if(request!==mobileDockRequest||house!==(driverDockSelection()?.houseNumber||''))return;
 
     if (data.bay) {
+        box.dockContext={house,bay:data.bay,progress:data.progress};
         box.hidden = false;
         box.className = "fo-card fo-dock-card ok";
         box.innerHTML = `
@@ -2635,6 +2674,7 @@ async function renderMDock() {
           <div class="fo-dock-sub">${escapeHtmlMobile(data.bay.houseNumber || house)} · ${escapeHtmlMobile(data.bay.pieceCount || "-")} ชิ้น</div>
           <div class="fo-dock-kv"><span>ช่องเก็บปลายทาง</span><b>${escapeHtmlMobile(data.bay.locationId || "รอระบุ")}</b></div>
           <div class="fo-dock-kv"><span>จัดช่องเมื่อ</span><b>${data.bay.assignedAt ? formatBangkokMobile(data.bay.assignedAt).slice(-8, -3) : "-"}</b></div>
+          ${driverDockControls(data,house)}
           <button type="button" class="fo-primary-btn" onclick="renderMDock()">รีเฟรชสถานะ</button>`;
         return;
     }
