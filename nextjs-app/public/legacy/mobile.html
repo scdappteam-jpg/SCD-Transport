@@ -289,8 +289,9 @@
           <select id="inboundDocStatus">
             <option value="Found">พบ Invoice/PO / Found</option>
             <option value="Missing">ไม่พบเอกสาร / Missing</option>
-            <option value="EIConfirmed">EI Confirm แล้ว / EI confirmed</option>
+
           </select>
+          <label><input id="inboundEiConfirmed" type="checkbox"> EI ตรวจยืนยันเอกสารที่ขาดแล้ว (ใช้ตอนเปิดรับกรณี Missing)</label>
           <label>หมายเหตุเอกสาร / Document note</label>
           <textarea id="inboundDocNote" rows="3" placeholder="เช่น รอ EI confirm invoice / PO"></textarea>
           <input id="inboundDocFiles" type="file" accept="image/*,application/pdf" capture="environment" multiple="multiple">
@@ -813,7 +814,7 @@
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
   <script src="test-user-mode.js?v=1-admin-scoped"></script>
   <script src="driver-dock-core.js?v=20261028-dock-events"></script>
-  <script src="mobile.js?v=20261028-driver-dock-events"></script>
+  <script src="mobile.js?v=20261028-wh3-inbound"></script>
   </body>
 </html>
 

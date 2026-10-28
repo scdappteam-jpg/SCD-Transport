@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- server-only domain service */
 const crypto = require('node:crypto');
 const policy = require('./meeting-policy.cjs');
+const inbound = require('./warehouse-inbound.cjs');
 const references = require('../../public/legacy/shipment-references.js');
 const movementPaths = new Set(['/api/inbound/twin-scan','/api/inbound/move-location','/api/warehouse/location/assign','/api/warehouse/location/release','/api/outbound/picking','/api/outbound/return','/api/outbound/load-bay','/api/outbound/transfer-form','/api/outbound/loading-detail']);
 const inboundPutawayPaths=new Set(['/api/inbound/twin-scan','/api/inbound/move-location','/api/warehouse/location/assign']);
@@ -62,7 +63,7 @@ function approved(job) {
     const tag=job.tagInspection,qa=job.qaApproval;
     return Boolean(tag && qa && tag.identity===identity(job) && qa.revision===tag.revision && qa.approvedBy && qa.approvedBy!==tag.taggedBy && qa.tags?.length===tag.tags?.length && qa.tags.every((t,i)=>t.barcode===tag.tags[i].barcode));
 }
-function assertApproved(job) { if (!approved(job)) fail('ไม่อนุญาตให้ย้ายของจนกว่า QA จะอนุมัติ'); }
+function assertApproved(job) { inbound.assertNotHeld(job); if (!approved(job)) fail('ไม่อนุญาตให้ย้ายของจนกว่า QA จะอนุมัติ'); }
 function assertStoredLocation(db,job){
     assertApproved(job);
     const key=String(job.locationId||job.warehouseLocation||'').trim().toLowerCase();
@@ -89,8 +90,11 @@ function movementJobs(db,path,p) {
     return (houses || []).map(h=>db.jobs.find(j=>j.houseNumber===h)).filter(Boolean);
 }
 function enforceMovement(db,path,p) {
-    for (const job of movementJobs(db,path,p)) if (inboundPutawayPaths.has(path) || policy.active(db,[job]) || job.qaRequired) {
+    for (const job of movementJobs(db,path,p)) {
+        inbound.assertNotHeld(job);
+        if (!(inboundPutawayPaths.has(path) || policy.active(db,[job]) || job.qaRequired)) continue;
         assertApproved(job);
+        if(inboundPutawayPaths.has(path))inbound.assertPutaway(db,job,p);
         if ((p.trackType && p.trackType!==(job.trackType||'Single')) || (p.stickerColor && p.stickerColor!==(job.inboundStickerColor||''))) fail('ข้อมูลแท็กเปลี่ยน ต้องลงทะเบียนและสแกน QA ใหม่ก่อนย้าย');
     }
 }

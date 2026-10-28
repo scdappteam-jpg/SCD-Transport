@@ -292,11 +292,11 @@ function currentWebUser() {
 
 function allowedWebViews(role) {
     if (role === "Driver") return [ "dashboard", "driver-time-log", "hr", "flight-board", "dock" ];
-    if (role === "WH_Staff") return [ "dashboard", "wh-quality", "wh-reservations", "hr", "flight-board", "dock" ];
-    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "hr", "flight-board", "dock", "service" ];
+    if (role === "WH_Staff") return [ "dashboard", "wh-inbound", "wh-quality", "wh-reservations", "hr", "flight-board", "dock" ];
+    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "hr", "flight-board", "dock", "service" ];
     if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "hr", "flight-board", "dock", "service" ];
     if (role === "EI_Customer") return [ "dashboard", "orders" ];
-    if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-quality", "orders", "alerts" ];
+    if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-inbound", "wh-quality", "orders", "alerts" ];
     if (role === "Tagging_Staff") return [ "dashboard", "wh-quality" ];
     if (role === "Terminal") return [ "dashboard", "orders", "alerts", "flight-board", "dock" ];
     // Billing works in the Field Ops workspace, but only the Billing panel is
@@ -306,8 +306,8 @@ function allowedWebViews(role) {
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
     if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
-    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock", "service" ];
-    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
+    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock", "service" ];
+    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
 }
 
 function applyWebRoleVisibility() {
@@ -506,6 +506,7 @@ const pageCopy = {
         breadcrumb: "แผนที่คลัง / Warehouse",
         title: "แผนที่คลัง WH3 / Warehouse Map"
     },
+    "wh-inbound": {breadcrumb:"WH / Inbound",title:"รับลงรถเข้า WH3"},
     "wh-quality": {breadcrumb:"WH / QA",title:"สแกนแท็กและ QA"},
     "meeting-settings": {breadcrumb:"ตั้งค่ากติกา",title:"กติกาคลังและ Driver"},
     "driver-time-log": {breadcrumb:"รายงาน Driver",title:"Driver Time Log"},
@@ -1024,6 +1025,7 @@ function setView(view) {
     if (view === "warehouse") renderWarehouseMap();
     if (view === "wh-status") renderWarehouseStatus();
     if (view === "wh-reservations") WarehouseReservationsPage.render();
+    if (view === "wh-inbound") WarehouseInboundPage.render();
     if (view === "wh-quality") MeetingWorkflows.quality();
     if (view === "meeting-settings") MeetingWorkflows.settings();
     if (view === "driver-time-log") MeetingWorkflows.driverLog();
@@ -9791,7 +9793,7 @@ function bindEvents() {
         await api("/api/inbound/open", {
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
             userId: "u_wh_01",
-            eiConfirmed: $("#inboundDocStatus").value === "EIConfirmed"
+            eiConfirmed: $("#inboundEiConfirmed").checked
         });
         toast("เปิดงานรับเข้าแล้ว / Inbound opened");
     }));
@@ -11672,9 +11674,9 @@ async function dockAssign(house) {
 }
 
 async function dockRelease(bayId) {
-    if (!window.confirm("ปล่อยช่องเทียบท่านี้ให้ว่าง?")) return;
+    if (!window.confirm("ยืนยันว่าลงสินค้าเสร็จและรถออกจากช่องจริงแล้ว จึงคืน Dock นี้?")) return;
     try {
-        _dockData = await api("/api/dock/release", { bayId: bayId });
+        _dockData = await api("/api/dock/release", { bayId: bayId, confirmVehicleDeparted: true });
         state.dockSummary = _dockData.summary;
         _renderDockHtml();
         toast("ปล่อยท่าเรียบร้อย");

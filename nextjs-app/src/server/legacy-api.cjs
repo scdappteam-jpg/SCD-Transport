@@ -35,6 +35,7 @@ const pickupFlow = require("./pickup-flow.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
 const meetingApi = require("./meeting-api.cjs");
+const warehouseInbound = require("./warehouse-inbound.cjs");
 const meetingDriver = require("./meeting-driver-policy.cjs");
 const warehouseQuality = require("./warehouse-quality.cjs");
 const dockPlanning = require("./dock-planning.cjs");
@@ -3385,6 +3386,16 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    if (pathname === '/api/warehouse/inbound-control') {
+        await refreshDbIfSharedStateChanged(); db = readDb();
+        try {
+            const payload = req.method === 'POST' ? await parseBody(req) : {};
+            const actor = sessionUser(db,req);
+            const result = await warehouseInbound.handle({db,actor,method:req.method,p:payload,query:Object.fromEntries(new URL(req.url,'http://localhost').searchParams),at:nowIso(),saveFiles:(houseNumber,fileType,files)=>saveBase64Files(db,{houseNumber,fileType,files})});
+            if(result.mutated){logActivity(db,{houseNumber:result.job.houseNumber,userId:actor.id,activityType:result.activity});writeDb(db);}
+            return sendJson(res,200,result);
+        } catch(error){return sendJson(res,error.statusCode||503,{error:error.message});}
+    }
     // All legacy and modern entry points cross this boundary before any file,
     // inventory, location or workflow mutation. Keep the parsed body reusable.
     if (req.method === "POST" && (pathname.startsWith("/api/pickup/") || pathname.startsWith("/api/dock/") || pathname === "/api/attendance/checkin" || warehouseQuality.movementPaths.has(pathname) || pathname === "/api/operations/control")) {
@@ -3420,7 +3431,13 @@ async function handleApi(req, res, pathname) {
             const canonical = inboundReceipts.canonical(db.jobs || []).find(row => row.key === inboundReceipts.houseKey(job));
             if (!canonical || canonical.ambiguous || canonical.job !== job) return sendJson(res, 409, { error: `กรุณาบันทึกยอดที่ House หลัก ${canonical?.job?.houseNumber || "ที่ตรวจสอบแล้ว"}` });
             workflowIntegrity.inbound(job, 'receipt');
+            const previousRevision=job.inboundReceipt?.revision||0;
             inboundReceipts.receiveCounts(job, payload, actor.id);
+            if(job.inboundReceipt.revision!==previousRevision){
+                if(job.qaApproval){job.qaApproval=null;job.inboundReceipt.qaInvalidatedAt=nowIso();}
+                const receiptSummary=inboundReceipts.house(job);
+                if(Object.values(receiptSummary.over).some(n=>n>0)&&!['Open','Rejected'].includes(job.inboundHold?.state))job.inboundHold={id:crypto.randomUUID(),state:'Open',kind:'Over',reason:'ยอดรับจริงเกินแผน ต้องตรวจ CS ก่อนปลดพัก',openedAt:nowIso(),openedBy:actor.id,receiptRevision:job.inboundReceipt.revision,fileIds:[]};
+            }
             writeDb(db);
             return sendJson(res, 200, { ok: true, job: normalizeJob(job) });
         } catch (error) {
@@ -4314,10 +4331,15 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, { ok: true, bay: bay, ...dockBoard(db) });
     }
     if (req.method === "POST" && pathname === "/api/dock/release") {
+        await refreshDbIfSharedStateChanged(); db=readDb();
+        const actor=requireSessionRole(db,req,['Admin','WH3_TeamLeader','Team_Transport']);
+        if(!actor)return sendJson(res,403,{error:'ไม่มีสิทธิ์คืน Dock'});
         const payload = await parseBody(req);
         const bay = payload.bayId ? dockFindBay(db, payload.bayId)
             : dockBayList(db).find(item => item.houseNumber === String(payload.houseNumber || "").trim());
         if (!bay) return sendJson(res, 404, { error: "ไม่พบช่องเทียบท่า" });
+        try{warehouseInbound.assertRelease(db,bay,payload);}catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
+        payload.userId=actor.id;
         const houseNumber = bay.houseNumber || "";
         const job = houseNumber ? findJob(db, houseNumber) : null;
         if (job) {
@@ -5312,6 +5334,7 @@ async function handleApi(req, res, pathname) {
             error: "Job not found"
         });
         try { workflowIntegrity.inbound(job, 'documents'); } catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
+        if(!['Found','Missing'].includes(payload.documentStatus))return sendJson(res,422,{error:'สถานะเอกสารต้องเป็น Found หรือ Missing; ยืนยัน EI แยกตอนเปิดรับ'});
         saveBase64Files(db, {
             houseNumber: job.houseNumber,
             fileType: "InboundDocument",
@@ -5470,6 +5493,11 @@ async function handleApi(req, res, pathname) {
             wmLocation.occupiedBy = (wmLocation.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
             wmLocation.occupiedBy.push({
                 houseNumber: job.houseNumber,
+                level: Number(payload.level)||1,
+                pallets: Number(payload.pallets)||0,
+                boxes: Number(payload.boxes)||0,
+                areaSqm: Number(payload.areaSqm)||0,
+                volumeCbm: Number(payload.volumeCbm)||0,
                 pieces: Array.isArray(payload.pieces) && payload.pieces.length ? payload.pieces.length : undefined,
                 at: nowIso()
             });
@@ -5483,6 +5511,7 @@ async function handleApi(req, res, pathname) {
         }
         job.status = payload.trackType === "Pair" && inboundReceipts.house(job).complete ? "ReadyForTerminal" : "Stored";
         job.locationId = finalLocId;
+        job.warehouseLocation = wmLocation ? `${finalLocId}-L${Number(payload.level)||1}` : finalLocId;
         job.dimensionText = payload.dimensionText || job.dimensionText || "";
         job.trackType = payload.trackType || job.trackType || "Single";
         job.wdChecklist = Array.isArray(payload.wdChecklist) ? payload.wdChecklist : job.wdChecklist || [];
@@ -6989,6 +7018,7 @@ async function handleApi(req, res, pathname) {
         if (job) {
             job.warehouseLocation = isFlexible ? loc.code : `${loc.code}-L${lvl}`;
             job.locationId = loc.code || loc.id;
+            job.dimensionText = payload.dimensionText || job.dimensionText || "";
             job.warehouseZoneId = loc.zoneId;
             job.warehouseReservedZoneId = "";
             job.warehouseReservedPallets = 0;

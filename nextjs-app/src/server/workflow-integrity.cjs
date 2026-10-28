@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- CommonJS compatibility guards. */
 const receipts = require('./inbound-receipts.cjs');
+const whInbound = require('./warehouse-inbound.cjs');
 function fail(message, statusCode = 409) { const error = new Error(message); error.statusCode = statusCode; throw error; }
 function selection(db, payload, findJob) {
     const houses = Array.isArray(payload.houseNumbers) && payload.houseNumbers.length ? payload.houseNumbers : [payload.houseNumber];
@@ -28,6 +29,8 @@ function inbound(job,phase,payload={}) {
     }
     if(phase==='close'&&!recorded(job.inboundOpenedAt))fail('ต้องเปิดงานขาเข้าหลังตรวจเอกสารก่อนปิดรับ');
     if(['receipt','close'].includes(phase)){
+        whInbound.assertUnloaded(job);
+        if(phase==='close'){whInbound.assertNotHeld(job);if(!job.inboundInspection?.checkedAt)fail('ต้องตรวจสภาพสินค้าและเลขอ้างอิงก่อนปิดรับ');}
         if(!['Found','Missing'].includes(job.inboundDocStatus))fail('ต้องตรวจเอกสารขาเข้าก่อนยืนยันยอดรับ');
         if(!recorded(job.inboundOpenedAt))fail('ต้องเปิดงานขาเข้าหลังตรวจเอกสารก่อนยืนยันยอดรับ');
         const opened=Date.parse(job.inboundOpenedAt);

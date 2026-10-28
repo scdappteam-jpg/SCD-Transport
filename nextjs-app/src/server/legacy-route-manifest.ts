@@ -16,6 +16,7 @@ export const legacyViewRoutes = {
   "wh-status": "wh-status",
   "wh-reservations": "wh-reservations",
   "wh-quality": "wh-quality",
+  "wh-inbound": "wh-inbound",
   "meeting-settings": "meeting-settings",
   "driver-time-log": "driver-time-log",
   "fleet-demo": "fleet-demo",

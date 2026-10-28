@@ -1632,7 +1632,7 @@ function bindEvents() {
         await api("/api/inbound/open", {
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
             userId: state.currentUserId,
-            eiConfirmed: $("#inboundDocStatus").value === "EIConfirmed"
+            eiConfirmed: $("#inboundEiConfirmed").checked
         });
         toast("เปิดงานรับเข้าแล้ว / Inbound opened");
     }));

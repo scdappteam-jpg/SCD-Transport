@@ -53,6 +53,7 @@ async function handle({db,actor,path,method,payload:p={},query={},at,scanUrl,sav
     }
     const job=(db.jobs||[]).find(j=>j.houseNumber===p.houseNumber);
     if(!job)fail('ไม่พบ House ที่เลือก',404);
+    require('./warehouse-inbound.cjs').assertNotHeld(job);
     if(!Array.isArray(p.scanImages)||!p.scanImages.length||p.scanImages.length>2)fail('ต้องส่งภาพสแกนบาร์โค้ด 1 หรือ 2 ภาพ ไม่มีการอนุมัติด้วยมือ');
     if(path.endsWith('/tag'))allowed(actor,['WH_Staff','WH3_TeamLeader','Tagging_Staff']);
     if(path.endsWith('/scan'))allowed(actor,['QA_Inspector','Check_House']);
