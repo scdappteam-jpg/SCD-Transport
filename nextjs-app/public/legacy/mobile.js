@@ -424,6 +424,10 @@ function renderMobileLogin() {
     applyRoleVisibility();
 }
 
+function driverDockSelection(jobs=visibleDriverJobs()) {
+    return DriverDock.select(jobs,$('#driverJobSelect')?.value||'',localStorage.getItem(`scdDriverSelectedHouse:${currentUser()?.id}`)||'',state.inboundUnlockedHouse||state.outboundUnlockedHouse);
+}
+
 function renderDriverJobSelect() {
     const select = $("#driverJobSelect");
     if (!select) return;
@@ -444,7 +448,8 @@ function renderDriverJobSelect() {
     const jobs = allJobs.filter(job=>matches(job)||job.houseNumber===current);
     select.innerHTML = [ `<option value="manual">กรอกเอง / Manual form</option>`, ...groups.filter(group => group.jobs.length > 1 && (group.jobs.some(matches)||current===`group::${encodeURIComponent(group.key)}`)).map(group => `<option value="group::${encodeURIComponent(group.key)}">กลุ่มรับงาน: ${group.customerName} · ${group.pickupLocation} (${group.jobs.length} งาน)</option>`), ...jobs.map(job => `<option value="${job.houseNumber}">${job.houseNumber} · ${job.customerName}${query&&!matches(job)?" (กำลังเลือกอยู่)":""}</option>`) ].join("");
     const validValues = Array.from(select.options).map(option => option.value);
-    select.value = validValues.includes(current) ? current : "";
+    const preferred=driverDockSelection(allJobs)?.houseNumber||'';
+    select.value = validValues.includes(current)&&current!=='manual' ? current : validValues.includes(preferred)?preferred:validValues.includes(current)?current:'';
     if (select.value !== current) applyDriverJob(select.value);
     updatePickupSafetyButtons();
 }
@@ -966,6 +971,7 @@ function applyDriverJob(houseNumber) {
     const today = (new Date).toISOString().slice(0, 10);
     $("#driverPickupDate").value ||= today;
     const selectedJobs = jobsFromSelection(houseNumber);
+    if(selectedJobs[0]&&currentUser()?.role==='Driver')localStorage.setItem(`scdDriverSelectedHouse:${currentUser().id}`,selectedJobs[0].houseNumber);
     renderDriverCsHandoff(selectedJobs);
     if (!houseNumber || !selectedJobs.length) {
         if ($("#driverGroupSummary")) $("#driverGroupSummary").hidden = true;
@@ -2535,6 +2541,7 @@ function foUntaggedBadge(rec) {
 }
 
 function foJobStatusMeta(job) {
+    if(job?.driverDock?.phase==='Called')return {th:'เรียกเข้าท่าแล้ว',en:'Called to Dock',tone:'green'};
     const status = job?.status || "Pending";
     const map = {
         AllowToTMO: [ "อนุญาตให้เข้าคลังสินค้า", "Allow to TMO", "green" ],
@@ -2569,7 +2576,7 @@ function foDriverJobCard(job, index = 0) {
     const receiptLabel = receipt.complete ? "รับคลังครบแล้ว" : receipt.confirmed ? "รับคลังยังไม่ครบ" : "ยังไม่ยืนยันรับคลัง";
     const pieces = job.pieceCount || job.totalPieces || "-";
     const weight = job.weight || job.grossWeight || "-";
-    const bay = job.locationId || job.slotNo || "-";
+    const bay = job.driverDock?.bayId || "รอเรียก";
     const plate = job.vehiclePlate || currentUser()?.vehiclePlate || "-";
     const flightDate = job.flightTimeLabel || job.flightTime || job.pickupDate || "-";
     const isRejected = [ "Rejected", "Hold" ].includes(job.status);
@@ -2577,7 +2584,7 @@ function foDriverJobCard(job, index = 0) {
     const riskActive = [ "DueToday", "Warning", "Urgent", "Critical", "Breached" ].includes(flightRisk);
     const flightRiskLine = riskActive ? `<div class="ez-flight-risk ${[ "Critical", "Breached" ].includes(flightRisk) ? "danger" : ""}">${escapeHtmlMobile(flightRisk)}${job.mustNotMissFlight ? " · C/K NO-MISS" : ""}<br><small>ถึงสนามบินก่อน ${escapeHtmlMobile(formatBangkokMobile(job.effectiveAirportDueAt || ""))}</small></div>` : "";
     const houseToken = encodeURIComponent(job.houseNumber || "");
-    return `\n    <article class="ez-driver-job" data-house="${escapeHtmlMobile(job.houseNumber || "")}">\n      <div class="ez-job-strip">\n        <span class="ez-direction">${direction}</span>\n        <div class="ez-job-title">\n          <small>หมายเลขใบขนสินค้า</small>\n          <strong>${escapeHtmlMobile(job.houseNumber || "-")}</strong>\n        </div>\n        <span class="ez-status-pill ${meta.tone}">${escapeHtmlMobile(meta.th)}<em>${escapeHtmlMobile(meta.en)}</em></span>\n      </div>\n      <div class="ez-job-airline">\n        <span>Booking Airline</span>\n        <b>${escapeHtmlMobile(job.flightNo || "TBC")}</b>\n        <small>${qaLabel}</small>\n        <small>${receiptLabel}</small>\n      </div>\n      ${flightRiskLine}\n      <dl class="ez-job-details">\n        <div><dt>คลังสินค้า</dt><dd>${escapeHtmlMobile(job.terminalDestination || job.destination || "-")}</dd></div>\n        <div><dt>เข้าพื้นที่คลังก่อนเวลา</dt><dd class="${job.redFlag ? "danger" : ""}">${escapeHtmlMobile(flightDate)}</dd></div>\n        <div><dt>อัปเดตล่าสุด</dt><dd>${escapeHtmlMobile(formatBangkokMobile(job.updatedAt || job.createdAt || ""))}</dd></div>\n        <div><dt>ทะเบียนรถ</dt><dd>${escapeHtmlMobile(plate)}</dd></div>\n        <div><dt>หมายเลขช่องรับสินค้า</dt><dd>${escapeHtmlMobile(bay)}</dd></div>\n        <div><dt>จำนวนหีบห่อทั้งหมด</dt><dd>${escapeHtmlMobile(String(pieces))}</dd></div>\n        <div><dt>น้ำหนักรวมหีบห่อ</dt><dd>${escapeHtmlMobile(String(weight))}</dd></div>\n        <div><dt>ประเภทสินค้า</dt><dd>${escapeHtmlMobile(job.productType || "-")}</dd></div>\n      </dl>\n      <div class="ez-job-actions">\n        <button type="button" onclick="foFocusDriverJob('${houseToken}')">ดูรายละเอียดงาน</button>\n        ${isRejected ? `<button type="button" class="requeue" onclick="foOpenRequeue('${houseToken}')">รีคิว / Re-Queue</button>` : ""}\n      </div>\n    </article>`;
+    return `\n    <article class="ez-driver-job" data-house="${escapeHtmlMobile(job.houseNumber || "")}">\n      <div class="ez-job-strip">\n        <span class="ez-direction">${direction}</span>\n        <div class="ez-job-title">\n          <small>หมายเลขใบขนสินค้า</small>\n          <strong>${escapeHtmlMobile(job.houseNumber || "-")}</strong>\n        </div>\n        <span class="ez-status-pill ${meta.tone}">${escapeHtmlMobile(meta.th)}<em>${escapeHtmlMobile(meta.en)}</em></span>\n      </div>\n      <div class="ez-job-airline">\n        <span>Booking Airline</span>\n        <b>${escapeHtmlMobile(job.flightNo || "TBC")}</b>\n        <small>${qaLabel}</small>\n        <small>${receiptLabel}</small>\n      </div>\n      ${flightRiskLine}\n      <dl class="ez-job-details">\n        <div><dt>คลังสินค้า</dt><dd>${escapeHtmlMobile(job.terminalDestination || job.destination || "-")}</dd></div>\n        <div><dt>เข้าพื้นที่คลังก่อนเวลา</dt><dd class="${job.redFlag ? "danger" : ""}">${escapeHtmlMobile(flightDate)}</dd></div>\n        <div><dt>อัปเดตล่าสุด</dt><dd>${escapeHtmlMobile(formatBangkokMobile(job.updatedAt || job.createdAt || ""))}</dd></div>\n        <div><dt>ทะเบียนรถ</dt><dd>${escapeHtmlMobile(plate)}</dd></div>\n        <div><dt>เลขคิวหน้าคลัง</dt><dd>${DriverDock.ticket(job.driverDock?.queueNumber)}</dd></div>\n        <div><dt>Dock ที่เรียกเข้า</dt><dd>${escapeHtmlMobile(bay)}</dd></div>\n        <div><dt>ช่องจัดเก็บสินค้า</dt><dd>${escapeHtmlMobile(job.locationId || job.slotNo || "รอระบุ")}</dd></div>\n        <div><dt>จำนวนหีบห่อทั้งหมด</dt><dd>${escapeHtmlMobile(String(pieces))}</dd></div>\n        <div><dt>น้ำหนักรวมหีบห่อ</dt><dd>${escapeHtmlMobile(String(weight))}</dd></div>\n        <div><dt>ประเภทสินค้า</dt><dd>${escapeHtmlMobile(job.productType || "-")}</dd></div>\n      </dl>\n      <div class="ez-job-actions">\n        <button type="button" onclick="foFocusDriverJob('${houseToken}')">ดูรายละเอียดงาน</button>\n        ${isRejected ? `<button type="button" class="requeue" onclick="foOpenRequeue('${houseToken}')">รีคิว / Re-Queue</button>` : ""}\n      </div>\n    </article>`;
 }
 
 function foFocusDriverJob(houseToken) {
@@ -2597,12 +2604,13 @@ function foOpenRequeue(houseToken) {
 
 
 /* ══════════ ช่องเทียบท่าของฉัน (มือถือ) ══════════ */
+let mobileDockRequest=0;
 async function renderMDock() {
     const box = $("#foDockCard");
     if (!box) return;
+    const request=++mobileDockRequest;
     const user = currentUser();
-    const jobs = visibleDriverJobs().filter(j => ![ "Billed", "Completed" ].includes(j.status));
-    const house = state.inboundUnlockedHouse || state.outboundUnlockedHouse || (jobs[0] && jobs[0].houseNumber) || "";
+    const house = driverDockSelection()?.houseNumber || "";
     const plate = user?.vehiclePlate || "";
     if (!house && !plate) { box.hidden = true; return; }
     let data = null;
@@ -2613,14 +2621,17 @@ async function renderMDock() {
         const res = await fetch(apiUrl("/api/dock/my?" + qs.toString()));
         if (!res.ok) throw new Error("no dock");
         data = await res.json();
-    } catch (e) { box.hidden = true; return; }
+    } catch (e) { if(request===mobileDockRequest)box.hidden = true; return; }
+    if(request!==mobileDockRequest||house!==(driverDockSelection()?.houseNumber||''))return;
 
     if (data.bay) {
         box.hidden = false;
         box.className = "fo-card fo-dock-card ok";
         box.innerHTML = `
           <div class="fo-dock-lbl">ช่องเทียบท่าที่ได้รับ</div>
-          <div class="fo-dock-no">${escapeHtmlMobile(data.bay.name || "-")}</div>
+          <div class="fo-dock-no">Dock ${escapeHtmlMobile(data.bay.id || "-")}</div>
+          <div class="fo-dock-kv"><span>เลขคิว</span><b>${DriverDock.ticket(data.bay.queueNumber)}</b></div>
+          <div class="fo-dock-kv"><span>ทะเบียนรถ</span><b>${escapeHtmlMobile(data.bay.vehiclePlate || "-")}</b></div>
           <div class="fo-dock-sub">${escapeHtmlMobile(data.bay.houseNumber || house)} · ${escapeHtmlMobile(data.bay.pieceCount || "-")} ชิ้น</div>
           <div class="fo-dock-kv"><span>ช่องเก็บปลายทาง</span><b>${escapeHtmlMobile(data.bay.locationId || "รอระบุ")}</b></div>
           <div class="fo-dock-kv"><span>จัดช่องเมื่อ</span><b>${data.bay.assignedAt ? formatBangkokMobile(data.bay.assignedAt).slice(-8, -3) : "-"}</b></div>
@@ -2632,7 +2643,7 @@ async function renderMDock() {
         box.className = "fo-card fo-dock-card wait";
         box.innerHTML = `
           <div class="fo-dock-lbl">อยู่ในคิวรอช่องเทียบท่า</div>
-          <div class="fo-dock-no">คิวที่ ${data.queue.position}</div>
+          <div class="fo-dock-no">คิว ${DriverDock.ticket(data.queue.queueNumber)}</div>
           <div class="fo-dock-sub">${escapeHtmlMobile(data.queue.houseNumber)} · รออีก ${data.ahead} คัน${data.estimatedWaitMinutes!=null ? ` · ประมาณ ${data.estimatedWaitMinutes} นาที` : ""}</div>
           ${data.queue.suggestedBayId ? `<div class="fo-dock-kv"><span>ช่องที่ระบบเสนอ</span><b>${escapeHtmlMobile(data.queue.suggestedBayId)}</b></div>` : ""}
           <div class="fo-dock-kv"><span>ท่าว่างตอนนี้</span><b>${data.summary?.available ?? "-"} ท่า</b></div>
@@ -2748,7 +2759,7 @@ async function renderMHome() {
     const completedJobs = allDriverJobs.filter(j => [ "Billed", "Completed", "PassCPOut" ].includes(j.status));
     const cancelledJobs = allDriverJobs.filter(j => [ "Cancelled", "Rejected" ].includes(j.status));
     const jobs = runningJobs.filter(j => ![ "Cancelled", "Rejected" ].includes(j.status));
-    const next = jobs[0];
+    const next = driverDockSelection(jobs);
     const jc = $("#foNextJobCard");
     if (jc) {
         jc.classList.add("ez-driver-home-card");

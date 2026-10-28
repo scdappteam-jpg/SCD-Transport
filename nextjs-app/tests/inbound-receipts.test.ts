@@ -143,7 +143,7 @@ test('WH mobile receives a whole-Master denominator even while the third House i
     const source = readFileSync(new URL('../src/server/legacy-api.cjs', import.meta.url), 'utf8');
     const start = source.indexOf('function buildMobileDashboard(');
     const end = source.indexOf('function buildStaffStats(', start);
-    const context = { inboundReceipts: receipts, normalizeJob: (job: object) => job, result: undefined as unknown, db: { jobs } };
+    const context = { driverDock: require('../public/legacy/driver-dock-core.js'), inboundReceipts: receipts, normalizeJob: (job: object) => job, result: undefined as unknown, db: { jobs } };
     vm.runInNewContext(source.slice(start, end) + ';result=buildMobileDashboard(db,{role:"WH_Staff"});', context);
     const result = context.result as { jobs: object[]; receiptMasters: { totalHouses: number; completeHouses: number }[] };
     assert.equal(result.jobs.length, 2);

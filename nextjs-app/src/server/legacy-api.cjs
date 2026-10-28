@@ -39,6 +39,7 @@ const meetingDriver = require("./meeting-driver-policy.cjs");
 const warehouseQuality = require("./warehouse-quality.cjs");
 const dockPlanning = require("./dock-planning.cjs");
 const dockDisplay = require('./dock-display.cjs');
+const driverDock = require('../../public/legacy/driver-dock-core.js');
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -1666,7 +1667,7 @@ function buildMobileDashboard(db, viewer) {
         Terminal: job => [ "AOTQueueApproved", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
         Billing: job => job.readyForBilling || [ "PendingBillingReview", "BillingReviewed", "InvoiceDrafted", "InvoiceSent" ].includes(job.status)
     }[role];
-    const jobs = (db.jobs || []).filter(jobsForRole || (() => true)).map(job => normalizeJob(job));
+    const jobs = (db.jobs || []).filter(jobsForRole || (() => true)).map(job => driverDock.project(normalizeJob(job),db.dock));
     const relevantHouses = new Set(jobs.map(job => job.houseNumber));
     const relevantMasters = new Set(jobs.map(job => inboundReceipts.masterKey(job)).filter(Boolean));
     return {
@@ -4344,8 +4345,10 @@ async function handleApi(req, res, pathname) {
         const house = String(url.searchParams.get("houseNumber") || "").trim();
         const plate = String(url.searchParams.get("vehiclePlate") || "").trim();
         const board = dockBoard(db);
-        const bay = board.bays.find(item => (house && item.houseNumber === house) || (plate && item.vehiclePlate === plate)) || null;
-        const queued = board.queue.find(item => (house && item.houseNumber === house) || (plate && item.vehiclePlate === plate)) || null;
+        const actor = sessionUser(db,req);
+        const allowed = actor?.role==='Driver'?new Set(db.jobs.filter(job=>job.driverId===actor.id).map(job=>job.houseNumber)):null;
+        if(allowed&&house&&!allowed.has(house))return sendJson(res,403,{error:'ดู Dock ได้เฉพาะงานที่มอบหมายให้คุณ'});
+        const {bay,queue:queued}=driverDock.lookup(board,house,plate,allowed);
         return sendJson(res, 200, {
             ok: true,
             bay: bay,
