@@ -66,7 +66,7 @@ function approved(job) {
 function assertApproved(job) { inbound.assertNotHeld(job); if (!approved(job)) fail('ไม่อนุญาตให้ย้ายของจนกว่า QA จะอนุมัติ'); }
 function assertStoredLocation(db,job){
     assertApproved(job);
-    const key=String(job.locationId||job.warehouseLocation||'').trim().toLowerCase();
+    const key=String(job.warehouseLocation||job.locationId||'').trim().toLowerCase();
     if(!key)fail('ยังปิดรับเป็น Stored ไม่ได้: ต้องจัด Location หลังผ่าน QA');
     const level=key.match(/-l(\d+)$/i),base=level?key.slice(0,level.index):key;
     const matches=l=>[l.id,l.code].some(v=>String(v||'').trim().toLowerCase()===base);

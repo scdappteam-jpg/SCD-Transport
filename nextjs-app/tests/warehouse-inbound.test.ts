@@ -28,3 +28,7 @@ test('SIT alerts stay internal even when a LINE webhook is configured; real aler
  await vm.runInNewContext('(async()=>{'+source.slice(a,b)+';return createAlert(db,"SIT-WH3-INBOUND-20261028-B1 simulated alert");})()',ctx);assert.equal(calls,0);assert.equal((db.alerts[0] as {externalNotificationSuppressed:boolean}).externalNotificationSuppressed,true);
  await vm.runInNewContext('(async()=>{'+source.slice(a,b)+';return createAlert(db,"House 484REAL test alert");})()',ctx);assert.equal(calls,1);
 });
+
+test('moving location carries existing stock quantities into capacity checks rather than silently using zero',async()=>{
+ const db=await created(),j=unloaded(db);opened(j);await inbound.handle(context(db,wh,inspectionPayload()));receipts.receiveCounts(j,{counts:{CTN:3},expectedRevision:0,requestId:'move-capacity-receipt'},wh.id);approve(db);Object.assign(db,{warehouseMap:{zones:[{id:'z',storageMode:'Flexible'}],locations:[{id:'old',code:'OLD',zoneId:'z',occupiedBy:[{houseNumber:H,boxes:3}]},{id:'new',code:'NEW',zoneId:'z',maxBoxes:2,occupiedBy:[]}]}});j.locationId='OLD';const before=structuredClone(db);assert.throws(()=>qa.enforceMovement(db,'/api/inbound/move-location',{houseNumber:H,newLocationId:'NEW'}),/ความจุ/);assert.deepEqual(db,before);(db as any).warehouseMap.locations[1].maxBoxes=4;const p={houseNumber:H,newLocationId:'NEW'};qa.enforceMovement(db,'/api/inbound/move-location',p);assert.equal((p as any).boxes,3);
+});

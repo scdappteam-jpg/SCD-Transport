@@ -5578,10 +5578,11 @@ async function handleApi(req, res, pathname) {
         }
         if (newWmLocation) {
             newWmLocation.occupiedBy = (newWmLocation.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
-            newWmLocation.occupiedBy.push({ houseNumber: job.houseNumber, at: nowIso() });
+            newWmLocation.occupiedBy.push({ houseNumber: job.houseNumber, level:Number(payload.level)||1,pallets:Number(payload.pallets)||0,boxes:Number(payload.boxes)||0,areaSqm:Number(payload.areaSqm)||0,volumeCbm:Number(payload.volumeCbm)||0,at: nowIso() });
         }
         job.previousLocationId = previousLocationId;
         job.locationId = finalMoveId;
+        job.warehouseLocation = newWmLocation ? `${finalMoveId}-L${Number(payload.level)||1}` : finalMoveId;
         job.locationMovedAt = nowIso();
         job.locationMoveNote = payload.note || "";
         job.status = job.status === "ReadyForTerminal" && inboundReceipts.house(job).complete ? job.status : "Stored";

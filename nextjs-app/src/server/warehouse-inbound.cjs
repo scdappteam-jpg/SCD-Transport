@@ -45,12 +45,17 @@ function validateLocation(db,job,p){
     }
     return loc;
 }
+function storageQuantities(db,job,p){
+    const current=locations(db).flatMap(l=>l.occupiedBy||[]).find(o=>o.houseNumber===job.houseNumber)||{};
+    const received=receipts.house(job).received;
+    return Object.fromEntries(['pallets','boxes','areaSqm','volumeCbm'].map(k=>[k,p[k]!==undefined?p[k]:current[k]??(k==='pallets'?job.warehousePallets??received.PLT:k==='boxes'?job.warehouseBoxes??received.CTN:0)??0]));
+}
 function assertPutaway(db,job,p){
     assertNotHeld(job);assertUnloaded(job);
     require('./workflow-integrity.cjs').inbound(job,'receipt');
     if(!receipts.house(job).confirmed)fail('ต้องยืนยันยอดรับจริงก่อนจัดเก็บ');
     if(!job.inboundInspection?.checkedAt)fail('ต้องตรวจสภาพสินค้าและเลขอ้างอิงก่อนจัดเก็บ');
-    assertChecklist(job,p);validateLocation(db,job,p);
+    assertChecklist(job,p);Object.assign(p,storageQuantities(db,job,p));validateLocation(db,job,p);
 }
 function assertRelease(db,bay,p){
     if(!bay.houseNumber)return;
@@ -121,4 +126,4 @@ async function handle({db,actor,method,p={},query={},at,saveFiles}){
     job.inboundControlHistory=[...(job.inboundControlHistory||[]),{requestId:p.requestId,fingerprint:crypto.createHash('sha256').update(JSON.stringify([p.action,p.kind||'',p.reason||'',p.decision||'',p.checks||null,p.wdChecklist||null,p.evidence||null])).digest('hex'),action:p.action,revision:job.inboundControlRevision,at,by:actor.id,hold:job.inboundHold?{...job.inboundHold}:null}];job.updatedAt=at;
     return {...snapshot(db,job),mutated:true,activity:'InboundControl:'+p.action};
 }
-module.exports={assertUnloaded,assertNotHeld,assertChecklist,assertPutaway,assertRelease,validateLocation,handle,wdKeys};
+module.exports={assertUnloaded,assertNotHeld,assertChecklist,assertPutaway,assertRelease,validateLocation,storageQuantities,handle,wdKeys};
