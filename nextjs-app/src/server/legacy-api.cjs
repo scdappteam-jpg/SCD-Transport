@@ -3108,7 +3108,8 @@ async function createAlert(db, message, severity = "warning") {
         createdAt: nowIso()
     };
     db.alerts.push(alert);
-    if (process.env.LINE_WEBHOOK_URL) {
+    if (/\bSIT(?:UI)?[-A-Z0-9]/i.test(message)) { alert.simulation = true; alert.externalNotificationSuppressed = true; }
+    if (process.env.LINE_WEBHOOK_URL && !alert.simulation) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
         try {

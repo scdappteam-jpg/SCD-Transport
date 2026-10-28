@@ -16,11 +16,12 @@ window.WarehouseInboundPage=(()=>{
  if(!data)return;
  const j=data.job,r=data.receipt,isWd=/wd|western digital/i.test(j.customerName||''),checks=j.inboundInspection?.wdChecklist||[];
  const complete=!!j.inboundClosedAt&&j.inboundClosedRevision===r.revision;
+ const openFresh=['Found','Missing'].includes(j.inboundDocStatus)&&Number.isFinite(Date.parse(j.inboundOpenedAt))&&(!j.inboundDocumentCheckedAt||Date.parse(j.inboundOpenedAt)>=Date.parse(j.inboundDocumentCheckedAt))&&(j.inboundDocStatus!=='Missing'||j.inboundEiConfirmedAt===j.inboundOpenedAt);
  const step=(ok,title,note)=>`<div style="border:1px solid #ccd8e5;border-radius:8px;padding:10px;margin:6px 0;background:${ok?'#ecfdf5':'#fff9eb'}"><b>${ok?'ผ่าน':'รอ'} · ${title}</b><br>${esc(note)}</div>`;
  host.querySelector('#wiBody').innerHTML=`<h3>${esc(j.houseNumber)} / ${esc(j.status)}</h3><p>House ${esc(j.hawbNumber)} · Onhand/F ${esc(j.onhandNumber)} · Master ${esc(j.mawbNumber)}<br>${esc(j.customerName)} · Invoice ${esc(j.invoiceNo)} · รถ ${esc(j.vehiclePlate)}</p>
  ${data.masterReceipt?`<p><b>Master รับครบ ${data.masterReceipt.completeHouses}/${data.masterReceipt.totalHouses} House</b> · รับจริง ${esc(qty(data.masterReceipt.received))} · ค้าง ${esc(qty(data.masterReceipt.remaining))}</p>`:''}<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px"><div><b>ตามแผน</b><p>${esc(qty(r.planned))}</p></div><div><b>รับจริงสะสม</b><p>${esc(qty(r.received))}</p></div><div><b>ค้าง / เกิน</b><p>${esc(qty(r.remaining))} / ${esc(qty(r.over))}</p></div></div>
  ${step(!data.unloadError,'1. รถลงสินค้าเสร็จ',data.unloadError||'เข้าท่า '+time(j.dockArrivedAt)+' / เริ่มลง '+time(j.wh3UnloadStartedAt)+' / เสร็จ '+time(j.wh3UnloadCompletedAt))}
- ${step(!!j.inboundOpenedAt,'2. เอกสารและเปิดรับ',(j.inboundDocStatus||'ยังไม่ตรวจ')+' / เปิดรับ '+time(j.inboundOpenedAt))}
+ ${step(openFresh,'2. เอกสารและเปิดรับ',(j.inboundDocStatus||'ยังไม่ตรวจ')+' / เปิดรับ '+time(j.inboundOpenedAt)+(j.inboundOpenedAt&&!openFresh?' / เอกสารเปลี่ยนแล้ว ต้องเปิดรับอีกครั้ง':''))}
  ${step(!!j.inboundInspection?.checkedAt&&!data.holdError,'3. ตรวจสภาพ / พักรับ',data.holdError||'ผู้ตรวจ '+(j.inboundInspection?.checkedBy||'ยังไม่ตรวจ'))}
  ${step(r.complete,'4. ยอดรับจริง',r.state+' / revision '+r.revision)}
  ${step(data.qaApproved,'5. แท็กและ QA','ติดแท็ก '+(j.tagInspection?.taggedBy||'ยังไม่มี')+' / QA '+(j.qaApproval?.approvedBy||'ยังไม่มี'))}
