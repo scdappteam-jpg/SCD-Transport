@@ -10,6 +10,16 @@
   var CDN_SRC = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
   var scanner = null;
   var overlay = null;
+  var scanSession = 0;
+
+  function stopScanner(current) {
+    if (!current) return;
+    try {
+      Promise.resolve(current.stop()).catch(function () {}).then(function () {
+        try { current.clear(); } catch (e) { /* ignore */ }
+      });
+    } catch (e) { /* ignore */ }
+  }
 
   function loadLib() {
     return new Promise(function (resolve, reject) {
@@ -36,11 +46,10 @@
   }
 
   function closeLiveScan() {
+    scanSession += 1;
     var current = scanner;
     scanner = null;
-    if (current) {
-      try { current.stop().then(function () { current.clear(); }).catch(function () {}); } catch (e) { /* ignore */ }
-    }
+    stopScanner(current);
     if (overlay) { overlay.remove(); overlay = null; }
   }
 
@@ -68,6 +77,7 @@
 
   window.openLiveScan = function (onResult) {
     closeLiveScan();
+    var session = scanSession;
     var found = { house: null, master: null, pieces: [] };
     var candidate = null;
     var hits = 0;
@@ -246,9 +256,10 @@
     });
 
     loadLib().then(function (Html5Qrcode) {
-      if (!overlay) return;
-      scanner = new Html5Qrcode("liveScanView");
-      return scanner.start(
+      if (!overlay || session !== scanSession) return;
+      var current = new Html5Qrcode("liveScanView");
+      scanner = current;
+      return current.start(
         { facingMode: "environment" },
         { fps: 12, qrbox: { width: 300, height: 150 }, videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } },
         function (decodedText) {
@@ -269,11 +280,13 @@
         },
         function () { /* เฟรมที่ยังไม่เจอ */ }
       ).then(function () {
+        if (session !== scanSession) { stopScanner(current); return; }
         var hint = document.getElementById("liveScanHint");
         if (hint) hint.textContent = "เล็งทีละบาร์ — บาร์เดี่ยว (484...) = เข้าโกดัง · บาร์คู่ Master+House = ส่งออก";
         setTimeout(setupTorch, 400); /* รอ video ต่อ stream ก่อน */
       });
     }).catch(function (err) {
+      if (session !== scanSession) return;
       var hint = document.getElementById("liveScanHint");
       if (hint) {
         hint.textContent = (err && err.message ? err.message : "เปิดกล้องไม่สำเร็จ") + " — ตรวจว่าอนุญาตกล้องแล้ว";
