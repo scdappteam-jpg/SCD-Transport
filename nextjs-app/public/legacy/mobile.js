@@ -254,7 +254,13 @@ async function api(path, payload, method = "POST") {
             headers,
             body: method === "GET" ? undefined : JSON.stringify(requestPayload)
         });
-        const data = await res.json();
+        const raw = await res.text();
+        let data;
+        try {
+            data = raw ? JSON.parse(raw) : {};
+        } catch (_) {
+            throw Object.assign(new Error(`เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (HTTP ${res.status}) กรุณารีเฟรชและลองใหม่`), { code: "INVALID_API_RESPONSE" });
+        }
         if (!res.ok) throw Object.assign(new Error(data.error || "Request failed"), {code:data.code});
         return data;
     } catch (error) {

@@ -110,7 +110,16 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
     }
   };
 
-  await legacyApi.handleApi(input, output, pathname);
+  try {
+    await legacyApi.handleApi(input, output, pathname);
+  } catch (error) {
+    console.error("Legacy API request failed", { pathname, error });
+    return Response.json({
+      ok: false,
+      error: "ระบบดำเนินการไม่สำเร็จ กรุณารีเฟรชและลองใหม่",
+      code: "LEGACY_API_ERROR"
+    }, { status: 500 });
+  }
   // Booking validation/auth failures did not mutate state and must not wait
   // behind unrelated database writes before returning their original status.
   if (pathname === "/api/outbound/aot-booking" && status >= 400) {
