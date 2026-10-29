@@ -88,6 +88,7 @@ const RELATIONAL_MIRROR_ENABLED = String(process.env.RELATIONAL_MIRROR_ENABLED |
 // Local writes update dbCache immediately; this only controls how quickly a
 // different warm worker observes another worker's change.
 const SUPABASE_STATE_CHECK_INTERVAL_MS = Math.max(5000, Number(process.env.SUPABASE_STATE_CHECK_INTERVAL_MS || 15000));
+const SUPABASE_AUTH_TIMEOUT_MS = Math.max(3000, Number(process.env.SUPABASE_AUTH_TIMEOUT_MS || 12000));
 
 // Production must fail closed.  The old SCD_SERVER_AUTH_REQUIRED=false flag
 // existed during the migration and must not be able to reopen the operational
@@ -1165,12 +1166,22 @@ function passwordHashForUser(user) {
 // Once a legacy directory user has an auth_user_id, Supabase Auth becomes the
 // credential source for that account.  Accounts not yet provisioned continue
 // through the existing hash path until the staged migration is complete.
+async function fetchSupabaseAuth(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SUPABASE_AUTH_TIMEOUT_MS);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 async function authenticateWithSupabaseAuth(user, password) {
     if (!user || !supabaseEnabled()) return { managed: false, valid: false };
     const profileUrl = `${SUPABASE_URL}/rest/v1/user_profiles?legacy_user_id=eq.${encodeURIComponent(user.id)}&select=auth_user_id,login_email&limit=1`;
     let profileResponse;
     try {
-        profileResponse = await fetch(profileUrl, {
+        profileResponse = await fetchSupabaseAuth(profileUrl, {
             headers: supabaseServiceAuth.serviceHeaders(SUPABASE_KEY)
         });
     } catch (_) {
@@ -1181,7 +1192,7 @@ async function authenticateWithSupabaseAuth(user, password) {
     const profile = Array.isArray(profiles) ? profiles[0] : null;
     if (!profile?.auth_user_id || !profile.login_email) return { managed: false, valid: false };
     try {
-        const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        const response = await fetchSupabaseAuth(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
             method: "POST",
             headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
             body: JSON.stringify({ email: profile.login_email, password: String(password || "") })
