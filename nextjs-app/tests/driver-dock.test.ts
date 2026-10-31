@@ -92,5 +92,10 @@ test('release-document action has dedicated clearance above the fixed mobile nav
  assert.match(mobileCss,/#driverReturnActions:not\(\[hidden\]\)\s*\{[^}]*padding-bottom:calc\(var\(--ms-nav\) \+ env\(safe-area-inset-bottom\) \+ 72px\)/s);
  assert.match(mobileCss,/#releaseDocumentBtn\s*\{[^}]*scroll-margin-block-end:calc\(var\(--ms-nav\) \+ env\(safe-area-inset-bottom\) \+ 96px\)/s);
  assert.match(mobileCss,/main\s*\{[^}]*scroll-padding-block-end:calc\(var\(--ms-nav\) \+ env\(safe-area-inset-bottom\) \+ 96px\)/s);
- assert.match(mobileHtml,/mobile\.css\?v=20261031-release-clearance/);
+ assert.match(mobileHtml,/mobile\.css\?v=20261031-modal-layer/);
+});
+test('confirmation and result popups render above the fixed mobile navigation',()=>{
+ assert.match(mobileCss,/\.confirm-sheet,\.mobile-modal-backdrop\s*\{[^}]*z-index:2100!important/s);
+ assert.match(mobileCss,/body:not\(\.mobile-locked\) \.fo-bottomnav\s*\{[^}]*z-index:1000!important/s);
+ assert.match(mobileCss,/\.confirm-sheet-panel,\.mobile-action-modal\s*\{[^}]*max-height:calc\(100dvh[^}]*overflow-y:auto/s);
 });

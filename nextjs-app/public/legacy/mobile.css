@@ -1079,3 +1079,18 @@ body:not(.mobile-locked) main{
   margin-bottom:12px;
   scroll-margin-block-end:calc(var(--ms-nav) + env(safe-area-inset-bottom) + 96px);
 }
+
+/* Dialogs must sit above the fixed navigation (z-index: 1000). Both the
+   pre-submit confirmation sheet and the post-submit result modal are used by
+   the release-document action. */
+.confirm-sheet,.mobile-modal-backdrop{
+  z-index:2100!important;
+}
+.confirm-sheet-panel,.mobile-action-modal{
+  position:relative;
+  z-index:1;
+  max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
