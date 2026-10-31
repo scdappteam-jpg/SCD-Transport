@@ -39,14 +39,18 @@ function normalizeBays(db){
     for(const bays of grouped.values()){
         if(bays.length<2)continue;
         const allHouses=unique(bays.flatMap(houses));
-        const roundJobs=forHouses(db,allHouses);
-        if(bays.some(bay=>roundJobs.some(job=>hasProgress(job,bay)))){blocked+=1;continue;}
-        bays.sort((a,b)=>String(a.assignedAt||'').localeCompare(String(b.assignedAt||''))||String(a.id).localeCompare(String(b.id)));
+        const seedJob=(db.jobs||[]).find(job=>allHouses.includes(job.houseNumber));
+        const roundJobs=jobs(db,seedJob);
+        const roundHouses=unique([...allHouses,...roundJobs.map(job=>job.houseNumber)]);
+        const progressedBays=bays.filter(bay=>roundJobs.some(job=>hasProgress(job,bay)));
+        if(progressedBays.length>1){blocked+=1;continue;}
+        const progressedId=progressedBays[0]?.id||'';
+        bays.sort((a,b)=>Number(b.id===progressedId)-Number(a.id===progressedId)||String(a.assignedAt||'').localeCompare(String(b.assignedAt||''))||String(a.id).localeCompare(String(b.id)));
         const keep=bays[0];
-        Object.assign(keep,{houseNumber:allHouses[0],houseNumbers:allHouses,status:'Occupied'});
+        Object.assign(keep,{houseNumber:roundHouses[0],houseNumbers:roundHouses,status:'Occupied'});
         for(const job of roundJobs){job.dockBayId=keep.id;job.dockBayName=keep.name;job.dockAssignedAt=keep.assignedAt;job.updatedAt=new Date().toISOString();}
         for(const duplicate of bays.slice(1))clearBay(duplicate);
-        db.dock.log=[...(db.dock.log||[]),{at:new Date().toISOString(),action:'VehicleRoundConsolidated',houseNumber:allHouses[0],houseNumbers:allHouses,bayId:keep.id,fromBayIds:bays.slice(1).map(item=>item.id),by:'system'}].slice(-200);
+        db.dock.log=[...(db.dock.log||[]),{at:new Date().toISOString(),action:'VehicleRoundConsolidated',houseNumber:roundHouses[0],houseNumbers:roundHouses,bayId:keep.id,fromBayIds:bays.slice(1).map(item=>item.id),by:'system'}].slice(-200);
         merged+=1;
     }
     return {merged,blocked};

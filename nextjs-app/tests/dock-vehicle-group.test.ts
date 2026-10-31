@@ -13,8 +13,15 @@ test('duplicate active bays consolidate only before unloading starts',()=>{
  assert.deepEqual(groups.normalizeBays(db),{merged:1,blocked:0});assert.deepEqual(db.dock.bays[0].houseNumbers,['A1','A2','A3']);assert.equal(db.dock.bays[1].status,'Available');assert.equal(db.dock.bays[2].status,'Available');
  assert.ok(db.jobs.every((job:Record<string,any>)=>job.dockBayId==='D8'));
 });
-test('duplicate active bays are not moved after physical unload evidence starts',()=>{
+test('duplicate active bays keep the one bay that owns physical progress',()=>{
+ const db:any={jobs:structuredClone(jobs),dock:{bays:[{id:'D8',status:'Occupied',houseNumber:'A1',assignedAt:'2026-10-31T01:00:00Z'},{id:'D9',status:'Occupied',houseNumber:'A2',assignedAt:'2026-10-31T01:01:00Z'}]}};
+ db.jobs[1].driverDockHistory=[{bayId:'D9',assignedAt:'2026-10-31T01:01:00Z',event:'arrive'}];
+ assert.deepEqual(groups.normalizeBays(db),{merged:1,blocked:0});assert.equal(db.dock.bays[0].status,'Available');assert.equal(db.dock.bays[1].status,'Occupied');
+ assert.deepEqual(db.dock.bays[1].houseNumbers,['A1','A2','A3']);assert.ok(db.jobs.every((job:Record<string,any>)=>job.dockBayId==='D9'));
+});
+test('duplicate active bays remain blocked when physical progress exists in multiple bays',()=>{
  const db:any={jobs:structuredClone(jobs),dock:{bays:[{id:'D8',status:'Occupied',houseNumber:'A1',assignedAt:'2026-10-31T01:00:00Z'},{id:'D9',status:'Occupied',houseNumber:'A2',assignedAt:'2026-10-31T01:01:00Z'}]}};
  db.jobs[0].driverDockHistory=[{bayId:'D8',assignedAt:'2026-10-31T01:00:00Z',event:'arrive'}];
- assert.deepEqual(groups.normalizeBays(db),{merged:0,blocked:1});assert.equal(db.dock.bays[1].status,'Occupied');
+ db.jobs[1].driverDockHistory=[{bayId:'D9',assignedAt:'2026-10-31T01:01:00Z',event:'unload-start'}];
+ assert.deepEqual(groups.normalizeBays(db),{merged:0,blocked:1});assert.ok(db.dock.bays.every((bay:Record<string,any>)=>bay.status==='Occupied'));
 });
