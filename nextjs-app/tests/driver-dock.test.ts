@@ -62,6 +62,8 @@ test('Driver work is complete only after unload or Terminal close makes the vehi
  assert.equal(core.completedForDriver({status:'Billed'}),true);
 });
 const source=fs.readFileSync(new URL('../public/legacy/mobile.js',import.meta.url),'utf8');
+const mobileCss=fs.readFileSync(new URL('../public/legacy/mobile.css',import.meta.url),'utf8');
+const mobileHtml=fs.readFileSync(new URL('../public/legacy/mobile.html',import.meta.url),'utf8');
 test('actual Driver job renderer separates ticket, called Dock and storage location',()=>{
  const context=vm.createContext({DriverDock:core,foJobStatusMeta:()=>({th:'รอ Dock',en:'Waiting',tone:'amber'}),InboundReceipts:{house:()=>({})},currentUser:()=>({}),escapeHtmlMobile:(v:unknown)=>String(v),formatBangkokMobile:(v:unknown)=>String(v)});
  vm.runInContext(source.slice(source.indexOf('function foDriverJobCard('),source.indexOf('function foFocusDriverJob(')),context);
@@ -85,4 +87,10 @@ test('home arrival button uses pickup arrival before Dock queue',()=>{
  const arrival=source.slice(source.indexOf('async function mobileArriveWh3FromDock('),source.indexOf('async function mobileJoinDockQueue('));
  assert.match(arrival,/\/api\/pickup\/arrive-wh3/);
  assert.doesNotMatch(arrival,/\/api\/dock\/queue/);
+});
+test('release-document action has dedicated clearance above the fixed mobile navigation',()=>{
+ assert.match(mobileCss,/#driverReturnActions:not\(\[hidden\]\)\s*\{[^}]*padding-bottom:calc\(var\(--ms-nav\) \+ env\(safe-area-inset-bottom\) \+ 72px\)/s);
+ assert.match(mobileCss,/#releaseDocumentBtn\s*\{[^}]*scroll-margin-block-end:calc\(var\(--ms-nav\) \+ env\(safe-area-inset-bottom\) \+ 96px\)/s);
+ assert.match(mobileCss,/main\s*\{[^}]*scroll-padding-block-end:calc\(var\(--ms-nav\) \+ env\(safe-area-inset-bottom\) \+ 96px\)/s);
+ assert.match(mobileHtml,/mobile\.css\?v=20261031-release-clearance/);
 });

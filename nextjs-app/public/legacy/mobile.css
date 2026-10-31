@@ -1065,3 +1065,17 @@ body:not(.mobile-locked) .fo-bottomnav{
   min-height:calc(var(--ms-nav) + env(safe-area-inset-bottom))!important;
   max-height:calc(var(--ms-nav) + env(safe-area-inset-bottom));
 }
+
+/* Pickup final gate: keep the release-document action above the fixed nav.
+   This action is nested inside #driverReturnActions, so the generic
+   `.mobile-panel > button:last-child` clearance does not cover it. */
+body:not(.mobile-locked) main{
+  scroll-padding-block-end:calc(var(--ms-nav) + env(safe-area-inset-bottom) + 96px);
+}
+#driverReturnActions:not([hidden]){
+  padding-bottom:calc(var(--ms-nav) + env(safe-area-inset-bottom) + 72px);
+}
+#releaseDocumentBtn{
+  margin-bottom:12px;
+  scroll-margin-block-end:calc(var(--ms-nav) + env(safe-area-inset-bottom) + 96px);
+}
