@@ -30,8 +30,7 @@ function normalizeBays(db){
     const grouped=new Map();
     for(const bay of db.dock.bays.filter(item=>item?.status==='Occupied'&&houses(item).length)){
         const job=(db.jobs||[]).find(candidate=>contains(bay,candidate.houseNumber));
-        const key=roundKey(job);
-        if(!key)continue;
+        const key=roundKey(job)||`house:${houses(bay)[0]}`;
         if(!grouped.has(key))grouped.set(key,[]);
         grouped.get(key).push(bay);
     }

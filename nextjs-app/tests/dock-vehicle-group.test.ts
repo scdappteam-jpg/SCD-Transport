@@ -25,3 +25,8 @@ test('duplicate active bays remain blocked when physical progress exists in mult
  db.jobs[1].driverDockHistory=[{bayId:'D9',assignedAt:'2026-10-31T01:01:00Z',event:'unload-start'}];
  assert.deepEqual(groups.normalizeBays(db),{merged:0,blocked:1});assert.ok(db.dock.bays.every((bay:Record<string,any>)=>bay.status==='Occupied'));
 });
+test('legacy duplicate bays for the same House consolidate without a round identity',()=>{
+ const job:any={houseNumber:'SIT-B1',driverDockHistory:[{bayId:'D8',assignedAt:'2026-10-31T01:00:00Z',event:'arrive'}]};
+ const db:any={jobs:[job],dock:{bays:[{id:'D8',name:'ท่า 8',status:'Occupied',houseNumber:'SIT-B1',assignedAt:'2026-10-31T01:00:00Z'},{id:'D9',name:'ท่า 9',status:'Occupied',houseNumber:'SIT-B1',assignedAt:'2026-10-31T01:01:00Z'},{id:'D10',name:'ท่า 10',status:'Occupied',houseNumber:'SIT-B1',assignedAt:'2026-10-31T01:02:00Z'}]}};
+ assert.deepEqual(groups.normalizeBays(db),{merged:1,blocked:0});assert.equal(db.dock.bays[0].status,'Occupied');assert.equal(db.dock.bays[1].status,'Available');assert.equal(db.dock.bays[2].status,'Available');assert.equal(job.dockBayId,'D8');
+});
