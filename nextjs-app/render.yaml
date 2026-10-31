@@ -5,7 +5,9 @@ services:
     plan: free
     rootDir: nextjs-app
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
-    startCommand: pnpm start
+    # Dependencies are already installed during build. Starting through npm
+    # avoids a Corepack network download during each runtime boot.
+    startCommand: npm run start
     autoDeploy: true
     envVars:
       - key: NODE_VERSION
