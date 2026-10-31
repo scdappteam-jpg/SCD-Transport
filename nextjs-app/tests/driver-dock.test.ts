@@ -18,6 +18,11 @@ test('explicit current or remembered active House wins, invalid foreign/complete
  assert.equal(core.select(jobs,'FOREIGN','SIT-OLD')?.houseNumber,H);
  assert.equal(core.select([{houseNumber:'done',status:'Billed'}]),null);
 });
+test('returning WH3 replaces a stale selected or remembered Stored House on Driver home',()=>{
+ const stored={houseNumber:'SIT-WH3-INBOUND-20261028-B1',status:'Stored',driverRouteStatus:'ReleasedForDock'};
+ const returning={houseNumber:'SIT-WH3-INBOUND-20261031-B1',status:'ReturningWH3',driverRouteStatus:'ReturningWH3'};
+ assert.equal(core.select([stored,returning],stored.houseNumber,stored.houseNumber)?.houseNumber,returning.houseNumber);
+});
 test('House lookup never falls back to another House sharing the plate; Driver scope restricts plate-only lookup',()=>{
  assert.equal(core.lookup(dock,'SIT-OLD','SIT-ONLY').bay,null);
  assert.equal(core.lookup(dock,H,'SIT-ONLY',new Set(['SIT-OLD'])).bay,null);
