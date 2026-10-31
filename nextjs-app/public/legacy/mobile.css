@@ -1031,3 +1031,37 @@ body:not(.mobile-locked) .fo-bottomnav{
   z-index:1000!important;
 }
 body.mobile-locked .fo-bottomnav{display:none!important}
+
+/* ════════ MOBILE NAV · PORTRAIT SCROLL ISOLATION ════════
+   Keep elastic/document scrolling away from the fixed navigation. The page
+   content scrolls inside main while the header and bottom bar stay outside
+   that scroll container. This removes the small portrait-mode nav drift when
+   the browser chrome expands or the page reaches either scroll boundary. */
+html{overscroll-behavior-y:none}
+body:not(.mobile-locked){
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  height:100dvh;
+  min-height:100dvh;
+  overflow:hidden!important;
+  overscroll-behavior-y:none;
+}
+body:not(.mobile-locked) .mobile-header{flex:0 0 auto}
+body:not(.mobile-locked) main{
+  flex:1 1 auto;
+  min-height:0;
+  width:100%;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+}
+@supports (overflow:clip){
+  body:not(.mobile-locked) main{overflow-x:clip}
+}
+body:not(.mobile-locked) .fo-bottomnav{
+  height:calc(var(--ms-nav) + env(safe-area-inset-bottom));
+  min-height:calc(var(--ms-nav) + env(safe-area-inset-bottom))!important;
+  max-height:calc(var(--ms-nav) + env(safe-area-inset-bottom));
+}
