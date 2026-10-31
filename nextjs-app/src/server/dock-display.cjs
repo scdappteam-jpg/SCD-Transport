@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- server-only compatibility domain */
 const planning = require('./dock-planning.cjs');
+const groups = require('./dock-vehicle-group.cjs');
 const roles = new Set(['Admin','Executive','Team_Transport','WH_Staff','WH3_TeamLeader']);
 const isSit = house => /^SIT(?:UI)?[-A-Z0-9]/i.test(String(house || ''));
 function ensureInboundBays(db) {
@@ -32,22 +33,22 @@ function board(db,actor,scope='live',at=new Date().toISOString()) {
     if(!actor)throw Object.assign(new Error('กรุณาเข้าสู่ระบบ'),{statusCode:401});
     if(!roles.has(actor.role))throw Object.assign(new Error('ไม่มีสิทธิ์ดูจอคิวหน้าคลัง'),{statusCode:403});
     if(!['live','sit'].includes(scope))throw Object.assign(new Error('scope ต้องเป็น live หรือ sit'),{statusCode:400});
-    const selected=house=>isSit(house)===(scope==='sit');
+    const selected=row=>groups.houses(row).length>0&&groups.houses(row).every(house=>isSit(house)===(scope==='sit'));
     const jobs=new Map((db.jobs||[]).map(j=>[j.houseNumber,j]));
-    const queue=planning.queue(db).filter(e=>selected(e.houseNumber)).map(e=>({
+    const queue=planning.queue(db).filter(selected).map(e=>({
         id:e.id,queueNumber:e.queueNumber||null,position:e.position,queueType:e.queueType,
-        houseNumber:e.houseNumber,vehiclePlate:e.vehiclePlate||jobs.get(e.houseNumber)?.vehiclePlate||'ไม่ระบุทะเบียน',
+        houseNumber:e.houseNumber,houseNumbers:groups.houses(e),vehiclePlate:e.vehiclePlate||jobs.get(e.houseNumber)?.vehiclePlate||'ไม่ระบุทะเบียน',
         dockId:null,estimatedWaitMinutes:e.estimatedWaitMinutes,simulation:isSit(e.houseNumber)
     }));
-    const called=(db.dock?.bays||[]).filter(b=>b.houseNumber&&selected(b.houseNumber)).map(b=>({
+    const called=(db.dock?.bays||[]).filter(b=>b.houseNumber&&selected(b)).map(b=>({
         id:b.id,queueNumber:b.queueNumber||null,queueType:b.queueType||planning.bayKind(b),
-        houseNumber:b.houseNumber,vehiclePlate:b.vehiclePlate||jobs.get(b.houseNumber)?.vehiclePlate||'ไม่ระบุทะเบียน',
+        houseNumber:b.houseNumber,houseNumbers:groups.houses(b),vehiclePlate:b.vehiclePlate||jobs.get(b.houseNumber)?.vehiclePlate||'ไม่ระบุทะเบียน',
         dockId:b.id,calledAt:b.assignedAt||null,simulation:isSit(b.houseNumber)
     }));
     called.sort((a,b)=>String(b.calledAt||'').localeCompare(String(a.calledAt||'')));
     const bays=(db.dock?.bays||[]).map(b=>({id:b.id,name:b.name,type:planning.bayKind(b),
-        status:b.houseNumber?(selected(b.houseNumber)?'Called':isSit(b.houseNumber)?'SIT':'Occupied'):b.status,
-        houseNumber:b.houseNumber&&selected(b.houseNumber)?b.houseNumber:null}));
+        status:b.houseNumber?(selected(b)?'Called':groups.houses(b).some(isSit)?'SIT':'Occupied'):b.status,
+        houseNumber:b.houseNumber&&selected(b)?b.houseNumber:null,houseNumbers:b.houseNumber&&selected(b)?groups.houses(b):[]}));
     return {scope,updatedAt:at,refreshSeconds:10,called,queue,bays};
 }
 module.exports={ensureInboundBays,ensureTickets,board,isSit};

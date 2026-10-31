@@ -40,6 +40,11 @@ test('projection uses current assigned bay instead of stale job or warehouse sto
  assert.deepEqual(core.project(job,{bays:[],queue:[]}).driverDock,{phase:'None',bayId:null,queueNumber:null});
  assert.deepEqual(job,before);
 });
+test('every House on one vehicle round projects the same shared Dock',()=>{
+ const grouped={bays:[{...dock.bays[0],houseNumbers:[H,'SIT-WH3-DOCK-20261028-A2']}],queue:[]};
+ assert.equal(core.project({houseNumber:'SIT-WH3-DOCK-20261028-A2',status:'WaitingForDock'},grouped).driverDock.bayId,'D9');
+ assert.equal(core.lookup(grouped,'SIT-WH3-DOCK-20261028-A2','',new Set(['SIT-WH3-DOCK-20261028-A2'])).bay.id,'D9');
+});
 test('waiting ticket is stable and does not present suggested Dock as called',()=>{
  const projected=core.project({houseNumber:H,status:'WaitingForDock'},{bays:[],queue:[{houseNumber:H,queueNumber:5,suggestedBayId:'D8'}]});
  assert.equal(core.ticket(projected.driverDock.queueNumber),'005');assert.equal(projected.driverDock.bayId,null);

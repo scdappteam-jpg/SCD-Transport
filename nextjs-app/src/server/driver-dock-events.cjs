@@ -2,6 +2,7 @@
 const core=require('../../public/legacy/driver-dock-core.js');
 const {evidence}=require('./operations-control.cjs');
 const driverHistory=require('./operations-driver-history.cjs');
+const dockVehicleGroup=require('./dock-vehicle-group.cjs');
 const fail=(message,statusCode=409)=>{throw Object.assign(new Error(message),{statusCode});};
 const steps=['arrive','unload-start','unload-complete'];
 function prepare(db,actor,p,at=new Date().toISOString()){
@@ -12,7 +13,7 @@ function prepare(db,actor,p,at=new Date().toISOString()){
     if(!core.active(job)||job.csRejected)fail('งานถูกพัก ยกเลิก หรือจบแล้ว');
     if(!job.csConfirmed||!job.cargoIssuedAt)fail('ต้องผ่าน CS และเปิดใบงานก่อนดำเนินการ Dock');
     if(!Number.isFinite(Date.parse(job.arrivedWh3At))||!Number.isFinite(Date.parse(job.releaseDocumentReceivedAt)))fail('ต้องถึง WH3 และรับใบตรวจปล่อยก่อนยืนยันเข้าท่า');
-    const bay=(db.dock?.bays||[]).find(b=>b.houseNumber===job.houseNumber&&b.status==='Occupied');
+    const bay=(db.dock?.bays||[]).find(b=>dockVehicleGroup.contains(b,job.houseNumber)&&b.status==='Occupied');
     if(!bay||!Number.isFinite(Date.parse(bay.assignedAt))||bay.id!==p.bayId||bay.assignedAt!==p.assignedAt)fail('ช่อง Dock เปลี่ยนแล้วหรือยังไม่ถูกเรียก กรุณารีเฟรช');
     if(!['D8','D9','D10','D11'].includes(bay.id))fail('ต้องเป็นช่องรับเข้า WH3 D8-D11');
     if(!steps.includes(p.event))fail('ขั้นตอน Dock ไม่ถูกต้อง',422);

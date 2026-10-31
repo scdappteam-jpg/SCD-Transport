@@ -5,7 +5,7 @@ import Link from 'next/link';
 import styles from './dock-display.module.css';
 const ticket=(value:number|null)=>value?String(value).padStart(3,'0'):'—';
 function Rows({rows,called}:{rows:DockRow[];called:boolean}){
-  return <div className={styles.scroll}><table><thead><tr><th>เลขคิว</th><th>ทะเบียนรถ</th><th>House</th><th>{called?'ช่อง Dock':'รอเรียก'}</th></tr></thead><tbody>{rows.map(row=><tr key={row.id}><td className={styles.ticket}>{ticket(row.queueNumber)}</td><td>{row.vehiclePlate}</td><td className={styles.house}>{row.houseNumber}</td><td className={styles.dock}>{called?row.dockId:'—'}</td></tr>)}</tbody></table>{!rows.length&&<p className={styles.empty}>{called?'ยังไม่มีรถที่ถูกเรียกเข้าท่า':'ไม่มีรถรอเรียกในขณะนี้'}</p>}</div>;
+  return <div className={styles.scroll}><table><thead><tr><th>เลขคิว</th><th>ทะเบียนรถ</th><th>House</th><th>{called?'ช่อง Dock':'รอเรียก'}</th></tr></thead><tbody>{rows.map(row=>{const houses=row.houseNumbers?.length?row.houseNumbers:[row.houseNumber];return <tr key={row.id}><td className={styles.ticket}>{ticket(row.queueNumber)}</td><td>{row.vehiclePlate}</td><td className={styles.house} title={houses.join(', ')}>{row.houseNumber}{houses.length>1&&<small>+{houses.length-1} House · รถคันเดียว</small>}</td><td className={styles.dock}>{called?row.dockId:'—'}</td></tr>;})}</tbody></table>{!rows.length&&<p className={styles.empty}>{called?'ยังไม่มีรถที่ถูกเรียกเข้าท่า':'ไม่มีรถรอเรียกในขณะนี้'}</p>}</div>;
 }
 export function DockDisplay({scope}:{scope:'live'|'sit'}){
   const [board,setBoard]=useState<DockBoard|null>(null);

@@ -10,6 +10,7 @@
     const completedForDriver=job=>driverFinished.has(job?.status)||(job?.driverRouteStatus==='Available'&&Boolean(job?.wh3UnloadCompletedAt||job?.terminalClosedAt));
     const staleSelection=job=>staleDriverSelection.has(job?.status)||Boolean(job?.driverDock?.work?.unloadCompletedAt);
     const ticket=value=>Number.isSafeInteger(value)&&value>0?String(value).padStart(3,'0'):'—';
+    const houses=row=>[...new Set([row?.houseNumber,...Array.isArray(row?.houseNumbers)?row.houseNumbers:[]].filter(Boolean))];
     function progress(job,bay){
         const events=(job?.driverDockHistory||[]).filter(e=>e.bayId===bay?.id&&e.assignedAt===bay?.assignedAt);
         const time=event=>events.find(e=>e.event===event)?.at||null;
@@ -24,13 +25,13 @@
         return eligible.find(j=>j.driverDock?.phase==='Called'&&!staleSelection(j))||eligible.find(j=>j.driverRouteStatus==='ReturningWH3'||j.status==='ReturningWH3')||eligible.find(j=>j.driverDock?.phase==='Waiting')||eligible.find(j=>!staleSelection(j))||eligible[0]||null;
     }
     function project(job,dock){
-        const bay=(dock?.bays||[]).find(b=>b.houseNumber===job.houseNumber&&b.status==='Occupied');
-        const entry=active(job)?(dock?.queue||[]).find(e=>e.houseNumber===job.houseNumber):null;
+        const bay=(dock?.bays||[]).find(b=>houses(b).includes(job.houseNumber)&&b.status==='Occupied');
+        const entry=active(job)?(dock?.queue||[]).find(e=>houses(e).includes(job.houseNumber)):null;
         const work=bay?progress(job,bay):null;
         return {...job,driverDock:bay?{phase:'Called',bayId:bay.id,bayName:bay.name,queueNumber:bay.queueNumber||null,...work?.revision?{work}:{}}:entry?{phase:'Waiting',bayId:null,queueNumber:entry.queueNumber||null}:{phase:'None',bayId:null,queueNumber:null}};
     }
     function lookup(board,house,plate,allowed){
-        const match=row=>(!allowed||allowed.has(row.houseNumber))&&(house?row.houseNumber===house:!!plate&&row.vehiclePlate===plate);
+        const match=row=>{const list=houses(row),owned=!allowed||list.some(item=>allowed.has(item));return owned&&(house?list.includes(house):!!plate&&row.vehiclePlate===plate);};
         return {bay:board.bays.find(match)||null,queue:board.queue.find(match)||null};
     }
     function nextQueueAction(job){
@@ -40,5 +41,5 @@
         if(states.has('ReleasedForDock')||states.has('WaitingForDock'))return 'join-queue';
         return 'not-ready';
     }
-    return {active,completedForDriver,ticket,select,project,lookup,progress,nextQueueAction};
+    return {active,completedForDriver,ticket,houses,select,project,lookup,progress,nextQueueAction};
 });

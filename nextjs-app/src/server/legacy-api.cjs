@@ -40,6 +40,7 @@ const meetingDriver = require("./meeting-driver-policy.cjs");
 const warehouseQuality = require("./warehouse-quality.cjs");
 const dockPlanning = require("./dock-planning.cjs");
 const dockDisplay = require('./dock-display.cjs');
+const dockVehicleGroup = require('./dock-vehicle-group.cjs');
 const driverDock = require('../../public/legacy/driver-dock-core.js');
 const driverDockEvents = require('./driver-dock-events.cjs');
 
@@ -491,7 +492,7 @@ function dockFindBay(db, bayId) {
 
 /* เสนอช่องเทียบที่เหมาะที่สุด: ว่างอยู่ + โซนใกล้ช่องเก็บปลายทาง */
 function dockSuggestBay(db, job) {
-    if (meetingPolicy.active(db,[job])) return dockPlanning.suggest(db,job,(db.dock?.queue||[]).find(e=>e.houseNumber===job?.houseNumber));
+    if (meetingPolicy.active(db,[job])) return dockPlanning.suggest(db,job,dockVehicleGroup.entryForHouse(db.dock?.queue,job?.houseNumber));
     const bays = dockBayList(db).filter(bay => bay.status === "Available" && !bay.houseNumber);
     if (!bays.length) return null;
     const target = String(job && (job.locationId || job.plannedLocationId) || "").trim().toUpperCase();
@@ -500,23 +501,26 @@ function dockSuggestBay(db, job) {
 }
 
 function dockNormalizeQueue(db) {
-    db.dock ||= {};
-    db.dock.queue = (db.dock.queue || []).filter(item => item && item.houseNumber);
-    return db.dock.queue;
+    dockVehicleGroup.normalizeBays(db);
+    return dockVehicleGroup.normalizeQueue(db);
 }
 
 function dockBoard(db) {
+    const before=JSON.stringify(db.dock||{});
+    dockNormalizeQueue(db);
+    if(JSON.stringify(db.dock||{})!==before)writeDb(db);
     const bays = dockBayList(db).map(bay => {
-        const job = bay.houseNumber ? findJob(db, bay.houseNumber) : null;
+        const groupedJobs=dockVehicleGroup.forHouses(db,dockVehicleGroup.houses(bay));
+        const job = groupedJobs[0] || null;
         return {
             ...bay,
             customerName: job ? job.customerName : "",
-            pieceCount: job ? job.pieceCount : "",
+            pieceCount: groupedJobs.reduce((sum,item)=>sum+(Number(item.pieceCount)||0),0) || (job ? job.pieceCount : ""),
+            houseCount: groupedJobs.length,
             locationId: job ? job.locationId : "",
             flightNo: job ? job.flightNo : ""
         };
     });
-    dockNormalizeQueue(db);
     const queue = meetingPolicy.queue(db,dockPlanning.queue).filter(item=>dockPlanning.isActive(findJob(db,item.houseNumber),item)).map((item, index) => {
         const job = findJob(db, item.houseNumber);
         return {
@@ -4286,6 +4290,9 @@ async function handleApi(req, res, pathname) {
         res.setHeader('Cache-Control','no-store');
         try {
             const query=new URL(req.url,`http://localhost:${PORT}`).searchParams;
+            const before=JSON.stringify(db.dock||{});
+            dockNormalizeQueue(db);
+            if(JSON.stringify(db.dock||{})!==before)writeDb(db);
             return sendJson(res,200,dockDisplay.board(db,sessionUser(db,req),query.get('scope')||'live'));
         } catch(error){return sendJson(res,error.statusCode||500,{error:error.message});}
     }
@@ -4298,15 +4305,17 @@ async function handleApi(req, res, pathname) {
         if (!houseNumber) return sendJson(res, 400, { error: "houseNumber required" });
         const job = findJob(db, houseNumber);
         dockNormalizeQueue(db);
-        if (db.dock.queue.some(item => item.houseNumber === houseNumber)) {
-            return sendJson(res, 409, { error: `House ${houseNumber} อยู่ในคิวแล้ว` });
+        const roundJobs=dockVehicleGroup.jobs(db,job),roundHouses=roundJobs.length?roundJobs.map(item=>item.houseNumber):[houseNumber];
+        if (db.dock.queue.some(item => roundHouses.some(house=>dockVehicleGroup.contains(item,house)))) {
+            return sendJson(res, 409, { error: `รถคันนี้อยู่ในคิว Dock แล้ว` });
         }
-        if (dockBayList(db).some(bay => bay.houseNumber === houseNumber)) {
-            return sendJson(res, 409, { error: `House ${houseNumber} กำลังเทียบท่าอยู่แล้ว` });
+        if (dockBayList(db).some(bay => roundHouses.some(house=>dockVehicleGroup.contains(bay,house)))) {
+            return sendJson(res, 409, { error: `รถคันนี้กำลังเทียบท่าอยู่แล้ว` });
         }
         const entry = {
             id: `DQ-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
             houseNumber: houseNumber,
+            houseNumbers: roundHouses,
             customerName: job ? job.customerName : payload.customerName || "",
             pieceCount: job ? job.pieceCount : payload.pieceCount || "",
             vehiclePlate: payload.vehiclePlate || (job ? job.vehiclePlate : "") || "",
@@ -4330,38 +4339,44 @@ async function handleApi(req, res, pathname) {
         if (!houseNumber) return sendJson(res, 400, { error: "houseNumber required" });
         dockNormalizeQueue(db);
         const job = findJob(db, houseNumber);
-        const entry = db.dock.queue.find(item => item.houseNumber === houseNumber) || null;
+        const entry = dockVehicleGroup.entryForHouse(db.dock.queue,houseNumber);
+        const roundJobs=entry?dockVehicleGroup.forHouses(db,dockVehicleGroup.houses(entry)):dockVehicleGroup.jobs(db,job);
+        const roundHouses=roundJobs.length?roundJobs.map(item=>item.houseNumber):[houseNumber];
+        const existingBay=dockBayList(db).find(item=>roundHouses.some(house=>dockVehicleGroup.contains(item,house))&&item.status==='Occupied');
         let bay = payload.bayId ? dockFindBay(db, payload.bayId) : dockSuggestBay(db, job);
+        if(existingBay)bay=existingBay;
         if (!bay) return sendJson(res, 409, { error: "ไม่มีช่องเทียบท่าว่างในขณะนี้" });
         if (bay.status === "Closed") return sendJson(res, 409, { error: `${bay.name} ปิดใช้งานอยู่` });
-        if (bay.houseNumber && bay.houseNumber !== houseNumber) {
+        if (bay.houseNumber && !roundHouses.some(house=>dockVehicleGroup.contains(bay,house))) {
             return sendJson(res, 409, { error: `${bay.name} ถูกใช้โดย House ${bay.houseNumber}` });
         }
         if (meetingPolicy.active(db,[job])) {
             try {dockPlanning.assignment(meetingPolicy.scoped(db),job,entry||{},bay);} catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
         }
         dockDisplay.ensureTickets(db);
+        const assignedAt=existingBay?.assignedAt||nowIso();
         Object.assign(bay, {
-            queueNumber: entry?.queueNumber || null,
+            queueNumber: existingBay?.queueNumber || entry?.queueNumber || null,
             queueType: dockPlanning.kind(job,entry||{}),
             status: "Occupied",
-            houseNumber: houseNumber,
-            vehiclePlate: payload.vehiclePlate || (entry ? entry.vehiclePlate : "") || "",
-            driverName: payload.driverName || (entry ? entry.driverName : "") || "",
-            assignedAt: nowIso(),
-            assignedBy: payload.userId || "",
+            houseNumber: roundHouses[0],
+            houseNumbers: roundHouses,
+            vehiclePlate: payload.vehiclePlate || existingBay?.vehiclePlate || (entry ? entry.vehiclePlate : "") || "",
+            driverName: payload.driverName || existingBay?.driverName || (entry ? entry.driverName : "") || "",
+            assignedAt,
+            assignedBy: existingBay?.assignedBy || payload.userId || "",
             expectedMinutes: Number(payload.expectedMinutes || (meetingPolicy.active(db,[job]) ? db.meetingSafety.queueMinutes : 30))
         });
-        db.dock.queue = db.dock.queue.filter(item => item.houseNumber !== houseNumber);
-        if (job) {
-            job.dockBayId = bay.id;
-            job.dockBayName = bay.name;
-            job.dockAssignedAt = bay.assignedAt;
-            job.updatedAt = nowIso();
+        db.dock.queue = db.dock.queue.filter(item => !roundHouses.some(house=>dockVehicleGroup.contains(item,house)));
+        for(const item of roundJobs){
+            item.dockBayId = bay.id;
+            item.dockBayName = bay.name;
+            item.dockAssignedAt = bay.assignedAt;
+            item.updatedAt = nowIso();
         }
         db.dock.log = [ ...db.dock.log || [], { at: nowIso(), action: "Assigned", houseNumber: houseNumber, bayId: bay.id, by: payload.userId || "" } ].slice(-200);
         logActivity(db, { houseNumber: houseNumber, activityType: "DockAssigned", dockBay: bay.name });
-        await createAlert(db, `จัดช่องเทียบท่า ${bay.name} ให้ House ${houseNumber}`, "info");
+        await createAlert(db, `จัดช่องเทียบท่า ${bay.name} ให้รถ 1 คัน (${roundHouses.length} House)`, "info");
         writeDb(db);
         return sendJson(res, 200, { ok: true, bay: bay, ...dockBoard(db) });
     }
@@ -4371,13 +4386,12 @@ async function handleApi(req, res, pathname) {
         if(!actor)return sendJson(res,403,{error:'ไม่มีสิทธิ์คืน Dock'});
         const payload = await parseBody(req);
         const bay = payload.bayId ? dockFindBay(db, payload.bayId)
-            : dockBayList(db).find(item => item.houseNumber === String(payload.houseNumber || "").trim());
+            : dockBayList(db).find(item => dockVehicleGroup.contains(item,String(payload.houseNumber || "").trim()));
         if (!bay) return sendJson(res, 404, { error: "ไม่พบช่องเทียบท่า" });
         try{warehouseInbound.assertRelease(db,bay,payload);}catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
         payload.userId=actor.id;
-        const houseNumber = bay.houseNumber || "";
-        const job = houseNumber ? findJob(db, houseNumber) : null;
-        if (job) {
+        const houseNumbers=dockVehicleGroup.houses(bay),houseNumber=houseNumbers[0]||"";
+        for(const job of dockVehicleGroup.forHouses(db,houseNumbers)) {
             job.dockReleasedAt = nowIso();
             job.dockBayId = "";
             job.updatedAt = nowIso();
@@ -4385,6 +4399,7 @@ async function handleApi(req, res, pathname) {
         Object.assign(bay, {
             status: payload.close ? "Closed" : "Available",
             houseNumber: "",
+            houseNumbers: [],
             vehiclePlate: "",
             driverName: "",
             assignedAt: "",
@@ -4420,13 +4435,15 @@ async function handleApi(req, res, pathname) {
         const allowed = actor?.role==='Driver'?new Set(db.jobs.filter(job=>job.driverId===actor.id).map(job=>job.houseNumber)):null;
         if(allowed&&house&&!allowed.has(house))return sendJson(res,403,{error:'ดู Dock ได้เฉพาะงานที่มอบหมายให้คุณ'});
         const {bay,queue:queued}=driverDock.lookup(board,house,plate,allowed);
-        const progress=bay?driverDock.progress(findJob(db,bay.houseNumber),bay):null;
-        if(progress)progress.events=progress.events.map(e=>({...e,evidence:(db.attachments||[]).filter(f=>f.houseNumber===bay.houseNumber&&e.evidenceFileIds?.includes(f.fileId)).map(f=>({fileId:f.fileId,url:f.url}))}));
+        const progressHouse=bay&&(house&&dockVehicleGroup.contains(bay,house)?house:bay.houseNumber);
+        const progressJob=progressHouse?findJob(db,progressHouse):null;
+        const progress=bay&&progressJob?driverDock.progress(progressJob,bay):null;
+        if(progress)progress.events=progress.events.map(e=>({...e,evidence:(db.attachments||[]).filter(f=>f.houseNumber===progressHouse&&e.evidenceFileIds?.includes(f.fileId)).map(f=>({fileId:f.fileId,url:f.url}))}));
         return sendJson(res, 200, {
             ok: true,
             bay: bay,
             progress,
-            receiptConfirmedAt: bay?findJob(db,bay.houseNumber)?.inboundReceipt?.confirmedAt||null:null,
+            receiptConfirmedAt: progressJob?.inboundReceipt?.confirmedAt||null,
             queue: queued,
             ahead: queued ? queued.queueAhead ?? Math.max(0, queued.position - 1) : 0,
             estimatedWaitMinutes: queued?.estimatedWaitMinutes ?? null,
@@ -5358,12 +5375,14 @@ async function handleApi(req, res, pathname) {
                 wh3QueuePriorityMinutes: sla.minutesToAirportDue,
                 updatedAt: releasedAt
             });
-            if (meetingPolicy.active(db,[item])) {
-                db.dock||={};db.dock.queue||=[];
-                if (!db.dock.queue.some(entry=>entry.houseNumber===item.houseNumber)) db.dock.queue.push({id:crypto.randomUUID(),houseNumber:item.houseNumber,queueType:item.shipmentSource==="CustomerDirect"?"External":"Inbound",arrivedAt:item.arrivedWh3At,createdAt:releasedAt,createdBy:actor.id,vehiclePlate:item.vehiclePlate||""});
-                dockDisplay.ensureTickets(db);
-            }
             logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ReleaseDocumentReceived", endTime: releasedAt });
+        }
+        if(meetingPolicy.active(db,jobs)){
+            db.dock||={};db.dock.queue||=[];
+            const houses=jobs.map(item=>item.houseNumber);
+            db.dock.queue=db.dock.queue.filter(entry=>!houses.some(house=>dockVehicleGroup.contains(entry,house)));
+            db.dock.queue.push({id:crypto.randomUUID(),houseNumber:houses[0],houseNumbers:houses,queueType:jobs[0].shipmentSource==="CustomerDirect"?"External":"Inbound",arrivedAt:jobs.map(item=>item.arrivedWh3At).filter(Boolean).sort()[0]||releasedAt,createdAt:releasedAt,createdBy:actor.id,vehiclePlate:jobs[0].vehiclePlate||"",driverName:jobs[0].driverName||""});
+            dockDisplay.ensureTickets(db);
         }
         writeDb(db);
         return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob) });

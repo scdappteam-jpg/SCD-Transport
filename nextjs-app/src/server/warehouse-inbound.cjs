@@ -3,6 +3,7 @@ const crypto=require('node:crypto');
 const receipts=require('./inbound-receipts.cjs');
 const evidence=(file,label)=>require('./operations-control.cjs').evidence(file,label);
 const fail=(message,statusCode=409)=>{throw Object.assign(new Error(message),{statusCode});};
+const dockVehicleGroup=require('./dock-vehicle-group.cjs');
 const wdKeys=['house_tag','sticker','piece_count','packing_type','condition','docs','corner','seal'];
 const whRoles=['Admin','WH3_TeamLeader','WH_Staff'];
 const roles=(actor,list)=>{if(!actor||!list.includes(actor.role))fail('ไม่มีสิทธิ์ดำเนินการรับเข้า',403);};
@@ -61,7 +62,8 @@ function assertRelease(db,bay,p){
     if(!bay.houseNumber)return;
     if(p.confirmVehicleDeparted!==true)fail('ต้องยืนยันว่ารถออกจากช่องจริงก่อนคืน Dock',422);
     const related=(db.dock?.bays||[]).filter(b=>b.houseNumber&&(b.id===bay.id||(bay.vehiclePlate&&b.vehiclePlate===bay.vehiclePlate)));
-    for(const b of related){const j=(db.jobs||[]).find(j=>j.houseNumber===b.houseNumber);if(!j)fail('ไม่พบงานของ Dock');if(j.shipmentSource==='CustomerDirect'){if(!j.inboundInspection?.checkedAt)fail('ต้องตรวจรับลูกค้ามาส่งเองก่อนคืน Dock');}else assertUnloaded(j);}
+    const houses=[...new Set(related.flatMap(dockVehicleGroup.houses))];
+    for(const house of houses){const j=(db.jobs||[]).find(j=>j.houseNumber===house);if(!j)fail('ไม่พบงานของ Dock');if(j.shipmentSource==='CustomerDirect'){if(!j.inboundInspection?.checkedAt)fail('ต้องตรวจรับลูกค้ามาส่งเองก่อนคืน Dock');}else assertUnloaded(j);}
 }
 function checkRevision(job,p){if(p.expectedRevision!==(job.inboundControlRevision||0))fail('ข้อมูลรับเข้าเปลี่ยนแล้ว กรุณารีเฟรช');}
 function request(job,p){
@@ -76,7 +78,7 @@ function snapshot(db,job){
     let unloadError='',putawayError='';try{assertUnloaded(job);}catch(e){unloadError=e.message;}
     try{assertNotHeld(job);}catch(e){putawayError=e.message;}
     const keys=['houseNumber','hawbNumber','onhandNumber','mawbNumber','customerName','invoiceNo','driverId','vehiclePlate','status','shipmentSource','arrivedWh3At','releaseDocumentReceivedAt','dockBayId','dockAssignedAt','dockArrivedAt','wh3UnloadStartedAt','wh3UnloadCompletedAt','inboundDocStatus','inboundDocumentCheckedAt','inboundOpenedAt','inboundEiConfirmedAt','inboundClosedAt','inboundClosedRevision','locationId','warehouseLocation','trackType','inboundHold','inboundInspection','inboundControlHistory','inboundControlRevision','tagInspection','qaApproval','inboundReceipt','updatedAt'];
-    return {job:Object.fromEntries(keys.map(k=>[k,job[k]??null])),receipt:receipts.house(job),masterReceipt:receipts.overview(db.jobs||[]).masters.get(receipts.masterKey(job))||null,qaApproved:qa.approved(job),unloadError,holdError:putawayError,locations:locations(db).filter(l=>l.active!==false&&!['Closed','Blocked'].includes(l.status)).map(l=>({id:l.id,code:l.code||l.id,mapped:(db.warehouseMap?.locations||[]).includes(l),storageMode:(db.warehouseMap?.zones||[]).find(z=>z.id===l.zoneId)?.storageMode||'Fixed',status:l.status,occupiedBy:l.occupiedBy||[],currentHouseId:l.currentHouseId||'',maxLevels:l.maxLevels||1})),attachments:(db.attachments||[]).filter(f=>f.houseNumber===job.houseNumber).map(f=>({fileId:f.fileId,fileType:f.fileType,url:f.url||f.filePath||f.path})),dock:(db.dock?.bays||[]).filter(b=>b.houseNumber===job.houseNumber),geofencingEnabled:!!db.meetingSafety?.geofencingEnabled};
+    return {job:Object.fromEntries(keys.map(k=>[k,job[k]??null])),receipt:receipts.house(job),masterReceipt:receipts.overview(db.jobs||[]).masters.get(receipts.masterKey(job))||null,qaApproved:qa.approved(job),unloadError,holdError:putawayError,locations:locations(db).filter(l=>l.active!==false&&!['Closed','Blocked'].includes(l.status)).map(l=>({id:l.id,code:l.code||l.id,mapped:(db.warehouseMap?.locations||[]).includes(l),storageMode:(db.warehouseMap?.zones||[]).find(z=>z.id===l.zoneId)?.storageMode||'Fixed',status:l.status,occupiedBy:l.occupiedBy||[],currentHouseId:l.currentHouseId||'',maxLevels:l.maxLevels||1})),attachments:(db.attachments||[]).filter(f=>f.houseNumber===job.houseNumber).map(f=>({fileId:f.fileId,fileType:f.fileType,url:f.url||f.filePath||f.path})),dock:(db.dock?.bays||[]).filter(b=>dockVehicleGroup.contains(b,job.houseNumber)),geofencingEnabled:!!db.meetingSafety?.geofencingEnabled};
 }
 async function handle({db,actor,method,p={},query={},at,saveFiles}){
     roles(actor,['Admin','Executive','WH3_TeamLeader','WH_Staff','Check_House','QA_Inspector','Tagging_Staff']);
