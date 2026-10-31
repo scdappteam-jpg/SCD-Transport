@@ -501,14 +501,11 @@ function dockSuggestBay(db, job) {
 }
 
 function dockNormalizeQueue(db) {
-    dockVehicleGroup.normalizeBays(db);
     return dockVehicleGroup.normalizeQueue(db);
 }
 
 function dockBoard(db) {
-    const before=JSON.stringify(db.dock||{});
     dockNormalizeQueue(db);
-    if(JSON.stringify(db.dock||{})!==before)writeDb(db);
     const bays = dockBayList(db).map(bay => {
         const groupedJobs=dockVehicleGroup.forHouses(db,dockVehicleGroup.houses(bay));
         const job = groupedJobs[0] || null;
@@ -4031,6 +4028,13 @@ async function handleApi(req, res, pathname) {
             } catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
         }
 
+        if(action==='reconcile-vehicle-rounds'){
+            if(payload.confirm!==true)return sendJson(res,422,{error:'ต้องยืนยันการรวมรถที่ถูกจัดซ้ำก่อนดำเนินการ'});
+            const result=dockVehicleGroup.normalizeBays(db);
+            if(result.merged)writeDb(db);
+            return sendJson(res,200,{ok:true,...result,...dockBoard(db)});
+        }
+
         if (action === "add") {
             const name = String(payload.name || "").trim() || `ท่า ${bays.length + 1}`;
             if (bays.some(bay => bay.name === name)) return sendJson(res, 409, { error: `มีช่องชื่อ "${name}" อยู่แล้ว` });
@@ -4290,9 +4294,7 @@ async function handleApi(req, res, pathname) {
         res.setHeader('Cache-Control','no-store');
         try {
             const query=new URL(req.url,`http://localhost:${PORT}`).searchParams;
-            const before=JSON.stringify(db.dock||{});
             dockNormalizeQueue(db);
-            if(JSON.stringify(db.dock||{})!==before)writeDb(db);
             return sendJson(res,200,dockDisplay.board(db,sessionUser(db,req),query.get('scope')||'live'));
         } catch(error){return sendJson(res,error.statusCode||500,{error:error.message});}
     }
