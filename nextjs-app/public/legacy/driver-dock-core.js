@@ -6,6 +6,7 @@
     const finished=new Set(['Billed','Completed','Cancelled','Rejected','PassCPOut','ReadyForBilling','BillingReviewed','InvoiceDrafted','InvoiceSent','TerminalArrived']);
     const staleDriverSelection=new Set(['Stored','ReadyForTerminal','Inbound']);
     const active=job=>job&&!finished.has(job.status);
+    const staleSelection=job=>staleDriverSelection.has(job?.status)||Boolean(job?.driverDock?.work?.unloadCompletedAt);
     const ticket=value=>Number.isSafeInteger(value)&&value>0?String(value).padStart(3,'0'):'—';
     function progress(job,bay){
         const events=(job?.driverDockHistory||[]).filter(e=>e.bayId===bay?.id&&e.assignedAt===bay?.assignedAt);
@@ -16,9 +17,9 @@
         const eligible=jobs.filter(active);
         for(const house of [selected,remembered,unlocked]){
             const match=eligible.find(j=>j.houseNumber===house);
-            if(match&&!staleDriverSelection.has(match.status))return match;
+            if(match&&!staleSelection(match))return match;
         }
-        return eligible.find(j=>j.driverDock?.phase==='Called')||eligible.find(j=>j.driverRouteStatus==='ReturningWH3'||j.status==='ReturningWH3')||eligible.find(j=>j.driverDock?.phase==='Waiting')||eligible.find(j=>!staleDriverSelection.has(j.status))||eligible[0]||null;
+        return eligible.find(j=>j.driverDock?.phase==='Called'&&!staleSelection(j))||eligible.find(j=>j.driverRouteStatus==='ReturningWH3'||j.status==='ReturningWH3')||eligible.find(j=>j.driverDock?.phase==='Waiting')||eligible.find(j=>!staleSelection(j))||eligible[0]||null;
     }
     function project(job,dock){
         const bay=(dock?.bays||[]).find(b=>b.houseNumber===job.houseNumber&&b.status==='Occupied');

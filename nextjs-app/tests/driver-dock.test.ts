@@ -23,6 +23,11 @@ test('returning WH3 replaces a stale selected or remembered Stored House on Driv
  const returning={houseNumber:'SIT-WH3-INBOUND-20261031-B1',status:'ReturningWH3',driverRouteStatus:'ReturningWH3'};
  assert.equal(core.select([stored,returning],stored.houseNumber,stored.houseNumber)?.houseNumber,returning.houseNumber);
 });
+test('returning WH3 replaces an old called Dock whose unloading is already complete',()=>{
+ const unloaded={houseNumber:'SIT-WH3-DOCK-20261028-A1',status:'HouseIdentified',driverDock:{phase:'Called',work:{unloadCompletedAt:'2026-10-28T09:45:58.000Z'}}};
+ const returning={houseNumber:'SIT-WH3-INBOUND-20261031-B1',status:'ReturningWH3',driverRouteStatus:'ReturningWH3'};
+ assert.equal(core.select([unloaded,returning],unloaded.houseNumber,unloaded.houseNumber)?.houseNumber,returning.houseNumber);
+});
 test('House lookup never falls back to another House sharing the plate; Driver scope restricts plate-only lookup',()=>{
  assert.equal(core.lookup(dock,'SIT-OLD','SIT-ONLY').bay,null);
  assert.equal(core.lookup(dock,H,'SIT-ONLY',new Set(['SIT-OLD'])).bay,null);
