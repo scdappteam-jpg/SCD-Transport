@@ -651,6 +651,12 @@ function renderPickupGuide() {
         item.classList.toggle("done", index < active || active === 5);
     });
     renderPickupDriverActions();
+    if (unlocked) window.setPickupStep?.(pickupWorkflowStep(job));
+}
+
+function pickupWorkflowStep(job) {
+    const states = [ job?.driverRouteStatus, job?.status ];
+    return states.some(state => [ "ReturningWH3", "ArrivedWH3", "ReleasedForDock", "AwaitingReleaseDocument", "WaitingForDock" ].includes(state)) ? 4 : 1;
 }
 
 function renderPickupDriverActions() {
