@@ -11596,6 +11596,7 @@ function _renderDockConfig() {
     wrap.innerHTML = '<div class="dock-modal-box"><div class="dock-modal-h"><div><b>ตั้งค่าช่องเทียบท่า</b>' +
       '<span>เพิ่ม ลบ เปลี่ยนชื่อ หรือปิดใช้ชั่วคราวได้ · ช่องที่มีรถเทียบอยู่จะแก้ไม่ได้</span></div>' +
       '<button type="button" class="dock-x" onclick="dockConfigClose()">✕</button></div>' +
+      '<div class="dock-cfg-add"><button type="button" class="dock-btn" onclick="dockReconcileVehicleRounds()">รวมรถที่ถูกจัดซ้ำหลายท่า</button><span>รวมเฉพาะรอบรถเดียวกันที่ยังไม่เริ่มลงสินค้า · รายการที่เริ่มงานแล้วจะไม่ถูกย้าย</span></div>' +
       '<div class="dock-cfg-add"><button type="button" class="dock-btn" onclick="dockSendConfig({action:\'ensure-inbound\'},\'เพิ่มท่า 9–11 แล้ว โดยคงท่าเดิม\')">เพิ่มท่ารับเข้า 9–11</button><span>เพิ่มเฉพาะท่าที่ยังไม่มี ไม่ล้างค่าท่าเดิม</span></div>' +
       '<div class="dock-cfg-add"><input id="dockNewName" placeholder="ชื่อช่อง เช่น ท่า 9 / Dock A1">' +
       '<input id="dockNewZone" placeholder="โซน (A/B/C)" maxlength="4">' +
@@ -11627,6 +11628,18 @@ async function dockSendConfig(payload, okMsg) {
         _renderDockConfig();
         if (okMsg) toast(okMsg);
     } catch (e) { toast(e.message || "บันทึกไม่สำเร็จ"); }
+}
+
+async function dockReconcileVehicleRounds() {
+    if (!window.confirm("ยืนยันรวมรถรอบเดียวกันที่ถูกจัดซ้ำหลายท่า? ระบบจะไม่ย้ายรายการที่เริ่มลงสินค้าแล้ว")) return;
+    try {
+        var result = await api("/api/dock/bays", { action: "reconcile-vehicle-rounds", confirm: true });
+        _dockData = result;
+        state.dockSummary = result.summary;
+        _renderDockHtml();
+        _renderDockConfig();
+        toast("รวมรถซ้ำสำเร็จ " + (result.merged || 0) + " รอบ" + (result.blocked ? " · ข้าม " + result.blocked + " รอบที่เริ่มลงสินค้าแล้ว" : ""));
+    } catch (e) { toast(e.message || "รวมรถซ้ำไม่สำเร็จ"); }
 }
 
 function dockBayAdd() {
