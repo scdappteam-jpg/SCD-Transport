@@ -57,8 +57,18 @@ function preflight(db,path,p,actor,at=new Date().toISOString()) {
         }
     }
     if (path==='/api/pickup/release-document') {
-        if (!Array.isArray(p.releaseDocumentFiles)||!p.releaseDocumentFiles.length) fail('ต้องสแกน/แนบภาพใบตรวจปล่อยก่อนยืนยันรับเอกสาร');
-        p.releaseDocumentFiles.forEach(f=>evidence(f,'ใบตรวจปล่อย'));
+        if (Array.isArray(p.releaseDocuments)&&p.releaseDocuments.length) {
+            const seen=new Set;
+            p.releaseDocuments.forEach(row=>{
+                const house=String(row?.houseNumber||'').trim();
+                if(!house||seen.has(house))fail('รายการใบตรวจปล่อยต้องระบุ House และห้ามซ้ำ');
+                if(!Array.isArray(row.files)||!row.files.length)fail(`ต้องสแกน/แนบภาพใบตรวจปล่อย House ${house}`);
+                row.files.forEach(f=>evidence(f,`ใบตรวจปล่อย House ${house}`));seen.add(house);
+            });
+        } else {
+            if (!Array.isArray(p.releaseDocumentFiles)||!p.releaseDocumentFiles.length) fail('ต้องสแกน/แนบภาพใบตรวจปล่อยก่อนยืนยันรับเอกสาร');
+            p.releaseDocumentFiles.forEach(f=>evidence(f,'ใบตรวจปล่อย'));
+        }
     }
     if (path==='/api/attendance/checkin') {
         if (p.userId!==actor?.id) fail('ต้องเช็คอินด้วยยูสของตนเอง',403);

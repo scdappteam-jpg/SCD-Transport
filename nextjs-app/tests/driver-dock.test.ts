@@ -69,6 +69,7 @@ test('Driver work is complete only after unload or Terminal close makes the vehi
 const source=fs.readFileSync(new URL('../public/legacy/mobile.js',import.meta.url),'utf8');
 const mobileCss=fs.readFileSync(new URL('../public/legacy/mobile.css',import.meta.url),'utf8');
 const mobileHtml=fs.readFileSync(new URL('../public/legacy/mobile.html',import.meta.url),'utf8');
+const legacyApi=fs.readFileSync(new URL('../src/server/legacy-api.cjs',import.meta.url),'utf8');
 test('actual Driver job renderer separates ticket, called Dock and storage location',()=>{
  const context=vm.createContext({DriverDock:core,foJobStatusMeta:()=>({th:'รอ Dock',en:'Waiting',tone:'amber'}),InboundReceipts:{house:()=>({})},currentUser:()=>({}),escapeHtmlMobile:(v:unknown)=>String(v),formatBangkokMobile:(v:unknown)=>String(v)});
  vm.runInContext(source.slice(source.indexOf('function foDriverJobCard('),source.indexOf('function foFocusDriverJob(')),context);
@@ -103,4 +104,13 @@ test('confirmation and result popups render above the fixed mobile navigation',(
  assert.match(mobileCss,/\.confirm-sheet,\.mobile-modal-backdrop\s*\{[^}]*z-index:2100!important/s);
  assert.match(mobileCss,/body:not\(\.mobile-locked\) \.fo-bottomnav\s*\{[^}]*z-index:1000!important/s);
  assert.match(mobileCss,/\.confirm-sheet-panel,\.mobile-action-modal\s*\{[^}]*max-height:calc\(100dvh[^}]*overflow-y:auto/s);
+});
+test('release-document popup lists the vehicle round and submits evidence per House',()=>{
+ assert.match(mobileHtml,/id="releaseDocumentSheet"/);
+ assert.match(mobileHtml,/id="releaseDocumentHouseList"/);
+ assert.match(source,/function releaseDocumentRoundJobs\(\)/);
+ assert.match(source,/releaseDocuments\.push\(\{[\s\S]*houseNumber:[\s\S]*files: await filesToCompressedBase64/s);
+ assert.doesNotMatch(mobileHtml,/id="releaseDocumentFiles"/);
+ assert.match(mobileCss,/\.release-document-actions\{position:sticky;bottom:0/);
+ assert.match(legacyApi,/payload\.event === "release-document"[\s\S]*ใช้ Driver App แนบหลักฐานให้ครบทุก House/);
 });

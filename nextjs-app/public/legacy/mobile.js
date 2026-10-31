@@ -921,6 +921,100 @@ function closeMobileActionModal() {
     modal.setAttribute("aria-hidden", "true");
 }
 
+function pickupRoundKeyForMobile(job) {
+    const explicit = job?.transportRoundId || job?.pickupBatchId || job?.batchId;
+    if (explicit) return `explicit:${explicit}`;
+    if (job?.driverId && job?.vehiclePlate && job?.routeStartedAt) {
+        const startedAt = new Date(job.routeStartedAt);
+        if (Number.isFinite(startedAt.getTime())) return `driver-start:${job.driverId}|${job.vehiclePlate}|${startedAt.toISOString()}`;
+    }
+    return "";
+}
+
+function releaseDocumentRoundJobs() {
+    const selected = jobsFromSelection();
+    if (!selected.length) return [];
+    const keys = new Set(selected.map(pickupRoundKeyForMobile).filter(Boolean));
+    const driverIds = new Set(selected.map(job => String(job.driverId || "")));
+    const expanded = keys.size ? visibleDriverJobs().filter(job =>
+        driverIds.has(String(job.driverId || "")) && keys.has(pickupRoundKeyForMobile(job))
+    ) : selected;
+    return expanded.filter(job => [ "AwaitingReleaseDocument", "WaitingForDock" ].includes(job.status) || [ "ArrivedWH3", "ReleasedForDock" ].includes(job.driverRouteStatus));
+}
+
+function updateReleaseDocumentProgress() {
+    const cards = $$("#releaseDocumentHouseList .release-document-card");
+    const complete = cards.filter(card => card.querySelector(".release-document-file")?.files?.length);
+    cards.forEach(card => {
+        const ready = Boolean(card.querySelector(".release-document-file")?.files?.length);
+        card.classList.toggle("complete", ready);
+        card.querySelector(".release-document-status").textContent = ready ? "แนบแล้ว" : "ยังไม่แนบ";
+    });
+    const progress = $("#releaseDocumentProgress");
+    if (progress) {
+        progress.textContent = `ความครบถ้วน ${complete.length}/${cards.length} House`;
+        progress.classList.toggle("complete", cards.length > 0 && complete.length === cards.length);
+    }
+    if ($("#releaseDocumentSubmitBtn")) $("#releaseDocumentSubmitBtn").disabled = !cards.length || complete.length !== cards.length;
+}
+
+function closeReleaseDocumentSheet() {
+    const sheet = $("#releaseDocumentSheet");
+    if (sheet) sheet.hidden = true;
+}
+
+function openReleaseDocumentSheet() {
+    const jobs = releaseDocumentRoundJobs().filter(job => job.status === "AwaitingReleaseDocument" && job.driverRouteStatus === "ArrivedWH3");
+    if (!jobs.length) return showMobileActionModal("ยังเปิดใบตรวจปล่อยไม่ได้", "ต้องยืนยันว่ารถถึง WH3 ก่อน และงานต้องอยู่ในสถานะรอใบตรวจปล่อย");
+    const list = $("#releaseDocumentHouseList");
+    list.replaceChildren();
+    jobs.forEach(job => {
+        const card = document.createElement("article");
+        card.className = "release-document-card";
+        card.dataset.houseNumber = job.houseNumber;
+        card.innerHTML = `
+          <div class="release-document-card-head"><strong>${escapeHtmlMobile(job.houseNumber)}</strong><span class="release-document-status">ยังไม่แนบ</span></div>
+          <small>${escapeHtmlMobile(job.customerName || "-")} · ${escapeHtmlMobile(String(job.pickupReceivedCount || job.pieceCount || "-") + " ชิ้น")}</small>
+          <label>เลขที่ใบตรวจปล่อย (ถ้ามี)</label>
+          <input class="release-document-number" autocomplete="off" placeholder="เลขอ้างอิงของ House นี้">
+          <label>ภาพหรือไฟล์ใบตรวจปล่อย</label>
+          <input class="release-document-file" type="file" accept="image/*,application/pdf" capture="environment" multiple>
+        `;
+        card.querySelector(".release-document-file").addEventListener("change", updateReleaseDocumentProgress);
+        list.appendChild(card);
+    });
+    const first = jobs[0];
+    $("#releaseDocumentRoundSummary").textContent = `รถ ${first.vehiclePlate || "ไม่ระบุทะเบียน"} · ${jobs.length} House · ต้องแนบหลักฐานแยกราย House`;
+    $("#releaseDocumentSheet").hidden = false;
+    updateReleaseDocumentProgress();
+}
+
+async function submitReleaseDocuments() {
+    const jobs = releaseDocumentRoundJobs().filter(job => job.status === "AwaitingReleaseDocument" && job.driverRouteStatus === "ArrivedWH3");
+    const cards = $$("#releaseDocumentHouseList .release-document-card");
+    if (!jobs.length || cards.length !== jobs.length) throw new Error("รายการ House บนรอบรถเปลี่ยนแปลง กรุณาปิดแล้วเปิดหน้าต่างใหม่");
+    const releaseDocuments = [];
+    for (const card of cards) {
+        const input = card.querySelector(".release-document-file");
+        if (!input.files?.length) throw new Error(`กรุณาแนบใบตรวจปล่อย House ${card.dataset.houseNumber}`);
+        releaseDocuments.push({
+            houseNumber: card.dataset.houseNumber,
+            documentNumber: card.querySelector(".release-document-number").value.trim(),
+            files: await filesToCompressedBase64(input)
+        });
+    }
+    const result = await api("/api/pickup/release-document", {
+        releaseDocuments,
+        houseNumber: jobs[0].houseNumber,
+        houseNumbers: jobs.map(job => job.houseNumber),
+        userId: state.currentUserId
+    });
+    closeReleaseDocumentSheet();
+    await refresh();
+    const count = Number(result.updatedCount || result.jobs?.length || jobs.length);
+    showMobileActionModal("ได้รับใบตรวจปล่อยครบแล้ว", `บันทึกหลักฐานแยกครบ ${count} House และส่งรถเข้าคิวรอเข้าล็อกแล้ว งานคนขับยังไม่จบจนกว่าจะลงสินค้าครบ`);
+}
+
 function addPickupItemRow(values = {}) {
     const list = $("#driverPickupItemRows");
     if (!list) return;
@@ -1593,16 +1687,13 @@ function bindEvents() {
         const updatedCount = Number(result.updatedCount || result.jobs?.length || 0);
         showMobileActionModal("ถึง WH3 แล้ว", `House บนรอบรถนี้ทั้ง ${updatedCount || 1} งาน เปลี่ยนเป็น รอใบตรวจปล่อยแล้ว`);
     }));
-    $("#releaseDocumentBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
-        await api("/api/pickup/release-document", {
-            releaseDocumentFiles: await filesToCompressedBase64($("#releaseDocumentFiles")),
-            houseNumber: primaryHouseNumber(),
-            houseNumbers: pickupHouseNumbers(),
-            userId: state.currentUserId
-        });
-        await refresh();
-        showMobileActionModal("ได้รับใบตรวจปล่อยแล้ว", "House ถูกส่งเข้าคิวรอเข้าล็อกตาม SLA ขั้นตอนนี้ยังไม่จบงานคนขับ ต้องลงสินค้าที่ WH3 ให้ครบก่อน");
-    }));
+    $("#releaseDocumentBtn")?.addEventListener("click", openReleaseDocumentSheet);
+    $("#releaseDocumentSheetClose")?.addEventListener("click", closeReleaseDocumentSheet);
+    $("#releaseDocumentCancelBtn")?.addEventListener("click", closeReleaseDocumentSheet);
+    $("#releaseDocumentSheet")?.addEventListener("click", event => {
+        if (event.target.id === "releaseDocumentSheet") closeReleaseDocumentSheet();
+    });
+    $("#releaseDocumentSubmitBtn")?.addEventListener("click", event => runAction(event.currentTarget, submitReleaseDocuments));
     $("#twinScanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/inbound/twin-scan", {
             houseNumber: normalizeHouseBarcode($("#scanHouse").value),
@@ -2486,7 +2577,6 @@ function showConfirmSheet(title, desc, onOk) {
     gate("completePickupBtn", "ยืนยันรับสินค้าแล้ว?", "ระบบจะบันทึกเวลา รูปถ่าย และลายเซ็น เมื่อรับ House ครบ ระบบจะเปลี่ยนเป็นกำลังกลับ WH3 อัตโนมัติ");
     gate("loadCargoBtn", "ยืนยันโหลดสินค้าขึ้นรถ?", "ตรวจสินค้าครบตาม checklist และแปะ Sticker (ถ้าเป็นงานพิเศษ) แล้วใช่ไหม");
     gate("arriveWh3Btn", "ยืนยันถึง WH3 แล้ว?", "House ทั้งหมดในรอบจะเปลี่ยนเป็นรอใบตรวจปล่อย");
-    gate("releaseDocumentBtn", "ยืนยันได้รับใบตรวจปล่อยแล้ว?", "House จะเข้าคิวรอเข้าล็อกตาม SLA และงานคนขับจะยังไม่จบจนกว่าจะลงสินค้าครบ");
 })();
 
 var foState = {
@@ -3437,6 +3527,8 @@ function bindEscapeToSheets() {
         if (confirmSheet && !confirmSheet.hidden) { confirmSheet.hidden = true; return; }
         var mapSheet = document.getElementById("mapSheet");
         if (mapSheet && !mapSheet.hidden) { mapSheet.hidden = true; return; }
+        var releaseSheet = document.getElementById("releaseDocumentSheet");
+        if (releaseSheet && !releaseSheet.hidden) { releaseSheet.hidden = true; return; }
         var modal = document.getElementById("mobileActionModal");
         if (modal && modal.classList.contains("show")) modal.classList.remove("show");
     });
@@ -3453,6 +3545,4 @@ function updatePickupSafetyButtons() {
     const load=document.getElementById("loadCargoBtn"),complete=document.getElementById("completePickupBtn");
     if(load&&!load.scdBusy)load.disabled=Boolean(state.cargoLoaded)||!ready;
     if(complete&&!complete.scdBusy)complete.disabled=!state.cargoLoaded||!ready;
-    const release=document.getElementById("releaseDocumentBtn");
-    if(release&&!release.scdBusy&&jobsFromSelection().some(j=>j.driverRouteStatus==="ArrivedWH3"))release.disabled=!document.getElementById("releaseDocumentFiles")?.files?.length;
 }

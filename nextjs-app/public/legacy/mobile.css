@@ -1094,3 +1094,29 @@ body:not(.mobile-locked) main{
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
 }
+
+.release-document-panel{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  width:min(100%,720px);
+  padding-bottom:calc(16px + env(safe-area-inset-bottom))!important;
+}
+.release-document-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.release-document-head strong{display:block;font-size:19px;color:#0f172a}
+.release-document-head p{margin:4px 0 0;color:#64748b;font-size:13px;line-height:1.4}
+.release-document-close{width:42px!important;min-width:42px;min-height:42px!important;padding:0!important;border:0;background:#eef2f7!important;color:#334155!important;font-size:25px!important;line-height:1}
+.release-document-progress{padding:10px 12px;border-radius:12px;color:#92400e;background:#fffbeb;font-size:13px;font-weight:800}
+.release-document-progress.complete{color:#047857;background:#ecfdf5}
+.release-document-list{display:grid;gap:10px;overflow:visible}
+.release-document-card{padding:13px;border:1.5px solid #dbe5f1;border-radius:14px;background:#fff}
+.release-document-card.complete{border-color:#86efac;background:#f0fdf4}
+.release-document-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.release-document-card-head strong{color:#0f172a;font-size:16px;overflow-wrap:anywhere}
+.release-document-card-head span{padding:4px 8px;border-radius:999px;color:#9a3412;background:#ffedd5;font-size:11px;font-weight:800;white-space:nowrap}
+.release-document-card.complete .release-document-card-head span{color:#047857;background:#dcfce7}
+.release-document-card small{display:block;margin-bottom:8px;color:#64748b;line-height:1.35}
+.release-document-card label{margin:8px 0 4px}
+.release-document-card input{min-height:44px}
+.release-document-actions{position:sticky;bottom:0;z-index:2;margin:0 -2px;padding:10px 2px 2px;background:linear-gradient(transparent,#fff 22%)}
+.release-document-actions button:disabled{opacity:.5}

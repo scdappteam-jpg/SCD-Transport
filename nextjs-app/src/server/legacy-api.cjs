@@ -43,6 +43,7 @@ const dockDisplay = require('./dock-display.cjs');
 const dockVehicleGroup = require('./dock-vehicle-group.cjs');
 const driverDock = require('../../public/legacy/driver-dock-core.js');
 const driverDockEvents = require('./driver-dock-events.cjs');
+const releaseDocuments = require('./release-documents.cjs');
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -3549,6 +3550,9 @@ async function handleApi(req, res, pathname) {
                 return sendJson(res, 200, { ...operationsControl.summary(db, params, undefined, ['Admin', 'Executive', 'Billing'].includes(actor.role)), actor: { id: actor.id, name: actor.name, role: actor.role } });
             }
             const payload = await parseBody(req);
+            if (payload.action === "transport-event" && payload.event === "release-document") {
+                return sendJson(res, 409, { error: "ใบตรวจปล่อยออกเป็นราย House กรุณาใช้ Driver App แนบหลักฐานให้ครบทุก House บนรอบรถ" });
+            }
             const plan = operationsControl.prepare(db, payload, actor);
             for (const job of plan.jobs) for (const file of plan.files) saveBase64File(db, { houseNumber: job.houseNumber, fileType: file.fileType, base64: file.base64, mimeType: file.mimeType });
             operationsControl.apply(plan);
@@ -5356,28 +5360,43 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/pickup/release-document") {
         const payload = await parseBody(req);
-        const jobs = findPayloadJobs(db, payload);
-        const actor = requirePickupActor(db, req, jobs);
+        const requestedJobs = findPayloadJobs(db, payload);
+        const actor = requirePickupActor(db, req, requestedJobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์รับใบตรวจปล่อยสำหรับงานนี้" });
         payload.userId = actor.id;
+        const jobs = findPickupArrivalRoundJobs(db, requestedJobs);
+        if (actor.role === "Driver" && jobs.some(item => String(item.driverId || "") !== actor.id)) {
+            return sendJson(res, 403, { error: "ไม่มีสิทธิ์รับใบตรวจปล่อยสำหรับงานนี้" });
+        }
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
         if (jobs.some(item => item.status !== "AwaitingReleaseDocument")) {
             return sendJson(res, 409, { error: "ต้องยืนยันถึง WH3 ก่อนรับใบตรวจปล่อย" });
         }
+        let documents;
+        try { documents = releaseDocuments.validate(jobs, payload, operationsControl.evidence); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        const documentByHouse = new Map(documents.map(document => [ document.houseNumber, document ]));
         const releasedAt = nowIso();
         for (const item of jobs) {
-            if (meetingPolicy.active(db,[item])) saveBase64Files(db,{houseNumber:item.houseNumber,fileType:"ReleaseDocument",files:payload.releaseDocumentFiles});
+            const document = documentByHouse.get(item.houseNumber);
+            const savedFiles = saveBase64Files(db, {
+                houseNumber: item.houseNumber,
+                fileType: "ReleaseDocument",
+                files: document.files
+            });
             const sla = deriveFlightSla(item, new Date(releasedAt).getTime());
             Object.assign(item, {
                 status: "WaitingForDock",
                 driverRouteStatus: "ReleasedForDock",
                 releaseDocumentReceivedAt: releasedAt,
+                releaseDocumentNumber: document.documentNumber,
+                releaseDocumentFileIds: savedFiles.map(file => file.fileId).filter(Boolean),
                 wh3QueuePriorityMinutes: sla.minutesToAirportDue,
                 updatedAt: releasedAt
             });
-            logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ReleaseDocumentReceived", endTime: releasedAt });
+            logActivity(db, { ...payload, houseNumber: item.houseNumber, releaseDocumentNumber: document.documentNumber, activityType: "ReleaseDocumentReceived", endTime: releasedAt });
         }
         if(meetingPolicy.active(db,jobs)){
             db.dock||={};db.dock.queue||=[];
@@ -5387,7 +5406,12 @@ async function handleApi(req, res, pathname) {
             dockDisplay.ensureTickets(db);
         }
         writeDb(db);
-        return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob) });
+        return sendJson(res, 200, {
+            ok: true,
+            updatedCount: jobs.length,
+            roundHouseNumbers: jobs.map(item => item.houseNumber),
+            jobs: jobs.map(normalizeJob)
+        });
     }
     if (req.method === "POST" && pathname === "/api/inbound/document-check") {
         const payload = await parseBody(req);
