@@ -27,6 +27,7 @@ window.WarehouseInboundPage=(()=>{
  ${step(data.qaApproved,'5. แท็กและ QA','ติดแท็ก '+(j.tagInspection?.taggedBy||'ยังไม่มี')+' / QA '+(j.qaApproval?.approvedBy||'ยังไม่มี'))}
  ${step(!!j.locationId,'6. Location',j.warehouseLocation||j.locationId||'ยังไม่ได้จัดเก็บ')}
  ${step(complete,'7. ปิดรับ',time(j.inboundClosedAt))}
+ ${role==='Admin'&&j.sitFixture?.simulation===true&&j.status==='WaitingForDock'?`<p><button id="wiResetReturning" type="button" style="background:#b45309;color:#fff">รีเซ็ต SIT เป็นกำลังกลับ WH3</button><br><small>ทำได้เฉพาะก่อนมี Dock, หลักฐาน, receipt, QA หรือ Location</small></p>`:''}
  <p><a href="?view=dock">เปิดหน้าจัด Dock</a> · <a href="mobile.html">เปิดหน้าคนขับ</a> · <a href="?view=wh-quality">เปิดหน้าแท็ก/QA</a></p>
  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px">
  <section><h3>เอกสารและเปิดรับ</h3><label>ผลตรวจ <select id="wiDoc"><option value="Found">Found</option><option value="Missing">Missing</option></select></label>${field('wiDocFiles','เอกสารรับเข้า','file')}<label><input id="wiEi" type="checkbox"> EI ตรวจยืนยันเอกสารที่ขาดแล้ว</label>${field('wiDocNote','หมายเหตุเอกสาร')}<p><button id="wiSaveDoc" ${wh&&!complete?'':'disabled'}>บันทึกผลตรวจเอกสาร</button> <button id="wiOpen" ${wh&&!complete?'':'disabled'}>เปิดรับเข้า</button></p></section>
@@ -41,6 +42,7 @@ window.WarehouseInboundPage=(()=>{
  const v=id=>document.getElementById(id).value;
  const action=(id,fn)=>document.getElementById(id).onclick=e=>run(e.currentTarget,async()=>{await fn();await load();return 'บันทึกสำเร็จ ตรวจข้อมูลที่โหลดกลับจากระบบกลางแล้ว';});
  const control=async p=>post('/api/warehouse/inbound-control',{houseNumber:house,expectedRevision:j.inboundControlRevision||0,requestId:crypto.randomUUID(),...p});
+ document.getElementById('wiResetReturning')?.addEventListener('click',e=>run(e.currentTarget,async()=>{await post('/api/warehouse/inbound-control',{action:'reset-sit-returning',houseNumber:house});await load();return 'รีเซ็ต SIT เป็น ReturningWH3 แล้ว — คนขับสามารถกดถึง WH3 ได้';}));
  action('wiSaveDoc',async()=>post('/api/inbound/document-check',{houseNumber:house,documentStatus:v('wiDoc'),note:v('wiDocNote'),documentFiles:await files('wiDocFiles')}));
  action('wiOpen',async()=>post('/api/inbound/open',{houseNumber:house,eiConfirmed:document.getElementById('wiEi').checked}));
  action('wiInspect',async()=>control({action:'inspection',checks:Object.fromEntries([...document.querySelectorAll('.wiCheck')].map(e=>[e.value,e.checked])),wdChecklist:[...document.querySelectorAll('.wiWd:checked')].map(e=>e.value),stickerColor:v('wiColor')}));

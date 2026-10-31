@@ -95,6 +95,16 @@ async function handle({db,actor,method,p={},query={},at,saveFiles}){
     const job=(db.jobs||[]).find(j=>j.houseNumber===h);if(!job)fail('ไม่พบ House กรุณาค้นเลขหลักที่ชัดเจน',404);
     if(method==='GET')return snapshot(db,job);
     if(method!=='POST')fail('Method not allowed',405);
+    if(p.action==='reset-sit-returning'){
+        roles(actor,['Admin']);
+        if(job.sitFixture?.simulation!==true||!/^SIT-WH3-INBOUND-\d{8}-[A-Z]\d{1,2}$/.test(job.houseNumber))fail('รีเซ็ตได้เฉพาะ fixture SIT WH3 ที่ระบบสร้าง',403);
+        const hasProgress=(db.attachments||[]).some(f=>f.houseNumber===job.houseNumber)||job.driverDockHistory?.length||job.inboundReceipt||job.tagInspection||job.qaApproval||job.locationId||job.inboundOpenedAt||job.inboundInspection||job.inboundClosedAt||job.invoiceId||job.readyForBilling;
+        if(hasProgress)fail('งาน SIT เริ่มมีหลักฐานแล้ว ห้ามรีเซ็ตทับ ให้สร้างเลข SIT ใหม่');
+        Object.assign(job,{status:'ReturningWH3',driverRouteStatus:'ReturningWH3',completedAt:at,returningWh3At:at,pickupItems:[{houseNumber:job.houseNumber,carton:String(job.pieceCount||3),pickupDestination:'WH3'}],updatedAt:at});
+        for(const key of ['arrivedWh3At','arrivedWh3Gps','releaseDocumentReceivedAt','wh3QueuePriorityMinutes'])delete job[key];
+        job.sitFixture={...job.sitFixture,resetBy:actor.id,resetAt:at,note:'SIT reset to ReturningWH3 before any downstream evidence existed'};
+        return {...snapshot(db,job),mutated:true,activity:'SITInboundResetReturning'};
+    }
     roles(actor,whRoles);if(request(job,p))return {...snapshot(db,job),replayed:true};
     if((job.inboundClosedAt&&job.inboundClosedRevision===job.inboundReceipt?.revision)||job.invoiceId||job.readyForBilling||job.status==='Cancelled'||job.csRejected)fail('งานปิดรับ ส่งต่อ หรือพักโดย CS แล้ว ต้องตรวจผู้รับผิดชอบก่อนแก้รับเข้า');
     if(!recorded(at))fail('เวลาบันทึกไม่ถูกต้อง');
