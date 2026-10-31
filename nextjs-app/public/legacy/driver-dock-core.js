@@ -6,6 +6,8 @@
     const finished=new Set(['Billed','Completed','Cancelled','Rejected','PassCPOut','ReadyForBilling','BillingReviewed','InvoiceDrafted','InvoiceSent','TerminalArrived']);
     const staleDriverSelection=new Set(['Stored','ReadyForTerminal','Inbound']);
     const active=job=>job&&!finished.has(job.status);
+    const driverFinished=new Set(['Billed','Completed','PassCPOut','ReadyForBilling','BillingReviewed','InvoiceDrafted','InvoiceSent']);
+    const completedForDriver=job=>driverFinished.has(job?.status)||(job?.driverRouteStatus==='Available'&&Boolean(job?.wh3UnloadCompletedAt||job?.terminalClosedAt));
     const staleSelection=job=>staleDriverSelection.has(job?.status)||Boolean(job?.driverDock?.work?.unloadCompletedAt);
     const ticket=value=>Number.isSafeInteger(value)&&value>0?String(value).padStart(3,'0'):'—';
     function progress(job,bay){
@@ -38,5 +40,5 @@
         if(states.has('ReleasedForDock')||states.has('WaitingForDock'))return 'join-queue';
         return 'not-ready';
     }
-    return {active,ticket,select,project,lookup,progress,nextQueueAction};
+    return {active,completedForDriver,ticket,select,project,lookup,progress,nextQueueAction};
 });

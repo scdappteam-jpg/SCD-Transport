@@ -1601,7 +1601,7 @@ function bindEvents() {
             userId: state.currentUserId
         });
         await refresh();
-        showMobileActionModal("ได้รับใบตรวจปล่อยแล้ว", "House ถูกส่งเข้าคิวรอเข้าล็อก โดยระบบเรียงตาม SLA คงเหลือ");
+        showMobileActionModal("ได้รับใบตรวจปล่อยแล้ว", "House ถูกส่งเข้าคิวรอเข้าล็อกตาม SLA ขั้นตอนนี้ยังไม่จบงานคนขับ ต้องลงสินค้าที่ WH3 ให้ครบก่อน");
     }));
     $("#twinScanBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/inbound/twin-scan", {
@@ -2486,7 +2486,7 @@ function showConfirmSheet(title, desc, onOk) {
     gate("completePickupBtn", "ยืนยันรับสินค้าแล้ว?", "ระบบจะบันทึกเวลา รูปถ่าย และลายเซ็น เมื่อรับ House ครบ ระบบจะเปลี่ยนเป็นกำลังกลับ WH3 อัตโนมัติ");
     gate("loadCargoBtn", "ยืนยันโหลดสินค้าขึ้นรถ?", "ตรวจสินค้าครบตาม checklist และแปะ Sticker (ถ้าเป็นงานพิเศษ) แล้วใช่ไหม");
     gate("arriveWh3Btn", "ยืนยันถึง WH3 แล้ว?", "House ทั้งหมดในรอบจะเปลี่ยนเป็นรอใบตรวจปล่อย");
-    gate("releaseDocumentBtn", "ยืนยันได้รับใบตรวจปล่อยแล้ว?", "House จะเข้าคิวรอเข้าล็อกตาม SLA คงเหลือ");
+    gate("releaseDocumentBtn", "ยืนยันได้รับใบตรวจปล่อยแล้ว?", "House จะเข้าคิวรอเข้าล็อกตาม SLA และงานคนขับจะยังไม่จบจนกว่าจะลงสินค้าครบ");
 })();
 
 var foState = {
@@ -2651,7 +2651,7 @@ function driverDockStep(button){
         void runAction(button,async()=>{
             const files=event==='unload-complete'?await filesToCompressedBase64(input):[];
             await api('/api/driver/dock-event',{houseNumber:context.house,bayId:context.bay.id,assignedAt:context.bay.assignedAt,expectedRevision:context.progress?.revision||0,event,simulation,requestId:crypto.randomUUID(),evidence:files[0],note:sit?'SIT ONLY: simulated driver Dock event, no physical goods movement.':''});
-            toast('บันทึกขั้นตอน Dock แล้ว');
+            toast(event==='unload-complete'?'ลงสินค้า House นี้เสร็จแล้ว · รถจะว่างเมื่อลงครบทั้งรอบ':'บันทึกขั้นตอน Dock แล้ว');
         }).finally(()=>{mobileDockBusy=false;void renderMDock();});
     });
 }
@@ -2834,8 +2834,8 @@ async function renderMHome() {
         card.innerHTML = !rec ? `\n      <div class="fo-ci-status"><strong>ยังไม่ได้เช็คอินวันนี้</strong><span>เริ่มงานด้วยการเช็คอิน พร้อมรูปถ่ายและ GPS</span></div>\n      <button type="button" class="fo-primary-btn big" onclick="foGoCheckin()">เช็คอินเริ่มงาน</button>` : `\n      <div class="fo-ci-status">\n        <strong>${rec.checkOutTime ? "จบวันทำงานแล้ว" : "กำลังปฏิบัติงาน"} ${foUntaggedBadge(rec)}</strong>\n        <div class="fo-ci-grid">\n          <div><small>เริ่มงาน</small><b>${formatBangkokMobile(rec.checkInTime).slice(-8, -3) || "-"}</b><span>${gpsIn}</span></div>\n          <div><small>เลิกงาน</small><b>${rec.checkOutTime ? formatBangkokMobile(rec.checkOutTime).slice(-8, -3) : "—"}</b>${gpsOut ? `<span>${gpsOut}</span>` : ""}</div>\n        </div>\n      </div>\n      ${!rec.checkOutTime ? `<button type="button" class="fo-primary-btn big outline" onclick="foGoCheckin()">เช็คเอาท์เลิกงาน</button>` : ""}`;
     }
     const allDriverJobs = visibleDriverJobs();
-    const runningJobs = allDriverJobs.filter(j => ![ "Billed", "Completed", "PassCPOut" ].includes(j.status));
-    const completedJobs = allDriverJobs.filter(j => [ "Billed", "Completed", "PassCPOut" ].includes(j.status));
+    const runningJobs = allDriverJobs.filter(j => !DriverDock.completedForDriver(j));
+    const completedJobs = allDriverJobs.filter(j => DriverDock.completedForDriver(j));
     const cancelledJobs = allDriverJobs.filter(j => [ "Cancelled", "Rejected" ].includes(j.status));
     const jobs = runningJobs.filter(j => ![ "Cancelled", "Rejected" ].includes(j.status));
     const next = driverDockSelection(jobs);

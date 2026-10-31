@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- server domain boundary */
 const core=require('../../public/legacy/driver-dock-core.js');
 const {evidence}=require('./operations-control.cjs');
+const driverHistory=require('./operations-driver-history.cjs');
 const fail=(message,statusCode=409)=>{throw Object.assign(new Error(message),{statusCode});};
 const steps=['arrive','unload-start','unload-complete'];
 function prepare(db,actor,p,at=new Date().toISOString()){
@@ -30,7 +31,9 @@ function prepare(db,actor,p,at=new Date().toISOString()){
     if(!sit&&p.event==='arrive'&&job.inboundReceipt)fail('งานนี้มียอดรับแล้ว ต้องตรวจผู้รับผิดชอบก่อนบันทึกเข้าท่าย้อนหลัง');
     if(!Number.isFinite(Date.parse(at))||Date.parse(at)<Date.parse(bay.assignedAt)||progress.events.some(e=>Date.parse(e.at)>Date.parse(at)))fail('เวลา Dock ไม่ถูกต้อง');
     if(p.event==='unload-complete')evidence(p.evidence,'ภาพหรือเอกสารยืนยันลงสินค้าเสร็จ');
-    return {job,bay,progress,replayed:false,record:{requestId:p.requestId,event:p.event,at,by:actor.id,bayId:bay.id,assignedAt:bay.assignedAt,queueNumber:bay.queueNumber||null,simulation:sit,note:String(p.note||'').trim().slice(0,500),evidenceFileIds:[]}};
+    const roundId=driverHistory.round(job).id;
+    const roundJobs=roundId?(db.jobs||[]).filter(j=>j.driverId===job.driverId&&driverHistory.round(j).id===roundId):[job];
+    return {job,bay,progress,roundJobs,replayed:false,record:{requestId:p.requestId,event:p.event,at,by:actor.id,bayId:bay.id,assignedAt:bay.assignedAt,queueNumber:bay.queueNumber||null,simulation:sit,note:String(p.note||'').trim().slice(0,500),evidenceFileIds:[]}};
 }
 function apply(plan,files=[]){
     if(plan.replayed)return plan.record;
@@ -39,6 +42,9 @@ function apply(plan,files=[]){
     plan.job.driverDockHistory=[...plan.job.driverDockHistory||[],plan.record];
     const current=core.progress(plan.job,plan.bay);
     Object.assign(plan.job,{dockArrivedAt:current.arrivedAt,wh3UnloadStartedAt:current.unloadStartedAt,wh3UnloadCompletedAt:current.unloadCompletedAt,updatedAt:plan.record.at});
+    if(plan.record.event==='unload-complete'&&(plan.roundJobs||[plan.job]).every(j=>Number.isFinite(Date.parse(j.wh3UnloadCompletedAt)))){
+        for(const job of plan.roundJobs||[plan.job])Object.assign(job,{driverCompletedAt:plan.record.at,vehicleAvailableAt:plan.record.at,driverRouteStatus:'Available',updatedAt:plan.record.at});
+    }
     return plan.record;
 }
 module.exports={prepare,apply};

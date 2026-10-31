@@ -18,7 +18,16 @@ test('three steps preserve WH receipt, business status, assignment, policy and f
  }
  assert.equal(core.progress(db.jobs[0],db.dock.bays[0]).revision,3);
  assert.deepEqual(db.jobs[0].inboundReceipt,before.jobs[0].inboundReceipt);assert.equal(db.jobs[0].status,'InboundOpened');assert.deepEqual(db.dock,before.dock);assert.deepEqual(db.meetingSafety,before.meetingSafety);
+ assert.equal(db.jobs[0].driverRouteStatus,'Available');assert.equal(db.jobs[0].driverCompletedAt,'2026-10-28T01:03:00Z');assert.equal(db.jobs[0].vehicleAvailableAt,'2026-10-28T01:03:00Z');
  const old=structuredClone(db);const replay=events.prepare(db,actor,{...payload(),requestId:'new-arrive-request'},'2026-10-28T03:00:00Z');assert.equal(replay.replayed,true);events.apply(replay);assert.deepEqual(db,old);
+});
+test('a multi-House vehicle becomes available only after every House in its round is unloaded',()=>{
+ const db=fixture(),first=db.jobs[0];first.transportRoundId='ROUND-1';
+ const second=structuredClone(first);Object.assign(second,{houseNumber:'SIT-WH3-DOCK-20261028-A2',transportRoundId:'ROUND-1',driverDockHistory:[]});db.jobs.push(second);
+ db.dock.bays.push({id:'D10',status:'Occupied',houseNumber:second.houseNumber,assignedAt,queueNumber:6});
+ const complete=(house:string,bayId:string)=>{for(const [index,event] of ['arrive','unload-start','unload-complete'].entries()){const p={...payload(event,index),houseNumber:house,bayId,requestId:`${house}-${event}`,evidence:proof};events.apply(events.prepare(db,actor,p,`2026-10-28T01:${bayId==='D9'?'1':'2'}${index}:00Z`),event==='unload-complete'?[{fileId:`${house}-PROOF`}]:[]);}};
+ complete(first.houseNumber,'D9');assert.notEqual(first.driverRouteStatus,'Available');assert.notEqual(second.driverRouteStatus,'Available');
+ complete(second.houseNumber,'D10');assert.equal(first.driverRouteStatus,'Available');assert.equal(second.driverRouteStatus,'Available');assert.equal(first.driverCompletedAt,second.driverCompletedAt);
 });
 test('Driver ownership is mandatory including outside the SIT allowlist',()=>{
  for(const a of [null,{id:'driver',role:'Admin'},{id:'other',role:'Driver'}])assert.throws(()=>events.prepare(fixture(),a,payload()),/คนขับ|มอบหมาย/);

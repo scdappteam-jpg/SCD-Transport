@@ -52,6 +52,15 @@ test('home Dock action enforces arrival, release document and queue order',()=>{
  assert.equal(core.nextQueueAction({status:'Stored',driverRouteStatus:'ReleasedForDock'}),'join-queue');
  assert.equal(core.nextQueueAction({status:'Assigned',driverRouteStatus:'Assigned'}),'not-ready');
 });
+test('Driver work is complete only after unload or Terminal close makes the vehicle available',()=>{
+ assert.equal(core.completedForDriver({status:'WaitingForDock',driverRouteStatus:'ReleasedForDock'}),false);
+ assert.equal(core.completedForDriver({status:'Cancelled'}),false);
+ assert.equal(core.completedForDriver({status:'Rejected'}),false);
+ assert.equal(core.completedForDriver({status:'TerminalArrived'}),false);
+ assert.equal(core.completedForDriver({status:'WaitingForDock',driverRouteStatus:'Available'}),false);
+ assert.equal(core.completedForDriver({status:'WaitingForDock',driverRouteStatus:'Available',wh3UnloadCompletedAt:'2026-10-31T09:00:00Z'}),true);
+ assert.equal(core.completedForDriver({status:'Billed'}),true);
+});
 const source=fs.readFileSync(new URL('../public/legacy/mobile.js',import.meta.url),'utf8');
 test('actual Driver job renderer separates ticket, called Dock and storage location',()=>{
  const context=vm.createContext({DriverDock:core,foJobStatusMeta:()=>({th:'รอ Dock',en:'Waiting',tone:'amber'}),InboundReceipts:{house:()=>({})},currentUser:()=>({}),escapeHtmlMobile:(v:unknown)=>String(v),formatBangkokMobile:(v:unknown)=>String(v)});
@@ -66,6 +75,10 @@ test('home and Dock refresh share selection and stale async responses cannot rep
  assert.ok(source.includes('const next = driverDockSelection(jobs)'));
  assert.ok(source.includes('const house = driverDockSelection()?.houseNumber'));
  assert.ok(source.includes('if(request!==mobileDockRequest||house!=='));
+});
+test('mobile queue counts use physical Driver completion rather than release document status',()=>{
+ assert.ok(source.includes('allDriverJobs.filter(j => !DriverDock.completedForDriver(j))'));
+ assert.ok(source.includes('allDriverJobs.filter(j => DriverDock.completedForDriver(j))'));
 });
 test('home arrival button uses pickup arrival before Dock queue',()=>{
  assert.ok(source.includes('DriverDock.nextQueueAction(selectedJob)'));
