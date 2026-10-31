@@ -45,6 +45,13 @@ test('waiting ticket is stable and does not present suggested Dock as called',()
  assert.equal(core.ticket(projected.driverDock.queueNumber),'005');assert.equal(projected.driverDock.bayId,null);
  assert.equal(core.ticket(null),'—');
 });
+test('home Dock action enforces arrival, release document and queue order',()=>{
+ assert.equal(core.nextQueueAction({status:'ReturningWH3',driverRouteStatus:'ReturningWH3'}),'arrive-wh3');
+ assert.equal(core.nextQueueAction({status:'AwaitingReleaseDocument',driverRouteStatus:'ArrivedWH3'}),'await-release');
+ assert.equal(core.nextQueueAction({status:'WaitingForDock',driverRouteStatus:'ReleasedForDock'}),'join-queue');
+ assert.equal(core.nextQueueAction({status:'Stored',driverRouteStatus:'ReleasedForDock'}),'join-queue');
+ assert.equal(core.nextQueueAction({status:'Assigned',driverRouteStatus:'Assigned'}),'not-ready');
+});
 const source=fs.readFileSync(new URL('../public/legacy/mobile.js',import.meta.url),'utf8');
 test('actual Driver job renderer separates ticket, called Dock and storage location',()=>{
  const context=vm.createContext({DriverDock:core,foJobStatusMeta:()=>({th:'รอ Dock',en:'Waiting',tone:'amber'}),InboundReceipts:{house:()=>({})},currentUser:()=>({}),escapeHtmlMobile:(v:unknown)=>String(v),formatBangkokMobile:(v:unknown)=>String(v)});
@@ -59,4 +66,10 @@ test('home and Dock refresh share selection and stale async responses cannot rep
  assert.ok(source.includes('const next = driverDockSelection(jobs)'));
  assert.ok(source.includes('const house = driverDockSelection()?.houseNumber'));
  assert.ok(source.includes('if(request!==mobileDockRequest||house!=='));
+});
+test('home arrival button uses pickup arrival before Dock queue',()=>{
+ assert.ok(source.includes('DriverDock.nextQueueAction(selectedJob)'));
+ const arrival=source.slice(source.indexOf('async function mobileArriveWh3FromDock('),source.indexOf('async function mobileJoinDockQueue('));
+ assert.match(arrival,/\/api\/pickup\/arrive-wh3/);
+ assert.doesNotMatch(arrival,/\/api\/dock\/queue/);
 });

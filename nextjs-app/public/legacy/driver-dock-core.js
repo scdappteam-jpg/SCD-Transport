@@ -31,5 +31,12 @@
         const match=row=>(!allowed||allowed.has(row.houseNumber))&&(house?row.houseNumber===house:!!plate&&row.vehiclePlate===plate);
         return {bay:board.bays.find(match)||null,queue:board.queue.find(match)||null};
     }
-    return {active,ticket,select,project,lookup,progress};
+    function nextQueueAction(job){
+        const states=new Set([job?.driverRouteStatus,job?.status]);
+        if(states.has('ReturningWH3'))return 'arrive-wh3';
+        if(states.has('ArrivedWH3')||states.has('AwaitingReleaseDocument'))return 'await-release';
+        if(states.has('ReleasedForDock')||states.has('WaitingForDock'))return 'join-queue';
+        return 'not-ready';
+    }
+    return {active,ticket,select,project,lookup,progress,nextQueueAction};
 });

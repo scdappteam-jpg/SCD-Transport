@@ -2662,6 +2662,7 @@ async function renderMDock() {
     const request=++mobileDockRequest;
     const user = currentUser();
     const house = driverDockSelection()?.houseNumber || "";
+    const selectedJob = house ? findAnyJob(house) : null;
     const plate = user?.vehiclePlate || "";
     if (!house && !plate) { box.hidden = true; return; }
     let data = null;
@@ -2705,14 +2706,39 @@ async function renderMDock() {
     }
     box.hidden = false;
     box.className = "fo-card fo-dock-card none";
-    // ไม่มีงานที่ถือครองอยู่ = ยังจองช่องไม่ได้ ต้องบอกให้ชัด ไม่ใช่ปล่อยให้กดแล้วเด้ง error
+    const nextAction = DriverDock.nextQueueAction(selectedJob);
+    const houseToken = encodeURIComponent(house);
+    const actionControl = nextAction === "arrive-wh3"
+        ? `<button type="button" class="fo-primary-btn" onclick="mobileArriveWh3FromDock(this,'${houseToken}')">แจ้งว่าถึงหน้าคลังแล้ว</button>`
+        : nextAction === "await-release"
+            ? `<button type="button" class="fo-primary-btn outline" onclick="foFocusDriverJob('${houseToken}')">ถึง WH3 แล้ว · ไปขั้นรับใบตรวจปล่อย</button>`
+            : nextAction === "join-queue"
+                ? `<button type="button" class="fo-primary-btn" onclick="mobileJoinDockQueue('${escapeHtmlMobile(house)}')">เข้าคิวรอช่องเทียบท่า</button>`
+                : `<button type="button" class="fo-primary-btn outline" onclick="foFocusDriverJob('${houseToken}')">ดูขั้นตอนที่ต้องทำก่อน</button>`;
     box.innerHTML = house ? `
       <div class="fo-dock-lbl">ยังไม่ได้จองช่องเทียบท่า</div>
       <div class="fo-dock-sub">House ${escapeHtmlMobile(house)} · ท่าว่าง ${data.summary?.available ?? "-"} ท่า</div>
-      <button type="button" class="fo-primary-btn" onclick="mobileJoinDockQueue('${escapeHtmlMobile(house)}')">แจ้งว่าถึงหน้าคลังแล้ว</button>` : `
+      ${actionControl}` : `
       <div class="fo-dock-lbl">ยังจองช่องเทียบท่าไม่ได้</div>
       <div class="fo-dock-sub">ต้องมีใบงานที่มอบหมายให้คุณก่อน · ท่าว่างตอนนี้ ${data.summary?.available ?? "-"} ท่า</div>
       <button type="button" class="fo-primary-btn outline" onclick="showMnav('work')">ไปหน้างานของฉัน</button>`;
+}
+
+async function mobileArriveWh3FromDock(button, houseToken) {
+    const house = decodeURIComponent(houseToken || "");
+    if (!house) return toast("ยังไม่มีเลข House สำหรับยืนยันถึง WH3");
+    await runAction(button, async () => {
+        const gps = await requirePickupGps();
+        const result = await api("/api/pickup/arrive-wh3", {
+            houseNumber: house,
+            userId: state.currentUserId,
+            ...gps
+        });
+        await refresh();
+        const updatedCount = Number(result.updatedCount || result.jobs?.length || 0);
+        showMobileActionModal("ถึง WH3 แล้ว", `House บนรอบรถนี้ทั้ง ${updatedCount || 1} งาน เปลี่ยนเป็น รอใบตรวจปล่อยแล้ว`);
+        toast("ถึง WH3 แล้ว · รอใบตรวจปล่อย");
+    });
 }
 
 async function mobileJoinDockQueue(house) {
