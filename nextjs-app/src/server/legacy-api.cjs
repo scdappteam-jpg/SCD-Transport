@@ -1742,6 +1742,29 @@ function findPayloadJobs(db, payload) {
     return jobs.length && jobs.every(Boolean) ? jobs : [];
 }
 
+function pickupRoundKey(job) {
+    const explicit = job?.transportRoundId || job?.pickupBatchId || job?.batchId;
+    if (explicit) return `explicit:${explicit}`;
+    if (job?.driverId && job?.vehiclePlate && job?.routeStartedAt) {
+        const startedAt = new Date(job.routeStartedAt);
+        if (Number.isFinite(startedAt.getTime())) {
+            return `driver-start:${job.driverId}|${job.vehiclePlate}|${startedAt.toISOString()}`;
+        }
+    }
+    return "";
+}
+
+function findPickupArrivalRoundJobs(db, requestedJobs) {
+    if (!requestedJobs.length) return [];
+    const roundKeys = new Set(requestedJobs.map(pickupRoundKey).filter(Boolean));
+    if (!roundKeys.size) return requestedJobs;
+    const driverIds = new Set(requestedJobs.map(job => String(job.driverId || "")));
+    const expanded = (db.jobs || []).filter(job =>
+        driverIds.has(String(job.driverId || "")) && roundKeys.has(pickupRoundKey(job))
+    );
+    return expanded.length ? expanded : requestedJobs;
+}
+
 function pickupDispatchIsReady(jobs) {
     return jobs.length > 0 && jobs.every(job => job.csConfirmed && job.cargoIssuedAt);
 }
@@ -5275,10 +5298,14 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/pickup/arrive-wh3") {
         const payload = await parseBody(req);
-        const jobs = findPayloadJobs(db, payload);
-        const actor = requirePickupActor(db, req, jobs);
+        const requestedJobs = findPayloadJobs(db, payload);
+        const actor = requirePickupActor(db, req, requestedJobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ยืนยันถึง WH3 สำหรับงานนี้" });
         payload.userId = actor.id;
+        const jobs = findPickupArrivalRoundJobs(db, requestedJobs);
+        if (actor.role === "Driver" && jobs.some(item => String(item.driverId || "") !== actor.id)) {
+            return sendJson(res, 403, { error: "ไม่มีสิทธิ์ยืนยันถึง WH3 สำหรับงานนี้" });
+        }
         const job = jobs[0];
         if (!job) return sendJson(res, 404, { error: "Job not found" });
         if (!pickupDispatchIsReady(jobs)) return sendJson(res, 409, { error: "งานยังไม่พร้อมดำเนินการ ต้องได้รับอนุมัติจาก CS และเปิดใบงานก่อน" });
@@ -5301,7 +5328,12 @@ async function handleApi(req, res, pathname) {
             logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ArrivedWH3", endTime: arrivedAt });
         }
         writeDb(db);
-        return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob) });
+        return sendJson(res, 200, {
+            ok: true,
+            updatedCount: jobs.length,
+            roundHouseNumbers: jobs.map(item => item.houseNumber),
+            jobs: jobs.map(normalizeJob)
+        });
     }
     if (req.method === "POST" && pathname === "/api/pickup/release-document") {
         const payload = await parseBody(req);

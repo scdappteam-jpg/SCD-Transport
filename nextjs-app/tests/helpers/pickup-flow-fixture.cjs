@@ -23,7 +23,7 @@ async function route(db,name,p={},who=actor){
  const at=new Date(Date.parse('2026-10-24T09:00:00Z')+(minute++)*60000).toISOString();
  const save=(_db,args)=>{if(!args.base64&&!args.files?.length)return null;io.files++;const row={houseNumber:args.houseNumber,fileType:args.fileType,simulated:true};db.attachments.push(row);return row;};
  const c=vm.createContext({db,req:{method:'POST'},res:{},pathname,crypto,Date,Buffer,parseBody:async()=>payload,requireSessionRole:(_db,_req,roles)=>who&&roles.includes(who.role)?who:null,findJob:(_db,h)=>_db.jobs.find(j=>[j.houseNumber,j.hawbNumber].includes(h)),nowIso:()=>at,writeDb:()=>io.writes++,normalizeJob:j=>j,sendJson:(_r,status,body)=>({status,body}),operationsControl,pickupFlow,meetingPolicy:require(path.join(server,'meeting-policy.cjs')),saveBase64Files:save,saveBase64File:save});
- for(const name of ['findPayloadJobs','pickupDispatchIsReady','requirePickupActor','normalizePickupItems','logActivity','findOpenActivity'])vm.runInContext(fn(name),c);
+ for(const name of ['findPayloadJobs','pickupRoundKey','findPickupArrivalRoundJobs','pickupDispatchIsReady','requirePickupActor','normalizePickupItems','logActivity','findOpenActivity'])vm.runInContext(fn(name),c);
  return {...await vm.runInContext(`(async()=>{${source.slice(a,b)}})()`,c),io};
 }
 async function check(name,run){try{await run();cases.push({name,result:'PASS'});}catch(e){cases.push({name,result:'FAIL',detail:e.message});}}
@@ -55,6 +55,18 @@ module.exports=async()=>{
   for(const key of ['houseNumber','hawbNumber','mawbNumber','flightNo','flightTime','pieceCount','csInvoiceNo','csContactName','csContactPhone','driverId','driverName','vehiclePlate'])assert.equal(String(d.jobs[0][key]||''),String(seed[key]||''),key);
  });
  await check('หลังถึง WH3 แล้ว API ต้องไม่ย้อนกลับไปเริ่มรอบเดิม',async()=>{const d=await completed();await route(d,'arrive-wh3');reject(await route(d,'route-start'));});
+ await check('กดถึง WH3 จาก House เดียวต้องอัปเดตทุก House ในรอบรถเดียวกัน',async()=>{
+  const d=await completed(),first=d.jobs[0],second={...structuredClone(first),houseNumber:'SIM-F002',hawbNumber:'4840807197'};
+  first.batchId=second.batchId='BATCH-SAME-TRUCK';d.jobs.push(second);
+  const r=await route(d,'arrive-wh3');assert.equal(r.status,200);assert.equal(r.body.updatedCount,2);
+  assert.deepEqual(r.body.roundHouseNumbers.sort(),['SIM-F001','SIM-F002']);
+  for(const job of [first,second]){assert.equal(job.status,'AwaitingReleaseDocument');assert.equal(job.driverRouteStatus,'ArrivedWH3');assert.ok(job.arrivedWh3At);}
+ });
+ await check('ถ้า House ใดในรอบรถยังรับไม่ครบ ต้องบล็อกทั้งรอบโดยไม่อัปเดตบางส่วน',async()=>{
+  const d=await completed(),first=d.jobs[0],second={...structuredClone(first),houseNumber:'SIM-F002',hawbNumber:'4840807197',completedAt:null,status:'Loading',driverRouteStatus:'Loading'};
+  first.batchId=second.batchId='BATCH-INCOMPLETE-TRUCK';d.jobs.push(second);const before=structuredClone(d.jobs);
+  const r=await route(d,'arrive-wh3');assert.equal(r.status,409);assert.deepEqual(d.jobs,before);
+ });
  await check('จบรับซ้ำต้องไม่เพิ่มไฟล์ซ้ำหรือเลื่อนเวลารับเดิม',async()=>{const d=await completed(),files=d.attachments.length,at=d.jobs[0].completedAt;await route(d,'complete',valid());assert.equal(d.attachments.length,files);assert.equal(d.jobs[0].completedAt,at);});
  await check('สลับขั้นตอนหรือแปลภาษาแล้วข้อมูลชื่อคนขับและทะเบียนต้องไม่ถูกตัด',()=>{
  const mobile=fs.readFileSync(path.join(root,'public/legacy/mobile.js'),'utf8'),line='คนขับ: Driver A / สมชาย · รถ กข-1234';

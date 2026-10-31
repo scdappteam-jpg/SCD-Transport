@@ -1577,14 +1577,15 @@ function bindEvents() {
     }));
     $("#arriveWh3Btn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         const gps = await requirePickupGps();
-        await api("/api/pickup/arrive-wh3", {
+        const result = await api("/api/pickup/arrive-wh3", {
             houseNumber: primaryHouseNumber(),
             houseNumbers: pickupHouseNumbers(),
             userId: state.currentUserId,
             ...gps
         });
         await refresh();
-        showMobileActionModal("ถึง WH3 แล้ว", "House เปลี่ยนเป็น รอใบตรวจปล่อย");
+        const updatedCount = Number(result.updatedCount || result.jobs?.length || 0);
+        showMobileActionModal("ถึง WH3 แล้ว", `House บนรอบรถนี้ทั้ง ${updatedCount || 1} งาน เปลี่ยนเป็น รอใบตรวจปล่อยแล้ว`);
     }));
     $("#releaseDocumentBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/pickup/release-document", {
