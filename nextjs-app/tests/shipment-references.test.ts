@@ -76,20 +76,23 @@ test("Pickup reimport saves the HAWB column and keeps the existing job identity 
     const source = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
     const start = source.indexOf("function importPickupXlsxRows(");
     const end = source.indexOf("function isGlobalConsolFormat(", start);
-    const job = { id: "existing-job", houseNumber: "F842092988", status: "Stored" };
+    const job: any = { id: "existing-job", houseNumber: "F842092988", status: "Stored" };
     const context = {
         findJob: () => job,
         xlsxNumStr: (v: unknown) => v == null ? "" : String(v).trim(),
         xlsxUtcIso: () => "",
+        currentFeedPolicy: { allowsImportDate: () => true },
         upsertJob: (_db: unknown, values: object) => Object.assign(job, values),
         importPickupXlsxRows: undefined as unknown as (db: object, rows: unknown[][]) => { changedJobs: number }
     };
     vm.runInNewContext(source.slice(start, end), context);
-    const rows = [["ONHAND", "HAWB", "PICKUP", "QTY"], [job.houseNumber, 4840805761, "Customer", 6]];
+    const rows = [["ONHAND", "HAWB", "PICKUP", "QTY", "FLT", "MAWB"], [job.houseNumber, 4840805761, "Customer", 6, "TG123/03", "217-12345678"]];
     const result = context.importPickupXlsxRows({}, rows);
     assert.equal(result.changedJobs, 1);
     assert.equal(job.id, "existing-job");
     assert.equal(job.status, "Stored");
+    assert.equal(job.flightNo, "TG123/03");
+    assert.equal(job.mawbNumber, "217-12345678");
     assert.equal(refs.label(job, refs.createIndex([job])), "4840805761 · F842092988");
     rows[1][1] = "AIR";
     context.importPickupXlsxRows({}, rows);

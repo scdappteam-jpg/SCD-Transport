@@ -13,7 +13,7 @@
           ]
         },
         "filters": {
-          "q": "has:attachment (subject:(Consol Planning) OR subject:(Pickup Report) OR filename:xlsx OR filename:csv)"
+          "q": "newer_than:7d has:attachment (subject:(Consol Planning) OR subject:(Pickup Report) OR filename:xlsx OR filename:csv)"
         },
         "simple": false,
         "options": {

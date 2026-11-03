@@ -46,6 +46,7 @@ const dockVehicleGroup = require('./dock-vehicle-group.cjs');
 const driverDock = require('../../public/legacy/driver-dock-core.js');
 const driverDockEvents = require('./driver-dock-events.cjs');
 const releaseDocuments = require('./release-documents.cjs');
+const currentFeedPolicy = require('./current-feed-policy.cjs');
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -1251,11 +1252,11 @@ function dateOnlyBangkok(value) {
 }
 
 function jobBusinessDates(job = {}) {
-    return [ job.workDate, job.planDate, job.pickupDate, job.readyTime, job.flightTime, job.createdAt, job.updatedAt ].map(dateOnlyBangkok).filter(Boolean);
+    return currentFeedPolicy.jobBusinessDates(job);
 }
 
 function jobBelongsToBusinessDate(job, date) {
-    return jobBusinessDates(job).includes(date);
+    return currentFeedPolicy.jobBelongsToDate(job, date);
 }
 
 function createHrNotification(db, { recipientUserId, title, body, request, kind, actor }) {
@@ -1987,6 +1988,7 @@ function importScdRows(db, csvText) {
     let changedJobs = 0;
     let unchangedJobs = 0;
     let notIssuedCount = 0;
+    let skippedOldRows = 0;
     for (const row of records) {
         const pick = (...names) => {
             for (const name of names) {
@@ -2014,6 +2016,10 @@ function importScdRows(db, csvText) {
         const tel = pick("PHONE", "TEL", "Tel", "Telephone", "MOBILE", "PHONE_NO");
         const readyTime = parseScdDate(row.READY);
         const closeTime = parseScdDate(row.CLOSE);
+        if (!currentFeedPolicy.allowsImportDate(db, readyTime, closeTime)) {
+            skippedOldRows += 1;
+            continue;
+        }
         const existing = findJob(db, houseNumber);
         const changeSet = [];
         if (!existing) {
@@ -2089,6 +2095,7 @@ function importScdRows(db, csvText) {
         unchangedJobs: unchangedJobs,
         duplicateRows: duplicateRows,
         duplicateJobs: unchangedJobs + duplicateRows,
+        skippedOldRows: skippedOldRows,
         notIssued: notIssuedCount
     };
 }
@@ -2371,7 +2378,7 @@ function loadPlanRowsFromXlsx(xrows) {
 
 function importPickupXlsxRows(db, rows) {
     const imported = [], changes = [];
-    let newJobs = 0, changedJobs = 0, totalRows = 0;
+    let newJobs = 0, changedJobs = 0, totalRows = 0, skippedOldRows = 0;
     let map = null;
     for (const r of rows) {
         const labels = Array.from(r, v => String(v == null ? "" : v).trim().toUpperCase());
@@ -2388,6 +2395,8 @@ function importPickupXlsxRows(db, rows) {
                 dra: labels.indexOf("DRA"),
                 qty: labels.indexOf("QTY"),
                 weight: labels.indexOf("WEIGHT"),
+                flt: labels.indexOf("FLT") >= 0 ? labels.indexOf("FLT") : labels.indexOf("FLIGHT"),
+                mawb: labels.indexOf("MAWB") >= 0 ? labels.indexOf("MAWB") : labels.indexOf("MASTER"),
                 ready: labels.indexOf("READY"),
                 close: labels.indexOf("CLOSE"),
                 address: labels.indexOf("ADDRESS"),
@@ -2401,13 +2410,19 @@ function importPickupXlsxRows(db, rows) {
         const onhand = typeof onhandRaw === "number" ? onhandRaw > 1e6 ? xlsxNumStr(onhandRaw) : "" : String(onhandRaw || "").trim();
         if (!/^[A-Z]{0,3}\d{6,}$/i.test(onhand)) continue;
         totalRows += 1;
+        const readyTime = xlsxUtcIso(r[map.ready]);
+        const closeTime = xlsxUtcIso(r[map.close]);
+        if (!currentFeedPolicy.allowsImportDate(db, readyTime, closeTime)) {
+            skippedOldRows += 1;
+            continue;
+        }
         const existing = findJob(db, onhand);
         if (existing && existing.houseNumber !== onhand && (existing.mergedHouseNumbers || []).includes(onhand)) {
             imported.push(updateMergedPickup(existing, {
                 onhandNumber: onhand, pieceCount: xlsxNumStr(r[map.qty]),
                 pickupLocation: S(map.address), pickupPhone: S(map.phone),
-                contactPerson: S(map.contact), readyTime: xlsxUtcIso(r[map.ready]),
-                closeTime: xlsxUtcIso(r[map.close])
+                contactPerson: S(map.contact), readyTime,
+                closeTime
             }));
             changedJobs += 1;
             continue;
@@ -2442,10 +2457,10 @@ function importPickupXlsxRows(db, rows) {
             refsNo: S(map.refs),
             flightNo: S(map.flt),
             mawbNumber: xlsxNumStr(r[map.mawb]),
-            readyTime: xlsxUtcIso(r[map.ready]),
-            closeTime: xlsxUtcIso(r[map.close]),
+            readyTime,
+            closeTime,
             // CLOSE = เวลาปิดรับของสายการบิน ใช้เป็นกำหนดส่งได้แม้ยังไม่รู้เที่ยวบิน
-            cargoCutoffAt: xlsxUtcIso(r[map.close]),
+            cargoCutoffAt: closeTime,
             pickupDate: typeof r[map.ready] === "number" && r[map.ready] > 60 ? xlsxSerialToDate(r[map.ready]).toISOString().slice(0, 10) : "",
             status: existing ? existing.status : "Pending",
             adminPrepared: existing ? Boolean(existing.adminPrepared) : true,
@@ -2467,6 +2482,7 @@ function importPickupXlsxRows(db, rows) {
         duplicateRows: 0,
         totalRows: totalRows,
         uniqueRows: totalRows,
+        skippedOldRows: skippedOldRows,
         notIssued: imported.filter(j => !j.cargoIssuedAt).length
     };
 }
@@ -2609,7 +2625,7 @@ function parseGlobalConsolCsv(csvText) {
 function importGlobalConsolRows(db, csvText) {
     const shipments = parseGlobalConsolCsv(csvText);
     const imported = [], changes = [], lpRows = [];
-    let newJobs = 0, changedJobs = 0, unchangedJobs = 0, totalRows = 0;
+    let newJobs = 0, changedJobs = 0, unchangedJobs = 0, totalRows = 0, skippedOldRows = 0;
     for (const s of shipments) {
         const fltDateStr = parseFltDate(s.fltDate);
         const etdRaw = s.etd ? s.etd.replace(/^(\d+:\d+).*/, "$1") : "00:00";
@@ -2618,6 +2634,11 @@ function importGlobalConsolRows(db, csvText) {
         const flightDateTime = fltDateStr ? fltDateStr + "T" + etdTime + ":00+07:00" : "";
         for (const h of s.houses) {
             totalRows += 1;
+            const houseDate = parseFltDate(h.date);
+            if (!currentFeedPolicy.allowsImportDate(db, fltDateStr, houseDate)) {
+                skippedOldRows += 1;
+                continue;
+            }
             const houseNumber = h.houseNo;
             if (!houseNumber) continue;
             const dgUp = (h.dg || "N").toUpperCase();
@@ -2703,6 +2724,7 @@ function importGlobalConsolRows(db, csvText) {
         unchangedJobs: unchangedJobs,
         duplicateRows: 0,
         duplicateJobs: unchangedJobs,
+        skippedOldRows: skippedOldRows,
         notIssued: imported.filter(j => !j.cargoIssuedAt).length,
         format: "GlobalConsol",
         lpRows: lpRows
@@ -2721,6 +2743,7 @@ function recordImportHistory(db, result, fileName = "SCD Pickup Report.csv", sou
         changedJobs: result.changedJobs || 0,
         duplicateJobs: result.duplicateJobs || 0,
         duplicateRows: result.duplicateRows || 0,
+        skippedOldRows: result.skippedOldRows || 0,
         notIssued: result.notIssued || 0
     };
     db.importHistory = [ ...db.importHistory || [], entry ].slice(-5);
@@ -3823,16 +3846,19 @@ async function handleApi(req, res, pathname) {
         }
 
         db.integrations ||= {};
-        db.integrations.importedFeedHashes = {};
-        db.integrations.n8nEmailHashes = {};
-        db.integrations.n8nEmail = null;
+        // Keep historical file hashes so an old Gmail attachment cannot be
+        // imported again immediately after the cleanup.  The watermark also
+        // prevents a newly hashed old file from recreating old operational jobs.
+        db.integrations.importedFeedHashes ||= {};
+        db.integrations.n8nEmailHashes ||= {};
+        db.integrations.minimumImportDate = keepDate;
         db.integrations.lastFeedRun = {
             checked: 0,
             importedFiles: 0,
             jobs: 0,
             changes: 0,
             checkedAt: nowIso(),
-            note: `Purged old jobs, kept ${keepDate}`
+            note: `Purged old jobs, kept ${keepDate}; older feed rows are blocked`
         };
         logActivity(db, { activityType: "OldJobsPurged", actor: actor.name || actor.id, detail: `เหลืองานวันที่ ${keepDate}: ${keepJobs.length} ใบ / ลบงานเก่า ${removed.jobs} ใบ` });
         writeDb(db);
@@ -4500,6 +4526,7 @@ async function handleApi(req, res, pathname) {
             imported: 0,
             newJobs: 0,
             changedJobs: 0,
+            skippedOldRows: 0,
             skipped: 0,
             errors: 0
         };
@@ -4558,12 +4585,14 @@ async function handleApi(req, res, pathname) {
             summary.imported += result.imported.length;
             summary.newJobs += result.newJobs || 0;
             summary.changedJobs += result.changedJobs || 0;
+            summary.skippedOldRows += result.skippedOldRows || 0;
             summary.files.push({
                 file: name,
                 status: "imported",
                 kind: kind,
                 newJobs: result.newJobs || 0,
-                changedJobs: result.changedJobs || 0
+                changedJobs: result.changedJobs || 0,
+                skippedOldRows: result.skippedOldRows || 0
             });
         }
         const hashKeys = Object.keys(db.integrations.n8nEmailHashes);
@@ -4579,6 +4608,7 @@ async function handleApi(req, res, pathname) {
                 imported: summary.imported,
                 newJobs: summary.newJobs,
                 changedJobs: summary.changedJobs,
+                skippedOldRows: summary.skippedOldRows,
                 skipped: summary.skipped,
                 errors: summary.errors
             }
@@ -4594,6 +4624,7 @@ async function handleApi(req, res, pathname) {
             imported: summary.imported,
             newJobs: summary.newJobs,
             changedJobs: summary.changedJobs,
+            skippedOldRows: summary.skippedOldRows,
             skipped: summary.skipped,
             errors: summary.errors,
             files: summary.files

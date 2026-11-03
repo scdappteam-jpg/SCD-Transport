@@ -11268,19 +11268,24 @@ async function adminPurgeOldJobsKeepToday() {
     if (user?.role !== "Admin") return toast("เฉพาะ Admin เท่านั้นที่ล้างงานเก่าได้", "error");
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
     const jobs = state.dashboard?.jobs || [];
-    const isTodayJob = job => [ job.workDate, job.planDate, job.pickupDate, job.readyTime, job.flightTime, job.createdAt, job.updatedAt ].some(value => {
-        if (!value) return false;
-        const text = String(value);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text === today;
-        const d = new Date(text);
-        return !Number.isNaN(d.getTime()) && d.toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }) === today;
-    });
+    const isTodayJob = job => {
+        const operationalValues = [ job.workDate, job.planDate, job.pickupDate, job.readyTime, job.closeTime, job.flightTime ].filter(Boolean);
+        const values = operationalValues.length ? operationalValues : [ job.createdAt ];
+        return values.some(value => {
+            if (!value) return false;
+            const text = String(value);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text === today;
+            const d = new Date(text);
+            return !Number.isNaN(d.getTime()) && d.toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }) === today;
+        });
+    };
     const keepCount = jobs.filter(isTodayJob).length;
     const purgeCount = Math.max(0, jobs.length - keepCount);
     if (!window.confirm(
         `ล้างงานเก่าและเหลือเฉพาะงานวันนี้ (${today})?\n\n` +
         `จะเก็บงานวันนี้ประมาณ ${keepCount} ใบ\n` +
-        `จะลบงานเก่าประมาณ ${purgeCount} ใบ พร้อมคิว/แจ้งเตือน/เอกสารแนบที่ผูกกับงานเก่า\n\n` +
+        `จะลบงานเก่าประมาณ ${purgeCount} ใบ พร้อมคิว/แจ้งเตือน/เอกสารแนบที่ผูกกับงานเก่า\n` +
+        `ไฟล์เก่าจาก n8n จะถูกกันไม่ให้นำงานก่อน ${today} กลับเข้ามาอีก\n\n` +
         "Admin ทำรายการนี้ได้ทันที แต่ควรใช้เมื่อพร้อมเริ่มรอบงานใหม่แล้ว")) return;
     const word = await scdPrompt({
         title: "ยืนยันล้างงานเก่า",

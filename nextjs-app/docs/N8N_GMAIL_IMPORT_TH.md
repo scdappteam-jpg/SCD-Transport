@@ -49,7 +49,7 @@ SCD_NOTIFY_EMAIL=อีเมลที่จะรับสรุป เช่�
 ค่าเริ่มต้นใน workflow:
 
 ```text
-has:attachment (subject:(Consol Planning) OR subject:(Pickup Report) OR filename:xlsx OR filename:csv)
+newer_than:7d has:attachment (subject:(Consol Planning) OR subject:(Pickup Report) OR filename:xlsx OR filename:csv)
 ```
 
 ถ้าต้องการจำกัดผู้ส่ง ให้เพิ่มเช่น:
@@ -97,6 +97,7 @@ https://scd-transport.onrender.com/api/integrations/status
 ## หมายเหตุ
 
 - ถ้าไฟล์เดิมถูกส่งซ้ำ ระบบจะข้ามอัตโนมัติด้วย hash
+- หลัง Admin ใช้คำสั่ง “ล้างงานเก่า” ระบบจะตั้งวันเริ่มต้นของข้อมูล และปฏิเสธแถวงานที่เก่ากว่าวันนั้นเพื่อไม่ให้งานเก่ากลับเข้าคิว
 - ถ้าไฟล์ชื่อเดิมแต่เนื้อหาเปลี่ยน ระบบจะถือเป็นไฟล์ใหม่และ import
 - ระบบรองรับการแจ้งว่า `งานใหม่` และ `ข้อมูลเปลี่ยนแปลง` จากผล import ของ backend
 - ถ้าต้องการส่ง LINE เพิ่ม สามารถต่อ node HTTP Request หลัง `Build Notification` ไปยัง LINE Messaging API หรือ LINE Notify webhook ได้
