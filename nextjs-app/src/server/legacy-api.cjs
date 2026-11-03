@@ -3761,6 +3761,67 @@ async function handleApi(req, res, pathname) {
             dashboard: buildDashboard(db)
         });
     }
+    if (req.method === "POST" && pathname === "/api/admin/delete-job") {
+        const payload = await parseBody(req);
+        const actor = sessionUser(db, req);
+        if (!actor || actor.role !== "Admin") return sendJson(res, 403, {
+            ok: false,
+            error: "เฉพาะ Admin เท่านั้นที่ลบงานได้"
+        });
+        const houseNumber = String(payload.houseNumber || "").trim();
+        if (!houseNumber || payload.confirm !== `DELETE:${houseNumber}`) return sendJson(res, 400, {
+            ok: false,
+            error: "Invalid job deletion confirmation"
+        });
+        const beforeJobs = db.jobs || [];
+        const removedJobs = beforeJobs.filter(job => String(job.houseNumber || "").trim() === houseNumber);
+        if (!removedJobs.length) return sendJson(res, 404, { ok: false, error: `ไม่พบ House ${houseNumber}` });
+        const referencesHouse = item => {
+            const house = item?.houseNumber || item?.house || item?.hawb || item?.jobHouseNumber;
+            const houses = Array.isArray(item?.houseNumbers) ? item.houseNumbers : Array.isArray(item?.houses) ? item.houses : [];
+            return String(house || "").trim() === houseNumber || houses.map(value => String(value || "").trim()).includes(houseNumber);
+        };
+        const removed = { jobs: removedJobs.length };
+        db.jobs = beforeJobs.filter(job => String(job.houseNumber || "").trim() !== houseNumber);
+        for (const key of [ "billing", "loadPlans", "activityLogs", "attachments", "importChanges", "alerts", "taskGroups", "notifications", "serviceRecords" ]) {
+            const rows = Array.isArray(db[key]) ? db[key] : [];
+            db[key] = rows.filter(item => !referencesHouse(item));
+            removed[key] = rows.length - db[key].length;
+        }
+        db.dock ||= {};
+        const dockQueue = Array.isArray(db.dock.queue) ? db.dock.queue : [];
+        db.dock.queue = dockQueue.filter(item => !referencesHouse(item));
+        removed.dockQueue = dockQueue.length - db.dock.queue.length;
+        const dockLog = Array.isArray(db.dock.log) ? db.dock.log : [];
+        db.dock.log = dockLog.filter(item => !referencesHouse(item));
+        removed.dockLog = dockLog.length - db.dock.log.length;
+        let freedLocations = 0;
+        for (const location of db.warehouseMap?.locations || []) {
+            if (!Array.isArray(location.occupiedBy) || !location.occupiedBy.includes(houseNumber)) continue;
+            location.occupiedBy = location.occupiedBy.filter(house => house !== houseNumber);
+            if (!location.occupiedBy.length) location.status = "Available";
+            freedLocations += 1;
+        }
+        for (const bay of db.dock.bays || []) {
+            if (String(bay.houseNumber || "").trim() !== houseNumber) continue;
+            if (bay.status !== "Closed") bay.status = "Available";
+            delete bay.houseNumber;
+            delete bay.vehiclePlate;
+            delete bay.driverName;
+            delete bay.assignedAt;
+        }
+        removed.freedLocations = freedLocations;
+        logActivity(db, { activityType: "JobDeleted", actor: actor.name || actor.id, detail: `Admin deleted House ${houseNumber}` });
+        writeDb(db);
+        await flushSupabasePersistence();
+        return sendJson(res, 200, {
+            ok: true,
+            houseNumber,
+            removedJobs: removed.jobs,
+            removed,
+            dashboard: buildDashboard(db)
+        });
+    }
     if (req.method === "POST" && pathname === "/api/admin/purge-old-jobs") {
         const payload = await parseBody(req);
         const actor = sessionUser(db, req);
