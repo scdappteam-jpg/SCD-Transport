@@ -21,7 +21,7 @@ const apply = process.argv.includes("--apply");
 let passwordMap;
 try {
     passwordMap = JSON.parse(process.env.SCD_AUTH_BOOTSTRAP_PASSWORDS_JSON);
-} catch (_) {
+} catch {
     console.error("SCD_AUTH_BOOTSTRAP_PASSWORDS_JSON must be a JSON object keyed by legacy user id.");
     process.exit(1);
 }

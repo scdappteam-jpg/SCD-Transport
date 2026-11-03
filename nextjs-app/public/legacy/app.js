@@ -6983,19 +6983,19 @@ const HR_LEAVE_TYPES = {
         th: "ลาป่วย",
         en: "Sick",
         tone: "red",
-        rule: "30 วัน/ปี, ย้อนหลังได้ 3 วัน, เกิน 2 วันแนบใบรับรองแพทย์"
+        rule: "โควตารายปีตามนโยบายที่บันทึกในระบบ"
     },
     personal: {
         th: "ลากิจ",
         en: "Personal",
         tone: "amber",
-        rule: "6 วัน/ปี, แจ้งล่วงหน้าอย่างน้อย 1 วัน"
+        rule: "โควตารายปีตามนโยบายที่บันทึกในระบบ"
     },
     vacation: {
         th: "ลาพักร้อน",
         en: "Vacation",
         tone: "green",
-        rule: "6-10 วัน/ปี ตามอายุงาน, แจ้งล่วงหน้าอย่างน้อย 3 วัน"
+        rule: "โควตารายปีตามนโยบายที่บันทึกในระบบ"
     },
     other: {
         th: "ลาอื่นๆ",
@@ -7067,15 +7067,18 @@ function hrSeedRequests() {
 }
 
 function applyHrData(data) {
-    state.leaveRequests = Array.isArray(data?.leaveRequests) ? data.leaveRequests : [];
-    state.otRequests = Array.isArray(data?.otRequests) ? data.otRequests : [];
-    if (data?.settings?.quotas && data?.settings?.otRates) state.hrSettings = data.settings;
-    state.hrEmployeeProfiles = data?.employeeProfiles || {};
-    state.hrCheckInLocations = Array.isArray(data?.checkInLocations) ? data.checkInLocations : [];
-    state.hrAttendanceCorrections = Array.isArray(data?.attendanceCorrections) ? data.attendanceCorrections : [];
-    state.hrNotifications = Array.isArray(data?.notifications) ? data.notifications : [];
-    state.hrPayrollProfiles = data?.payrollProfiles || {};
-    state.hrPayrollRuns = Array.isArray(data?.payrollRuns) ? data.payrollRuns : [];
+    if (Array.isArray(data?.leaveRequests)) state.leaveRequests = data.leaveRequests;
+    if (Array.isArray(data?.otRequests)) state.otRequests = data.otRequests;
+    if (data?.settings) state.hrSettings = data.settings;
+    if (data?.employeeProfiles) state.hrEmployeeProfiles = data.employeeProfiles;
+    if (Array.isArray(data?.checkInLocations)) state.hrCheckInLocations = data.checkInLocations;
+    if (Array.isArray(data?.attendanceCorrections)) state.hrAttendanceCorrections = data.attendanceCorrections;
+    if (Array.isArray(data?.notifications)) state.hrNotifications = data.notifications;
+    if (data?.payrollProfiles) state.hrPayrollProfiles = data.payrollProfiles;
+    if (Array.isArray(data?.payrollRuns)) state.hrPayrollRuns = data.payrollRuns;
+    if (data?.policy) state.hrPolicy = data.policy;
+    if ('readiness' in data) state.hrReadiness = data.readiness;
+    if (Array.isArray(data?.auditLogs)) state.hrAuditLogs = data.auditLogs;
 }
 
 async function loadHrData() {
@@ -7102,7 +7105,11 @@ function hrRequestDays(startDate, endDate, part) {
 }
 
 function hrUsedLeaveDays(employeeId, type) {
-    return (state.leaveRequests || []).filter(req => req.employeeId === employeeId && req.type === type && [ "approved", "pendingLead", "pendingExecutive" ].includes(req.status)).reduce((sum, req) => sum + Number(req.days || 0), 0);
+    const year = ($("#hrLeaveStart")?.value || dateInputValue()).slice(0, 4);
+    return (state.leaveRequests || []).filter(req => req.employeeId === employeeId && req.type === type && [ "approved", "pendingLead", "pendingExecutive" ].includes(req.status)).reduce((sum, req) => {
+        if (req.dayEntries) return sum + req.dayEntries.filter(day => day.day.startsWith(year + "-")).reduce((total, day) => total + day.amount, 0);
+        return sum + (String(req.startDate || "").startsWith(year + "-") ? Number(req.days || 0) : 0);
+    }, 0);
 }
 
 function hrQuotaRemaining(employeeId, type) {
@@ -7188,6 +7195,7 @@ async function submitHrOt(event) {
     const requestedHours = hrOtHours(startTime, endTime);
     try {
         const data = await api("/api/hr/ot", {
+            otType: $("#hrOtType")?.value || "normal",
             employeeId, requesterId: currentWebUser()?.id || "", date: $("#hrOtDate")?.value || dateInputValue(), startTime, endTime, requestedHours,
             workRef: $("#hrOtWorkRef")?.value.trim() || "งานปฏิบัติการ",
             reason: $("#hrOtReason")?.value.trim() || "-"
@@ -7324,9 +7332,10 @@ function renderHrCalendar() {
 function hrCanActOnRequest(req) {
     const viewer = currentWebUser();
     if (!viewer) return false;
+    if (viewer.id === req.employeeId) return false;
     if ([ "Admin", "Executive" ].includes(viewer.role)) return true;
     const profile = state.hrEmployeeProfiles?.[req.employeeId] || {};
-    return req.status === "pendingLead" && (profile.supervisorId === viewer.id || [ "WH3_TeamLeader", "Team_Transport" ].includes(viewer.role));
+    return ["pendingLead", "approved", "done"].includes(req.status) && profile.supervisorId === viewer.id;
 }
 
 function renderHrNotifications() {
@@ -7344,11 +7353,68 @@ async function markHrNotificationRead(id) {
 function renderHrSettings() {
     const q = state.hrSettings.quotas;
     const r = state.hrSettings.otRates;
-    $("#hrSettingsPanel").innerHTML = `\n    <div class="hr-policy-grid">\n      ${Object.entries(HR_LEAVE_TYPES).map(([type, meta]) => `\n        <article class="hr-policy ${meta.tone}">\n          <strong>${safeHtml(meta.th)} / ${safeHtml(meta.en)}</strong>\n          <span>โควตา ${safeHtml(q[type] || 0)} วัน</span>\n          <small>${safeHtml(meta.rule)}</small>\n        </article>`).join("")}\n    </div>\n    <div class="hr-rate-grid">\n      <article><span>OT วันปกติ</span><strong>x${r.normal}</strong></article>\n      <article><span>ทำงานวันหยุด</span><strong>x${r.holidayWork}</strong></article>\n      <article><span>OT วันหยุด</span><strong>x${r.holidayOt}</strong></article>\n    </div>\n    <p class="hr-note">กฎ OT: ต้องขอล่วงหน้าและอนุมัติก่อนทำงาน ระบบจ่ายตามชั่วโมงจริง แต่ไม่เกินชั่วโมงที่อนุมัติ</p>`;
+    $("#hrSettingsPanel").innerHTML = `\n    <div class="hr-policy-grid">\n      ${Object.entries(HR_LEAVE_TYPES).map(([type, meta]) => `\n        <article class="hr-policy ${meta.tone}">\n          <strong>${safeHtml(meta.th)} / ${safeHtml(meta.en)}</strong>\n          <span>โควตา ${safeHtml(q[type] || 0)} วัน</span>\n          <small>${safeHtml(meta.rule)}</small>\n        </article>`).join("")}\n    </div>\n    <div class="hr-rate-grid">\n      <article><span>OT วันปกติ</span><strong>x${r.normal}</strong></article>\n      <article><span>ทำงานวันหยุด</span><strong>x${r.holidayWork}</strong></article>\n      <article><span>OT วันหยุด</span><strong>x${r.holidayOt}</strong></article>\n    </div>\n    <p class="hr-note">OT ต้องผ่านอนุมัติ 2 ขั้น บันทึกชั่วโมงจริงได้ไม่เกินชั่วโมงที่อนุมัติ เงินเดือนยังเป็นร่างตรวจสอบ</p>`;
 }
 
 function hrCanManageCore() {
     return [ "Admin", "Executive" ].includes(currentWebUser()?.role);
+}
+
+function renderHrOperationsSetup() {
+    let container = document.getElementById("hrOperationsSetup");
+    if (!hrCanManageCore()) { container?.remove(); return; }
+    if (!container) {
+        container = document.createElement("section");
+        container.id = "hrOperationsSetup";
+        container.className = "hr-layout lower";
+        document.getElementById("hrCoreSetup")?.after(container);
+    }
+    const policy = state.hrPolicy || {};
+    const quotas = state.hrSettings.quotas || {};
+    const rates = state.hrSettings.otRates || {};
+    const workdays = policy.workdays || [0, 1, 2, 3, 4, 5, 6];
+    const checks = state.hrReadiness?.checks || [];
+    const money = value => value == null ? "ยังไม่คำนวณ" : Number(value).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    container.innerHTML = `
+      <section class="card hr-request-card">
+        <div class="card-head"><div><h2>นโยบายบริษัท</h2><p>${policy.calendarConfigured ? "บันทึกนโยบายแล้ว" : "ยังไม่ได้ยืนยันนโยบาย — ขณะนี้นับทุกวันเป็นวันทำงาน"}</p></div></div>
+        <form onsubmit="saveHrCompanyPolicy(event)">
+          <label>วันทำงาน</label><div class="hr-form-grid">${["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"].map((name, day) => `<label><input type="checkbox" name="hrWorkday" value="${day}" ${workdays.includes(day) ? "checked" : ""}>${name}</label>`).join("")}</div>
+          <label>วันหยุดบริษัท (YYYY-MM-DD หนึ่งวันต่อบรรทัด)<textarea id="hrCompanyHolidays" rows="4">${safeHtml((policy.holidays || []).join("\n"))}</textarea></label>
+          <div class="hr-form-grid">${Object.entries(HR_LEAVE_TYPES).map(([key, value]) => `<label>${safeHtml(value.th)} วัน/ปี<input id="hrQuota-${key}" type="number" min="0" max="366" step="0.5" required value="${safeHtml(quotas[key] ?? 0)}"></label>`).join("")}</div>
+          <p class="hr-note">ลาอื่น ๆ โควตา 0 หมายถึงไม่จำกัดโควตา คำขอรออนุมัติจะสำรองวันลาไว้ และคืนเมื่อยกเลิก/ไม่อนุมัติ</p>
+          <div class="hr-form-grid">${[["normal", "OT วันปกติ"], ["holidayWork", "ทำงานวันหยุด"], ["holidayOt", "OT วันหยุด"]].map(([key, label]) => `<label>${label} (เท่า)<input id="hrRate-${key}" type="number" min="0" max="10" step="0.01" required value="${safeHtml(rates[key] ?? 0)}"></label>`).join("")}
+          <label>ฐานชั่วโมงรายเดือนสำหรับคำนวณ OT ร่าง<input id="hrMonthlyOtDivisor" type="number" min="1" max="744" step="0.01" value="${safeHtml(policy.monthlyOtHoursDivisor ?? "")}" placeholder="เว้นว่างจนกว่าบริษัทจะยืนยัน"></label></div>
+          <button class="primary-button" type="submit">บันทึกนโยบายบริษัท</button>
+        </form>
+      </section>
+      <section class="card hr-request-card">
+        <div class="card-head"><div><h2>ตรวจความพร้อม HR</h2><p>เงินเดือนเป็นร่างตรวจสอบเท่านั้น ยังไม่เปิดจ่ายจริง</p></div></div>
+        ${checks.map(check => `<article class="hr-request-row"><div><strong>${check.ok ? "✓" : "ต้องตั้งค่า"} ${safeHtml(check.label)}</strong>${check.employeeIds?.length ? `<p>${safeHtml(check.employeeIds.map(hrEmployeeName).join(", "))}</p>` : ""}</div></article>`).join("")}
+        <h3>รอบเงินเดือนร่างล่าสุด</h3>
+        ${(state.hrPayrollRuns || []).slice(0, 3).map(run => `<article><strong>${safeHtml(run.periodStart)} – ${safeHtml(run.periodEnd)}</strong><p>${safeHtml((run.warnings || ["ร่างเดิม ต้องสร้างใหม่เพื่อใช้การตรวจสอบล่าสุด"]).join(" · "))}</p>
+          <div style="overflow:auto"><table class="hr-rep-tbl"><thead><tr><th>พนักงาน</th><th>OT ชม.</th><th>OT ร่าง</th><th>สุทธิร่าง</th></tr></thead><tbody>${(run.rows || []).map(row => `<tr><td>${safeHtml(hrEmployeeName(row.employeeId))}</td><td>${safeHtml(row.otHours)}</td><td>${safeHtml(money(row.otAmount))}</td><td>${safeHtml(money(row.netPay))}</td></tr>`).join("")}</tbody></table></div></article>`).join("") || '<p>ยังไม่มีรอบเงินเดือน</p>'}
+        <h3>ประวัติการดำเนินการล่าสุด</h3>
+        ${(state.hrAuditLogs || []).slice(0, 10).map(log => `<p>${safeHtml(formatDateTime(log.at))} · ${safeHtml(hrEmployeeName(log.actorId))} · ${safeHtml(log.action)} ${safeHtml(log.detail)} ${safeHtml(log.entityId)}</p>`).join("") || '<p>ยังไม่มีประวัติในระบบใหม่</p>'}
+      </section>`;
+}
+
+async function saveHrCompanyPolicy(event) {
+    event.preventDefault();
+    const button = event.submitter;
+    if (button) button.disabled = true;
+    try {
+        const quotas = Object.fromEntries(Object.keys(HR_LEAVE_TYPES).map(key => [key, document.getElementById("hrQuota-" + key).value]));
+        const otRates = Object.fromEntries(["normal", "holidayWork", "holidayOt"].map(key => [key, document.getElementById("hrRate-" + key).value]));
+        await api("/api/hr/policy", {
+            workdays: Array.from(document.querySelectorAll('input[name="hrWorkday"]:checked'), input => Number(input.value)),
+            holidays: document.getElementById("hrCompanyHolidays").value.split(/\r?\n/).map(day => day.trim()).filter(Boolean),
+            quotas, otRates, monthlyOtHoursDivisor: document.getElementById("hrMonthlyOtDivisor").value
+        });
+        await renderHR();
+        toast("บันทึกนโยบายบริษัทแล้ว เงินเดือนยังเป็นร่างตรวจสอบ");
+    } catch (error) { toast(error.message || "บันทึกนโยบายไม่สำเร็จ"); }
+    finally { if (button) button.disabled = false; }
 }
 
 function selectHrProfile(employeeId) {
@@ -7359,6 +7425,7 @@ function selectHrProfile(employeeId) {
 function renderHrCoreSetup() {
     const container = $("#hrCoreSetup");
     if (!container) return;
+    state.hrEditingLocationId = null;
     if (!hrCanManageCore()) {
         container.innerHTML = `<section class="card"><h2>ข้อมูล HR ส่วนกลาง</h2><p>โปรไฟล์พนักงานและจุดเช็กอินจัดการโดยผู้ดูแลระบบ</p></section>`;
         return;
@@ -7369,7 +7436,7 @@ function renderHrCoreSetup() {
     const profile = state.hrEmployeeProfiles[employeeId] || {};
     const payroll = state.hrPayrollProfiles[employeeId] || {};
     const assignments = new Set(profile.assignedLocationIds || []);
-    const locationRows = state.hrCheckInLocations.length ? state.hrCheckInLocations.map(location => `<article class="hr-calendar-item ${location.active === false ? "amber" : "green"}"><div><strong>${safeHtml(location.name)}</strong><span>${safeHtml(location.branch || "ไม่ระบุสาขา")} · ${safeHtml(location.latitude)}, ${safeHtml(location.longitude)} · รัศมี ${safeHtml(location.radiusMeters)} ม.</span></div><b>${location.active === false ? "ปิดใช้" : "ใช้งาน"}</b></article>`).join("") : `<p class="empty-state compact">ยังไม่มีจุดเช็กอิน — ระบบยังไม่บังคับรัศมี</p>`;
+    const locationRows = state.hrCheckInLocations.length ? state.hrCheckInLocations.map(location => `<article class="hr-calendar-item ${location.active === false ? "amber" : "green"}"><div><strong>${safeHtml(location.name)}</strong><span>${safeHtml(location.branch || "ไม่ระบุสาขา")} · ${safeHtml(location.latitude)}, ${safeHtml(location.longitude)} · รัศมี ${safeHtml(location.radiusMeters)} ม.</span></div><div><b>${location.active === false ? "ปิดใช้" : "ใช้งาน"}</b><button type="button" class="ghost-button" onclick="editHrCheckinLocation('${safeHtml(location.id)}')">แก้ไข</button><button type="button" class="ghost-button" onclick="toggleHrCheckinLocation('${safeHtml(location.id)}')">${location.active === false ? "เปิดใช้" : "ปิดใช้"}</button></div></article>`).join("") : `<p class="empty-state compact">ยังไม่มีจุดเช็กอิน — ระบบยังไม่บังคับรัศมี</p>`;
     container.innerHTML = `
       <section class="card hr-request-card">
         <div class="card-head"><div><h2>โปรไฟล์พนักงาน / Employee Profile</h2><p>ข้อมูลปฏิบัติงานสำหรับผูกหัวหน้างาน สาขา และจุดเช็กอิน</p></div></div>
@@ -7405,7 +7472,7 @@ function renderHrCoreSetup() {
           <label>Longitude<input id="hrLocationLongitude" type="number" step="any" placeholder="100.7501"></label>
           <label>รัศมี (เมตร)<input id="hrLocationRadius" type="number" min="20" max="5000" value="${safeHtml(state.hrSettings.attendance?.defaultRadiusMeters || 300)}"></label>
         </div>
-        <button type="button" class="primary-button" onclick="saveHrCheckinLocation()">เพิ่มจุดเช็กอิน</button>
+        <button type="button" class="primary-button" onclick="saveHrCheckinLocation()">บันทึกจุดเช็กอิน</button>
         <div id="hrLocationList" class="hr-calendar-list">${locationRows}</div>
         <div class="hr-form-grid">
           <label>รัศมีเริ่มต้น (เมตร)<input id="hrAttendanceDefaultRadius" type="number" min="20" max="5000" value="${safeHtml(state.hrSettings.attendance?.defaultRadiusMeters || 300)}"></label>
@@ -7432,7 +7499,7 @@ async function saveHrProfile() {
             assignedLocationIds
         });
         state.hrEmployeeProfiles = data.employeeProfiles || state.hrEmployeeProfiles;
-        renderHrCoreSetup();
+        await renderHR();
         toast("บันทึกโปรไฟล์พนักงานแล้ว");
     } catch (error) { toast(error.message || "บันทึกโปรไฟล์ไม่สำเร็จ"); }
 }
@@ -7449,6 +7516,8 @@ async function saveHrPayrollProfile() {
 async function saveHrCheckinLocation() {
     try {
         const data = await api("/api/hr/checkin-location", {
+            id: state.hrEditingLocationId || undefined,
+            active: state.hrCheckInLocations.find(item => item.id === state.hrEditingLocationId)?.active !== false,
             name: $("#hrLocationName").value,
             branch: $("#hrLocationBranch").value,
             latitude: $("#hrLocationLatitude").value,
@@ -7457,15 +7526,39 @@ async function saveHrCheckinLocation() {
         });
         state.hrCheckInLocations = data.checkInLocations || state.hrCheckInLocations;
         renderHrCoreSetup();
-        toast("เพิ่มจุดเช็กอินแล้ว");
+        state.hrEditingLocationId = null;
+        await loadHrData();
+        renderHrOperationsSetup();
+        toast("บันทึกจุดเช็กอินแล้ว");
     } catch (error) { toast(error.message || "เพิ่มจุดเช็กอินไม่สำเร็จ"); }
+}
+
+function editHrCheckinLocation(id) {
+    const location = state.hrCheckInLocations.find(item => item.id === id);
+    if (!location) return;
+    state.hrEditingLocationId = id;
+    $("#hrLocationName").value = location.name;
+    $("#hrLocationBranch").value = location.branch || "";
+    $("#hrLocationLatitude").value = location.latitude;
+    $("#hrLocationLongitude").value = location.longitude;
+    $("#hrLocationRadius").value = location.radiusMeters;
+    $("#hrLocationName").focus();
+}
+
+async function toggleHrCheckinLocation(id) {
+    const location = state.hrCheckInLocations.find(item => item.id === id);
+    if (!location) return;
+    try {
+        await api("/api/hr/checkin-location", { ...location, active: location.active === false });
+        await renderHR();
+    } catch (error) { toast(error.message || "เปลี่ยนสถานะจุดลงเวลาไม่สำเร็จ"); }
 }
 
 async function saveHrAttendanceSettings() {
     try {
         const data = await api("/api/hr/attendance-settings", { actorId: currentWebUser()?.id || "", defaultRadiusMeters: $("#hrAttendanceDefaultRadius").value, enforceAssignedLocations: $("#hrAttendanceEnforce").value === "true" });
         state.hrSettings = data.settings || state.hrSettings;
-        renderHrCoreSetup();
+        await renderHR();
         toast("บันทึกนโยบายเช็กอินแล้ว");
     } catch (error) { toast(error.message || "บันทึกนโยบายเช็กอินไม่สำเร็จ"); }
 }
@@ -7486,6 +7579,7 @@ async function renderHR() {
     renderHrCalendar();
     renderHrSettings();
     renderHrCoreSetup();
+    renderHrOperationsSetup();
     renderHrNotifications();
     renderHrReport();
     if (window.lucide) window.lucide.createIcons();
@@ -7577,6 +7671,7 @@ function hrInRange(dateStr) {
 function hrReportRows() {
     hrSeedRequests();
     var emps = hrEmployees().filter(function (e) {
+        if (!hrCanManageCore() && e.id !== currentWebUser()?.id && !(state.hrEmployeeProfiles || {})[e.id]) return false;
         if (hrReportFilter.dept && hrDeptOf(e) !== hrReportFilter.dept) return false;
         if (hrReportFilter.employees.length && !hrReportFilter.employees.includes(e.id)) return false;
         return true;
@@ -7585,29 +7680,57 @@ function hrReportRows() {
     var wantOt = hrReportFilter.type === "all" || hrReportFilter.type === "ot";
     return emps.map(function (e) {
         var leaves = wantLeave ? (state.leaveRequests || []).filter(function (r) {
-            return r.employeeId === e.id && r.status === "approved" && hrInRange(r.startDate);
+            return r.employeeId === e.id && r.status === "approved" && r.startDate <= hrReportFilter.to && r.endDate >= hrReportFilter.from;
         }) : [];
         var ots = wantOt ? (state.otRequests || []).filter(function (r) {
-            return r.employeeId === e.id && ["approved", "closed", "done"].includes(r.status) && hrInRange(r.date);
+            return r.employeeId === e.id && ["closed", "done"].includes(r.status) && hrInRange(r.date);
         }) : [];
-        var byType = function (t) { return leaves.filter(function (r) { return r.type === t; }).reduce(function (s, r) { return s + Number(r.days || 1); }, 0); };
-        var otHours = ots.reduce(function (s, r) { return s + Number(r.paidHours || r.requestedHours || 0); }, 0);
-        var rate = Number(((state.hrPayrollProfiles || {})[e.id] || {}).otRate || 0);
-        var attend = (state.attendanceAll || []).filter(function (a) { return a.userId === e.id && hrInRange(a.date); }).length;
+        var byType = function (t) { return leaves.filter(function (r) { return r.type === t; }).reduce(function (s, r) { return s + hrLeaveDaysInReport(r); }, 0); };
+        var otHours = ots.reduce(function (s, r) { return s + Number(r.paidHours ?? 0); }, 0);
+        var salary = Number(((state.hrPayrollProfiles || {})[e.id] || {}).baseSalary);
+        var divisor = Number(state.hrPolicy?.monthlyOtHoursDivisor);
+        var costKnown = Number.isFinite(salary) && divisor > 0 && ots.every(function (r) { return Number.isFinite(Number(r.rate)); });
+        var otPay = !ots.length ? 0 : costKnown ? Math.round(ots.reduce(function (sum, r) { return sum + Number(r.paidHours ?? 0) * Number(r.rate) * salary / divisor; }, 0) * 100) / 100 : null;
+        var attend = new Set((state.attendanceAll || []).filter(function (a) { return a.userId === e.id && !a.isSimulation && hrInRange(a.date); }).map(function (a) { return a.date; })).size;
         return {
             id: e.id, name: e.name, dept: hrDeptOf(e),
             workDays: attend,
             sick: byType("sick"), personal: byType("personal"), vacation: byType("vacation"),
             otHours: Math.round(otHours * 10) / 10,
-            otPay: Math.round(otHours * (rate || 0))
+            otPay: otPay
         };
     });
 }
 
-function renderHrReport() {
+function hrLeaveDaysInReport(request) {
+    var entries = request.dayEntries;
+    if (!entries) {
+        entries = [];
+        var start = Date.parse(request.startDate + "T00:00:00Z");
+        var end = Date.parse((request.endDate || request.startDate) + "T00:00:00Z");
+        for (var at = start; at <= end && at - start <= 366 * 86400000; at += 86400000) entries.push({ day: new Date(at).toISOString().slice(0, 10), amount: request.part && request.part !== "full" ? 0.5 : 1 });
+    }
+    return entries.filter(function (entry) { return hrInRange(entry.day); }).reduce(function (sum, entry) { return sum + entry.amount; }, 0);
+}
+
+async function renderHrReport() {
     var box = document.getElementById("hrReportBox");
     if (!box) return;
     if (!hrReportFilter.from) { var r = hrPresetRange("month"); hrReportFilter.from = r.from; hrReportFilter.to = r.to; }
+    const requestId = state.hrReportRequestId = (state.hrReportRequestId || 0) + 1;
+    const rangeKey = hrReportFilter.from + "/" + hrReportFilter.to;
+    state.hrReportLoading = true;
+    try {
+        const data = await api("/api/hr/attendance-history?from=" + encodeURIComponent(hrReportFilter.from) + "&to=" + encodeURIComponent(hrReportFilter.to), null, "GET");
+        if (requestId !== state.hrReportRequestId || rangeKey !== hrReportFilter.from + "/" + hrReportFilter.to) return;
+        state.attendanceAll = data.records || [];
+        state.hrReportReadyRange = rangeKey;
+    } catch (error) {
+        if (requestId !== state.hrReportRequestId) return;
+        state.hrReportReadyRange = "";
+        box.innerHTML = '<div class="empty-state">' + safeHtml(error.message || "โหลดรายงานไม่สำเร็จ") + '</div>';
+        return;
+    } finally { if (requestId === state.hrReportRequestId) state.hrReportLoading = false; }
     var rows = hrReportRows();
     var tot = rows.reduce(function (a, r) {
         a.sick += r.sick; a.personal += r.personal; a.vacation += r.vacation;
@@ -7647,14 +7770,14 @@ function renderHrReport() {
         '<div><span>พนักงานในรายงาน</span><b>' + rows.length + '</b></div>' +
         '<div><span>วันลารวม</span><b>' + (tot.sick + tot.personal + tot.vacation) + '</b><em>ป่วย ' + tot.sick + ' · กิจ ' + tot.personal + ' · พักร้อน ' + tot.vacation + '</em></div>' +
         '<div><span>ชั่วโมงโอทีรวม</span><b>' + Math.round(tot.ot * 10) / 10 + '</b></div>' +
-        '<div><span>ค่าโอทีรวม</span><b>฿' + tot.pay.toLocaleString("th-TH") + '</b></div>' +
+        '<div><span>ค่า OT ร่างรวม</span><b>฿' + (rows.some(function (r) { return r.otPay === null; }) ? 'ยังไม่คำนวณ' : tot.pay.toLocaleString("th-TH")) + '</b></div>' +
       '</div>' +
       (rows.length ? '<div class="hr-rep-tblwrap"><table class="hr-rep-tbl"><thead><tr>' +
-        '<th>พนักงาน</th><th>แผนก</th><th>วันเข้างาน</th><th>ลาป่วย</th><th>ลากิจ</th><th>พักร้อน</th><th>ชม. โอที</th><th>ค่าโอที</th></tr></thead><tbody>' +
+        '<th>พนักงาน</th><th>แผนก</th><th>วันเข้างาน</th><th>ลาป่วย</th><th>ลากิจ</th><th>พักร้อน</th><th>ชม. โอที</th><th>ค่า OT ร่าง</th></tr></thead><tbody>' +
         rows.map(function (r) {
           return '<tr><td>' + safeHtml(r.name) + '</td><td>' + safeHtml(r.dept) + '</td><td>' + r.workDays + '</td>' +
             '<td>' + r.sick + '</td><td>' + r.personal + '</td><td>' + r.vacation + '</td>' +
-            '<td>' + r.otHours + '</td><td><b>' + r.otPay.toLocaleString("th-TH") + '</b></td></tr>';
+            '<td>' + r.otHours + '</td><td><b>' + (r.otPay === null ? "ยังไม่คำนวณ" : r.otPay.toLocaleString("th-TH")) + '</b></td></tr>';
         }).join("") + '</tbody></table></div>'
         : '<div class="empty-state compact"><p>ไม่พบข้อมูลตามเงื่อนไขที่เลือก</p></div>') +
       '<div class="hr-rep-export"><div><b>ส่งออกรายงาน</b><span>ไฟล์จะมีช่วงวันที่และตัวกรองกำกับหัวรายงานเสมอ</span></div>' +
@@ -7672,10 +7795,11 @@ function hrReportTitle() {
 }
 
 function hrExportReport(kind) {
+    if (state.hrReportLoading || state.hrReportReadyRange !== hrReportFilter.from + "/" + hrReportFilter.to) return toast("กรุณารอรายงานโหลดสำเร็จก่อนส่งออก");
     var rows = hrReportRows();
     if (!rows.length) return toast("ไม่มีข้อมูลให้ส่งออก");
-    var head = ["พนักงาน", "แผนก", "วันเข้างาน", "ลาป่วย", "ลากิจ", "พักร้อน", "ชม.โอที", "ค่าโอที"];
-    var body = rows.map(function (r) { return [r.name, r.dept, r.workDays, r.sick, r.personal, r.vacation, r.otHours, r.otPay]; });
+    var head = ["พนักงาน", "แผนก", "วันเข้างาน", "ลาป่วย", "ลากิจ", "พักร้อน", "ชม.โอที", "ค่า OT ร่าง"];
+    var body = rows.map(function (r) { return [r.name, r.dept, r.workDays, r.sick, r.personal, r.vacation, r.otHours, r.otPay === null ? "ยังไม่คำนวณ" : r.otPay]; });
     var stamp = (hrReportFilter.from || "") + "_" + (hrReportFilter.to || "");
 
     if (kind === "pdf") {
@@ -7687,8 +7811,8 @@ function hrExportReport(kind) {
           'th{text-align:left;background:#eef2f8;padding:8px;border-bottom:1px solid #d9e0ea}' +
           'td{padding:8px;border-bottom:1px solid #eef2f8}</style></head><body>' +
           '<h1>รายงาน HR — S.C.D.TRANSPORT</h1><p>' + hrReportTitle() + '</p><table><thead><tr>' +
-          head.map(function (h) { return "<th>" + h + "</th>"; }).join("") + '</tr></thead><tbody>' +
-          body.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + c + "</td>"; }).join("") + "</tr>"; }).join("") +
+          head.map(function (h) { return "<th>" + safeHtml(h) + "</th>"; }).join("") + '</tr></thead><tbody>' +
+          body.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + safeHtml(c) + "</td>"; }).join("") + "</tr>"; }).join("") +
           '</tbody></table></body></html>');
         w.document.close();
         setTimeout(function () { w.print(); }, 350);
@@ -7697,8 +7821,8 @@ function hrExportReport(kind) {
 
     if (kind === "xls") {
         var tbl = '<table border="1"><tr><td colspan="8">' + hrReportTitle() + '</td></tr><tr>' +
-          head.map(function (h) { return "<th>" + h + "</th>"; }).join("") + "</tr>" +
-          body.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + c + "</td>"; }).join("") + "</tr>"; }).join("") + "</table>";
+          head.map(function (h) { return "<th>" + safeHtml(h) + "</th>"; }).join("") + "</tr>" +
+          body.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + safeHtml(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</table>";
         var blobX = new Blob(["﻿<html><head><meta charset='utf-8'></head><body>" + tbl + "</body></html>"], { type: "application/vnd.ms-excel" });
         hrDownload(blobX, "SCD-HR-Report-" + stamp + ".xls");
         return;
@@ -7736,8 +7860,11 @@ function exportHrMonthlyCsv() {
 }
 
 async function closeHrMonth() {
+    if (!hrCanManageCore()) return toast("เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น");
+    const month = await scdPrompt({ title: "ปิดรอบ OT", label: "เดือนที่ต้องการปิด (YYYY-MM)", value: dateInputValue().slice(0, 7) });
+    if (!month) return;
     try {
-        const data = await api("/api/hr/close-month", {});
+        const data = await api("/api/hr/close-month", { month });
         applyHrData(data);
         renderHR();
         toast(`ปิดรอบ OT รายเดือนแล้ว ${data.closed || 0} รายการ`);
@@ -7755,6 +7882,8 @@ async function createHrPayrollRun() {
     try {
         const data = await api("/api/hr/payroll-run", { actorId: currentWebUser()?.id || "", periodStart, periodEnd });
         state.hrPayrollRuns = data.payrollRuns || state.hrPayrollRuns;
+        await loadHrData();
+        renderHrOperationsSetup();
         toast(`สร้างรอบเงินเดือนแบบร่างแล้ว ${data.run?.rows?.length || 0} คน`);
     } catch (error) { toast(error.message || "สร้างรอบเงินเดือนไม่สำเร็จ"); }
 }
@@ -12435,7 +12564,7 @@ function svcExportExcel() {
     };
     var title = "สรุปเตรียมวางบิล " + (svcFilter.from || "") + " ถึง " + (svcFilter.to || "");
     var tbl = '<table border="1"><tr><td colspan="8">' + title + '</td></tr><tr>' +
-        head.map(function (h) { return "<th>" + h + "</th>"; }).join("") + "</tr>" +
+        head.map(function (h) { return "<th>" + safeHtml(h) + "</th>"; }).join("") + "</tr>" +
         rows.map(function (r) {
             return "<tr><td>" + r.date + "</td><td>" + r.typeLabel + "</td><td>" + (r.houseNumber || "") + "</td><td>" +
                 (r.mawbNumber || "") + "</td><td>" + (r.customerName || "") + "</td><td>" + (r.destination || "") +

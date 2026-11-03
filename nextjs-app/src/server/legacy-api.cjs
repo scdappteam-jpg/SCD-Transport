@@ -3,6 +3,8 @@ const billingClose = require('./billing-close.cjs');
 const stateHttp = require('./state-http.cjs');
 const supabaseServiceAuth = require('./supabase-service-auth.cjs');
 const meetingPolicy=require('./meeting-policy.cjs');
+const hrSecurity = require('./hr-security.cjs');
+const hrWorkflows = require('./hr-workflows.cjs');
 const http = require("http");
 
 const https = require("https");
@@ -1276,9 +1278,9 @@ function createHrNotification(db, { recipientUserId, title, body, request, kind,
 }
 
 function notifyHrApprover(db, request, kind) {
-    const profile = db.hr?.employeeProfiles?.[request.employeeId] || {};
-    const supervisorId = profile.supervisorId || (db.users || []).find(user => [ "WH3_TeamLeader", "Team_Transport" ].includes(user.role))?.id;
-    createHrNotification(db, { recipientUserId: supervisorId, title: "มีคำขอ HR รออนุมัติ", body: `${(db.users || []).find(user => user.id === request.employeeId)?.name || request.employeeId} ส่งคำขอ${kind === "ot" ? "โอที" : kind === "attendance" ? "แก้ไขเวลาเข้างาน" : "ลา"}`, request, kind });
+    hrSecurity.approvalRecipients(db, request.employeeId).forEach(recipientUserId => {
+        createHrNotification(db, { recipientUserId, title: "มีคำขอ HR รออนุมัติ", body: `${(db.users || []).find(user => user.id === request.employeeId)?.name || request.employeeId} ส่งคำขอ${kind === "ot" ? "โอที" : kind === "attendance" ? "แก้ไขเวลาเข้างาน" : "ลา"}`, request, kind });
+    });
 }
 
 function notifyHrExecutive(db, request, kind, actor) {
@@ -1290,25 +1292,11 @@ function notifyHrEmployee(db, request, kind, title, body) {
 }
 
 function applyApprovedAttendanceCorrection(db, request) {
-    const record = (db.attendance || []).find(item => item.userId === request.employeeId && item.date === request.targetDate);
-    if (!record) return;
-    const at = value => value ? `${request.targetDate}T${value}:00+07:00` : null;
-    if (request.requestedCheckIn) record.checkInTime = at(request.requestedCheckIn);
-    if (request.requestedCheckOut) record.checkOutTime = at(request.requestedCheckOut);
-    record.attendanceStatus = "approved_correction";
-    record.correctionRequestId = request.id;
-    record.correctionAppliedAt = nowIso();
+    return hrWorkflows.applyCorrection(db, request, nowIso());
 }
 
-function hrViewerCanAccessEmployee(db, viewer, employeeId) {
-    if (!viewer) return false;
-    if ([ "Admin", "Executive" ].includes(viewer.role)) return true;
-    if (viewer.id === employeeId) return true;
-    return db.hr?.employeeProfiles?.[employeeId]?.supervisorId === viewer.id;
-}
-
-function hrRequireSelfServiceActor(db, payload, employeeId) {
-    const actor = (db.users || []).find(user => user.id === payload.requesterId);
+function hrRequireSelfServiceActor(db, req, employeeId) {
+    const actor = sessionUser(db, req);
     if (!actor) return { error: "ไม่พบผู้ยื่นคำขอ" };
     if (actor.id !== employeeId && ![ "Admin", "Executive" ].includes(actor.role)) return { error: "ยื่นคำขอแทนได้เฉพาะผู้ดูแลระบบหรือผู้บริหาร" };
     return { actor };
@@ -3432,6 +3420,12 @@ async function handleApi(req, res, pathname) {
             if(result.mutated){logActivity(db,{houseNumber:result.job.houseNumber,userId:actor.id,activityType:result.activity});writeDb(db);}
             return sendJson(res,200,result);
         } catch(error){return sendJson(res,error.statusCode||503,{error:error.message});}
+    }
+    if (pathname.startsWith('/api/hr/') || pathname.startsWith('/api/attendance/')) {
+        try {
+            const payload = req.method === 'POST' ? await parseBody(req) : {};
+            hrSecurity.preflight(db, pathname, payload, sessionUser(db, req));
+        } catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
     }
     // All legacy and modern entry points cross this boundary before any file,
     // inventory, location or workflow mutation. Keep the parsed body reusable.
@@ -8061,15 +8055,17 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "GET" && pathname === "/api/hr/bootstrap") {
         const db = readDb();
-        const viewerId = new URL(req.url, "http://localhost").searchParams.get("viewerId") || "";
-        const viewer = (db.users || []).find(user => user.id === viewerId);
-        const visibleEmployee = employeeId => !viewerId || hrViewerCanAccessEmployee(db, viewer, employeeId);
+        const viewer = sessionUser(db, req);
+        const visibleEmployee = employeeId => hrSecurity.canView(db, viewer, employeeId);
         const visibleProfiles = Object.fromEntries(Object.entries(db.hr.employeeProfiles || {}).filter(([ employeeId ]) => visibleEmployee(employeeId)));
-        const notifications = (db.notifications || []).filter(item => item.module === "HR" && (!viewerId || (item.targetUserIds || []).includes(viewerId))).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))).slice(0, 30);
+        const notifications = (db.notifications || []).filter(item => item.module === "HR" && hrSecurity.notificationVisible(item, viewer)).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))).slice(0, 30);
         return sendJson(res, 200, {
             leaveRequests: (db.hr.leaveRequests || []).filter(request => visibleEmployee(request.employeeId)),
             otRequests: (db.hr.otRequests || []).filter(request => visibleEmployee(request.employeeId)),
             settings: db.hr.settings,
+            policy: hrWorkflows.policy(db),
+            readiness: hrSecurity.manages(viewer) ? hrWorkflows.readiness(db) : null,
+            auditLogs: hrSecurity.manages(viewer) ? (db.hr.auditLogs || []).slice(-50).reverse() : [],
             employeeProfiles: visibleProfiles,
             checkInLocations: db.hr.checkInLocations,
             attendanceCorrections: (db.hr.attendanceCorrections || []).filter(request => visibleEmployee(request.employeeId)),
@@ -8078,9 +8074,29 @@ async function handleApi(req, res, pathname) {
             notifications
         });
     }
+    if (req.method === 'POST' && pathname === '/api/hr/policy') {
+        const payload = await parseBody(req);
+        const db = readDb();
+        try { hrWorkflows.savePolicy(db, payload, sessionUser(db, req), nowIso()); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, payload, nowIso());
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, settings: db.hr.settings, policy: hrWorkflows.policy(db) });
+    }
+    if (req.method === 'GET' && pathname === '/api/hr/attendance-history') {
+        const db = readDb();
+        const query = new URL(req.url, 'http://localhost').searchParams;
+        const from = query.get('from'), to = query.get('to');
+        try { hrWorkflows.calendarDays(from, to, db); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
+        const records = hrSecurity.scoped(db, sessionUser(db, req), db.attendance, 'userId').filter(item => !item.isSimulation && item.date >= from && item.date <= to);
+        return sendJson(res, 200, { records, from, to });
+    }
     if (req.method === "POST" && pathname === "/api/hr/profile") {
         const payload = await parseBody(req);
         const db = readDb();
+        try { hrWorkflows.validateProfile(db, payload); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
         const user = (db.users || []).find(item => item.id === payload.employeeId);
         if (!user) return sendJson(res, 404, { error: "Employee not found" });
         const profile = db.hr.employeeProfiles[user.id] || { employeeId: user.id, createdAt: nowIso() };
@@ -8102,8 +8118,9 @@ async function handleApi(req, res, pathname) {
             updatedAt: nowIso()
         });
         db.hr.employeeProfiles[user.id] = profile;
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
-        return sendJson(res, 200, { ok: true, profile, employeeProfiles: db.hr.employeeProfiles });
+        return sendJson(res, 200, { ok: true, profile, employeeProfiles: hrSecurity.profiles(db, sessionUser(db, req)) });
     }
     if (req.method === "POST" && pathname === "/api/hr/checkin-location") {
         const payload = await parseBody(req);
@@ -8111,6 +8128,7 @@ async function handleApi(req, res, pathname) {
         const actor = sessionUser(db, req);
         if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น" });
         const name = String(payload.name || "").trim().slice(0, 160);
+        if ([payload.latitude, payload.longitude].some(value => !['number', 'string'].includes(typeof value) || String(value).trim() === '')) return sendJson(res, 400, { error: 'กรุณาระบุพิกัดจุดลงเวลาให้ครบ' });
         const latitude = Number(payload.latitude);
         const longitude = Number(payload.longitude);
         const radiusMeters = Number(payload.radiusMeters || db.hr.settings.attendance.defaultRadiusMeters || 300);
@@ -8121,6 +8139,7 @@ async function handleApi(req, res, pathname) {
             db.hr.checkInLocations.push(location);
         }
         Object.assign(location, { name, latitude, longitude, radiusMeters, active: payload.active !== false, branch: String(payload.branch || "").trim().slice(0, 160), updatedAt: nowIso() });
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
         return sendJson(res, 200, { ok: true, location, checkInLocations: db.hr.checkInLocations });
     }
@@ -8134,6 +8153,7 @@ async function handleApi(req, res, pathname) {
         const enforceAssignedLocations = payload.enforceAssignedLocations === true;
         if (enforceAssignedLocations && !(db.hr.checkInLocations || []).some(location => location.active !== false)) return sendJson(res, 409, { error: "ต้องสร้างจุดเช็กอินอย่างน้อย 1 จุดก่อนเปิดบังคับ GPS" });
         db.hr.settings.attendance = { defaultRadiusMeters, enforceAssignedLocations };
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
         return sendJson(res, 200, { ok: true, settings: db.hr.settings });
     }
@@ -8148,6 +8168,7 @@ async function handleApi(req, res, pathname) {
         const baseSalary = amount(payload.baseSalary);
         if (baseSalary === null) return sendJson(res, 400, { error: "ฐานเงินเดือนต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป" });
         db.hr.payrollProfiles[employee.id] = { employeeId: employee.id, baseSalary, fixedAllowance: amount(payload.fixedAllowance) || 0, fixedDeduction: amount(payload.fixedDeduction) || 0, bankName: String(payload.bankName || "").trim().slice(0, 120), bankAccountLast4: String(payload.bankAccountLast4 || "").replace(/\D/g, "").slice(-4), updatedAt: nowIso(), updatedBy: actor.id };
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
         return sendJson(res, 200, { ok: true, payrollProfiles: db.hr.payrollProfiles });
     }
@@ -8158,12 +8179,12 @@ async function handleApi(req, res, pathname) {
         if (!actor || ![ "Admin", "Executive" ].includes(actor.role)) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลระบบหรือผู้บริหารเท่านั้น" });
         const periodStart = String(payload.periodStart || "").slice(0, 10), periodEnd = String(payload.periodEnd || "").slice(0, 10);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart) || !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd) || periodEnd < periodStart) return sendJson(res, 400, { error: "ระบุช่วงรอบจ่ายไม่ถูกต้อง" });
-        const rows = Object.values(db.hr.payrollProfiles).map(profile => {
-            const otHours = (db.hr.otRequests || []).filter(request => request.employeeId === profile.employeeId && request.status === "closed" && request.date >= periodStart && request.date <= periodEnd).reduce((sum, request) => sum + Number(request.paidHours || 0), 0);
-            return { employeeId: profile.employeeId, baseSalary: profile.baseSalary, fixedAllowance: profile.fixedAllowance, fixedDeduction: profile.fixedDeduction, otHours, otAmount: 0, grossPay: profile.baseSalary + profile.fixedAllowance, netPay: profile.baseSalary + profile.fixedAllowance - profile.fixedDeduction };
-        });
-        const run = { id: `PAY-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, periodStart, periodEnd, status: "draft", rows, createdAt: nowIso(), createdBy: actor.id };
+        let preview;
+        try { preview = hrWorkflows.payrollPreview(db, periodStart, periodEnd); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
+        const run = { id: `PAY-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, periodStart, periodEnd, status: "draft", ...preview, createdAt: nowIso(), createdBy: actor.id };
         db.hr.payrollRuns.unshift(run);
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
         return sendJson(res, 201, { ok: true, run, payrollRuns: db.hr.payrollRuns });
     }
@@ -8172,23 +8193,31 @@ async function handleApi(req, res, pathname) {
         const db = readDb();
         const user = (db.users || []).find(item => item.id === payload.employeeId);
         if (!user) return sendJson(res, 404, { error: "Employee not found" });
-        const permission = hrRequireSelfServiceActor(db, payload, user.id);
+        const permission = hrRequireSelfServiceActor(db, req, user.id);
         if (permission.error) return sendJson(res, 403, { error: permission.error });
+        let checkedCorrection;
+        try { checkedCorrection = hrWorkflows.checkCorrection(db, payload); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
         const targetDate = String(payload.targetDate || "").slice(0, 10);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || !String(payload.reason || "").trim()) return sendJson(res, 400, { error: "Target date and reason are required" });
         const request = { id: `ATC-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, employeeId: user.id, targetDate, requestedCheckIn: String(payload.requestedCheckIn || "").slice(0, 5), requestedCheckOut: String(payload.requestedCheckOut || "").slice(0, 5), reason: String(payload.reason).trim().slice(0, 2e3), status: "pendingLead", createdAt: nowIso(), trail: [] };
+        Object.assign(request, checkedCorrection);
         db.hr.attendanceCorrections.unshift(request);
         notifyHrApprover(db, request, "attendance");
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
-        return sendJson(res, 201, { ok: true, request, attendanceCorrections: db.hr.attendanceCorrections });
+        return sendJson(res, 201, { ok: true, request, attendanceCorrections: hrSecurity.scoped(db, sessionUser(db, req), db.hr.attendanceCorrections) });
     }
     if (req.method === "POST" && pathname === "/api/hr/leave") {
         const payload = await parseBody(req);
         const db = readDb();
         const user = (db.users || []).find(item => item.id === payload.employeeId);
         if (!user) return sendJson(res, 404, { error: "Employee not found" });
-        const permission = hrRequireSelfServiceActor(db, payload, user.id);
+        const permission = hrRequireSelfServiceActor(db, req, user.id);
         if (permission.error) return sendJson(res, 403, { error: permission.error });
+        let checkedLeave;
+        try { checkedLeave = hrWorkflows.checkLeave(db, { ...payload, endDate: payload.endDate || payload.startDate, part: payload.part || 'full' }); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
         const startDate = String(payload.startDate || "").slice(0, 10);
         const endDate = String(payload.endDate || startDate).slice(0, 10);
         const part = [ "full", "am", "pm" ].includes(payload.part) ? payload.part : "full";
@@ -8210,18 +8239,23 @@ async function handleApi(req, res, pathname) {
             remainingQuotaAtSubmit: Number(payload.remainingQuotaAtSubmit || 0),
             trail: []
         };
+        Object.assign(request, checkedLeave);
         db.hr.leaveRequests.unshift(request);
         notifyHrApprover(db, request, "leave");
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
-        return sendJson(res, 201, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
+        return sendJson(res, 201, { ok: true, request, leaveRequests: hrSecurity.scoped(db, sessionUser(db, req), db.hr.leaveRequests), otRequests: hrSecurity.scoped(db, sessionUser(db, req), db.hr.otRequests), settings: db.hr.settings });
     }
     if (req.method === "POST" && pathname === "/api/hr/ot") {
         const payload = await parseBody(req);
         const db = readDb();
         const user = (db.users || []).find(item => item.id === payload.employeeId);
         if (!user) return sendJson(res, 404, { error: "Employee not found" });
-        const permission = hrRequireSelfServiceActor(db, payload, user.id);
+        const permission = hrRequireSelfServiceActor(db, req, user.id);
         if (permission.error) return sendJson(res, 403, { error: permission.error });
+        let checkedOt;
+        try { checkedOt = hrWorkflows.checkOt(db, payload); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
         const date = String(payload.date || "").slice(0, 10);
         const startTime = String(payload.startTime || "");
         const endTime = String(payload.endTime || "");
@@ -8249,10 +8283,12 @@ async function handleApi(req, res, pathname) {
             createdAt: nowIso(),
             trail: []
         };
+        Object.assign(request, checkedOt);
         db.hr.otRequests.unshift(request);
         notifyHrApprover(db, request, "ot");
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
-        return sendJson(res, 201, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
+        return sendJson(res, 201, { ok: true, request, leaveRequests: hrSecurity.scoped(db, sessionUser(db, req), db.hr.leaveRequests), otRequests: hrSecurity.scoped(db, sessionUser(db, req), db.hr.otRequests), settings: db.hr.settings });
     }
     if (req.method === "POST" && pathname === "/api/hr/request-action") {
         const payload = await parseBody(req);
@@ -8265,7 +8301,7 @@ async function handleApi(req, res, pathname) {
         if (!actor) return sendJson(res, 403, { error: "ไม่พบผู้ดำเนินการ HR" });
         const actorName = actor.name || "System";
         const action = String(payload.action || "");
-        const canLead = actor.role === "Admin" || actor.role === "Executive" || [ "WH3_TeamLeader", "Team_Transport" ].includes(actor.role) || db.hr?.employeeProfiles?.[request.employeeId]?.supervisorId === actor.id;
+        const canLead = hrSecurity.canLead(db, actor, request.employeeId);
         const canExecutive = [ "Admin", "Executive" ].includes(actor.role);
         const canCancel = actor.id === request.employeeId || canExecutive;
         if (action === "approve") {
@@ -8276,14 +8312,19 @@ async function handleApi(req, res, pathname) {
                 notifyHrExecutive(db, request, kind, actor);
             } else if (request.status === "pendingExecutive") {
                 if (!canExecutive) return sendJson(res, 403, { error: "เฉพาะผู้บริหารหรือผู้ดูแลระบบเท่านั้นที่อนุมัติขั้นสุดท้ายได้" });
+                try {
+                    if (kind === 'leave') hrWorkflows.checkLeave(db, request, request.id);
+                    if (kind === 'attendance') applyApprovedAttendanceCorrection(db, request);
+                } catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
                 request.status = "approved";
                 request.approvedAt = nowIso();
                 request.trail = [ ...(request.trail || []), { step: "executive", action: "approved", by: actorName, at: nowIso() } ];
-                if (kind === "attendance") applyApprovedAttendanceCorrection(db, request);
                 notifyHrEmployee(db, request, kind, "คำขอได้รับอนุมัติ", "คำขอ HR ของคุณได้รับอนุมัติแล้ว");
             } else return sendJson(res, 409, { error: "Request is not awaiting approval" });
         } else if (action === "recordActual" && kind === "ot" && request.status === "approved") {
-            const actual = Number(payload.actualHours);
+            let actual;
+            try { actual = hrWorkflows.number(payload.actualHours, 'ชั่วโมง OT จริง', 24); }
+            catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
             if (!Number.isFinite(actual) || actual < 0) return sendJson(res, 400, { error: "Invalid actual OT hours" });
             request.actualHours = actual;
             request.paidHours = Math.min(actual, Number(request.requestedHours || 0));
@@ -8303,22 +8344,28 @@ async function handleApi(req, res, pathname) {
             if (!canCancel) return sendJson(res, 403, { error: "ยกเลิกได้เฉพาะผู้ยื่นคำขอหรือผู้ดูแลระบบ" });
             request.status = "cancelled";
             request.cancelledAt = nowIso();
+            request.trail = [ ...(request.trail || []), { action: "cancelled", by: actorName, at: nowIso() } ];
         } else return sendJson(res, 409, { error: "Invalid HR status transition" });
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
-        return sendJson(res, 200, { ok: true, request, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, attendanceCorrections: db.hr.attendanceCorrections, settings: db.hr.settings });
+        return sendJson(res, 200, { ok: true, request, leaveRequests: hrSecurity.scoped(db, sessionUser(db, req), db.hr.leaveRequests), otRequests: hrSecurity.scoped(db, sessionUser(db, req), db.hr.otRequests), attendanceCorrections: hrSecurity.scoped(db, sessionUser(db, req), db.hr.attendanceCorrections), settings: db.hr.settings });
     }
     if (req.method === "POST" && pathname === "/api/hr/close-month") {
+        const payload = await parseBody(req);
         const db = readDb();
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(payload.month || ''))) return sendJson(res, 400, { error: 'กรุณาระบุเดือนที่จะปิดรอบ YYYY-MM' });
         let closed = 0;
         db.hr.otRequests.forEach(request => {
-            if (request.status === "done") {
+            if (request.status === "done" && String(request.date || '').startsWith(payload.month + '-') && request.employeeId !== sessionUser(db, req).id) {
                 request.status = "closed";
                 request.closedAt = nowIso();
+                request.trail = [...(request.trail || []), { action: 'closed', by: sessionUser(db, req).name, at: nowIso() }];
                 closed++;
             }
         });
+        hrWorkflows.audit(db, sessionUser(db, req), pathname, typeof payload === 'undefined' ? {} : payload, nowIso());
         writeDb(db);
-        return sendJson(res, 200, { ok: true, closed, leaveRequests: db.hr.leaveRequests, otRequests: db.hr.otRequests, settings: db.hr.settings });
+        return sendJson(res, 200, { ok: true, closed, leaveRequests: hrSecurity.scoped(db, sessionUser(db, req), db.hr.leaveRequests), otRequests: hrSecurity.scoped(db, sessionUser(db, req), db.hr.otRequests), settings: db.hr.settings });
     }
     if (req.method === "GET" && pathname === "/api/attendance/today") {
         const db = readDb();
@@ -8326,7 +8373,7 @@ async function handleApi(req, res, pathname) {
         const today = (new Date).toLocaleDateString("en-CA", {
             timeZone: TZ
         });
-        const records = db.attendance.filter(r => r.date === today);
+        const records = hrSecurity.scoped(db, sessionUser(db, req), db.attendance, 'userId').filter(r => r.date === today);
         const users = db.users || [];
         const enriched = records.map(r => {
             const u = users.find(u => u.id === r.userId);
@@ -8344,7 +8391,7 @@ async function handleApi(req, res, pathname) {
         const db = readDb();
         if (!db.attendance) db.attendance = [];
         const cutoff = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
-        const records = db.attendance.filter(r => (r.date || "") >= cutoff);
+        const records = hrSecurity.scoped(db, sessionUser(db, req), db.attendance, 'userId').filter(r => (r.date || "") >= cutoff);
         return sendJson(res, 200, {
             records: records
         });
@@ -8361,25 +8408,10 @@ async function handleApi(req, res, pathname) {
         if (!user) return sendJson(res, 404, {
             error: "User not found"
         });
-        const profile = db.hr?.employeeProfiles?.[userId] || {};
-        const configuredLocations = (db.hr?.checkInLocations || []).filter(location => location.active !== false);
-        const assignedIds = Array.isArray(profile.assignedLocationIds) ? profile.assignedLocationIds : [];
-        const eligibleLocations = assignedIds.length ? configuredLocations.filter(location => assignedIds.includes(location.id)) : configuredLocations;
-        const latitude = Number(gpsLat);
-        const longitude = Number(gpsLon);
-        const distanceMeters = (aLat, aLon, bLat, bLon) => {
-            const radians = value => value * Math.PI / 180;
-            const dLat = radians(bLat - aLat);
-            const dLon = radians(bLon - aLon);
-            const start = Math.sin(dLat / 2) ** 2 + Math.cos(radians(aLat)) * Math.cos(radians(bLat)) * Math.sin(dLon / 2) ** 2;
-            return 6371e3 * 2 * Math.atan2(Math.sqrt(start), Math.sqrt(1 - start));
-        };
-        const nearestLocation = Number.isFinite(latitude) && Number.isFinite(longitude) && eligibleLocations.length ? eligibleLocations.map(location => ({ ...location, distanceMeters: distanceMeters(latitude, longitude, Number(location.latitude), Number(location.longitude)) })).sort((a, b) => a.distanceMeters - b.distanceMeters)[0] : null;
-        const insideAllowedRadius = nearestLocation ? nearestLocation.distanceMeters <= Number(nearestLocation.radiusMeters || db.hr.settings.attendance.defaultRadiusMeters || 300) : false;
-        if (db.hr?.settings?.attendance?.enforceAssignedLocations && (!nearestLocation || !insideAllowedRadius) && !simulation) return sendJson(res, 403, {
-            error: "อยู่นอกจุดเช็คอินที่กำหนด กรุณาส่งคำขอแก้ไขเวลาแทน",
-            nearestLocation: nearestLocation ? { id: nearestLocation.id, name: nearestLocation.name, distanceMeters: Math.round(nearestLocation.distanceMeters), radiusMeters: nearestLocation.radiusMeters } : null
-        });
+        let locationResult;
+        try { locationResult = hrSecurity.attendanceLocation(db, userId, gpsLat, gpsLon); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
+        const { latitude, longitude, nearestLocation, insideAllowedRadius } = locationResult;
         const isSimulation = simulation === true;
         if (isSimulation) {
             const simulationJob = findJob(db, String(testHouse || "").trim());
@@ -8416,8 +8448,8 @@ async function handleApi(req, res, pathname) {
             date: today,
             checkInTime: nowIso(),
             checkInPhoto: photoUrl,
-            checkInLat: gpsLat || null,
-            checkInLon: gpsLon || null,
+            checkInLat: latitude,
+            checkInLon: longitude,
             checkInLocationId: nearestLocation?.id || null,
             checkInLocationName: nearestLocation?.name || "",
             checkInDistanceMeters: nearestLocation ? Math.round(nearestLocation.distanceMeters) : null,
@@ -8447,6 +8479,9 @@ async function handleApi(req, res, pathname) {
             error: "userId required"
         });
         const db = readDb();
+        let locationResult;
+        try { locationResult = hrSecurity.attendanceLocation(db, userId, gpsLat, gpsLon); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
         if (!db.attendance) db.attendance = [];
         const today = (new Date).toLocaleDateString("en-CA", {
             timeZone: TZ
@@ -8469,8 +8504,11 @@ async function handleApi(req, res, pathname) {
         }
         record.checkOutTime = nowIso();
         record.checkOutPhoto = photoUrl;
-        record.checkOutLat = gpsLat || null;
-        record.checkOutLon = gpsLon || null;
+        record.checkOutLat = locationResult.latitude;
+        record.checkOutLon = locationResult.longitude;
+        record.checkOutLocationId = locationResult.nearestLocation?.id || null;
+        record.checkOutLocationName = locationResult.nearestLocation?.name || '';
+        record.checkOutDistanceMeters = locationResult.nearestLocation ? Math.round(locationResult.nearestLocation.distanceMeters) : null;
         record.status = "checkout";
         writeDb(db);
         return sendJson(res, 200, {
@@ -8652,7 +8690,7 @@ async function handleApi(req, res, pathname) {
         const url2 = new URL(req.url, "http://localhost");
         const role = url2.searchParams.get("role") || "";
         const since = url2.searchParams.get("since") || "";
-        let notifs = db.notifications.filter(n => !n.read && (!n.targetRoles || !n.targetRoles.length || n.targetRoles.includes(role)));
+        let notifs = db.notifications.filter(n => !n.read && (n.module === 'HR' ? hrSecurity.notificationVisible(n, sessionUser(db, req)) : (!n.targetRoles || !n.targetRoles.length || n.targetRoles.includes(role))));
         if (since) notifs = notifs.filter(n => n.createdAt > since);
         return sendJson(res, 200, {
             notifications: notifs
@@ -8665,7 +8703,7 @@ async function handleApi(req, res, pathname) {
         if (!db.notifications) db.notifications = [];
         (ids || []).forEach(id => {
             const n = db.notifications.find(n => n.id === id);
-            if (n) n.read = true;
+            if (n && (n.module !== 'HR' || hrSecurity.notificationVisible(n, sessionUser(db, req)))) n.read = true;
         });
         writeDb(db);
         return sendJson(res, 200, {

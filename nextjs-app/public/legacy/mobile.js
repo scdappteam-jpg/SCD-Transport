@@ -2208,13 +2208,20 @@ function startAttCamera() {
 }
 
 function refreshGpsForAtt() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(pos => {
-        attState.gpsLat = pos.coords.latitude;
-        attState.gpsLon = pos.coords.longitude;
-    }, () => {}, {
-        enableHighAccuracy: true,
-        timeout: 8e3
+    // Clear the previous reading: a failed refresh must not reuse check-in GPS.
+    attState.gpsLat = null;
+    attState.gpsLon = null;
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject(new Error("อุปกรณ์ไม่รองรับ GPS"));
+        navigator.geolocation.getCurrentPosition(pos => {
+            attState.gpsLat = pos.coords.latitude;
+            attState.gpsLon = pos.coords.longitude;
+            resolve({ gpsLat: pos.coords.latitude, gpsLon: pos.coords.longitude });
+        }, () => reject(new Error("ระบุตำแหน่งไม่ได้ กรุณาเปิดสิทธิ์ GPS แล้วลองอีกครั้ง")), {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 1e4
+        });
     });
 }
 
@@ -2274,7 +2281,7 @@ function handleAttPhotoFile(file) {
         }
         if (startBtn) startBtn.hidden = true;
         if (retakeBtn) retakeBtn.hidden = false;
-        refreshGpsForAtt();
+        refreshGpsForAtt().catch(() => {});
     };
     img.onerror = () => {
         URL.revokeObjectURL(url);
@@ -2313,11 +2320,11 @@ async function submitAttCheckin() {
         btn.textContent = "กำลังบันทึก...";
     }
     try {
+        const gps = await refreshGpsForAtt();
         const res = await api("/api/attendance/checkin", {
             userId: user.id,
             photo: attState.photoBase64,
-            gpsLat: attState.gpsLat,
-            gpsLon: attState.gpsLon,
+            ...gps,
             zone: zone,
             jobType: jobType
         });
@@ -2390,13 +2397,11 @@ async function submitAttCheckout() {
         btn.textContent = "กำลังบันทึก...";
     }
     try {
-        refreshGpsForAtt();
-        await new Promise(r => setTimeout(r, 500));
+        const gps = await refreshGpsForAtt();
         const res = await api("/api/attendance/checkout", {
             userId: user.id,
             photo: attState.photoBase64,
-            gpsLat: attState.gpsLat,
-            gpsLon: attState.gpsLon
+            ...gps
         });
         attState.currentRecord = null;
         attState.photoBase64 = null;
