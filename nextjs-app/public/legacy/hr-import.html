@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HR Roster Import · SCD</title>
+  <style>
+    body{font-family:Kanit,Arial,sans-serif;background:#f3f6fa;color:#14283d;margin:0;padding:32px}.card{max-width:760px;margin:auto;background:#fff;border-radius:18px;padding:28px;box-shadow:0 16px 45px #17324d1f}h1{margin-top:0}.warning{background:#fff3cd;border:1px solid #ffd970;border-radius:12px;padding:14px}.row{margin:18px 0}button,input{font:inherit}button{border:0;border-radius:10px;padding:12px 18px;background:#145da0;color:#fff;font-weight:700;cursor:pointer;margin-right:8px}button.danger{background:#b42318}button:disabled{opacity:.45;cursor:not-allowed}pre{white-space:pre-wrap;background:#0f2a43;color:#d9edff;padding:16px;border-radius:12px;min-height:90px}.muted{color:#60758a}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>นำเข้าพนักงานปัจจุบัน</h1>
+    <p class="warning">คงบัญชี Admin เดิมไว้ เปลี่ยนบัญชีเดิมอื่นเป็น Inactive และสร้างพนักงานจากไฟล์ใหม่ พร้อมโปรไฟล์ เงินเดือน และรหัสผ่านแบบเข้ารหัส</p>
+    <div class="row"><input id="file" type="file" accept="application/json,.json"></div>
+    <div class="row"><button id="preview" disabled>ตรวจสอบก่อนนำเข้า</button><button id="apply" class="danger" disabled>นำเข้าจริง</button></div>
+    <p class="muted">หน้านี้ไม่บันทึกรหัสผ่านลง browser หรือ console</p>
+    <pre id="result">เลือกไฟล์ทะเบียน JSON เพื่อเริ่มตรวจสอบ</pre>
+  </main>
+  <script src="/legacy/hr-import.js"></script>
+</body>
+</html>
+
+

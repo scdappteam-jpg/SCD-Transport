@@ -5,6 +5,7 @@ const supabaseServiceAuth = require('./supabase-service-auth.cjs');
 const meetingPolicy=require('./meeting-policy.cjs');
 const hrSecurity = require('./hr-security.cjs');
 const hrWorkflows = require('./hr-workflows.cjs');
+const hrBulkImport = require('./hr-bulk-import.cjs');
 const http = require("http");
 
 const https = require("https");
@@ -8165,6 +8166,24 @@ async function handleApi(req, res, pathname) {
             payrollRuns: viewer && [ "Admin", "Executive" ].includes(viewer.role) ? db.hr.payrollRuns.slice(0, 24) : [],
             notifications
         });
+    }
+    if (req.method === "POST" && pathname === "/api/hr/bulk-import") {
+        const payload = await parseBody(req);
+        const db = readDb();
+        const actor = sessionUser(db, req);
+        let result;
+        try {
+            result = hrBulkImport.importRoster(db, {
+                actor,
+                records: payload.records,
+                preview: payload.preview !== false,
+                now: nowIso()
+            });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
+        if (!result.preview) writeDb(db);
+        return sendJson(res, 200, { ok: true, ...result });
     }
     if (req.method === 'POST' && pathname === '/api/hr/policy') {
         const payload = await parseBody(req);
