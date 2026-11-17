@@ -6926,8 +6926,9 @@ function renderStaffDetail(user) {
 }
 
 function renderStaff() {
-    const users = state.users || [];
-    const stats = state.dashboard?.staffStats || [];
+    const users = (state.users || []).filter(user => user.status !== "Inactive");
+    const activeIds = new Set(users.map(user => user.id));
+    const stats = (state.dashboard?.staffStats || []).filter(item => activeIds.has(item.userId || item.id));
     $("#staffTotal").textContent = users.length;
     $("#staffAvgKpi").textContent = `${stats.length ? Math.round(stats.reduce((sum, item) => sum + item.kpi, 0) / stats.length) : 0}%`;
     $("#staffLineConnected").textContent = users.filter(user => user.lineConnected || user.lineUserId).length;
