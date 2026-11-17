@@ -6,6 +6,7 @@ const meetingPolicy=require('./meeting-policy.cjs');
 const hrSecurity = require('./hr-security.cjs');
 const hrWorkflows = require('./hr-workflows.cjs');
 const hrBulkImport = require('./hr-bulk-import.cjs');
+const contactDirectory = require('./contact-directory.cjs');
 const http = require("http");
 
 const https = require("https");
@@ -564,6 +565,8 @@ function ensureDbShape(db) {
     db.importHistory ||= [];
     db.alerts ||= [];
     db.customers ||= [];
+    db.contacts ||= [];
+    db.contactImports ||= [];
     db.attendance ||= [];
     db.taskGroups ||= [];
     db.notifications ||= [];
@@ -3586,6 +3589,34 @@ async function handleApi(req, res, pathname) {
             customers: db.customers,
             dashboard: buildDashboard(db)
         });
+    }
+    if (req.method === "GET" && pathname === "/api/contacts") {
+        const viewer = sessionUser(db, req);
+        if (!viewer) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+        if (viewer.role === "EI_Customer") return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดูสมุดติดต่อภายใน" });
+        const contacts = contactDirectory.visibleContacts(db);
+        return sendJson(res, 200, {
+            contacts,
+            categories: [...new Set(contacts.map(item => item.category))].sort((a, b) => a.localeCompare(b, "th")),
+            canImport: viewer.role === "Admin"
+        });
+    }
+    if (req.method === "POST" && pathname === "/api/contacts/bulk-import") {
+        const payload = await parseBody(req);
+        const currentDb = readDb();
+        let result;
+        try {
+            result = contactDirectory.importContacts(currentDb, {
+                actor: sessionUser(currentDb, req),
+                records: payload.records,
+                preview: payload.preview !== false,
+                now: nowIso()
+            });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
+        if (!result.preview) writeDb(currentDb);
+        return sendJson(res, 200, { ok: true, ...result });
     }
     if (req.method === "POST" && pathname === "/api/scan-barcode") {
         const raw = await readRawBody(req);

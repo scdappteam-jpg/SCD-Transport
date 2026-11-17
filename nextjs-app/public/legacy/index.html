@@ -19,7 +19,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=20261025-billed-confirm">
+    <link rel="stylesheet" href="styles.css?v=20261117-contact-directory">
     <link rel="stylesheet" href="fleet-demo.css?v=20260829">
     <link rel="stylesheet" href="mobile-layout.css?v=20260822e">
     <style>[hidden]{display:none !important}</style>
@@ -185,6 +185,10 @@
           <button class="nav-item" type="button" data-view="staff">
             <i data-lucide="users" aria-hidden="true"></i>
             <b>พนักงาน</b>
+          </button>
+          <button class="nav-item" type="button" data-view="contacts">
+            <i data-lucide="contact-round" aria-hidden="true"></i>
+            <b>ข้อมูลติดต่อ</b>
           </button>
           <button class="nav-item" type="button" data-view="hr">
             <i data-lucide="calendar-heart" aria-hidden="true"></i>
@@ -699,6 +703,35 @@
                 <article class="metric-card"><i data-lucide="x-circle" class="icon red" aria-hidden="true"></i><p>งานผิดพลาด / Errors</p><strong id="staffErrorMetric">0</strong></article>
               </aside>
             </div>
+          </section>
+
+          <section class="page" id="view-contacts" data-page="contacts">
+            <section class="card contacts-hero">
+              <div>
+                <span class="contacts-eyebrow">Operations Directory</span>
+                <h2>ข้อมูลติดต่อสายการบินและ Agent</h2>
+                <p>ค้นหาเบอร์โทร อีเมล ผู้ประสานงาน สายการบิน Terminal, Agent และ Shipping</p>
+              </div>
+              <button id="contactImportBtn" class="primary-button" type="button" onclick="window.open('/legacy/contact-import.html','_blank','noopener')" hidden>นำเข้าข้อมูล / Import</button>
+            </section>
+            <section class="card contacts-toolbar">
+              <label class="contacts-search">ค้นหา / Search
+                <input id="contactSearch" type="search" placeholder="ชื่อ บริษัท สายการบิน เบอร์โทร อีเมล…" oninput="renderContacts()">
+              </label>
+              <label>หมวด / Category
+                <select id="contactCategory" onchange="renderContacts()"><option value="All">ทั้งหมด / All</option></select>
+              </label>
+              <div class="contacts-total"><span>รายการที่พบ</span><strong id="contactResultCount">0</strong></div>
+            </section>
+            <section class="card">
+              <div id="contactsLoading" class="contacts-empty">กำลังโหลดข้อมูลติดต่อ…</div>
+              <div class="table-wrap" id="contactsTableWrap" hidden>
+                <table class="contacts-table">
+                  <thead><tr><th>หมวด</th><th>องค์กร / สายการบิน</th><th>ผู้ติดต่อ / หน้าที่</th><th>เบอร์โทร</th><th>อีเมล</th><th>ข้อมูลเพิ่มเติม</th></tr></thead>
+                  <tbody id="contactsTableBody"></tbody>
+                </table>
+              </div>
+            </section>
           </section>
 
           <section class="page" id="view-flight-board" data-page="flight-board"></section>
@@ -2608,6 +2641,6 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="warehouse-reservations-page.js?v=2-wh-planning-get"></script>
     <script src="warehouse-inbound-page.js?v=20261031-sit-reset"></script>
     <script src="meeting-workflows-ui.js?v=20261028-inbound"></script>
-    <script src="app.js?v=20261031-one-vehicle-one-dock-admin-reconcile"></script>
+    <script src="app.js?v=20261117-contact-directory"></script>
   </body>
 </html>

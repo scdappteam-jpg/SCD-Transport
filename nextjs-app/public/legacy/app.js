@@ -1,4 +1,4 @@
-const APP_VERSION = "v7";
+const APP_VERSION = "v8";
 
 function formatBangkok(iso) {
     if (!iso) return "";
@@ -54,6 +54,8 @@ function dateOffsetValue(days) {
 const state = {
     dashboard: null,
     customers: [],
+    contacts: [],
+    contactsLoaded: false,
     users: [],
     currentView: "dashboard",
     lang: localStorage.getItem("smartLogisticsLang") || "th",
@@ -203,6 +205,7 @@ function initializeIcons() {
         orders: "package-search",
         calendar: "calendar-days",
         staff: "users",
+        contacts: "contact-round",
         hr: "calendar-heart",
         mobile: "smartphone",
         admin: "shield-check",
@@ -291,23 +294,23 @@ function currentWebUser() {
 }
 
 function allowedWebViews(role) {
-    if (role === "Driver") return [ "dashboard", "driver-time-log", "hr", "flight-board", "dock" ];
-    if (role === "WH_Staff") return [ "dashboard", "wh-inbound", "wh-quality", "wh-reservations", "hr", "flight-board", "dock" ];
-    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "hr", "flight-board", "dock", "service" ];
-    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "hr", "flight-board", "dock", "service" ];
+    if (role === "Driver") return [ "dashboard", "driver-time-log", "contacts", "hr", "flight-board", "dock" ];
+    if (role === "WH_Staff") return [ "dashboard", "wh-inbound", "wh-quality", "wh-reservations", "contacts", "hr", "flight-board", "dock" ];
+    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
+    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "flight-board", "dock", "service" ];
     if (role === "EI_Customer") return [ "dashboard", "orders" ];
-    if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-inbound", "wh-quality", "orders", "alerts" ];
+    if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-inbound", "wh-quality", "orders", "alerts", "contacts" ];
     if (role === "Tagging_Staff") return [ "dashboard", "wh-quality" ];
-    if (role === "Terminal") return [ "dashboard", "orders", "alerts", "flight-board", "dock" ];
+    if (role === "Terminal") return [ "dashboard", "orders", "alerts", "contacts", "flight-board", "dock" ];
     // Billing works in the Field Ops workspace, but only the Billing panel is
     // exposed below.  Without this entry, the account can see its KPI cards
     // but has no UI path to review, draft, send, or close an invoice.
-    if (role === "Billing") return [ "dashboard", "orders", "mobile", "cargo-history", "wh-status", "load-plan", "outbound-open", "hr", "service" ];
+    if (role === "Billing") return [ "dashboard", "orders", "mobile", "cargo-history", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "service" ];
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
-    if (role === "CS") return [ "dashboard", "orders", "cs-queue" ];
-    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "hr", "flight-board", "dock", "service" ];
-    return [ "dashboard", "orders", "calendar", "staff", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
+    if (role === "CS") return [ "dashboard", "orders", "cs-queue", "contacts" ];
+    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
+    return [ "dashboard", "orders", "calendar", "staff", "contacts", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
 }
 
 function applyWebRoleVisibility() {
@@ -477,6 +480,10 @@ const pageCopy = {
     staff: {
         breadcrumb: "พนักงาน / Staff Management",
         title: "พนักงานและระบบ / Staff & Admin"
+    },
+    contacts: {
+        breadcrumb: "ทีมงาน / Contact Directory",
+        title: "ข้อมูลติดต่อ / Operations Directory"
     },
     hr: {
         breadcrumb: "HR / Leave & OT",
@@ -1039,6 +1046,7 @@ function setView(view) {
     if (view === "flight-board") renderFlightBoard();
     if (view === "dock") renderDockBoard();
     if (view === "service") renderServiceBilling();
+    if (view === "contacts") loadContacts();
     if (view === "mobile" && currentWebUser()?.role === "Billing") showRolePanel("Billing");
     renderLpWidget();
 }
@@ -6941,6 +6949,73 @@ function renderStaff() {
     }).join("");
     const selected = users.find(user => user.id === state.selectedStaffId) || users[0];
     if (selected) renderStaffDetail(selected);
+}
+
+async function loadContacts(force = false) {
+    const loading = $("#contactsLoading");
+    const table = $("#contactsTableWrap");
+    if (!force && state.contactsLoaded) {
+        renderContacts();
+        return;
+    }
+    if (loading) {
+        loading.hidden = false;
+        loading.textContent = "กำลังโหลดข้อมูลติดต่อ…";
+    }
+    if (table) table.hidden = true;
+    try {
+        const data = await api("/api/contacts", null, "GET");
+        state.contacts = data.contacts || [];
+        state.contactsLoaded = true;
+        const select = $("#contactCategory");
+        const current = select?.value || "All";
+        if (select) {
+            select.innerHTML = `<option value="All">ทั้งหมด / All</option>${(data.categories || []).map(category => `<option value="${safeHtml(category)}">${safeHtml(category)}</option>`).join("")}`;
+            if ([...select.options].some(option => option.value === current)) select.value = current;
+        }
+        const importButton = $("#contactImportBtn");
+        if (importButton) importButton.hidden = !data.canImport;
+        renderContacts();
+    } catch (error) {
+        if (loading) loading.textContent = `โหลดข้อมูลไม่สำเร็จ: ${error.message}`;
+    }
+}
+
+function renderContacts() {
+    const loading = $("#contactsLoading");
+    const table = $("#contactsTableWrap");
+    const body = $("#contactsTableBody");
+    if (!body || !state.contactsLoaded) return;
+    const query = String($("#contactSearch")?.value || "").trim().toLocaleLowerCase("th-TH");
+    const category = $("#contactCategory")?.value || "All";
+    const rows = state.contacts.filter(contact => {
+        if (category !== "All" && contact.category !== category) return false;
+        if (!query) return true;
+        return [contact.category, contact.organization, contact.name, contact.role, contact.phone, contact.email, contact.airlineCode, contact.terminal, contact.note]
+            .filter(Boolean).join(" ").toLocaleLowerCase("th-TH").includes(query);
+    });
+    $("#contactResultCount").textContent = rows.length;
+    if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="6"><div class="contacts-empty">ไม่พบข้อมูลติดต่อที่ตรงกับคำค้น</div></td></tr>`;
+    } else {
+        body.innerHTML = rows.map(contact => {
+            const firstPhone = String(contact.phone || "").match(/\+?\d[\d\s().-]{6,}\d/)?.[0] || "";
+            const phoneHref = firstPhone.replace(/[^\d+]/g, "");
+            const identity = [contact.name, contact.role].filter(Boolean).join(" · ") || "-";
+            const extra = [contact.airlineCode ? `Code ${contact.airlineCode}` : "", contact.terminal, contact.note].filter(Boolean).join(" · ") || "-";
+            return `<tr>
+              <td><span class="contact-category">${safeHtml(contact.category || "Other")}</span></td>
+              <td><strong>${safeHtml(contact.organization || "-")}</strong></td>
+              <td>${safeHtml(identity)}</td>
+              <td>${contact.phone ? `<a class="contact-link" href="${phoneHref ? `tel:${phoneHref}` : "#"}">${safeHtml(contact.phone)}</a>` : "-"}</td>
+              <td>${contact.email ? `<a class="contact-link" href="mailto:${encodeURIComponent(contact.email)}">${safeHtml(contact.email)}</a>` : "-"}</td>
+              <td><span class="contact-note">${safeHtml(extra)}</span></td>
+            </tr>`;
+        }).join("");
+    }
+    if (loading) loading.hidden = true;
+    if (table) table.hidden = false;
+    initializeIcons();
 }
 
 function renderTeamDepartments(users = state.users || []) {

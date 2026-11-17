@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact Directory Import · SCD</title>
+  <style>
+    body{font-family:Kanit,Arial,sans-serif;background:#f3f6fa;color:#14283d;margin:0;padding:32px}.card{max-width:780px;margin:auto;background:#fff;border-radius:18px;padding:28px;box-shadow:0 16px 45px #17324d1f}h1{margin-top:0}.warning{background:#eff6ff;border:1px solid #93c5fd;border-radius:12px;padding:14px}.row{margin:18px 0}button,input{font:inherit}button{border:0;border-radius:10px;padding:12px 18px;background:#145da0;color:#fff;font-weight:700;cursor:pointer;margin-right:8px}button.danger{background:#b42318}button:disabled{opacity:.45;cursor:not-allowed}pre{white-space:pre-wrap;background:#0f2a43;color:#d9edff;padding:16px;border-radius:12px;min-height:110px}.muted{color:#60758a}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>นำเข้าข้อมูลติดต่อ</h1>
+    <p class="warning">เพิ่มหรืออัปเดตสมุดติดต่อสายการบิน, Agent, Shipping และผู้ประสานงาน โดยตรวจรายการซ้ำก่อนบันทึกจริง เฉพาะ Admin เท่านั้น</p>
+    <div class="row"><input id="file" type="file" accept="application/json,.json"></div>
+    <div class="row"><button id="preview" disabled>ตรวจสอบก่อนนำเข้า</button><button id="apply" class="danger" disabled>นำเข้าจริง</button></div>
+    <p class="muted">ระบบไม่รับข้อมูลที่ไม่มีเบอร์โทร/อีเมล และไม่แสดงข้อมูล audit ภายในในหน้าสมุดติดต่อ</p>
+    <pre id="result">เลือกไฟล์ Contact JSON เพื่อเริ่มตรวจสอบ</pre>
+  </main>
+  <script src="/legacy/contact-import.js"></script>
+</body>
+</html>
