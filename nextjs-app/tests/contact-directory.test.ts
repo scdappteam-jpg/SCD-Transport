@@ -60,3 +60,16 @@ test("contact import updates a workbook row when its category is corrected", () 
     contacts.importContacts(db,{actor:admin,records,preview:false});
     assert.equal(db.contacts.length,1); assert.equal(db.contacts[0].category,"SCD Fleet");
 });
+
+test("source matching keeps multiple contacts from the same workbook row separate", () => {
+    const db:any={contacts:[
+        {id:"pickup",category:"Agent",organization:"A",name:"",role:"Pickup",phone:"0811111111",email:"",sourceSheet:"AGENT CONTACT",sourceRow:5,status:"Active"},
+        {id:"handler",category:"Agent",organization:"A",name:"",role:"Handler",phone:"0822222222",email:"",sourceSheet:"AGENT CONTACT",sourceRow:5,status:"Active"}
+    ]};
+    const records=[
+        {category:"Agent",organization:"A",name:"",role:"Pickup",phone:"0811111111",email:"",sourceSheet:"AGENT CONTACT",sourceRow:5,status:"Active"},
+        {category:"Agent",organization:"A",name:"",role:"Handler",phone:"0822222222",email:"",sourceSheet:"AGENT CONTACT",sourceRow:5,status:"Active"}
+    ];
+    const preview=contacts.importContacts(db,{actor:admin,records,preview:true});
+    assert.equal(preview.unchangedCount,2); assert.equal(preview.updateCount,0); assert.equal(preview.createCount,0);
+});

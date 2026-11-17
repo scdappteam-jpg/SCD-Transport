@@ -31,7 +31,8 @@ function contactKey(contact) {
 function sourceKey(contact) {
     const sheet = keyText(contact.sourceSheet);
     const row = Number(contact.sourceRow) || 0;
-    return sheet && row ? `${sheet}|${row}` : "";
+    const identity = [contact.organization, contact.name, contact.role, contact.phone, contact.email].map(keyText).join("|");
+    return sheet && row ? `${sheet}|${row}|${identity}` : "";
 }
 
 function stableId(contact) {
