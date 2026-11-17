@@ -8,7 +8,7 @@ if (!inputPath || !outputPath || !credentialPath) {
 
 const payload = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 const contacts = payload.records || payload.contacts || [];
-const source = contacts.filter(item => item.sourceSheet === "SCD" && /ทะเบียน|รถ\s*(?:4|6)\s*ล้อ|เทลเลอร์|พ่วง/.test(item.note || ""));
+const source = contacts.filter(item => item.sourceSheet === "SCD" && /ทะเบียน|รถ\s*(?:4|6)\s*ล้อ|เทลเลอร์|พ่วง/.test([item.organization,item.name,item.role,item.note].join("; ")));
 const titleName = /;\s*((?:นาย|นางสาว|น\.\u0e2a\.|\u0e19าง)\s*[^;]+)/;
 const platePattern = /ทะเบียน(?:รถ)?\s*([^;]+?)(?=\s*(?:รถ|รลเทลเลอร์|4\s*ล้อ|6\s*ล้อ|เทลเลอร์|ค่ะ|$))/;
 
@@ -26,9 +26,12 @@ function password() {
 
 let sequence = 0;
 const credentials = [];
+let existingCredentials = [];
+try { existingCredentials = JSON.parse(fs.readFileSync(credentialPath, "utf8")).credentials || []; } catch {}
+const passwordByName = new Map(existingCredentials.map(item => [clean(item.name).replace(/\s+/g, ""), item.temporaryPassword]));
 const records = source.map(item => {
-    const note = clean(item.note);
-    const name = clean(note.match(titleName)?.[1]);
+    const note = clean([item.organization,item.name,item.role,item.note].filter(Boolean).join("; "));
+    const name = /^(?:นาย|นางสาว|น\.\u0e2a\.|\u0e19าง)\s*/.test(clean(item.name)) ? clean(item.name) : clean(note.match(titleName)?.[1]);
     const plate = clean(note.match(platePattern)?.[1]).replace(/\s+/g, "");
     if (!plate) throw new Error(`Cannot parse plate at SCD row ${item.sourceRow}: ${note}`);
     const [primaryPlate, trailerPlate = ""] = plate.split("+", 2);
@@ -41,7 +44,7 @@ const records = source.map(item => {
     if (name) {
         sequence += 1;
         record.employeeCode = `DRV${String(sequence).padStart(3, "0")}`;
-        record.temporaryPassword = password();
+        record.temporaryPassword = passwordByName.get(name.replace(/\s+/g, "")) || password();
         if (name.replace(/\s+/g, "") === "นายสมพงษ์พิมพ์โพธิ์") record.matchName = "นายสมพงษ์ พิมโพธิ์";
         credentials.push({ employeeCode: record.employeeCode, name, temporaryPassword: record.temporaryPassword });
     }
