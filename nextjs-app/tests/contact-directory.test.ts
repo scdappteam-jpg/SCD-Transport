@@ -51,3 +51,12 @@ test("visible contacts exclude inactive records and internal audit fields", () =
     assert.equal(rows[0].organization, "A");
     assert.equal("createdBy" in rows[0], false);
 });
+
+test("contact import updates a workbook row when its category is corrected", () => {
+    const db:any={contacts:[{id:"old",category:"Airline service",organization:"SCD",name:"Driver",role:"",phone:"0811111111",email:"",airlineCode:"",terminal:"",note:"",sourceSheet:"SCD",sourceRow:2,status:"Active"}]};
+    const records=[{category:"SCD Fleet",organization:"SCD",name:"Driver",role:"",phone:"0811111111",email:"",sourceSheet:"SCD",sourceRow:2,status:"Active"}];
+    const preview=contacts.importContacts(db,{actor:admin,records,preview:true});
+    assert.equal(preview.updateCount,1); assert.equal(preview.createCount,0);
+    contacts.importContacts(db,{actor:admin,records,preview:false});
+    assert.equal(db.contacts.length,1); assert.equal(db.contacts[0].category,"SCD Fleet");
+});

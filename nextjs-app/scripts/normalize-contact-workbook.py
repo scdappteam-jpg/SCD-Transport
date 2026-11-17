@@ -178,7 +178,9 @@ def main():
         ws = workbook[sheet_name]
         if sheet_name == "AGENT CONTACT":
             parse_agent_sheet(ws, records)
-        elif sheet_name in {"SCD", "BFS", "TG", "INTER"}:
+        elif sheet_name == "SCD":
+            parse_generic_rows(ws, records, category="SCD Fleet")
+        elif sheet_name in {"BFS", "TG", "INTER"}:
             parse_airline_sheet(ws, records)
         elif sheet_name == "Internal Tel.number":
             parse_internal_sheet(ws, records)

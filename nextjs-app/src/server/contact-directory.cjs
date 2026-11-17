@@ -28,6 +28,12 @@ function contactKey(contact) {
     ].map(keyText).join("|");
 }
 
+function sourceKey(contact) {
+    const sheet = keyText(contact.sourceSheet);
+    const row = Number(contact.sourceRow) || 0;
+    return sheet && row ? `${sheet}|${row}` : "";
+}
+
 function stableId(contact) {
     return `ct_${crypto.createHash("sha256").update(contactKey(contact)).digest("hex").slice(0, 18)}`;
 }
@@ -86,9 +92,10 @@ function importContacts(db, { actor, records, preview = true, now = new Date().t
     db.contacts ||= [];
     const byId = new Map(db.contacts.map(item => [item.id, item]));
     const byKey = new Map(db.contacts.map(item => [contactKey(item), item]));
+    const bySource = new Map(db.contacts.map(item => [sourceKey(item), item]).filter(([key]) => key));
     let createCount = 0, updateCount = 0, unchangedCount = 0;
     for (const item of normalized) {
-        const existing = byId.get(item.id) || byKey.get(contactKey(item));
+        const existing = bySource.get(sourceKey(item)) || byId.get(item.id) || byKey.get(contactKey(item));
         if (!existing) createCount += 1;
         else if (sameContact(existing, item)) unchangedCount += 1;
         else updateCount += 1;
@@ -106,7 +113,7 @@ function importContacts(db, { actor, records, preview = true, now = new Date().t
     if (preview) return summary;
 
     for (const item of normalized) {
-        const existing = byId.get(item.id) || byKey.get(contactKey(item));
+        const existing = bySource.get(sourceKey(item)) || byId.get(item.id) || byKey.get(contactKey(item));
         if (existing) {
             Object.assign(existing, item, { updatedAt: now, updatedBy: actor.id });
         } else {
@@ -114,6 +121,7 @@ function importContacts(db, { actor, records, preview = true, now = new Date().t
             db.contacts.push(created);
             byId.set(created.id, created);
             byKey.set(contactKey(created), created);
+            if (sourceKey(created)) bySource.set(sourceKey(created), created);
         }
     }
     db.contactImports ||= [];

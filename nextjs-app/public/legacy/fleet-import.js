@@ -1,0 +1,8 @@
+(() => {
+  const file=document.getElementById("file"),preview=document.getElementById("preview"),apply=document.getElementById("apply"),result=document.getElementById("result");
+  let records=null; const show=value=>{result.textContent=typeof value==="string"?value:JSON.stringify(value,null,2)};
+  async function request(previewOnly){const token=localStorage.getItem("scdTransportWebSession");if(!token)throw new Error("กรุณาเข้าสู่ระบบด้วย Admin ที่หน้าหลักก่อน");const response=await fetch("/api/fleet/bulk-import",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({preview:previewOnly,records})});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body.error||`HTTP ${response.status}`);return body}
+  file.addEventListener("change",async()=>{preview.disabled=true;apply.disabled=true;try{const payload=JSON.parse(await file.files[0].text());records=payload.records;if(!Array.isArray(records)||!records.length)throw new Error("ไฟล์ไม่มี records");show(`พร้อมตรวจสอบ ${records.length} รายการ`);preview.disabled=false}catch(error){records=null;show(`ไฟล์ไม่ถูกต้อง: ${error.message}`)}});
+  preview.addEventListener("click",async()=>{preview.disabled=true;try{show(await request(true));apply.disabled=false}catch(error){show(`ตรวจสอบไม่ผ่าน: ${error.message}`)}finally{preview.disabled=false}});
+  apply.addEventListener("click",async()=>{preview.disabled=true;apply.disabled=true;show("กำลังนำเข้า…");try{show(await request(false))}catch(error){show(`นำเข้าไม่สำเร็จ: ${error.message}`);apply.disabled=false}finally{preview.disabled=false}});
+})();

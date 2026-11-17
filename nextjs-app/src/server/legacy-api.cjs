@@ -7,6 +7,7 @@ const hrSecurity = require('./hr-security.cjs');
 const hrWorkflows = require('./hr-workflows.cjs');
 const hrBulkImport = require('./hr-bulk-import.cjs');
 const contactDirectory = require('./contact-directory.cjs');
+const fleetDriverImport = require('./fleet-driver-import.cjs');
 const http = require("http");
 
 const https = require("https");
@@ -567,6 +568,8 @@ function ensureDbShape(db) {
     db.customers ||= [];
     db.contacts ||= [];
     db.contactImports ||= [];
+    db.fleetVehicles ||= [];
+    db.fleetImports ||= [];
     db.attendance ||= [];
     db.taskGroups ||= [];
     db.notifications ||= [];
@@ -3611,6 +3614,27 @@ async function handleApi(req, res, pathname) {
                 records: payload.records,
                 preview: payload.preview !== false,
                 now: nowIso()
+            });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
+        if (!result.preview) writeDb(currentDb);
+        return sendJson(res, 200, { ok: true, ...result });
+    }
+    if (req.method === "GET" && pathname === "/api/fleet/directory") {
+        const viewer = sessionUser(db, req);
+        if (!viewer) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+        if (!["Admin", "Executive", "Team_Transport"].includes(viewer.role)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดูทะเบียนรถ" });
+        return sendJson(res, 200, { vehicles: fleetDriverImport.visibleFleet(db), canImport: viewer.role === "Admin" });
+    }
+    if (req.method === "POST" && pathname === "/api/fleet/bulk-import") {
+        const payload = await parseBody(req);
+        const currentDb = readDb();
+        let result;
+        try {
+            result = fleetDriverImport.importFleetDrivers(currentDb, {
+                actor: sessionUser(currentDb, req), records: payload.records,
+                preview: payload.preview !== false, now: nowIso()
             });
         } catch (error) {
             return sendJson(res, error.statusCode || 400, { error: error.message });
