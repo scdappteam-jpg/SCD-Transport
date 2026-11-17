@@ -8,6 +8,7 @@ const hrWorkflows = require('./hr-workflows.cjs');
 const hrBulkImport = require('./hr-bulk-import.cjs');
 const contactDirectory = require('./contact-directory.cjs');
 const fleetDriverImport = require('./fleet-driver-import.cjs');
+const peopleViewer = require('./people-viewer.cjs');
 const http = require("http");
 
 const https = require("https");
@@ -1226,6 +1227,16 @@ function publicUser(user) {
 
 function publicUsers(db) {
     return (db.users || []).map(publicUser);
+}
+
+function loginUsers(db) {
+    return (db.users || []).map(user => ({
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        vehiclePlate: user.vehiclePlate || "",
+        status: user.status || "Active"
+    }));
 }
 
 function sessionUser(db, req) {
@@ -3405,7 +3416,8 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
     }
     if (req.method === "GET" && pathname === "/api/auth/users") {
-        return sendJson(res, 200, { users: publicUsers(db) });
+        if (sessionUser(db, req)?.role === peopleViewer.VIEWER_ROLE) return sendJson(res, 403, { error: "บัญชีนี้ดูได้เฉพาะทะเบียนชื่อและรูปถ่าย" });
+        return sendJson(res, 200, { users: loginUsers(db) });
     }
     if (req.method === "POST" && pathname === "/api/auth/test-mode") {
         const payload = await parseBody(req);
@@ -3418,7 +3430,8 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/auth/login") {
         const payload = await parseBody(req);
-        const user = (db.users || []).find(item => item.id === payload.userId && item.status !== "Inactive");
+        const loginKey = String(payload.userId || payload.code || "").trim().toUpperCase();
+        const user = (db.users || []).find(item => (item.id === payload.userId || String(item.code || "").toUpperCase() === loginKey) && item.status !== "Inactive");
         if (!user) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
         const supabaseAuth = await authenticateWithSupabaseAuth(user, payload.password);
         if (supabaseAuth.managed && supabaseAuth.unavailable) return sendJson(res, 503, { error: "Supabase Auth ใช้งานไม่ได้ชั่วคราว กรุณาลองใหม่" });
@@ -3441,6 +3454,33 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    const restrictedViewer = sessionUser(db, req);
+    if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && pathname !== "/api/people-directory") {
+        return sendJson(res, 403, { error: "บัญชีนี้ดูได้เฉพาะชื่อ นามสกุล และรูปถ่าย" });
+    }
+    if (req.method === "GET" && pathname === "/api/people-directory") {
+        const actor = sessionUser(db, req);
+        if (!actor || ![peopleViewer.VIEWER_ROLE, "Admin"].includes(actor.role)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดูทะเบียนบุคลากร" });
+        const items = peopleViewer.directory(db);
+        return sendJson(res, 200, { items, count: items.length });
+    }
+    if (req.method === "POST" && pathname === "/api/people-viewers/provision") {
+        const payload = await parseBody(req);
+        const currentDb = readDb();
+        let result;
+        try {
+            result = peopleViewer.provision(currentDb, {
+                actor: sessionUser(currentDb, req),
+                records: payload.records,
+                preview: payload.preview !== false,
+                now: nowIso()
+            });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
+        if (!result.preview) writeDb(currentDb);
+        return sendJson(res, 200, { ok: true, ...result });
+    }
     if (pathname === '/api/warehouse/inbound-control') {
         await refreshDbIfSharedStateChanged(); db = readDb();
         try {
