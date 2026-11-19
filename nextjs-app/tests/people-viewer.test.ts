@@ -30,6 +30,7 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(html, /<select id="editDepartment" required><\/select>/);
   assert.match(client, /populateEditorSelect\("position", items\.map\(person => person\.position\)/);
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
+  assert.match(client, /\$\("employeeId"\)\.value = item\.employeeId \|\| item\.id \|\| id/);
 });
 
 test("admin provisions one additional directory viewer with organization fields", () => {

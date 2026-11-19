@@ -77,7 +77,8 @@
 
   function openEditor(id) {
     const item = items.find(entry => entry.id === id); if (!item) return;
-    for (const field of ["employeeId", "firstName", "lastName", "phone", "nickname"]) $(field).value = item[field] || "";
+    $("employeeId").value = item.employeeId || item.id || id;
+    for (const field of ["firstName", "lastName", "phone", "nickname"]) $(field).value = item[field] || "";
     populateEditorSelect("position", items.map(person => person.position), item.position, "เลือกตำแหน่ง");
     populateEditorSelect("editDepartment", items.map(person => person.department), item.department, "เลือกแผนก");
     $("photo").value = ""; photoBase64 = "";
