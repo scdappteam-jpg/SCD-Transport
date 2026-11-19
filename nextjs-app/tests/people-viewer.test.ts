@@ -148,7 +148,9 @@ test("main directory viewers can update approved profile fields but not role or 
   const actor = db.users.find((user: any) => user.code === "VIEW001");
   const target = db.users.find((user: any) => user.code === "VIEW002");
   const passwordHash = target.passwordHash;
-  const item = updatePerson(db, { actor, employeeId: target.id, changes: { firstName: "คุณ", lastName: "หวาย", phone: "0812345678", nickname: "หวาย", position: "ผู้ดูแลข้อมูล", department: "Administration" }, photoUrl: "/storage/profile/view002.jpg" });
+  const listedTarget = directory(db).find((person: any) => person.nickname === "หวาย");
+  assert.equal(listedTarget.id, "VIEW002");
+  const item = updatePerson(db, { actor, employeeId: listedTarget.id, changes: { firstName: "คุณ", lastName: "หวาย", phone: "0812345678", nickname: "หวาย", position: "ผู้ดูแลข้อมูล", department: "Administration" }, photoUrl: "/storage/profile/view002.jpg" });
   assert.equal(item.nickname, "หวาย"); assert.equal(item.department, "Administration");
   assert.equal(target.role, "People_Viewer"); assert.equal(target.code, "VIEW002"); assert.equal(target.passwordHash, passwordHash);
 });

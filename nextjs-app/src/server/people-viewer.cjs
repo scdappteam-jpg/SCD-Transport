@@ -166,6 +166,7 @@ function splitName(fullName) {
 }
 
 function directoryKey(user) {
+    if (user?.role === VIEWER_ROLE) return cleanText(user?.code || user?.id || user?.employeeId, 120);
     return cleanText(user?.id || user?.employeeId || user?.code, 120);
 }
 
@@ -210,7 +211,7 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     if (!actor || actor.role !== VIEWER_ROLE) fail("เฉพาะผู้ดูแลทะเบียนบุคลากรเท่านั้นที่แก้ไขข้อมูลได้", 403);
     const key = cleanText(employeeId, 120);
     const user = (db.users || []).find(item => matchesDirectoryKey(item, key));
-    if (!user || user.status === "Inactive" || user.role === "Admin" || (user.role === VIEWER_ROLE && user.isTestAccount === true)) fail("ไม่พบพนักงานที่แก้ไขได้", 404);
+    if (!user || user.status === "Inactive" || user.role === "Admin" || (user.role === VIEWER_ROLE && user.isTestAccount === true)) fail(`ไม่พบพนักงานที่แก้ไขได้ (ID: ${key || "ไม่ระบุ"})`, 404);
     const firstName = cleanText(changes?.firstName, 120);
     const lastName = cleanText(changes?.lastName, 120);
     if (!firstName) fail("กรุณาระบุชื่อ");
