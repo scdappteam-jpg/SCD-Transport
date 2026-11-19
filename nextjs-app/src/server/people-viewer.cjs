@@ -124,7 +124,7 @@ function splitName(fullName) {
 
 function directory(db) {
     return (db.users || [])
-        .filter(user => user.status !== "Inactive" && ![VIEWER_ROLE, "Admin"].includes(user.role))
+        .filter(user => user.status !== "Inactive" && user.role !== "Admin" && !(user.role === VIEWER_ROLE && user.isTestAccount === true))
         .map(user => {
             const profile = db.hr?.employeeProfiles?.[user.id] || {};
             const names = splitName(user.name);
@@ -156,7 +156,7 @@ function changePassword(user, password, now = new Date().toISOString()) {
 function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new Date().toISOString() }) {
     if (!actor || actor.role !== VIEWER_ROLE) fail("เฉพาะผู้ดูแลทะเบียนบุคลากรเท่านั้นที่แก้ไขข้อมูลได้", 403);
     const user = (db.users || []).find(item => item.id === cleanText(employeeId, 120));
-    if (!user || user.status === "Inactive" || [VIEWER_ROLE, "Admin"].includes(user.role)) fail("ไม่พบพนักงานที่แก้ไขได้", 404);
+    if (!user || user.status === "Inactive" || user.role === "Admin" || (user.role === VIEWER_ROLE && user.isTestAccount === true)) fail("ไม่พบพนักงานที่แก้ไขได้", 404);
     const firstName = cleanText(changes?.firstName, 120);
     const lastName = cleanText(changes?.lastName, 120);
     if (!firstName) fail("กรุณาระบุชื่อ");

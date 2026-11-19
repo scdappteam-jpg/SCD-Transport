@@ -87,4 +87,19 @@ test("provisions a separate VIEW999 test account without changing the two main v
   assert.equal(result.mustChangePassword, true);
   assert.equal(viewer.role, "People_Viewer"); assert.equal(viewer.isTestAccount, true); assert.equal(viewer.mustChangePassword, true);
   assert.equal(db.users.filter((user: any) => ["VIEW001", "VIEW002"].includes(user.code)).length, 2);
+  const people = directory(db);
+  assert.equal(people.some((item: any) => item.nickname === "ก็อต"), true);
+  assert.equal(people.some((item: any) => item.nickname === "หวาย"), true);
+  assert.equal(people.some((item: any) => item.nickname === "ทดสอบ"), false);
+});
+
+test("main directory viewers can update approved profile fields but not role or credentials", () => {
+  const db = state();
+  provision(db, { actor: db.users[0], records, preview: false, now: "2026-11-17T00:00:00.000Z" });
+  const actor = db.users.find((user: any) => user.code === "VIEW001");
+  const target = db.users.find((user: any) => user.code === "VIEW002");
+  const passwordHash = target.passwordHash;
+  const item = updatePerson(db, { actor, employeeId: target.id, changes: { firstName: "คุณ", lastName: "หวาย", phone: "0812345678", nickname: "หวาย", position: "ผู้ดูแลข้อมูล", department: "Administration" }, photoUrl: "/storage/profile/view002.jpg" });
+  assert.equal(item.nickname, "หวาย"); assert.equal(item.department, "Administration");
+  assert.equal(target.role, "People_Viewer"); assert.equal(target.code, "VIEW002"); assert.equal(target.passwordHash, passwordHash);
 });
