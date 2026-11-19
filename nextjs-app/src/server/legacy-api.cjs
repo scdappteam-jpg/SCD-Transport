@@ -3451,18 +3451,59 @@ async function handleApi(req, res, pathname) {
             dbCache = db;
             scheduleAuthSessionPersist(db.authSessions);
         } else writeDb(db);
-        return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, name: user.name, role: user.role } });
+        return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, code: user.code, name: user.name, nickname: user.nickname || "", role: user.role, mustChangePassword: user.mustChangePassword === true } });
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
     const restrictedViewer = sessionUser(db, req);
-    if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && pathname !== "/api/people-directory") {
-        return sendJson(res, 403, { error: "บัญชีนี้ดูได้เฉพาะชื่อ นามสกุล และรูปถ่าย" });
+    const peopleViewerPaths = new Set(["/api/people-directory", "/api/people-directory/update", "/api/auth/change-password"]);
+    if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && !peopleViewerPaths.has(pathname)) {
+        return sendJson(res, 403, { error: "บัญชีนี้ใช้ได้เฉพาะทะเบียนบุคลากร" });
+    }
+    if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && restrictedViewer.mustChangePassword === true && pathname !== "/api/auth/change-password") {
+        return sendJson(res, 428, { error: "กรุณาเปลี่ยนรหัสผ่านก่อนใช้งาน", code: "PASSWORD_CHANGE_REQUIRED" });
+    }
+    if (req.method === "POST" && pathname === "/api/auth/change-password") {
+        const payload = await parseBody(req);
+        const currentDb = readDb();
+        const actor = sessionUser(currentDb, req);
+        try {
+            const result = peopleViewer.changePassword(actor, payload.password, nowIso());
+            writeDb(currentDb);
+            return sendJson(res, 200, result);
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
     }
     if (req.method === "GET" && pathname === "/api/people-directory") {
         const actor = sessionUser(db, req);
         if (!actor || ![peopleViewer.VIEWER_ROLE, "Admin"].includes(actor.role)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดูทะเบียนบุคลากร" });
         const items = peopleViewer.directory(db);
         return sendJson(res, 200, { items, count: items.length });
+    }
+    if (req.method === "POST" && pathname === "/api/people-directory/update") {
+        const payload = await parseBody(req);
+        const currentDb = readDb();
+        const actor = sessionUser(currentDb, req);
+        let photoUrl = "";
+        try {
+            if (payload.photoBase64) {
+                const match = String(payload.photoBase64).match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+                if (!match) throw Object.assign(new Error("รองรับรูป JPG, PNG หรือ WEBP เท่านั้น"), { statusCode: 400 });
+                const content = Buffer.from(match[2], "base64");
+                if (!content.length || content.length > 2 * 1024 * 1024) throw Object.assign(new Error("รูปถ่ายต้องมีขนาดไม่เกิน 2 MB"), { statusCode: 400 });
+                const profileDir = path.join(STORAGE_DIR, "profile");
+                fs.mkdirSync(profileDir, { recursive: true });
+                const extension = match[1] === "jpeg" ? "jpg" : match[1];
+                const filename = `PROFILE-${crypto.createHash("sha256").update(String(payload.employeeId || "")).digest("hex").slice(0, 12)}-${Date.now()}.${extension}`;
+                fs.writeFileSync(path.join(profileDir, filename), content);
+                photoUrl = `/storage/profile/${filename}`;
+            }
+            const item = peopleViewer.updatePerson(currentDb, { actor, employeeId: payload.employeeId, changes: payload, photoUrl, now: nowIso() });
+            writeDb(currentDb);
+            return sendJson(res, 200, { ok: true, item });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
     }
     if (req.method === "POST" && pathname === "/api/people-viewers/provision") {
         const payload = await parseBody(req);

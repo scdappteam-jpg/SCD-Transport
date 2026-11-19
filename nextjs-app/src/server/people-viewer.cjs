@@ -26,10 +26,11 @@ function validateRecords(records) {
         const password = String(record.temporaryPassword || "");
         if (!VIEWER_CODE.test(code)) fail(`บัญชี ${index + 1}: รหัสผู้ใช้ต้องเป็น VIEW ตามด้วยตัวเลข เช่น VIEW001`);
         if (!name) fail(`บัญชี ${index + 1}: กรุณาระบุชื่อบัญชี`);
-        if (password.length < 12) fail(`บัญชี ${index + 1}: รหัสผ่านชั่วคราวต้องมีอย่างน้อย 12 ตัวอักษร`);
+        const nickname = cleanText(record.nickname, 100);
+        if (password.length < 6) fail(`บัญชี ${index + 1}: รหัสผ่านชั่วคราวต้องมีอย่างน้อย 6 ตัวอักษร`);
         if (codes.has(code)) fail(`รหัสผู้ใช้ซ้ำ: ${code}`);
         codes.add(code);
-        return { code, name, password };
+        return { code, name, nickname, password };
     });
 }
 
@@ -40,23 +41,16 @@ function provision(db, { actor, records, preview = true, now = new Date().toISOS
     const conflicts = (db.users || []).filter(user => requestedCodes.has(cleanText(user.code, 32).toUpperCase()) && user.role !== VIEWER_ROLE);
     if (conflicts.length) fail(`รหัสบัญชีชนกับผู้ใช้เดิม: ${conflicts.map(user => user.code).join(", ")}`, 409);
     const existing = normalized.filter(record => (db.users || []).some(user => cleanText(user.code, 32).toUpperCase() === record.code));
-    const deactivated = (db.users || []).filter(user => user.role === VIEWER_ROLE && !requestedCodes.has(cleanText(user.code, 32).toUpperCase()) && user.status !== "Inactive");
     const summary = {
         preview: Boolean(preview),
         createCount: normalized.length - existing.length,
         updateCount: existing.length,
-        deactivateCount: deactivated.length,
+        deactivateCount: 0,
         activeViewerCount: 2,
         codes: normalized.map(record => record.code)
     };
     if (preview) return summary;
 
-    for (const user of deactivated) {
-        user.status = "Inactive";
-        user.deactivatedAt = now;
-        user.deactivatedBy = actor.id;
-        user.deactivationReason = "ReplacedByPeopleViewerProvision";
-    }
     for (const record of normalized) {
         let user = (db.users || []).find(item => cleanText(item.code, 32).toUpperCase() === record.code);
         if (!user) {
@@ -66,6 +60,7 @@ function provision(db, { actor, records, preview = true, now = new Date().toISOS
         Object.assign(user, {
             code: record.code,
             name: record.name,
+            nickname: record.nickname,
             role: VIEWER_ROLE,
             status: "Active",
             vehiclePlate: "",
@@ -73,6 +68,7 @@ function provision(db, { actor, records, preview = true, now = new Date().toISOS
             lineUserId: "",
             lineConnected: false,
             passwordHash: hashPassword(record.password),
+            mustChangePassword: true,
             credentialIssuedAt: now,
             updatedAt: now
         });
@@ -96,12 +92,77 @@ function directory(db) {
             const profile = db.hr?.employeeProfiles?.[user.id] || {};
             const names = splitName(user.name);
             return {
+                id: user.id,
                 firstName: names.firstName,
                 lastName: names.lastName,
-                photoUrl: cleanText(profile.profilePhotoUrl || profile.photoUrl || user.profilePhotoUrl, 1000)
+                phone: cleanText(user.phone, 80),
+                nickname: cleanText(user.nickname || profile.nickname, 100),
+                photoUrl: cleanText(profile.profilePhotoUrl || profile.photoUrl || user.profilePhotoUrl, 1000),
+                position: cleanText(profile.position || user.role, 120),
+                department: cleanText(profile.department || "ไม่ระบุแผนก", 120)
             };
         })
         .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`, "th"));
 }
 
-module.exports = { VIEWER_ROLE, validateRecords, provision, directory };
+function changePassword(user, password, now = new Date().toISOString()) {
+    if (!user || user.role !== VIEWER_ROLE) fail("บัญชีนี้ไม่มีสิทธิ์เปลี่ยนรหัสผ่านทะเบียนบุคลากร", 403);
+    const nextPassword = String(password || "");
+    if (nextPassword.length < 6) fail("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
+    user.passwordHash = hashPassword(nextPassword);
+    user.mustChangePassword = false;
+    user.passwordChangedAt = now;
+    user.updatedAt = now;
+    return { ok: true, mustChangePassword: false };
+}
+
+function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new Date().toISOString() }) {
+    if (!actor || actor.role !== VIEWER_ROLE) fail("เฉพาะผู้ดูแลทะเบียนบุคลากรเท่านั้นที่แก้ไขข้อมูลได้", 403);
+    const user = (db.users || []).find(item => item.id === cleanText(employeeId, 120));
+    if (!user || user.status === "Inactive" || [VIEWER_ROLE, "Admin"].includes(user.role)) fail("ไม่พบพนักงานที่แก้ไขได้", 404);
+    const firstName = cleanText(changes?.firstName, 120);
+    const lastName = cleanText(changes?.lastName, 120);
+    if (!firstName) fail("กรุณาระบุชื่อ");
+    const profile = db.hr?.employeeProfiles?.[user.id] || {};
+    const protectedSnapshot = {
+        code: user.code,
+        role: user.role,
+        vehiclePlate: user.vehiclePlate,
+        salary: profile.salary,
+        baseSalary: profile.baseSalary,
+        payroll: profile.payroll
+    };
+    user.name = [firstName, lastName].filter(Boolean).join(" ");
+    user.phone = cleanText(changes?.phone, 80);
+    user.nickname = cleanText(changes?.nickname, 100);
+    user.updatedAt = now;
+    db.hr ||= {};
+    db.hr.employeeProfiles ||= {};
+    db.hr.employeeProfiles[user.id] = {
+        ...profile,
+        employeeId: user.id,
+        nickname: user.nickname,
+        position: cleanText(changes?.position, 120),
+        department: cleanText(changes?.department, 120),
+        ...(photoUrl ? { profilePhotoUrl: photoUrl } : {}),
+        updatedAt: now
+    };
+    Object.assign(user, { code: protectedSnapshot.code, role: protectedSnapshot.role, vehiclePlate: protectedSnapshot.vehiclePlate });
+    Object.assign(db.hr.employeeProfiles[user.id], {
+        salary: protectedSnapshot.salary,
+        baseSalary: protectedSnapshot.baseSalary,
+        payroll: protectedSnapshot.payroll
+    });
+    db.hr.auditLogs ||= [];
+    db.hr.auditLogs.push({
+        id: `HRAUD-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+        action: "PeopleDirectoryProfileUpdated",
+        actorId: actor.id,
+        employeeId: user.id,
+        fields: ["name", "phone", "nickname", "position", "department", ...(photoUrl ? ["photo"] : [])],
+        at: now
+    });
+    return directory(db).find(item => item.id === user.id);
+}
+
+module.exports = { VIEWER_ROLE, validateRecords, provision, directory, changePassword, updatePerson };

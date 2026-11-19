@@ -3,42 +3,67 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { provision, directory } = require("../src/server/people-viewer.cjs");
+const { provision, directory, changePassword, updatePerson } = require("../src/server/people-viewer.cjs");
 
 function state() {
   return {
     users: [
       { id: "u_admin", code: "ADMIN", name: "Admin", role: "Admin", status: "Active" },
-      { id: "u_emp1", code: "EMP001", name: "นาย สมชาย ใจดี", role: "Driver", status: "Active" },
+      { id: "u_emp1", code: "EMP001", name: "นาย สมชาย ใจดี", role: "Driver", status: "Active", phone: "0811111111", nickname: "ชาย", vehiclePlate: "70-1234" },
       { id: "u_emp2", code: "EMP002", name: "นางสาว สมหญิง รักงาน", role: "WH_Staff", status: "Active" },
       { id: "u_old", code: "EMP003", name: "คน เก่า", role: "Driver", status: "Inactive" },
     ],
-    hr: { employeeProfiles: { u_emp1: { profilePhotoUrl: "/storage/profile/u_emp1.jpg" } }, auditLogs: [] },
+    hr: { employeeProfiles: { u_emp1: { profilePhotoUrl: "/storage/profile/u_emp1.jpg", position: "Driver", department: "Transport", salary: 22000 } }, auditLogs: [] },
   } as any;
 }
 
 const records = [
-  { code: "VIEW001", name: "ผู้ดูแลข้อมูล 1", temporaryPassword: "Scd!Viewer001#" },
-  { code: "VIEW002", name: "ผู้ดูแลข้อมูล 2", temporaryPassword: "Scd!Viewer002#" },
+  { code: "VIEW001", name: "คุณก็อต", nickname: "ก็อต", temporaryPassword: "Test2026" },
+  { code: "VIEW002", name: "คุณหวาย", nickname: "หวาย", temporaryPassword: "Test2026" },
 ];
 
-test("provisions exactly two read-only viewer accounts", () => {
+test("provisions exactly two editable directory accounts without deactivating existing users", () => {
   const db = state();
   const result = provision(db, { actor: db.users[0], records, preview: false, now: "2026-11-17T00:00:00.000Z" });
   assert.equal(result.activeViewerCount, 2);
   const viewers = db.users.filter((user: any) => user.role === "People_Viewer" && user.status === "Active");
   assert.equal(viewers.length, 2);
   assert.ok(viewers.every((user: any) => /^scrypt\$/.test(user.passwordHash)));
+  assert.ok(viewers.every((user: any) => user.mustChangePassword === true));
+  assert.deepEqual(viewers.map((user: any) => user.nickname), ["ก็อต", "หวาย"]);
   assert.ok(viewers.every((user: any) => !user.phone && !user.vehiclePlate));
+  assert.equal(db.users.find((user: any) => user.code === "EMP001").status, "Active");
 });
 
-test("directory exposes only first name, last name, and photo", () => {
+test("directory exposes only approved contact and organization fields", () => {
   const items = directory(state());
   assert.equal(items.length, 2);
-  assert.deepEqual(Object.keys(items[0]).sort(), ["firstName", "lastName", "photoUrl"]);
+  assert.deepEqual(Object.keys(items[0]).sort(), ["department", "firstName", "id", "lastName", "nickname", "phone", "photoUrl", "position"]);
   const somchai = items.find((item: any) => item.lastName === "ใจดี");
   assert.equal(somchai.firstName, "นาย สมชาย");
   assert.equal(somchai.photoUrl, "/storage/profile/u_emp1.jpg");
+  assert.equal(somchai.phone, "0811111111");
+  assert.equal(somchai.nickname, "ชาย");
+  assert.equal(somchai.department, "Transport");
+  assert.equal((somchai as any).salary, undefined);
+});
+
+test("viewer changes the initial password once with a six character minimum", () => {
+  const user: any = { id: "u_view", role: "People_Viewer", mustChangePassword: true, passwordHash: "old" };
+  assert.throws(() => changePassword(user, "12345"), /6 ตัวอักษร/);
+  changePassword(user, "abc123", "2026-11-19T00:00:00.000Z");
+  assert.match(user.passwordHash, /^scrypt\$/);
+  assert.equal(user.mustChangePassword, false);
+});
+
+test("viewer edits only approved fields and preserves payroll role vehicle and code", () => {
+  const db = state();
+  const actor: any = { id: "u_view", role: "People_Viewer" };
+  const item = updatePerson(db, { actor, employeeId: "u_emp1", changes: { firstName: "นาย สมชาย", lastName: "ใจดีมาก", phone: "0899999999", nickname: "ชายใหม่", position: "Senior Driver", department: "Transport" }, photoUrl: "/storage/profile/new.jpg", now: "2026-11-19T00:00:00.000Z" });
+  const user: any = db.users.find((entry: any) => entry.id === "u_emp1");
+  assert.equal(user.code, "EMP001"); assert.equal(user.role, "Driver"); assert.equal(user.vehiclePlate, "70-1234");
+  assert.equal(db.hr.employeeProfiles.u_emp1.salary, 22000);
+  assert.equal(item.nickname, "ชายใหม่"); assert.equal(item.position, "Senior Driver"); assert.equal(item.photoUrl, "/storage/profile/new.jpg");
 });
 
 test("rejects a batch that is not exactly two accounts", () => {
