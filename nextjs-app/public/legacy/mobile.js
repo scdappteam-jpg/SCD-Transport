@@ -1476,6 +1476,10 @@ function bindEvents() {
     });
     $("#mobileFontScale")?.addEventListener("click", cycleMobileFontScale);
     applyMobileFontScale();
+    if (new URLSearchParams(location.search).get("verified") === "face") {
+        const camera = $(".att-camera-area"); if (camera) camera.hidden = true;
+        const gps = $("#attGpsStatus"); if (gps) gps.insertAdjacentHTML("beforebegin", '<div class="soft-note ok"><b>ยืนยัน PIN + Liveness + ใบหน้าแล้ว</b><br>กรุณาเช็กอินภายใน 10 นาที</div>');
+    }
     $("#driverPickupCase").addEventListener("change", () => updatePickupFlowNotice());
     $("#driverCustomerName").addEventListener("input", () => updatePickupFlowNotice());
     $("#terminalHouse").addEventListener("input", updateTerminalRequirements);
@@ -2332,7 +2336,8 @@ async function submitAttCheckin() {
     if (!user) return toast("กรุณาเข้าสู่ระบบก่อน");
     const zone = $("#attZoneSelect")?.value || "";
     const jobType = $("#attJobTypeSelect")?.value || "";
-    if (!attState.photoBase64) return toast("กรุณาถ่ายรูปยืนยันตัวตนก่อน");
+    const faceVerified = new URLSearchParams(location.search).get("verified") === "face";
+    if (!attState.photoBase64 && !faceVerified) return toast("กรุณาถ่ายรูปยืนยันตัวตนก่อน");
     const btn = $("#attCheckinBtn");
     if (btn) {
         btn.disabled = true;
@@ -2342,7 +2347,6 @@ async function submitAttCheckin() {
         const gps = await refreshGpsForAtt();
         const res = await api("/api/attendance/checkin", {
             userId: user.id,
-            employeeQrCode: $("#attEmployeeQr")?.value.trim() || "",
             photo: attState.photoBase64,
             ...gps,
             zone: zone,
@@ -2379,7 +2383,6 @@ async function submitSimulatedAttCheckin() {
         };
         const res = await api("/api/attendance/checkin", {
             userId: user.id,
-            employeeQrCode: user.code || user.id,
             photo: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL7WQAAAABJRU5ErkJggg==",
             ...simulatedGps,
             zone: "ทดสอบระบบ",
@@ -3288,6 +3291,22 @@ async function renderMProfile() {
         } catch (e) {
             hist.innerHTML = `<div class="fo-empty">โหลดไม่สำเร็จ</div>`;
         }
+    }
+    const pinForm = $("#foPinForm");
+    if (pinForm && !pinForm.dataset.bound) {
+        pinForm.dataset.bound = "true";
+        pinForm.addEventListener("submit", async event => {
+            event.preventDefault();
+            const form = new FormData(pinForm), newPin = String(form.get("newPin") || ""), confirmPin = String(form.get("confirmPin") || ""), status = $("#foPinStatus"), button = event.submitter;
+            if (!/^\d{6}$/.test(newPin)) return status.textContent = "PIN ต้องเป็นตัวเลข 6 หลัก";
+            if (newPin !== confirmPin) return status.textContent = "PIN ทั้งสองช่องไม่ตรงกัน";
+            button.disabled = true;
+            try {
+                await api("/api/auth/set-pin", { currentPassword: form.get("currentPassword"), newPin });
+                pinForm.reset(); status.textContent = "ตั้ง PIN สำเร็จ ใช้หน้า PIN + ใบหน้าได้แล้ว";
+            } catch (error) { status.textContent = error.message || "ตั้ง PIN ไม่สำเร็จ"; }
+            finally { button.disabled = false; }
+        });
     }
 }
 

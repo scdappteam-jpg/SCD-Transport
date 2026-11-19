@@ -25,12 +25,17 @@ test('readiness stays safely disabled until Admin supplies real policy data',()=
  assert.equal(report.checks.find((x:any)=>x.id==='warehouse-capacity').ok,true);
 });
 
-test('Admin config requires PDPA before enabling employee QR and selfie evidence',()=>{
+test('Admin config requires PDPA and a face provider before enabling biometric attendance',()=>{
  const state=db();
  assert.throws(()=>readiness.saveConfig(state,admin,{attendance:{enabled:true}},at),/PDPA/);
- const result=readiness.saveConfig(state,admin,{attendance:{enabled:true},pdpa:{consentVersion:'PDPA-2026-01',gpsWorkHoursOnly:true}},at);
- assert.equal(result.config.attendance.enabled,true);
- assert.equal(state.hr.settings.attendance.defaultRadiusMeters,200);
+ const old=[process.env.AWS_ACCESS_KEY_ID,process.env.AWS_SECRET_ACCESS_KEY,process.env.NEXT_PUBLIC_AWS_COGNITO_IDENTITY_POOL_ID];
+ try{
+  process.env.AWS_ACCESS_KEY_ID='test';process.env.AWS_SECRET_ACCESS_KEY='test';process.env.NEXT_PUBLIC_AWS_COGNITO_IDENTITY_POOL_ID='ap-southeast-7:test';
+  const result=readiness.saveConfig(state,admin,{attendance:{enabled:true},pdpa:{consentVersion:'PDPA-2026-01',gpsWorkHoursOnly:true}},at);
+  assert.equal(result.config.attendance.enabled,true);assert.equal(result.config.attendance.faceMode,'liveness_1to1');assert.equal(state.hr.settings.attendance.defaultRadiusMeters,200);
+ }finally{
+  const keys=['AWS_ACCESS_KEY_ID','AWS_SECRET_ACCESS_KEY','NEXT_PUBLIC_AWS_COGNITO_IDENTITY_POOL_ID'];keys.forEach((key,index)=>old[index]===undefined?delete process.env[key]:process.env[key]=old[index]);
+ }
 });
 
 test('PDPA and foreign worker documents are audited and counted',()=>{

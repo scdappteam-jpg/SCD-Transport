@@ -41,6 +41,7 @@ const pickupFlow = require("./pickup-flow.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
 const meetingApi = require("./meeting-api.cjs");
+const biometricAuth = require("./biometric-auth.cjs");
 const warehouseInbound = require("./warehouse-inbound.cjs");
 const meetingDriver = require("./meeting-driver-policy.cjs");
 const warehouseQuality = require("./warehouse-quality.cjs");
@@ -1221,7 +1222,7 @@ async function authenticateWithSupabaseAuth(user, password) {
 // safe representation of a user.
 function publicUser(user) {
     if (!user) return null;
-    const { password, passwordHash, ...safeUser } = user;
+    const { password, passwordHash, pinHash, ...safeUser } = user;
     return safeUser;
 }
 
@@ -1245,6 +1246,7 @@ function sessionUser(db, req) {
     const session = authTestMode.sessionFor(db, token);
     return session ? (db.users || []).find(user => user.id === session.userId) || null : null;
 }
+function requestAuthSession(db,req){const token=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');return authTestMode.sessionFor(db,token);}
 
 const bangkokLabelFormatter = new Intl.DateTimeFormat("th-TH", {timeZone: TZ, dateStyle: "short", timeStyle: "short"});
 const bangkokHourFormatter = new Intl.DateTimeFormat("en-US", {timeZone: TZ, hour: "2-digit", hour12: false});
@@ -3453,7 +3455,31 @@ async function handleApi(req, res, pathname) {
         } else writeDb(db);
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, code: user.code, name: user.name, nickname: user.nickname || "", role: user.role, mustChangePassword: user.mustChangePassword === true } });
     }
-    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    if (req.method === "POST" && pathname === "/api/auth/face/start") {
+        const payload = await parseBody(req);
+        try { const result = await biometricAuth.start(db,{...payload,storageDir:STORAGE_DIR,at:nowIso()});writeDb(db);return sendJson(res,200,{ok:true,...result}); }
+        catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||503,{error:error.message,code:error.code||'FACE_START_FAILED'});}
+    }
+    if (req.method === "POST" && pathname === "/api/auth/face/complete") {
+        const payload = await parseBody(req);
+        try {
+            const result=await biometricAuth.complete(db,{...payload,storageDir:STORAGE_DIR,at:nowIso()}),user=result.user;
+            const token=crypto.randomBytes(32).toString('base64url');
+            db.authSessions=(db.authSessions||[]).filter(item=>new Date(item.expiresAt).getTime()>Date.now()).slice(-200);
+            db.authSessions.push({id:`SES-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,userId:user.id,tokenHash:crypto.createHash('sha256').update(token).digest('hex'),createdAt:nowIso(),expiresAt:new Date(Date.now()+12*60*60*1e3).toISOString(),authenticationMethod:'PIN+FaceLiveness',biometricVerifiedAt:nowIso()});
+            writeDb(db);return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role}});
+        }catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||503,{error:error.message,code:error.code||'FACE_COMPLETE_FAILED'});}
+    }
+    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/face/start", "/api/auth/face/complete", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    if (req.method === "POST" && pathname === "/api/auth/set-pin") {
+        const actor=sessionUser(db,req),payload=await parseBody(req);
+        if(!actor)return sendJson(res,401,{error:'กรุณาเข้าสู่ระบบใหม่'});
+        const supabaseAuth=await authenticateWithSupabaseAuth(actor,payload.currentPassword);
+        const legacyValid=!supabaseAuth.managed&&serverPasswordMatches(payload.currentPassword,passwordHashForUser(actor));
+        if((supabaseAuth.managed&&!supabaseAuth.valid)||(!supabaseAuth.managed&&!legacyValid))return sendJson(res,401,{error:'รหัสผ่านปัจจุบันไม่ถูกต้อง'});
+        try{const result=biometricAuth.setPin(db,actor,payload.newPin,nowIso());writeDb(db);return sendJson(res,200,result);}
+        catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
+    }
     const restrictedViewer = sessionUser(db, req);
     const peopleViewerPaths = new Set(["/api/people-directory", "/api/people-directory/update", "/api/auth/change-password"]);
     if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && !peopleViewerPaths.has(pathname)) {
@@ -8669,10 +8695,11 @@ async function handleApi(req, res, pathname) {
         if (!user) return sendJson(res, 404, {
             error: "User not found"
         });
-        const attendancePolicy = { requireEmployeeQr: true, requireSelfieEvidence: true, ...(db.operationalReadiness?.attendance || {}) };
+        const attendancePolicy = { requirePin: true, requireFaceVerification: true, ...(db.operationalReadiness?.attendance || {}) };
+        const attendanceSession=typeof requestAuthSession==='function'?requestAuthSession(db,req):null;
         if (db.operationalReadiness?.attendance?.enabled === true) {
-            if (attendancePolicy.requireEmployeeQr && String(payload.employeeQrCode || '').trim().toUpperCase() !== String(user.code || user.id || '').trim().toUpperCase()) return sendJson(res, 422, { error: "กรุณาสแกน QR พนักงานให้ตรงกับบัญชีที่เช็กอิน" });
-            if (attendancePolicy.requireSelfieEvidence && !photo) return sendJson(res, 422, { error: "กรุณาถ่ายภาพยืนยันตัวตนก่อนเช็กอิน" });
+            const authSession=attendanceSession,verifiedAt=Date.parse(authSession?.biometricVerifiedAt||'');
+            if(attendancePolicy.requireFaceVerification&&(authSession?.authenticationMethod!=='PIN+FaceLiveness'||!Number.isFinite(verifiedAt)||Date.now()-verifiedAt>10*60*1000))return sendJson(res,428,{error:'กรุณายืนยัน PIN และสแกนใบหน้าใหม่ก่อนเช็กอิน',code:'FACE_REAUTH_REQUIRED'});
         }
         let locationResult;
         try { locationResult = hrSecurity.attendanceLocation(db, userId, gpsLat, gpsLon); }
@@ -8714,8 +8741,8 @@ async function handleApi(req, res, pathname) {
             date: today,
             checkInTime: nowIso(),
             checkInPhoto: photoUrl,
-            checkInEmployeeQrVerified: db.operationalReadiness?.attendance?.enabled === true && attendancePolicy.requireEmployeeQr,
-            checkInFaceEvidenceMode: photoUrl ? 'photo_evidence' : '',
+            checkInFaceVerifiedAt: attendanceSession?.biometricVerifiedAt||'',
+            checkInFaceEvidenceMode: attendanceSession?.authenticationMethod==='PIN+FaceLiveness'?'liveness_1to1':(photoUrl?'photo_evidence':''),
             checkInLat: latitude,
             checkInLon: longitude,
             checkInLocationId: nearestLocation?.id || null,
