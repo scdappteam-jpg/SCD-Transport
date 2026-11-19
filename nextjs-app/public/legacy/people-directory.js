@@ -33,6 +33,13 @@
     if (departments.includes(selected)) $("department").value = selected;
   }
 
+  function populateEditorSelect(selectId, values, selectedValue, emptyLabel) {
+    const selected = String(selectedValue || "").trim();
+    const options = [...new Set([...values.filter(Boolean), selected].filter(Boolean))].sort((a, b) => a.localeCompare(b, "th"));
+    $(selectId).innerHTML = `<option value="">${esc(emptyLabel)}</option>` + options.map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join("");
+    $(selectId).value = selected;
+  }
+
   async function loadDirectory() {
     const token = sessionStorage.getItem(TOKEN_KEY);
     if (!token) return false;
@@ -70,8 +77,10 @@
 
   function openEditor(id) {
     const item = items.find(entry => entry.id === id); if (!item) return;
-    for (const field of ["employeeId", "firstName", "lastName", "phone", "nickname", "position"]) $(field).value = item[field] || "";
-    $("editDepartment").value = item.department || ""; $("photo").value = ""; photoBase64 = "";
+    for (const field of ["employeeId", "firstName", "lastName", "phone", "nickname"]) $(field).value = item[field] || "";
+    populateEditorSelect("position", items.map(person => person.position), item.position, "เลือกตำแหน่ง");
+    populateEditorSelect("editDepartment", items.map(person => person.department), item.department, "เลือกแผนก");
+    $("photo").value = ""; photoBase64 = "";
     $("photoPreview").src = item.photoUrl || ""; $("photoPreviewBlock").classList.toggle("hidden", !item.photoUrl); $("downloadPhoto").href = item.photoUrl || "#"; $("downloadPhoto").download = photoFilename(item); $("editorMessage").textContent = "";
     $("editorModal").classList.remove("hidden");
   }

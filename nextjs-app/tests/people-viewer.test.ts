@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
 
@@ -21,6 +22,15 @@ const records = [
   { code: "VIEW001", name: "คุณก็อต", nickname: "ก็อต", temporaryPassword: "Test2026" },
   { code: "VIEW002", name: "คุณหวาย", nickname: "หวาย", temporaryPassword: "Test2026" },
 ];
+
+test("person editor uses controlled dropdowns for position and department", () => {
+  const html = readFileSync(new URL("../public/legacy/people-directory.html", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../public/legacy/people-directory.js", import.meta.url), "utf8");
+  assert.match(html, /<select id="position" required><\/select>/);
+  assert.match(html, /<select id="editDepartment" required><\/select>/);
+  assert.match(client, /populateEditorSelect\("position", items\.map\(person => person\.position\)/);
+  assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
+});
 
 test("provisions exactly two editable directory accounts without deactivating existing users", () => {
   const db = state();
