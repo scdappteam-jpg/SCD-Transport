@@ -734,10 +734,10 @@ async function loadDbFromSupabase() {
 // Render may serve consecutive requests from different warm workers.  Keep
 // their in-memory snapshots cheap to validate on dashboard bootstrap, while
 // retaining the full chunked reload only for a newer shared-state version.
-async function refreshDbIfSharedStateChanged() {
+async function refreshDbIfSharedStateChanged(force = false) {
     if (!supabaseEnabled()) return;
     const now = Date.now();
-    if (now - lastSharedStateCheckAt < SUPABASE_STATE_CHECK_INTERVAL_MS) return;
+    if (!force && now - lastSharedStateCheckAt < SUPABASE_STATE_CHECK_INTERVAL_MS) return;
     lastSharedStateCheckAt = now;
     try {
         const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=updated_at`, null);
@@ -3510,6 +3510,8 @@ async function handleApi(req, res, pathname) {
         }
     }
     if (req.method === "GET" && pathname === "/api/people-directory") {
+        await refreshDbIfSharedStateChanged(true);
+        db = readDb();
         const actor = sessionUser(db, req);
         if (!actor || ![peopleViewer.VIEWER_ROLE, "Admin"].includes(actor.role)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดูทะเบียนบุคลากร" });
         const items = peopleViewer.directory(db);
@@ -3517,6 +3519,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/people-directory/update") {
         const payload = await parseBody(req);
+        await refreshDbIfSharedStateChanged(true);
         const currentDb = readDb();
         const actor = sessionUser(currentDb, req);
         let photoUrl = "";

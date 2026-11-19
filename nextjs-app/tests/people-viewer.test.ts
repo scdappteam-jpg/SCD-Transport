@@ -47,6 +47,14 @@ test("admin provisions one additional directory viewer with organization fields"
   assert.throws(() => provisionAdditional(db, { actor: db.users[0], record, preview: false }), /มีอยู่แล้ว/);
 });
 
+test("directory read and update force a shared-state refresh before resolving employees", () => {
+  const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
+  const getRoute = api.slice(api.indexOf('if (req.method === "GET" && pathname === "/api/people-directory")'), api.indexOf('if (req.method === "POST" && pathname === "/api/people-directory/update")'));
+  const updateRoute = api.slice(api.indexOf('if (req.method === "POST" && pathname === "/api/people-directory/update")'), api.indexOf('if (req.method === "POST" && pathname === "/api/people-viewers/provision")'));
+  assert.match(getRoute, /await refreshDbIfSharedStateChanged\(true\);\s*db = readDb\(\);/);
+  assert.match(updateRoute, /await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
+});
+
 test("provisions exactly two editable directory accounts without deactivating existing users", () => {
   const db = state();
   const result = provision(db, { actor: db.users[0], records, preview: false, now: "2026-11-17T00:00:00.000Z" });
