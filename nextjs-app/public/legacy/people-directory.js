@@ -4,6 +4,7 @@
   const esc = value => String(value || "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
   let items = [];
   let photoBase64 = "";
+  const photoFilename = item => `SCD-${String(item?.id || "employee").replace(/[^A-Za-z0-9_-]/g, "-")}-profile.jpg`;
 
   const authHeaders = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${sessionStorage.getItem(TOKEN_KEY) || ""}` });
   const initials = item => `${item.firstName || ""} ${item.lastName || ""}`.trim().split(/\s+/).map(part => part[0]).join("").slice(-2).toUpperCase() || "SCD";
@@ -21,7 +22,7 @@
         <span class="meta">${esc(item.position || "ยังไม่ระบุตำแหน่ง")} · ${esc(item.department || "ไม่ระบุแผนก")}</span>
         <span class="meta">${esc(item.phone || "ยังไม่ระบุเบอร์โทร")}</span>
         ${item.photoUrl ? "" : '<div class="no-photo">ยังไม่มีรูปถ่าย</div>'}
-        <button class="edit" type="button" data-id="${esc(item.id)}">แก้ไขข้อมูล</button>
+        <div class="person-actions"><button class="edit" type="button" data-id="${esc(item.id)}">แก้ไขข้อมูล</button>${item.photoUrl ? `<a class="export" href="${esc(item.photoUrl)}" download="${esc(photoFilename(item))}">ส่งออกรูป</a>` : ""}</div>
       </article>`).join("") : '<div class="card empty">ไม่พบรายชื่อพนักงาน</div>';
   }
 
@@ -71,7 +72,7 @@
     const item = items.find(entry => entry.id === id); if (!item) return;
     for (const field of ["employeeId", "firstName", "lastName", "phone", "nickname", "position"]) $(field).value = item[field] || "";
     $("editDepartment").value = item.department || ""; $("photo").value = ""; photoBase64 = "";
-    $("photoPreview").src = item.photoUrl || ""; $("photoPreview").classList.toggle("hidden", !item.photoUrl); $("editorMessage").textContent = "";
+    $("photoPreview").src = item.photoUrl || ""; $("photoPreviewBlock").classList.toggle("hidden", !item.photoUrl); $("downloadPhoto").href = item.photoUrl || "#"; $("downloadPhoto").download = photoFilename(item); $("editorMessage").textContent = "";
     $("editorModal").classList.remove("hidden");
   }
 
@@ -90,7 +91,7 @@
   $("photo").addEventListener("change", () => {
     const file = $("photo").files[0]; if (!file) return;
     if (file.size > 2 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) { $("editorMessage").textContent = "รูปต้องเป็น JPG, PNG หรือ WEBP และไม่เกิน 2 MB"; $("photo").value = ""; return; }
-    const reader = new FileReader(); reader.onload = () => { photoBase64 = String(reader.result); $("photoPreview").src = photoBase64; $("photoPreview").classList.remove("hidden"); }; reader.readAsDataURL(file);
+    const reader = new FileReader(); reader.onload = () => { photoBase64 = String(reader.result); $("photoPreview").src = photoBase64; $("photoPreviewBlock").classList.remove("hidden"); $("downloadPhoto").href = photoBase64; $("downloadPhoto").download = `SCD-${$("employeeId").value || "employee"}-preview.${file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg"}`; $("editorMessage").textContent = "ตรวจรูปในพรีวิวก่อนกดบันทึกข้อมูล"; }; reader.readAsDataURL(file);
   });
   $("loginButton").addEventListener("click", signIn); $("password").addEventListener("keydown", event => { if (event.key === "Enter") signIn(); });
   $("changePasswordButton").addEventListener("click", changePassword); $("search").addEventListener("input", render); $("department").addEventListener("change", render);

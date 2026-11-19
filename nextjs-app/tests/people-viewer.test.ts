@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { provision, directory, changePassword, updatePerson } = require("../src/server/people-viewer.cjs");
+const { provision, provisionTest, directory, changePassword, updatePerson } = require("../src/server/people-viewer.cjs");
 
 function state() {
   return {
@@ -74,4 +74,17 @@ test("rejects a batch that is not exactly two accounts", () => {
 test("rejects non-admin provisioning", () => {
   const db = state();
   assert.throws(() => provision(db, { actor: db.users[1], records }), /เฉพาะ Admin/);
+});
+
+test("provisions a separate VIEW999 test account without changing the two main viewers", () => {
+  const db = state();
+  provision(db, { actor: db.users[0], records, preview: false, now: "2026-11-17T00:00:00.000Z" });
+  const record = { name: "บัญชีทดสอบรูปภาพ", nickname: "ทดสอบ", temporaryPassword: "Test2026" };
+  const preview = provisionTest(db, { actor: db.users[0], record, preview: true });
+  assert.equal(preview.code, "VIEW999"); assert.equal(preview.createCount, 1);
+  const result = provisionTest(db, { actor: db.users[0], record, preview: false, now: "2026-11-19T00:00:00.000Z" });
+  const viewer = db.users.find((user: any) => user.code === "VIEW999");
+  assert.equal(result.mustChangePassword, true);
+  assert.equal(viewer.role, "People_Viewer"); assert.equal(viewer.isTestAccount, true); assert.equal(viewer.mustChangePassword, true);
+  assert.equal(db.users.filter((user: any) => ["VIEW001", "VIEW002"].includes(user.code)).length, 2);
 });

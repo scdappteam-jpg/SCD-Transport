@@ -2,6 +2,7 @@ const crypto = require("crypto");
 
 const VIEWER_ROLE = "People_Viewer";
 const VIEWER_CODE = /^VIEW\d{3,6}$/;
+const TEST_VIEWER_CODE = "VIEW999";
 
 function fail(message, statusCode = 400) {
     throw Object.assign(new Error(message), { statusCode });
@@ -77,6 +78,42 @@ function provision(db, { actor, records, preview = true, now = new Date().toISOS
     db.hr.auditLogs ||= [];
     db.hr.auditLogs.push({ id: `HRAUD-${Date.now()}`, action: "PeopleViewersProvisioned", actorId: actor.id, at: now, detail: summary });
     return { ...summary, preview: false };
+}
+
+function provisionTest(db, { actor, record, preview = true, now = new Date().toISOString() }) {
+    if (!actor || actor.role !== "Admin") fail("เฉพาะ Admin เท่านั้นที่สร้างบัญชีทดสอบได้", 403);
+    const code = TEST_VIEWER_CODE;
+    const name = cleanText(record?.name, 160);
+    const nickname = cleanText(record?.nickname, 100);
+    const password = String(record?.temporaryPassword || "");
+    if (!name) fail("กรุณาระบุชื่อบัญชีทดสอบ");
+    if (password.length < 6) fail("รหัสผ่านชั่วคราวต้องมีอย่างน้อย 6 ตัวอักษร");
+    const existing = (db.users || []).find(user => cleanText(user.code, 32).toUpperCase() === code);
+    if (existing && existing.role !== VIEWER_ROLE) fail(`รหัสบัญชีชนกับผู้ใช้เดิม: ${code}`, 409);
+    const summary = { preview: Boolean(preview), code, createCount: existing ? 0 : 1, updateCount: existing ? 1 : 0, deactivateCount: 0 };
+    if (preview) return summary;
+    const user = existing || { id: "u_people_viewer_view999", createdAt: now };
+    if (!existing) db.users.push(user);
+    Object.assign(user, {
+        code,
+        name,
+        nickname,
+        role: VIEWER_ROLE,
+        status: "Active",
+        vehiclePlate: "",
+        phone: "",
+        lineUserId: "",
+        lineConnected: false,
+        passwordHash: hashPassword(password),
+        mustChangePassword: true,
+        isTestAccount: true,
+        credentialIssuedAt: now,
+        updatedAt: now
+    });
+    db.hr ||= {};
+    db.hr.auditLogs ||= [];
+    db.hr.auditLogs.push({ id: `HRAUD-${Date.now()}`, action: "PeopleViewerTestProvisioned", actorId: actor.id, accountCode: code, at: now, detail: summary });
+    return { ...summary, preview: false, mustChangePassword: true };
 }
 
 function splitName(fullName) {
@@ -165,4 +202,4 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     return directory(db).find(item => item.id === user.id);
 }
 
-module.exports = { VIEWER_ROLE, validateRecords, provision, directory, changePassword, updatePerson };
+module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, directory, changePassword, updatePerson };
