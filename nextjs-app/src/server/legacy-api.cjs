@@ -3574,6 +3574,23 @@ async function handleApi(req, res, pathname) {
         if (!result.preview) writeDb(currentDb);
         return sendJson(res, 200, { ok: true, ...result });
     }
+    if (req.method === "POST" && pathname === "/api/people-viewers/provision-additional") {
+        const payload = await parseBody(req);
+        const currentDb = readDb();
+        let result;
+        try {
+            result = peopleViewer.provisionAdditional(currentDb, {
+                actor: sessionUser(currentDb, req),
+                record: payload.record,
+                preview: payload.preview !== false,
+                now: nowIso()
+            });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
+        if (!result.preview) writeDb(currentDb);
+        return sendJson(res, 200, { ok: true, ...result });
+    }
     if (pathname === '/api/warehouse/inbound-control') {
         await refreshDbIfSharedStateChanged(); db = readDb();
         try {

@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { provision, provisionTest, directory, changePassword, updatePerson } = require("../src/server/people-viewer.cjs");
+const { provision, provisionTest, provisionAdditional, directory, changePassword, updatePerson } = require("../src/server/people-viewer.cjs");
 
 function state() {
   return {
@@ -30,6 +30,21 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(html, /<select id="editDepartment" required><\/select>/);
   assert.match(client, /populateEditorSelect\("position", items\.map\(person => person\.position\)/);
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
+});
+
+test("admin provisions one additional directory viewer with organization fields", () => {
+  const db = state();
+  const record = { code: "VIEW003", name: "คุณยุ้ย", nickname: "ยุ้ย", position: "ผู้ดูแลข้อมูล", department: "บริหาร", temporaryPassword: "Test2026" };
+  const preview = provisionAdditional(db, { actor: db.users[0], record, preview: true });
+  assert.equal(preview.createCount, 1);
+  assert.equal(db.users.some((user: any) => user.code === "VIEW003"), false);
+  provisionAdditional(db, { actor: db.users[0], record, preview: false, now: "2026-11-19T00:00:00.000Z" });
+  const viewer = db.users.find((user: any) => user.code === "VIEW003");
+  assert.equal(viewer.role, "People_Viewer");
+  assert.equal(viewer.mustChangePassword, true);
+  assert.equal(db.hr.employeeProfiles[viewer.id].department, "บริหาร");
+  assert.equal(db.hr.employeeProfiles[viewer.id].position, "ผู้ดูแลข้อมูล");
+  assert.throws(() => provisionAdditional(db, { actor: db.users[0], record, preview: false }), /มีอยู่แล้ว/);
 });
 
 test("provisions exactly two editable directory accounts without deactivating existing users", () => {

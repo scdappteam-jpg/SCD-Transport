@@ -116,6 +116,49 @@ function provisionTest(db, { actor, record, preview = true, now = new Date().toI
     return { ...summary, preview: false, mustChangePassword: true };
 }
 
+function provisionAdditional(db, { actor, record, preview = true, now = new Date().toISOString() }) {
+    if (!actor || actor.role !== "Admin") fail("เฉพาะ Admin เท่านั้นที่สร้างบัญชีผู้ดูแลข้อมูลได้", 403);
+    const code = cleanText(record?.code, 32).toUpperCase();
+    const name = cleanText(record?.name, 160);
+    const nickname = cleanText(record?.nickname, 100);
+    const password = String(record?.temporaryPassword || "");
+    const position = cleanText(record?.position, 120);
+    const department = cleanText(record?.department, 120);
+    if (!VIEWER_CODE.test(code) || code === TEST_VIEWER_CODE) fail("รหัสผู้ใช้ต้องเป็น VIEW ตามด้วยตัวเลข เช่น VIEW003");
+    if (!name) fail("กรุณาระบุชื่อบัญชี");
+    if (password.length < 6) fail("รหัสผ่านชั่วคราวต้องมีอย่างน้อย 6 ตัวอักษร");
+    if (!position || !department) fail("กรุณาระบุตำแหน่งและแผนก");
+    const existing = (db.users || []).find(user => cleanText(user.code, 32).toUpperCase() === code);
+    if (existing) fail(`รหัสบัญชีมีอยู่แล้ว: ${code}`, 409);
+    const summary = { preview: Boolean(preview), code, name, nickname, position, department, createCount: 1, deactivateCount: 0 };
+    if (preview) return summary;
+    const user = {
+        id: `u_people_viewer_${code.toLowerCase()}`,
+        code,
+        name,
+        nickname,
+        role: VIEWER_ROLE,
+        status: "Active",
+        vehiclePlate: "",
+        phone: "",
+        lineUserId: "",
+        lineConnected: false,
+        passwordHash: hashPassword(password),
+        mustChangePassword: true,
+        credentialIssuedAt: now,
+        createdAt: now,
+        updatedAt: now
+    };
+    db.users ||= [];
+    db.users.push(user);
+    db.hr ||= {};
+    db.hr.employeeProfiles ||= {};
+    db.hr.employeeProfiles[user.id] = { employeeId: user.id, nickname, position, department, updatedAt: now };
+    db.hr.auditLogs ||= [];
+    db.hr.auditLogs.push({ id: `HRAUD-${Date.now()}`, action: "PeopleViewerAdditionalProvisioned", actorId: actor.id, accountCode: code, at: now, detail: summary });
+    return { ...summary, preview: false, mustChangePassword: true };
+}
+
 function splitName(fullName) {
     const parts = cleanText(fullName, 200).split(" ").filter(Boolean);
     if (parts.length < 2) return { firstName: parts[0] || "-", lastName: "" };
@@ -202,4 +245,4 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     return directory(db).find(item => item.id === user.id);
 }
 
-module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, directory, changePassword, updatePerson };
+module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, provisionAdditional, directory, changePassword, updatePerson };
