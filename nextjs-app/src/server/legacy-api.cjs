@@ -742,7 +742,7 @@ async function refreshDbIfSharedStateChanged(force = false) {
     try {
         const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=updated_at`, null);
         const sharedUpdatedAt = String(rows?.[0]?.updated_at || "");
-        if (sharedUpdatedAt && sharedUpdatedAt !== dbCacheUpdatedAt) await loadDbFromSupabase();
+        if (force || (sharedUpdatedAt && sharedUpdatedAt !== dbCacheUpdatedAt)) await loadDbFromSupabase();
     } catch (err) {
         // A transient version check must never take the operational UI down.
         console.warn(`[db] Shared-state version check skipped: ${err.message}`);

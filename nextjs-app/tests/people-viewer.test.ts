@@ -55,6 +55,22 @@ test("directory read and update force a shared-state refresh before resolving em
   assert.match(updateRoute, /await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
 });
 
+test("all legacy personnel identifiers remain editable by id employeeId or code", () => {
+  const db = state();
+  db.users.push(
+    { code: "LEG001", name: "คน ไม่มีไอดี", role: "Driver", status: "Active" },
+    { employeeId: "EMP-LEG-002", code: "LEG002", name: "คน ไอดีเก่า", role: "WH_Staff", status: "Active" },
+  );
+  const actor = { id: "u_view", role: "People_Viewer" };
+  const listed = directory(db);
+  assert.ok(listed.some((item: any) => item.id === "LEG001"));
+  assert.ok(listed.some((item: any) => item.id === "EMP-LEG-002"));
+  const byCode = updatePerson(db, { actor, employeeId: "LEG001", changes: { firstName: "คน", lastName: "แก้แล้ว", position: "Driver", department: "Transport" } });
+  const byEmployeeId = updatePerson(db, { actor, employeeId: "EMP-LEG-002", changes: { firstName: "คน", lastName: "แก้แล้วสอง", position: "WH Staff", department: "คลังสินค้า WH3" } });
+  assert.equal(byCode.lastName, "แก้แล้ว");
+  assert.equal(byEmployeeId.lastName, "แก้แล้วสอง");
+});
+
 test("provisions exactly two editable directory accounts without deactivating existing users", () => {
   const db = state();
   const result = provision(db, { actor: db.users[0], records, preview: false, now: "2026-11-17T00:00:00.000Z" });

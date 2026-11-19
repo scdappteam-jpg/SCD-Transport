@@ -165,14 +165,24 @@ function splitName(fullName) {
     return { firstName: parts.slice(0, -1).join(" "), lastName: parts.at(-1) };
 }
 
+function directoryKey(user) {
+    return cleanText(user?.id || user?.employeeId || user?.code, 120);
+}
+
+function matchesDirectoryKey(user, key) {
+    const expected = cleanText(key, 120);
+    return [user?.id, user?.employeeId, user?.code].some(value => cleanText(value, 120) === expected);
+}
+
 function directory(db) {
     return (db.users || [])
-        .filter(user => user.status !== "Inactive" && user.role !== "Admin" && !(user.role === VIEWER_ROLE && user.isTestAccount === true))
+        .filter(user => directoryKey(user) && user.status !== "Inactive" && user.role !== "Admin" && !(user.role === VIEWER_ROLE && user.isTestAccount === true))
         .map(user => {
-            const profile = db.hr?.employeeProfiles?.[user.id] || {};
+            const key = directoryKey(user);
+            const profile = db.hr?.employeeProfiles?.[user.id] || db.hr?.employeeProfiles?.[user.employeeId] || db.hr?.employeeProfiles?.[key] || {};
             const names = splitName(user.name);
             return {
-                id: user.id,
+                id: key,
                 firstName: names.firstName,
                 lastName: names.lastName,
                 phone: cleanText(user.phone, 80),
@@ -198,12 +208,14 @@ function changePassword(user, password, now = new Date().toISOString()) {
 
 function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new Date().toISOString() }) {
     if (!actor || actor.role !== VIEWER_ROLE) fail("เฉพาะผู้ดูแลทะเบียนบุคลากรเท่านั้นที่แก้ไขข้อมูลได้", 403);
-    const user = (db.users || []).find(item => item.id === cleanText(employeeId, 120));
+    const key = cleanText(employeeId, 120);
+    const user = (db.users || []).find(item => matchesDirectoryKey(item, key));
     if (!user || user.status === "Inactive" || user.role === "Admin" || (user.role === VIEWER_ROLE && user.isTestAccount === true)) fail("ไม่พบพนักงานที่แก้ไขได้", 404);
     const firstName = cleanText(changes?.firstName, 120);
     const lastName = cleanText(changes?.lastName, 120);
     if (!firstName) fail("กรุณาระบุชื่อ");
-    const profile = db.hr?.employeeProfiles?.[user.id] || {};
+    const userKey = directoryKey(user);
+    const profile = db.hr?.employeeProfiles?.[user.id] || db.hr?.employeeProfiles?.[user.employeeId] || db.hr?.employeeProfiles?.[userKey] || {};
     const protectedSnapshot = {
         code: user.code,
         role: user.role,
@@ -218,9 +230,9 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     user.updatedAt = now;
     db.hr ||= {};
     db.hr.employeeProfiles ||= {};
-    db.hr.employeeProfiles[user.id] = {
+    db.hr.employeeProfiles[userKey] = {
         ...profile,
-        employeeId: user.id,
+        employeeId: userKey,
         nickname: user.nickname,
         position: cleanText(changes?.position, 120),
         department: cleanText(changes?.department, 120),
@@ -228,7 +240,7 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
         updatedAt: now
     };
     Object.assign(user, { code: protectedSnapshot.code, role: protectedSnapshot.role, vehiclePlate: protectedSnapshot.vehiclePlate });
-    Object.assign(db.hr.employeeProfiles[user.id], {
+    Object.assign(db.hr.employeeProfiles[userKey], {
         salary: protectedSnapshot.salary,
         baseSalary: protectedSnapshot.baseSalary,
         payroll: protectedSnapshot.payroll
@@ -238,11 +250,11 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
         id: `HRAUD-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
         action: "PeopleDirectoryProfileUpdated",
         actorId: actor.id,
-        employeeId: user.id,
+        employeeId: userKey,
         fields: ["name", "phone", "nickname", "position", "department", ...(photoUrl ? ["photo"] : [])],
         at: now
     });
-    return directory(db).find(item => item.id === user.id);
+    return directory(db).find(item => item.id === userKey);
 }
 
 module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, provisionAdditional, directory, changePassword, updatePerson };
