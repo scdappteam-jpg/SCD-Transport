@@ -41,7 +41,7 @@ const pickupFlow = require("./pickup-flow.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
 const meetingApi = require("./meeting-api.cjs");
-const biometricAuth = require("./biometric-auth.cjs");
+const attendanceDeviceAuth = require("./attendance-device-auth.cjs");
 const warehouseInbound = require("./warehouse-inbound.cjs");
 const meetingDriver = require("./meeting-driver-policy.cjs");
 const warehouseQuality = require("./warehouse-quality.cjs");
@@ -3455,29 +3455,38 @@ async function handleApi(req, res, pathname) {
         } else writeDb(db);
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, code: user.code, name: user.name, nickname: user.nickname || "", role: user.role, mustChangePassword: user.mustChangePassword === true } });
     }
-    if (req.method === "POST" && pathname === "/api/auth/face/start") {
-        const payload = await parseBody(req);
-        try { const result = await biometricAuth.start(db,{...payload,storageDir:STORAGE_DIR,at:nowIso()});writeDb(db);return sendJson(res,200,{ok:true,...result}); }
-        catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||503,{error:error.message,code:error.code||'FACE_START_FAILED'});}
-    }
-    if (req.method === "POST" && pathname === "/api/auth/face/complete") {
+    if (req.method === "POST" && pathname === "/api/auth/device/login") {
         const payload = await parseBody(req);
         try {
-            const result=await biometricAuth.complete(db,{...payload,storageDir:STORAGE_DIR,at:nowIso()}),user=result.user;
+            const result=attendanceDeviceAuth.authenticate(db,{...payload,at:nowIso()}),user=result.user;
             const token=crypto.randomBytes(32).toString('base64url');
             db.authSessions=(db.authSessions||[]).filter(item=>new Date(item.expiresAt).getTime()>Date.now()).slice(-200);
-            db.authSessions.push({id:`SES-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,userId:user.id,tokenHash:crypto.createHash('sha256').update(token).digest('hex'),createdAt:nowIso(),expiresAt:new Date(Date.now()+12*60*60*1e3).toISOString(),authenticationMethod:'PIN+FaceLiveness',biometricVerifiedAt:nowIso()});
+            db.authSessions.push({id:`SES-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,userId:user.id,tokenHash:crypto.createHash('sha256').update(token).digest('hex'),createdAt:nowIso(),expiresAt:new Date(Date.now()+12*60*60*1e3).toISOString(),authenticationMethod:'PIN+DeviceBinding',deviceBindingId:result.binding.id,deviceVerifiedAt:nowIso()});
             writeDb(db);return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role}});
-        }catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||503,{error:error.message,code:error.code||'FACE_COMPLETE_FAILED'});}
+        }catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||400,{error:error.message,code:error.code||'DEVICE_LOGIN_FAILED',requestId:error.requestId});}
     }
-    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/face/start", "/api/auth/face/complete", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/device/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
     if (req.method === "POST" && pathname === "/api/auth/set-pin") {
         const actor=sessionUser(db,req),payload=await parseBody(req);
         if(!actor)return sendJson(res,401,{error:'กรุณาเข้าสู่ระบบใหม่'});
         const supabaseAuth=await authenticateWithSupabaseAuth(actor,payload.currentPassword);
         const legacyValid=!supabaseAuth.managed&&serverPasswordMatches(payload.currentPassword,passwordHashForUser(actor));
         if((supabaseAuth.managed&&!supabaseAuth.valid)||(!supabaseAuth.managed&&!legacyValid))return sendJson(res,401,{error:'รหัสผ่านปัจจุบันไม่ถูกต้อง'});
-        try{const result=biometricAuth.setPin(db,actor,payload.newPin,nowIso());writeDb(db);return sendJson(res,200,result);}
+        try{const result=attendanceDeviceAuth.setPin(db,actor,payload.newPin,nowIso());writeDb(db);return sendJson(res,200,result);}
+        catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
+    }
+    if (req.method === "GET" && pathname === "/api/attendance/device-change/requests") {
+        try { return sendJson(res,200,{requests:attendanceDeviceAuth.listRequests(db,sessionUser(db,req))}); }
+        catch(error){return sendJson(res,Number(error.statusCode)||403,{error:error.message,code:error.code});}
+    }
+    if (req.method === "POST" && pathname === "/api/attendance/device-change/decide") {
+        const payload=await parseBody(req);
+        try { const request=attendanceDeviceAuth.decideRequest(db,sessionUser(db,req),payload.requestId,payload.decision,payload.note,nowIso());writeDb(db);return sendJson(res,200,{ok:true,request}); }
+        catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
+    }
+    if (req.method === "POST" && pathname === "/api/attendance/device/reset") {
+        const payload=await parseBody(req);
+        try { const result=attendanceDeviceAuth.resetBinding(db,sessionUser(db,req),payload.userId,payload.reason,nowIso());writeDb(db);return sendJson(res,200,result); }
         catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
     }
     const restrictedViewer = sessionUser(db, req);
@@ -8695,11 +8704,11 @@ async function handleApi(req, res, pathname) {
         if (!user) return sendJson(res, 404, {
             error: "User not found"
         });
-        const attendancePolicy = { requirePin: true, requireFaceVerification: true, ...(db.operationalReadiness?.attendance || {}) };
+        const attendancePolicy = { requirePin: true, requireDeviceBinding: true, ...(db.operationalReadiness?.attendance || {}) };
         const attendanceSession=typeof requestAuthSession==='function'?requestAuthSession(db,req):null;
-        if (db.operationalReadiness?.attendance?.enabled === true) {
-            const authSession=attendanceSession,verifiedAt=Date.parse(authSession?.biometricVerifiedAt||'');
-            if(attendancePolicy.requireFaceVerification&&(authSession?.authenticationMethod!=='PIN+FaceLiveness'||!Number.isFinite(verifiedAt)||Date.now()-verifiedAt>10*60*1000))return sendJson(res,428,{error:'กรุณายืนยัน PIN และสแกนใบหน้าใหม่ก่อนเช็กอิน',code:'FACE_REAUTH_REQUIRED'});
+        if (db.operationalReadiness?.attendance?.enabled === true && simulation !== true && attendancePolicy.requireDeviceBinding) {
+            try { attendanceDeviceAuth.verifySession(db,attendanceSession,userId,req.headers['x-scd-device-token']); }
+            catch(error){return sendJson(res,Number(error.statusCode)||428,{error:error.message,code:error.code});}
         }
         let locationResult;
         try { locationResult = hrSecurity.attendanceLocation(db, userId, gpsLat, gpsLon); }
@@ -8716,9 +8725,10 @@ async function handleApi(req, res, pathname) {
         const today = (new Date).toLocaleDateString("en-CA", {
             timeZone: TZ
         });
-        const existing = db.attendance.find(r => r.userId === userId && r.date === today && !r.checkOutTime);
+        const existing = db.attendance.find(r => r.userId === userId && r.date === today && (isSimulation ? r.isSimulation === true : r.isSimulation !== true));
         if (existing) return sendJson(res, 409, {
-            error: "เช็คอินไปแล้ว กรุณาเช็คเอาต์ก่อน",
+            error: existing.checkOutTime ? "ลงเวลาเข้างานสำหรับวันนี้ครบแล้ว" : "เช็คอินไปแล้ว กรุณาเช็คเอาต์ตามเวลา",
+            code: existing.checkOutTime ? "ATTENDANCE_ALREADY_COMPLETED" : "ATTENDANCE_ALREADY_CHECKED_IN",
             record: existing
         });
         let photoUrl = null;
@@ -8741,8 +8751,9 @@ async function handleApi(req, res, pathname) {
             date: today,
             checkInTime: nowIso(),
             checkInPhoto: photoUrl,
-            checkInFaceVerifiedAt: attendanceSession?.biometricVerifiedAt||'',
-            checkInFaceEvidenceMode: attendanceSession?.authenticationMethod==='PIN+FaceLiveness'?'liveness_1to1':(photoUrl?'photo_evidence':''),
+            checkInDeviceVerifiedAt: attendanceSession?.deviceVerifiedAt||'',
+            checkInDeviceBindingId: attendanceSession?.deviceBindingId||'',
+            checkInEvidenceMode: attendanceSession?.authenticationMethod==='PIN+DeviceBinding'?'pin_device_binding':(photoUrl?'photo_evidence':''),
             checkInLat: latitude,
             checkInLon: longitude,
             checkInLocationId: nearestLocation?.id || null,
@@ -8774,6 +8785,12 @@ async function handleApi(req, res, pathname) {
             error: "userId required"
         });
         const db = readDb();
+        const attendancePolicy = { requirePin: true, requireDeviceBinding: true, ...(db.operationalReadiness?.attendance || {}) };
+        const attendanceSession=typeof requestAuthSession==='function'?requestAuthSession(db,req):null;
+        if (db.operationalReadiness?.attendance?.enabled === true && attendancePolicy.requireDeviceBinding) {
+            try { attendanceDeviceAuth.verifySession(db,attendanceSession,userId,req.headers['x-scd-device-token']); }
+            catch(error){return sendJson(res,Number(error.statusCode)||428,{error:error.message,code:error.code});}
+        }
         let locationResult;
         try { locationResult = hrSecurity.attendanceLocation(db, userId, gpsLat, gpsLon); }
         catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }

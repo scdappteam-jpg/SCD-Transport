@@ -170,6 +170,9 @@ test('inside-radius checkin and checkout store server time and location evidence
     assert.equal(checkout.body.record.checkOutLocationId, 'office');
     assert.equal(checkout.body.record.checkOutDistanceMeters, 0);
     assert.equal(checkout.body.record.checkOutTime, '2026-11-01T03:00:00.000Z');
+    const repeatedCheckin = await request(db, 'employee', '/api/attendance/checkin', payload);
+    assert.equal(repeatedCheckin.status, 409);
+    assert.equal(repeatedCheckin.body.code, 'ATTENDANCE_ALREADY_COMPLETED');
     assert.equal((await request(db, 'employee', '/api/attendance/checkout', payload)).status, 404);
 });
 

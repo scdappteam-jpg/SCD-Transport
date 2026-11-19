@@ -55,7 +55,7 @@
             <label>รหัสผ่าน / Password</label>
             <input id="mobileLoginPassword" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอกรหัสผ่าน / Enter password">
             <button id="mobileLoginBtn" type="button">เข้าสู่ระบบ / Sign In</button>
-            <a href="/attendance-auth" class="face-login-link">เข้าเช็กอินด้วย PIN + ใบหน้า</a>
+            <a href="/attendance-auth" class="face-login-link">เข้าลงเวลาด้วย PIN + อุปกรณ์ประจำตัว</a>
             <button id="mobileLogoutBtn" type="button" class="logout-inline" hidden>ออกจากระบบ / Logout</button>
             <div id="mobileLoginStatus" class="login-status" role="status"></div>
             <div class="quick-start-wrap" id="quickStartWrap" hidden>
@@ -743,7 +743,7 @@
         <div class="fo-header"><div><small>บัญชีของฉัน</small><h1>โปรไฟล์</h1></div></div>
         <div class="fo-card fo-profile-card" id="foProfileCard"></div>
         <div class="fo-card">
-          <div class="fo-card-head"><strong>ตั้ง PIN สำหรับเช็กอินด้วยใบหน้า</strong></div>
+          <div class="fo-card-head"><strong>ตั้ง PIN สำหรับลงเวลาด้วยอุปกรณ์ประจำตัว</strong></div>
           <form id="foPinForm">
             <label class="fo-label">รหัสผ่านปัจจุบัน</label><input name="currentPassword" type="password" autocomplete="current-password" required>
             <label class="fo-label">PIN ใหม่ ตัวเลข 6 หลัก</label><input name="newPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required>

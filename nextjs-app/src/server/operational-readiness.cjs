@@ -7,7 +7,7 @@ const ADMIN_ROLES = new Set(['Admin', 'Executive']);
 
 function defaults() {
     return {
-        attendance: { enabled: false, radiusMeters: 200, allowCardOrUsername: true, requirePin: true, requireFaceVerification: true, faceMode: 'liveness_1to1', workHoursOnly: true },
+        attendance: { enabled: false, radiusMeters: 200, allowCardOrUsername: true, requirePin: true, requireDeviceBinding: true, oneCheckInPerWorkDate: true, workHoursOnly: true },
         warehouse: { requiredZoneCount: 11, defaultPalletCapacity: 10 },
         pxAlert: { enabled: false, staleMinutes: 60, escalationMinutes: 15 },
         nextTripNotify: { enabled: true },
@@ -36,16 +36,16 @@ function readiness(db) {
     const consents = db.pdpaConsents || [];
     const activeEmployees = (db.users || []).filter(user => user.status !== 'Inactive' && !['Admin', 'People_Viewer'].includes(user.role));
     const consentEmployees = new Set(consents.filter(item => item.status === 'Granted' && item.version === cfg.pdpa.consentVersion).map(item => item.employeeId));
-    const biometricReady = activeEmployees.filter(user => user.pinHash && (user.profilePhotoUrl || user.photoUrl) && consentEmployees.has(user.id));
+    const activeDeviceUsers = new Set((db.attendanceDeviceBindings || []).filter(item => item.status === 'Active').map(item => item.userId));
+    const deviceReady = activeEmployees.filter(user => user.pinHash && activeDeviceUsers.has(user.id));
     const foreignEmployees = activeEmployees.filter(user => clean(user.nationality) && !['ไทย', 'Thai', 'TH'].includes(clean(user.nationality)));
     const today = new Date().toISOString().slice(0, 10);
     const compliantForeign = new Set((db.employeeComplianceDocuments || []).filter(item => item.status === 'Verified' && item.expiryDate >= today && ['Passport', 'WorkPermit'].includes(item.type)).map(item => `${item.employeeId}:${item.type}`));
     const checks = [
         { id: 'radius', label: 'รัศมีเช็กอิน 200 เมตร', ok: Number(db.hr?.settings?.attendance?.defaultRadiusMeters) === 200 },
         { id: 'geofence', label: 'เปิดบังคับจุดเช็กอินจริง', ok: locations.length > 0 && db.hr?.settings?.attendance?.enforceAssignedLocations === true, detail: `${locations.length} จุด` },
-        { id: 'attendance-evidence', label: 'เปิดใช้ Username/บัตร + PIN + Liveness + Face 1:1', ok: cfg.attendance.enabled && cfg.attendance.requirePin && cfg.attendance.requireFaceVerification },
-        { id: 'face-provider', label: 'AWS Face Liveness/Cognito พร้อมใช้งาน', ok: Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.NEXT_PUBLIC_AWS_COGNITO_IDENTITY_POOL_ID) },
-        { id: 'biometric-enrollment', label: 'พนักงานมี PIN รูปอ้างอิง และ PDPA ครบ', ok: activeEmployees.length > 0 && biometricReady.length === activeEmployees.length, detail: `${biometricReady.length}/${activeEmployees.length} คน` },
+        { id: 'attendance-evidence', label: 'เปิดใช้ Username/บัตร + PIN + ผูกอุปกรณ์ 1 คนต่อ 1 เครื่อง', ok: cfg.attendance.enabled && cfg.attendance.requirePin && cfg.attendance.requireDeviceBinding && cfg.attendance.oneCheckInPerWorkDate },
+        { id: 'device-enrollment', label: 'พนักงานมี PIN และลงทะเบียนอุปกรณ์ครบ', ok: activeEmployees.length > 0 && deviceReady.length === activeEmployees.length, detail: `${deviceReady.length}/${activeEmployees.length} คน` },
         { id: 'warehouse-zones', label: `โซนคลังอย่างน้อย ${cfg.warehouse.requiredZoneCount} โซน`, ok: zones.length >= cfg.warehouse.requiredZoneCount, detail: `${zones.length} โซน` },
         { id: 'warehouse-capacity', label: 'กำหนดความจุทุกโซนหลัก', ok: capacityZones.length >= cfg.warehouse.requiredZoneCount, detail: `${capacityZones.length}/${cfg.warehouse.requiredZoneCount} โซน` },
         { id: 'pdpa-version', label: 'กำหนดรุ่นเอกสาร PDPA', ok: Boolean(cfg.pdpa.consentVersion) },
@@ -64,14 +64,13 @@ function saveConfig(db, actor, patch, at) {
     if (!actor || actor.role !== 'Admin') fail('เฉพาะ Admin เท่านั้นที่แก้ไข Readiness ได้', 403);
     const base = config(db), next = structuredClone(base);
     for (const key of Object.keys(defaults())) if (patch?.[key] && typeof patch[key] === 'object') Object.assign(next[key], patch[key]);
-    if (patch?.attendance) { Object.assign(next.attendance,{allowCardOrUsername:true,requirePin:true,requireFaceVerification:true,faceMode:'liveness_1to1'});delete next.attendance.requireEmployeeQr;delete next.attendance.requireSelfieEvidence; }
+    if (patch?.attendance) { Object.assign(next.attendance,{allowCardOrUsername:true,requirePin:true,requireDeviceBinding:true,oneCheckInPerWorkDate:true});delete next.attendance.requireEmployeeQr;delete next.attendance.requireSelfieEvidence;delete next.attendance.requireFaceVerification;delete next.attendance.faceMode; }
     const radius = Number(next.attendance.radiusMeters);
     if (radius !== 200) fail('ตามมติประชุม รัศมีเช็กอินต้องเป็น 200 เมตร');
     if (!Number.isInteger(Number(next.warehouse.requiredZoneCount)) || Number(next.warehouse.requiredZoneCount) < 1) fail('จำนวนโซนไม่ถูกต้อง');
     if (!Number.isFinite(Number(next.incentive.amount)) || Number(next.incentive.amount) < 0) fail('จำนวน Incentive ไม่ถูกต้อง');
     if (!Number.isInteger(Number(next.pdpa.retentionDays)) || Number(next.pdpa.retentionDays) < 1) fail('ระยะเวลาเก็บข้อมูลไม่ถูกต้อง');
     if (next.attendance.enabled && (!next.pdpa.consentVersion || next.pdpa.gpsWorkHoursOnly !== true)) fail('ต้องกำหนดรุ่น PDPA และจำกัด GPS เฉพาะเวลางานก่อนเปิดหลักฐานเช็กอิน');
-    if (next.attendance.enabled && !(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.NEXT_PUBLIC_AWS_COGNITO_IDENTITY_POOL_ID)) fail('ต้องตั้งค่า AWS Rekognition และ Cognito Identity Pool ก่อนเปิด Face Verification');
     next.updatedAt = at; next.updatedBy = actor.id;
     db.operationalReadiness = next;
     db.hr ||= {}; db.hr.settings ||= {}; db.hr.settings.attendance ||= {};

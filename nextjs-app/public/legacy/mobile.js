@@ -26,6 +26,7 @@ const AUTH_CONFIG = window.SCD_AUTH_CONFIG || {
 
 const MOBILE_AUTH_KEY = "scdTransportMobileAuth";
 const MOBILE_SESSION_TOKEN_KEY = "scdTransportMobileSession";
+const ATTENDANCE_DEVICE_TOKEN_KEY = "scdAttendanceDeviceToken";
 
 const configuredApiBase = window.SMART_LOGISTICS_API_BASE || "";
 
@@ -40,9 +41,10 @@ window.fetch = (input, init = {}) => {
     const apiPrefix = API_BASE ? `${API_BASE}/api/` : "/api/";
     if (!requestUrl.startsWith(apiPrefix)) return nativeMobileFetch(input, init);
     const token = localStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
-    if (!token) return nativeMobileFetch(input, init);
     const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
-    if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+    if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+    const deviceToken = localStorage.getItem(ATTENDANCE_DEVICE_TOKEN_KEY);
+    if (deviceToken && !headers.has("X-SCD-Device-Token")) headers.set("X-SCD-Device-Token", deviceToken);
     return nativeMobileFetch(input, { ...init, headers });
 };
 
@@ -1476,9 +1478,9 @@ function bindEvents() {
     });
     $("#mobileFontScale")?.addEventListener("click", cycleMobileFontScale);
     applyMobileFontScale();
-    if (new URLSearchParams(location.search).get("verified") === "face") {
+    if (new URLSearchParams(location.search).get("verified") === "device") {
         const camera = $(".att-camera-area"); if (camera) camera.hidden = true;
-        const gps = $("#attGpsStatus"); if (gps) gps.insertAdjacentHTML("beforebegin", '<div class="soft-note ok"><b>ยืนยัน PIN + Liveness + ใบหน้าแล้ว</b><br>กรุณาเช็กอินภายใน 10 นาที</div>');
+        const gps = $("#attGpsStatus"); if (gps) gps.insertAdjacentHTML("beforebegin", '<div class="soft-note ok"><b>ยืนยัน PIN และอุปกรณ์ประจำตัวแล้ว</b><br>ลงเวลาเข้าและออกได้อย่างละ 1 ครั้งต่อวัน</div>');
     }
     $("#driverPickupCase").addEventListener("change", () => updatePickupFlowNotice());
     $("#driverCustomerName").addEventListener("input", () => updatePickupFlowNotice());
@@ -2091,11 +2093,13 @@ const attState = {
     photoBase64: null,
     gpsLat: null,
     gpsLon: null,
-    currentRecord: null
+    currentRecord: null,
+    deviceVerified: false
 };
 
 function initAttendanceTab() {
     if (!$("#attCheckinBtn")) return;
+    attState.deviceVerified = new URLSearchParams(location.search).get("verified") === "device";
     loadAttendanceStatus();
     loadAttendanceZones();
     setupAttendanceGps();
@@ -2336,8 +2340,8 @@ async function submitAttCheckin() {
     if (!user) return toast("กรุณาเข้าสู่ระบบก่อน");
     const zone = $("#attZoneSelect")?.value || "";
     const jobType = $("#attJobTypeSelect")?.value || "";
-    const faceVerified = new URLSearchParams(location.search).get("verified") === "face";
-    if (!attState.photoBase64 && !faceVerified) return toast("กรุณาถ่ายรูปยืนยันตัวตนก่อน");
+    const deviceVerified = attState.deviceVerified === true;
+    if (!attState.photoBase64 && !deviceVerified) return toast("กรุณาเข้าหน้าลงเวลาด้วย PIN และอุปกรณ์ประจำตัวก่อน");
     const btn = $("#attCheckinBtn");
     if (btn) {
         btn.disabled = true;
@@ -2410,11 +2414,6 @@ async function submitSimulatedAttCheckin() {
 async function submitAttCheckout() {
     const user = currentUser();
     if (!user) return toast("กรุณาเข้าสู่ระบบก่อน");
-    if (!attState.photoBase64) {
-        await startAttCamera();
-        showAttResult("ถ่ายรูปยืนยันตัวตนก่อนเช็คเอาต์", false);
-        return;
-    }
     const btn = $("#attCheckoutBtn");
     if (btn) {
         btn.disabled = true;
@@ -3303,7 +3302,7 @@ async function renderMProfile() {
             button.disabled = true;
             try {
                 await api("/api/auth/set-pin", { currentPassword: form.get("currentPassword"), newPin });
-                pinForm.reset(); status.textContent = "ตั้ง PIN สำเร็จ ใช้หน้า PIN + ใบหน้าได้แล้ว";
+                pinForm.reset(); status.textContent = "ตั้ง PIN สำเร็จ ใช้ลงทะเบียนอุปกรณ์ประจำตัวได้แล้ว";
             } catch (error) { status.textContent = error.message || "ตั้ง PIN ไม่สำเร็จ"; }
             finally { button.disabled = false; }
         });
