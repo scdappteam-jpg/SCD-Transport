@@ -4261,6 +4261,7 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, {
             ok: true,
             service: "smart-logistics-tracking",
+            commit: process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || null,
             time: nowIso()
         });
     }
