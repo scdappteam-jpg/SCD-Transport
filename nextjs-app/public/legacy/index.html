@@ -667,7 +667,13 @@
                   <div class="staff-form-head"><strong id="staffFormTitle">เพิ่มพนักงาน</strong><button id="closeStaffFormBtn" class="icon-button" type="button" aria-label="Close">×</button></div>
                   <div class="staff-form-grid">
                     <label>รหัสพนักงาน / Employee Code<input id="staffCode" required placeholder="เช่น EMP006"></label>
-                    <label>ชื่อ-นามสกุล / Full Name<input id="staffName" required></label>
+                    <label>ชื่อ-นามสกุลภาษาไทย / Thai Name<input id="staffName" required></label>
+                    <label>ชื่อ-นามสกุลภาษาอังกฤษ / English Name<input id="staffEnglishName" autocomplete="off"></label>
+                    <label>ชื่อเล่น / Nickname<input id="staffNickname" autocomplete="off"></label>
+                    <label>สัญชาติ / Nationality
+                      <input id="staffNationality" list="staffNationalityOptions" placeholder="เช่น ไทย / Thai">
+                      <datalist id="staffNationalityOptions"><option value="ไทย"><option value="เมียนมา"><option value="กัมพูชา"><option value="ลาว"><option value="เวียดนาม"></datalist>
+                    </label>
                     <label>บทบาท / Role
                       <select id="staffRole" required>
                         <option value="Driver">คนขับรถ / Driver</option>

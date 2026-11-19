@@ -6892,6 +6892,10 @@ async function handleApi(req, res, pathname) {
         Object.assign(user, {
             code: code,
             name: name,
+            thaiName: name,
+            englishName: String(payload.englishName || "").trim().slice(0, 220),
+            nickname: String(payload.nickname || "").trim().slice(0, 100),
+            nationality: String(payload.nationality || "").trim().slice(0, 100),
             role: payload.role,
             vehiclePlate: payload.role === "Driver" ? String(payload.vehiclePlate || "").trim() : "",
             phone: String(payload.phone || "").trim(),
@@ -6900,6 +6904,16 @@ async function handleApi(req, res, pathname) {
             status: payload.status === "Inactive" ? "Inactive" : "Active",
             updatedAt: nowIso()
         });
+        db.hr ||= {};
+        db.hr.employeeProfiles ||= {};
+        db.hr.employeeProfiles[user.id] = {
+            ...(db.hr.employeeProfiles[user.id] || {}),
+            employeeId: user.id,
+            englishName: user.englishName,
+            nickname: user.nickname,
+            nationality: user.nationality,
+            updatedAt: nowIso()
+        };
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,

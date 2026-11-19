@@ -6924,7 +6924,8 @@ function renderStaffDetail(user) {
     state.selectedStaffId = user.id;
     $("#staffDetailAvatar").textContent = (user.name || "-")[0].toUpperCase();
     $("#staffDetailName").textContent = user.name || "-";
-    $("#staffDetailMeta").textContent = `${staffRoleLabel(user.role)} · ${user.code || user.id}${user.vehiclePlate ? ` · ${user.vehiclePlate}` : ""}`;
+    const identity = [user.englishName, user.nickname ? `ชื่อเล่น ${user.nickname}` : "", user.nationality ? `สัญชาติ ${user.nationality}` : ""].filter(Boolean).join(" · ");
+    $("#staffDetailMeta").textContent = `${staffRoleLabel(user.role)} · ${user.code || user.id}${user.vehiclePlate ? ` · ${user.vehiclePlate}` : ""}${identity ? ` · ${identity}` : ""}`;
     $("#staffDetailJobs").textContent = stat.totalJobs;
     $("#staffDetailCompleted").textContent = stat.completedJobs;
     $("#staffDetailDuration").textContent = durationLabel(stat.averageDurationMinutes);
@@ -7974,6 +7975,9 @@ function openStaffEditor(user = null) {
     $("#staffFormTitle").textContent = user ? "แก้ไขพนักงาน / Edit Staff" : "เพิ่มพนักงาน / Add Staff";
     $("#staffCode").value = user?.code || `EMP${String((state.users?.length || 0) + 1).padStart(3, "0")}`;
     $("#staffName").value = user?.name || "";
+    $("#staffEnglishName").value = user?.englishName || "";
+    $("#staffNickname").value = user?.nickname || "";
+    $("#staffNationality").value = user?.nationality || "";
     $("#staffRole").value = user?.role || "Driver";
     $("#staffVehiclePlate").value = user?.vehiclePlate || "";
     $("#staffPhone").value = user?.phone || "";
@@ -9327,6 +9331,9 @@ function bindEvents() {
                 id: $("#staffEditor").dataset.editId,
                 code: $("#staffCode").value.trim(),
                 name: $("#staffName").value.trim(),
+                englishName: $("#staffEnglishName").value.trim(),
+                nickname: $("#staffNickname").value.trim(),
+                nationality: $("#staffNationality").value.trim(),
                 role: $("#staffRole").value,
                 vehiclePlate: $("#staffVehiclePlate").value.trim(),
                 phone: $("#staffPhone").value.trim(),
