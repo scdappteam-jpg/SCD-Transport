@@ -95,7 +95,7 @@ function attendanceLocation(db, employeeId, latitudeValue, longitudeValue) {
     const locations = (db.hr?.checkInLocations || []).filter(location => location.active !== false &&
         (!assigned.length || assigned.includes(location.id))).flatMap(location => {
         const lat = Number(location.latitude), lon = Number(location.longitude);
-        const radius = Number(location.radiusMeters ?? db.hr?.settings?.attendance?.defaultRadiusMeters ?? 300);
+        const radius = Number(location.radiusMeters ?? db.hr?.settings?.attendance?.defaultRadiusMeters ?? 200);
         if (location.latitude == null || location.longitude == null || !Number.isFinite(lat) || !Number.isFinite(lon) ||
             Math.abs(lat) > 90 || Math.abs(lon) > 180 || !Number.isFinite(radius) || radius <= 0) return [];
         const h = Math.sin(radians(lat - latitude) / 2) ** 2 + Math.cos(radians(latitude)) *

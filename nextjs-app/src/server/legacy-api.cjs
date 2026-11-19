@@ -602,7 +602,7 @@ function ensureDbShape(db) {
         holidayOt: 3
     };
     db.hr.settings.attendance ||= {
-        defaultRadiusMeters: 300,
+        defaultRadiusMeters: 200,
         enforceAssignedLocations: false
     };
     db.warehouseMaps ||= [];
@@ -8392,7 +8392,7 @@ async function handleApi(req, res, pathname) {
         if ([payload.latitude, payload.longitude].some(value => !['number', 'string'].includes(typeof value) || String(value).trim() === '')) return sendJson(res, 400, { error: 'กรุณาระบุพิกัดจุดลงเวลาให้ครบ' });
         const latitude = Number(payload.latitude);
         const longitude = Number(payload.longitude);
-        const radiusMeters = Number(payload.radiusMeters || db.hr.settings.attendance.defaultRadiusMeters || 300);
+        const radiusMeters = Number(payload.radiusMeters || db.hr.settings.attendance.defaultRadiusMeters || 200);
         if (!name || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || !Number.isFinite(radiusMeters) || radiusMeters < 20 || radiusMeters > 5000) return sendJson(res, 400, { error: "Invalid check-in location" });
         let location = payload.id ? db.hr.checkInLocations.find(item => item.id === payload.id) : null;
         if (!location) {
@@ -8669,6 +8669,11 @@ async function handleApi(req, res, pathname) {
         if (!user) return sendJson(res, 404, {
             error: "User not found"
         });
+        const attendancePolicy = { requireEmployeeQr: true, requireSelfieEvidence: true, ...(db.operationalReadiness?.attendance || {}) };
+        if (db.operationalReadiness?.attendance?.enabled === true) {
+            if (attendancePolicy.requireEmployeeQr && String(payload.employeeQrCode || '').trim().toUpperCase() !== String(user.code || user.id || '').trim().toUpperCase()) return sendJson(res, 422, { error: "กรุณาสแกน QR พนักงานให้ตรงกับบัญชีที่เช็กอิน" });
+            if (attendancePolicy.requireSelfieEvidence && !photo) return sendJson(res, 422, { error: "กรุณาถ่ายภาพยืนยันตัวตนก่อนเช็กอิน" });
+        }
         let locationResult;
         try { locationResult = hrSecurity.attendanceLocation(db, userId, gpsLat, gpsLon); }
         catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
@@ -8709,6 +8714,8 @@ async function handleApi(req, res, pathname) {
             date: today,
             checkInTime: nowIso(),
             checkInPhoto: photoUrl,
+            checkInEmployeeQrVerified: db.operationalReadiness?.attendance?.enabled === true && attendancePolicy.requireEmployeeQr,
+            checkInFaceEvidenceMode: photoUrl ? 'photo_evidence' : '',
             checkInLat: latitude,
             checkInLon: longitude,
             checkInLocationId: nearestLocation?.id || null,

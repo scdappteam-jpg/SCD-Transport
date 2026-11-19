@@ -7547,12 +7547,12 @@ function renderHrCoreSetup() {
           <label>สาขา/หน่วยงาน<input id="hrLocationBranch" placeholder="เช่น สุวรรณภูมิ"></label>
           <label>Latitude<input id="hrLocationLatitude" type="number" step="any" placeholder="13.6900"></label>
           <label>Longitude<input id="hrLocationLongitude" type="number" step="any" placeholder="100.7501"></label>
-          <label>รัศมี (เมตร)<input id="hrLocationRadius" type="number" min="20" max="5000" value="${safeHtml(state.hrSettings.attendance?.defaultRadiusMeters || 300)}"></label>
+          <label>รัศมี (เมตร)<input id="hrLocationRadius" type="number" min="20" max="5000" value="${safeHtml(state.hrSettings.attendance?.defaultRadiusMeters || 200)}"></label>
         </div>
         <button type="button" class="primary-button" onclick="saveHrCheckinLocation()">บันทึกจุดเช็กอิน</button>
         <div id="hrLocationList" class="hr-calendar-list">${locationRows}</div>
         <div class="hr-form-grid">
-          <label>รัศมีเริ่มต้น (เมตร)<input id="hrAttendanceDefaultRadius" type="number" min="20" max="5000" value="${safeHtml(state.hrSettings.attendance?.defaultRadiusMeters || 300)}"></label>
+          <label>รัศมีเริ่มต้น (เมตร)<input id="hrAttendanceDefaultRadius" type="number" min="20" max="5000" value="${safeHtml(state.hrSettings.attendance?.defaultRadiusMeters || 200)}"></label>
           <label><span>บังคับ GPS ตามจุดที่กำหนด</span><select id="hrAttendanceEnforce"><option value="false" ${state.hrSettings.attendance?.enforceAssignedLocations ? "" : "selected"}>ยังไม่บังคับ</option><option value="true" ${state.hrSettings.attendance?.enforceAssignedLocations ? "selected" : ""}>บังคับเมื่ออยู่นอกจุด</option></select></label>
         </div>
         <button type="button" class="ghost-button" onclick="saveHrAttendanceSettings()">บันทึกนโยบายเช็กอิน</button>

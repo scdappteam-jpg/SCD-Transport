@@ -2,13 +2,32 @@
 const qa=require('./warehouse-quality.cjs');
 const scanner=require('./barcode-evidence.cjs');
 const logs=require('./driver-time-log.cjs');
+const readiness=require('./operational-readiness.cjs');
 const crypto=require('node:crypto');
-const paths=new Set(['/api/warehouse/quality','/api/warehouse/quality/tag','/api/warehouse/quality/scan','/api/warehouse/external-intake','/api/meeting/settings','/api/driver/time-log']);
+const paths=new Set(['/api/warehouse/quality','/api/warehouse/quality/tag','/api/warehouse/quality/scan','/api/warehouse/external-intake','/api/meeting/settings','/api/meeting/readiness','/api/driver/time-log']);
 const fail=(message,statusCode=422)=>{throw Object.assign(new Error(message),{statusCode});};
 function allowed(actor,roles){if(!actor||!roles.includes(actor.role))fail('ไม่มีสิทธิ์ดำเนินการ',403);}
 async function handle({db,actor,path,method,payload:p={},query={},at,scanUrl,saveFiles,alert,scanImage=scanner.scanImage}) {
     if(!paths.has(path))return null;
     const policy={enabled:false,geofencingEnabled:false,queueMinutes:15,...db.meetingSafety};
+    if(path==='/api/meeting/readiness'){
+        allowed(actor,['Admin','Executive','WH3_TeamLeader','HR_Manager','Team_Transport']);
+        if(method==='GET'){
+            const canReadHr=['Admin','Executive','HR_Manager'].includes(actor.role);
+            return {config:readiness.config(db),readiness:readiness.readiness(db),alerts:db.pxAlerts||[],consents:canReadHr?(db.pdpaConsents||[]):[],documents:canReadHr?(db.employeeComplianceDocuments||[]):[]};
+        }
+        if(method!=='POST')fail('Method not allowed',405);
+        const action=String(p.action||'');
+        if(action==='config')return {ok:true,...readiness.saveConfig(db,actor,p.config||{},at),mutated:true};
+        if(action==='consent')return {ok:true,record:readiness.recordConsent(db,actor,p,at),readiness:readiness.readiness(db),mutated:true};
+        if(action==='employee-document')return {ok:true,record:readiness.saveEmployeeDocument(db,actor,p,at),readiness:readiness.readiness(db),mutated:true};
+        if(action==='evaluate-px')return {ok:true,alerts:readiness.evaluatePx(db,at),mutated:true};
+        if(action==='px-status')return {ok:true,alert:readiness.updatePx(db,actor,p,at),mutated:true};
+        if(action==='next-trip')return {ok:true,...readiness.setNextTrip(db,actor,p,at),mutated:true};
+        if(action==='emergency-slot')return {ok:true,entry:readiness.emergencySlot(db,actor,p,at),mutated:true};
+        if(action==='incentive-preview')return {ok:true,rows:readiness.incentivePreview(db,String(p.month||'')),mutated:false};
+        fail('ไม่รองรับคำสั่ง Readiness',400);
+    }
     if(path==='/api/meeting/settings'){
         allowed(actor,['Admin','Executive','WH3_TeamLeader']);
         if(method==='GET')return {policy,canEdit:actor.role==='Admin',geofenceLocations:(db.hr?.checkInLocations||[]).filter(l=>l.active!==false),roles:{tagging:['WH_Staff','WH3_TeamLeader','Tagging_Staff'],qa:['Check_House','QA_Inspector']}};

@@ -395,6 +395,23 @@ function currentUser() {
     return mobileUsers().find(user => user.id === state.currentUserId) || mobileUsers()[0];
 }
 
+function applyMobileFontScale(scale = localStorage.getItem("scdMobileFontScale") || "normal") {
+    const values = { normal: 1, large: 1.08, xlarge: 1.16 };
+    const selected = values[scale] ? scale : "normal";
+    const main = document.querySelector("main");
+    if (main) main.style.zoom = String(values[selected]);
+    document.body.dataset.fontScale = selected;
+    const button = $("#mobileFontScale");
+    if (button) button.textContent = selected === "normal" ? "A" : selected === "large" ? "A+" : "A++";
+    localStorage.setItem("scdMobileFontScale", selected);
+}
+
+function cycleMobileFontScale() {
+    const order = ["normal", "large", "xlarge"];
+    const current = document.body.dataset.fontScale || "normal";
+    applyMobileFontScale(order[(order.indexOf(current) + 1) % order.length]);
+}
+
 function allowedMobileTabs(role) {
     if (role === "Driver") return [ "pickup", "attendance" ];
     if (role === "WH_Staff") return [ "inbound", "attendance" ];
@@ -1457,6 +1474,8 @@ function bindEvents() {
         applyLanguage();
         toast(state.lang === "en" ? "English mode" : "แสดงภาษาไทย");
     });
+    $("#mobileFontScale")?.addEventListener("click", cycleMobileFontScale);
+    applyMobileFontScale();
     $("#driverPickupCase").addEventListener("change", () => updatePickupFlowNotice());
     $("#driverCustomerName").addEventListener("input", () => updatePickupFlowNotice());
     $("#terminalHouse").addEventListener("input", updateTerminalRequirements);
@@ -2323,6 +2342,7 @@ async function submitAttCheckin() {
         const gps = await refreshGpsForAtt();
         const res = await api("/api/attendance/checkin", {
             userId: user.id,
+            employeeQrCode: $("#attEmployeeQr")?.value.trim() || "",
             photo: attState.photoBase64,
             ...gps,
             zone: zone,
@@ -2359,6 +2379,7 @@ async function submitSimulatedAttCheckin() {
         };
         const res = await api("/api/attendance/checkin", {
             userId: user.id,
+            employeeQrCode: user.code || user.id,
             photo: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL7WQAAAABJRU5ErkJggg==",
             ...simulatedGps,
             zone: "ทดสอบระบบ",
@@ -2693,7 +2714,7 @@ function foDriverJobCard(job, index = 0) {
     const isRejected = [ "Rejected", "Hold" ].includes(job.status);
     const flightRisk = job.flightRiskStatus || "";
     const riskActive = [ "DueToday", "Warning", "Urgent", "Critical", "Breached" ].includes(flightRisk);
-    const flightRiskLine = riskActive ? `<div class="ez-flight-risk ${[ "Critical", "Breached" ].includes(flightRisk) ? "danger" : ""}">${escapeHtmlMobile(flightRisk)}${job.mustNotMissFlight ? " · C/K NO-MISS" : ""}<br><small>ถึงสนามบินก่อน ${escapeHtmlMobile(formatBangkokMobile(job.effectiveAirportDueAt || ""))}</small></div>` : "";
+    const flightRiskLine = (riskActive ? `<div class="ez-flight-risk ${[ "Critical", "Breached" ].includes(flightRisk) ? "danger" : ""}">${escapeHtmlMobile(flightRisk)}${job.mustNotMissFlight ? " · C/K NO-MISS" : ""}<br><small>ถึงสนามบินก่อน ${escapeHtmlMobile(formatBangkokMobile(job.effectiveAirportDueAt || ""))}</small></div>` : "") + (job.nextTripNotice ? `<div class="soft-note ok"><b>งานถัดไปของรอบรถ</b><br>${escapeHtmlMobile(job.nextTripNotice.nextDestination)}${job.nextTripNotice.expectedAt ? ` · ${escapeHtmlMobile(formatBangkokMobile(job.nextTripNotice.expectedAt))}` : ""}${job.nextTripNotice.note ? `<br><small>${escapeHtmlMobile(job.nextTripNotice.note)}</small>` : ""}</div>` : "");
     const houseToken = encodeURIComponent(job.houseNumber || "");
     return `\n    <article class="ez-driver-job" data-house="${escapeHtmlMobile(job.houseNumber || "")}">\n      <div class="ez-job-strip">\n        <span class="ez-direction">${direction}</span>\n        <div class="ez-job-title">\n          <small>หมายเลขใบขนสินค้า</small>\n          <strong>${escapeHtmlMobile(job.houseNumber || "-")}</strong>\n        </div>\n        <span class="ez-status-pill ${meta.tone}">${escapeHtmlMobile(meta.th)}<em>${escapeHtmlMobile(meta.en)}</em></span>\n      </div>\n      <div class="ez-job-airline">\n        <span>Booking Airline</span>\n        <b>${escapeHtmlMobile(job.flightNo || "TBC")}</b>\n        <small>${qaLabel}</small>\n        <small>${receiptLabel}</small>\n      </div>\n      ${flightRiskLine}\n      <dl class="ez-job-details">\n        <div><dt>คลังสินค้า</dt><dd>${escapeHtmlMobile(job.terminalDestination || job.destination || "-")}</dd></div>\n        <div><dt>เข้าพื้นที่คลังก่อนเวลา</dt><dd class="${job.redFlag ? "danger" : ""}">${escapeHtmlMobile(flightDate)}</dd></div>\n        <div><dt>อัปเดตล่าสุด</dt><dd>${escapeHtmlMobile(formatBangkokMobile(job.updatedAt || job.createdAt || ""))}</dd></div>\n        <div><dt>ทะเบียนรถ</dt><dd>${escapeHtmlMobile(plate)}</dd></div>\n        <div><dt>เลขคิวหน้าคลัง</dt><dd>${DriverDock.ticket(job.driverDock?.queueNumber)}</dd></div>\n        <div><dt>Dock ที่เรียกเข้า</dt><dd>${escapeHtmlMobile(bay)}</dd></div>\n        <div><dt>ช่องจัดเก็บสินค้า</dt><dd>${escapeHtmlMobile(job.locationId || job.slotNo || "รอระบุ")}</dd></div>\n        <div><dt>จำนวนหีบห่อทั้งหมด</dt><dd>${escapeHtmlMobile(String(pieces))}</dd></div>\n        <div><dt>น้ำหนักรวมหีบห่อ</dt><dd>${escapeHtmlMobile(String(weight))}</dd></div>\n        <div><dt>ประเภทสินค้า</dt><dd>${escapeHtmlMobile(job.productType || "-")}</dd></div>\n      </dl>\n      <div class="ez-job-actions">\n        <button type="button" onclick="foFocusDriverJob('${houseToken}')">ดูรายละเอียดงาน</button>\n        ${isRejected ? `<button type="button" class="requeue" onclick="foOpenRequeue('${houseToken}')">รีคิว / Re-Queue</button>` : ""}\n      </div>\n    </article>`;
 }
