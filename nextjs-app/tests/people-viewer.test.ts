@@ -31,6 +31,16 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /populateEditorSelect\("position", items\.map\(person => person\.position\)/);
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
   assert.match(client, /\$\("employeeId"\)\.value = item\.id \|\| item\.employeeId \|\| id/);
+  assert.match(html, /ไม่เกิน 4 MB/);
+  assert.match(html, /people-directory\.js\?v=20261120-photo-4mb/);
+  assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 4 \* 1024 \* 1024/);
+  assert.match(client, /ไม่เกิน 4 MB/);
+});
+
+test("people directory API accepts profile photos up to four megabytes", () => {
+  const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
+  assert.match(api, /content\.length > 4 \* 1024 \* 1024/);
+  assert.match(api, /รูปถ่ายต้องมีขนาดไม่เกิน 4 MB/);
 });
 
 test("admin provisions one additional directory viewer with organization fields", () => {

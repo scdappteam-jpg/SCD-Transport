@@ -3528,7 +3528,7 @@ async function handleApi(req, res, pathname) {
                 const match = String(payload.photoBase64).match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
                 if (!match) throw Object.assign(new Error("รองรับรูป JPG, PNG หรือ WEBP เท่านั้น"), { statusCode: 400 });
                 const content = Buffer.from(match[2], "base64");
-                if (!content.length || content.length > 2 * 1024 * 1024) throw Object.assign(new Error("รูปถ่ายต้องมีขนาดไม่เกิน 2 MB"), { statusCode: 400 });
+                if (!content.length || content.length > 4 * 1024 * 1024) throw Object.assign(new Error("รูปถ่ายต้องมีขนาดไม่เกิน 4 MB"), { statusCode: 400 });
                 const profileDir = path.join(STORAGE_DIR, "profile");
                 fs.mkdirSync(profileDir, { recursive: true });
                 const extension = match[1] === "jpeg" ? "jpg" : match[1];
