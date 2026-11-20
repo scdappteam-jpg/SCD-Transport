@@ -1,6 +1,6 @@
 (() => {
   const TOKEN_KEY = "scdPeopleViewerSession";
-  const MAX_PROFILE_PHOTO_BYTES = 4 * 1024 * 1024;
+  const MAX_PROFILE_PHOTO_BYTES = 8 * 1024 * 1024;
   const $ = id => document.getElementById(id);
   const esc = value => String(value || "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
   let items = [];
@@ -101,7 +101,7 @@
 
   $("photo").addEventListener("change", () => {
     const file = $("photo").files[0]; if (!file) return;
-    if (file.size > MAX_PROFILE_PHOTO_BYTES || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) { $("editorMessage").textContent = "รูปต้องเป็น JPG, PNG หรือ WEBP และไม่เกิน 4 MB"; $("photo").value = ""; return; }
+    if (file.size > MAX_PROFILE_PHOTO_BYTES || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) { $("editorMessage").textContent = "รูปต้องเป็น JPG, PNG หรือ WEBP และไม่เกิน 8 MB"; $("photo").value = ""; return; }
     const reader = new FileReader(); reader.onload = () => { photoBase64 = String(reader.result); $("photoPreview").src = photoBase64; $("photoPreviewBlock").classList.remove("hidden"); $("downloadPhoto").href = photoBase64; $("downloadPhoto").download = `SCD-${$("employeeId").value || "employee"}-preview.${file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg"}`; $("editorMessage").textContent = "ตรวจรูปในพรีวิวก่อนกดบันทึกข้อมูล"; }; reader.readAsDataURL(file);
   });
   $("loginButton").addEventListener("click", signIn); $("password").addEventListener("keydown", event => { if (event.key === "Enter") signIn(); });
