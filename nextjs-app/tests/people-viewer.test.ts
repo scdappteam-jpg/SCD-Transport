@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { provision, provisionTest, provisionAdditional, directory, changePassword, updatePerson } = require("../src/server/people-viewer.cjs");
+const { provision, provisionTest, provisionAdditional, directory, changePassword, createPerson, updatePerson } = require("../src/server/people-viewer.cjs");
 
 function state() {
   return {
@@ -32,9 +32,11 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
   assert.match(client, /\$\("employeeId"\)\.value = item\.id \|\| item\.employeeId \|\| id/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261120-photo-8mb/);
+  assert.match(html, /people-directory\.js\?v=20261120-add-employee-v1/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
+  assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
+  assert.match(client, /"\/api\/people-directory\/create"/);
 });
 
 test("people directory API accepts profile photos up to eight megabytes", () => {
@@ -63,7 +65,35 @@ test("directory read and update force a shared-state refresh before resolving em
   const getRoute = api.slice(api.indexOf('if (req.method === "GET" && pathname === "/api/people-directory")'), api.indexOf('if (req.method === "POST" && pathname === "/api/people-directory/update")'));
   const updateRoute = api.slice(api.indexOf('if (req.method === "POST" && pathname === "/api/people-directory/update")'), api.indexOf('if (req.method === "POST" && pathname === "/api/people-viewers/provision")'));
   assert.match(getRoute, /await refreshDbIfSharedStateChanged\(true\);\s*db = readDb\(\);/);
+  assert.match(getRoute, /pathname === "\/api\/people-directory\/create"[\s\S]*await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
   assert.match(updateRoute, /await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
+  assert.match(api, /peopleViewerPaths = new Set\(\["\/api\/people-directory", "\/api\/people-directory\/create", "\/api\/people-directory\/update"/);
+});
+
+test("viewer creates a directory-only employee with an automatic code and no login credential", () => {
+  const db = state();
+  const actor = { id: "u_view", role: "People_Viewer" };
+  const before = db.users.length;
+  const preview = createPerson(db, { actor, changes: { firstName: "นางสาว ใหม่", lastName: "ทดสอบ", phone: "089-123-4567", nickname: "ใหม่", position: "ธุรการ", department: "บริหาร" }, preview: true });
+  assert.equal(db.users.length, before);
+  assert.match(preview.id, /^EMP\d{6}$/);
+  const item = createPerson(db, { actor, changes: { firstName: "นางสาว ใหม่", lastName: "ทดสอบ", phone: "089-123-4567", nickname: "ใหม่", position: "ธุรการ", department: "บริหาร" }, photoUrl: "/storage/profile/new-person.jpg", now: "2026-11-20T00:00:00.000Z" });
+  const user = db.users.find((entry: any) => entry.id === item.id);
+  assert.equal(user.code, item.id);
+  assert.equal(user.role, "Employee");
+  assert.equal(user.directoryOnly, true);
+  assert.equal(user.passwordHash, undefined);
+  assert.equal(item.photoUrl, "/storage/profile/new-person.jpg");
+  assert.equal(db.hr.employeeProfiles[item.id].department, "บริหาร");
+  assert.equal(db.hr.auditLogs.at(-1).action, "PeopleDirectoryProfileCreated");
+});
+
+test("new employee creation requires a viewer and rejects matching active people", () => {
+  const db = state();
+  const changes = { firstName: "นาย สมชาย", lastName: "ใจดี", phone: "081-111-1111", nickname: "ชาย", position: "Driver", department: "Transport" };
+  assert.throws(() => createPerson(db, { actor: db.users[0], changes }), /เฉพาะผู้ดูแลทะเบียนบุคลากร/);
+  assert.throws(() => createPerson(db, { actor: { id: "u_view", role: "People_Viewer" }, changes }), /รายชื่อพนักงานซ้ำ/);
+  assert.throws(() => createPerson(db, { actor: { id: "u_view", role: "People_Viewer" }, changes: { firstName: "คนใหม่" } }), /ตำแหน่งและแผนก/);
 });
 
 test("all legacy personnel identifiers remain editable by id employeeId or code", () => {

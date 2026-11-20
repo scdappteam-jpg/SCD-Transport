@@ -5,6 +5,7 @@
   const esc = value => String(value || "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
   let items = [];
   let photoBase64 = "";
+  let editorMode = "edit";
   const photoFilename = item => `SCD-${String(item?.id || "employee").replace(/[^A-Za-z0-9_-]/g, "-")}-profile.jpg`;
 
   const authHeaders = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${sessionStorage.getItem(TOKEN_KEY) || ""}` });
@@ -78,6 +79,9 @@
 
   function openEditor(id) {
     const item = items.find(entry => entry.id === id); if (!item) return;
+    editorMode = "edit";
+    $("editorTitle").textContent = "แก้ไขข้อมูลบุคลากร";
+    $("editorSubmit").textContent = "บันทึกข้อมูล";
     $("employeeId").value = item.id || item.employeeId || id;
     for (const field of ["firstName", "lastName", "phone", "nickname"]) $(field).value = item[field] || "";
     populateEditorSelect("position", items.map(person => person.position), item.position, "เลือกตำแหน่ง");
@@ -87,16 +91,41 @@
     $("editorModal").classList.remove("hidden");
   }
 
+  function openCreate() {
+    editorMode = "create";
+    $("editorTitle").textContent = "เพิ่มพนักงานใหม่";
+    $("editorSubmit").textContent = "เพิ่มพนักงาน";
+    $("employeeId").value = "";
+    for (const field of ["firstName", "lastName", "phone", "nickname"]) $(field).value = "";
+    populateEditorSelect("position", items.map(person => person.position), "", "เลือกตำแหน่ง");
+    populateEditorSelect("editDepartment", items.map(person => person.department), "", "เลือกแผนก");
+    $("photo").value = ""; photoBase64 = "";
+    $("photoPreview").src = ""; $("photoPreviewBlock").classList.add("hidden"); $("downloadPhoto").href = "#"; $("editorMessage").textContent = "ระบบจะสร้างรหัสพนักงาน EMP ให้อัตโนมัติ";
+    $("editorModal").classList.remove("hidden");
+  }
+
   function closeEditor() { $("editorModal").classList.add("hidden"); photoBase64 = ""; }
 
   async function saveEditor(event) {
-    event.preventDefault(); $("editorMessage").textContent = "กำลังบันทึก…";
+    event.preventDefault(); $("editorMessage").textContent = editorMode === "create" ? "กำลังเพิ่มพนักงาน…" : "กำลังบันทึก…";
+    $("editorSubmit").disabled = true;
     const payload = { employeeId: $("employeeId").value, firstName: $("firstName").value.trim(), lastName: $("lastName").value.trim(), phone: $("phone").value.trim(), nickname: $("nickname").value.trim(), position: $("position").value.trim(), department: $("editDepartment").value.trim(), ...(photoBase64 ? { photoBase64 } : {}) };
-    const response = await fetch("/api/people-directory/update", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) { $("editorMessage").textContent = body.error || "บันทึกไม่สำเร็จ"; return; }
-    const index = items.findIndex(item => item.id === body.item.id); if (index >= 0) items[index] = body.item;
-    refreshDepartments(); render(); closeEditor();
+    try {
+      const endpoint = editorMode === "create" ? "/api/people-directory/create" : "/api/people-directory/update";
+      const response = await fetch(endpoint, { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) { $("editorMessage").textContent = body.error || (editorMode === "create" ? "เพิ่มพนักงานไม่สำเร็จ" : "บันทึกไม่สำเร็จ"); return; }
+      if (editorMode === "create") {
+        items.push(body.item);
+        $("directoryMessage").textContent = `เพิ่ม ${body.item.firstName} ${body.item.lastName || ""} เรียบร้อย · รหัสพนักงาน ${body.item.id}`;
+      } else {
+        const index = items.findIndex(item => item.id === body.item.id); if (index >= 0) items[index] = body.item;
+        $("directoryMessage").textContent = `บันทึกข้อมูล ${body.item.firstName} ${body.item.lastName || ""} เรียบร้อย`;
+      }
+      refreshDepartments(); render(); closeEditor();
+    } finally {
+      $("editorSubmit").disabled = false;
+    }
   }
 
   $("photo").addEventListener("change", () => {
@@ -105,7 +134,7 @@
     const reader = new FileReader(); reader.onload = () => { photoBase64 = String(reader.result); $("photoPreview").src = photoBase64; $("photoPreviewBlock").classList.remove("hidden"); $("downloadPhoto").href = photoBase64; $("downloadPhoto").download = `SCD-${$("employeeId").value || "employee"}-preview.${file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg"}`; $("editorMessage").textContent = "ตรวจรูปในพรีวิวก่อนกดบันทึกข้อมูล"; }; reader.readAsDataURL(file);
   });
   $("loginButton").addEventListener("click", signIn); $("password").addEventListener("keydown", event => { if (event.key === "Enter") signIn(); });
-  $("changePasswordButton").addEventListener("click", changePassword); $("search").addEventListener("input", render); $("department").addEventListener("change", render);
+  $("changePasswordButton").addEventListener("click", changePassword); $("search").addEventListener("input", render); $("department").addEventListener("change", render); $("addPerson").addEventListener("click", openCreate);
   $("grid").addEventListener("click", event => { const button = event.target.closest("button[data-id]"); if (button) openEditor(button.dataset.id); });
   $("editor").addEventListener("submit", saveEditor); $("closeEditor").addEventListener("click", closeEditor); $("cancelEditor").addEventListener("click", closeEditor);
   $("logout").addEventListener("click", () => { sessionStorage.removeItem(TOKEN_KEY); location.reload(); });

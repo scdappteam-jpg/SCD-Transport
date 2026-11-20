@@ -175,6 +175,85 @@ function matchesDirectoryKey(user, key) {
     return [user?.id, user?.employeeId, user?.code].some(value => cleanText(value, 120) === expected);
 }
 
+function nextEmployeeCode(db) {
+    const highest = (db.users || []).reduce((max, user) => {
+        const match = cleanText(user?.code, 32).toUpperCase().match(/^EMP(\d+)$/);
+        return match ? Math.max(max, Number(match[1]) || 0) : max;
+    }, 0);
+    let sequence = highest + 1;
+    let code = `EMP${String(sequence).padStart(6, "0")}`;
+    const used = new Set((db.users || []).flatMap(user => [user?.id, user?.employeeId, user?.code]).map(value => cleanText(value, 120).toUpperCase()).filter(Boolean));
+    while (used.has(code)) {
+        sequence += 1;
+        code = `EMP${String(sequence).padStart(6, "0")}`;
+    }
+    return code;
+}
+
+function createPerson(db, { actor, changes, photoUrl = "", preview = false, now = new Date().toISOString() }) {
+    if (!actor || actor.role !== VIEWER_ROLE) fail("เฉพาะผู้ดูแลทะเบียนบุคลากรเท่านั้นที่เพิ่มพนักงานได้", 403);
+    const firstName = cleanText(changes?.firstName, 120);
+    const lastName = cleanText(changes?.lastName, 120);
+    const phone = cleanText(changes?.phone, 80);
+    const nickname = cleanText(changes?.nickname, 100);
+    const position = cleanText(changes?.position, 120);
+    const department = cleanText(changes?.department, 120);
+    if (!firstName) fail("กรุณาระบุชื่อ");
+    if (!position || !department) fail("กรุณาระบุตำแหน่งและแผนก");
+    const fullName = [firstName, lastName].filter(Boolean).join(" ");
+    const normalizedName = fullName.toLocaleLowerCase("th-TH");
+    const normalizedPhone = phone.replace(/\D/g, "") || phone.toLocaleLowerCase("th-TH");
+    const normalizedNickname = nickname.toLocaleLowerCase("th-TH");
+    const duplicate = (db.users || []).find(user => {
+        if (user.status === "Inactive") return false;
+        const sameName = cleanText(user.name, 240).toLocaleLowerCase("th-TH") === normalizedName;
+        const userPhone = cleanText(user.phone, 80);
+        const samePhone = normalizedPhone && (userPhone.replace(/\D/g, "") || userPhone.toLocaleLowerCase("th-TH")) === normalizedPhone;
+        const sameNickname = normalizedNickname && cleanText(user.nickname, 100).toLocaleLowerCase("th-TH") === normalizedNickname;
+        return sameName && (samePhone || (!normalizedPhone && sameNickname));
+    });
+    if (duplicate) fail(`พบรายชื่อพนักงานซ้ำ: ${fullName}`, 409);
+    const code = nextEmployeeCode(db);
+    const result = { id: code, firstName, lastName, phone, nickname, photoUrl: cleanText(photoUrl, 1000), position, department };
+    if (preview) return result;
+    db.users ||= [];
+    db.users.push({
+        id: code,
+        employeeId: code,
+        code,
+        name: fullName,
+        phone,
+        nickname,
+        role: "Employee",
+        status: "Active",
+        directoryOnly: true,
+        vehiclePlate: "",
+        createdAt: now,
+        updatedAt: now
+    });
+    db.hr ||= {};
+    db.hr.employeeProfiles ||= {};
+    db.hr.employeeProfiles[code] = {
+        employeeId: code,
+        nickname,
+        position,
+        department,
+        ...(photoUrl ? { profilePhotoUrl: photoUrl } : {}),
+        createdAt: now,
+        updatedAt: now
+    };
+    db.hr.auditLogs ||= [];
+    db.hr.auditLogs.push({
+        id: `HRAUD-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+        action: "PeopleDirectoryProfileCreated",
+        actorId: actor.id,
+        employeeId: code,
+        fields: ["name", "phone", "nickname", "position", "department", ...(photoUrl ? ["photo"] : [])],
+        at: now
+    });
+    return directory(db).find(item => item.id === code);
+}
+
 function directory(db) {
     return (db.users || [])
         .filter(user => directoryKey(user) && user.status !== "Inactive" && user.role !== "Admin" && !(user.role === VIEWER_ROLE && user.isTestAccount === true))
@@ -258,4 +337,4 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     return directory(db).find(item => item.id === userKey);
 }
 
-module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, provisionAdditional, directory, changePassword, updatePerson };
+module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, provisionAdditional, directory, changePassword, createPerson, updatePerson };

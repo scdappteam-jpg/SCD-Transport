@@ -1158,6 +1158,20 @@ function nowIso() {
     return (new Date).toISOString();
 }
 
+function savePeopleDirectoryPhoto(photoBase64, identity) {
+    if (!photoBase64) return "";
+    const match = String(photoBase64).match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) throw Object.assign(new Error("รองรับรูป JPG, PNG หรือ WEBP เท่านั้น"), { statusCode: 400 });
+    const content = Buffer.from(match[2], "base64");
+    if (!content.length || content.length > 8 * 1024 * 1024) throw Object.assign(new Error("รูปถ่ายต้องมีขนาดไม่เกิน 8 MB"), { statusCode: 400 });
+    const profileDir = path.join(STORAGE_DIR, "profile");
+    fs.mkdirSync(profileDir, { recursive: true });
+    const extension = match[1] === "jpeg" ? "jpg" : match[1];
+    const filename = `PROFILE-${crypto.createHash("sha256").update(String(identity || "")).digest("hex").slice(0, 12)}-${Date.now()}.${extension}`;
+    fs.writeFileSync(path.join(profileDir, filename), content);
+    return `/storage/profile/${filename}`;
+}
+
 function serverPasswordMatches(password, encoded) {
     const [ algorithm, salt, expected ] = String(encoded || "").split("$");
     if (algorithm !== "scrypt" || !salt || !expected) return false;
@@ -3490,7 +3504,7 @@ async function handleApi(req, res, pathname) {
         catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
     }
     const restrictedViewer = sessionUser(db, req);
-    const peopleViewerPaths = new Set(["/api/people-directory", "/api/people-directory/update", "/api/auth/change-password"]);
+    const peopleViewerPaths = new Set(["/api/people-directory", "/api/people-directory/create", "/api/people-directory/update", "/api/auth/change-password"]);
     if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && !peopleViewerPaths.has(pathname)) {
         return sendJson(res, 403, { error: "บัญชีนี้ใช้ได้เฉพาะทะเบียนบุคลากร" });
     }
@@ -3517,25 +3531,28 @@ async function handleApi(req, res, pathname) {
         const items = peopleViewer.directory(db);
         return sendJson(res, 200, { items, count: items.length });
     }
+    if (req.method === "POST" && pathname === "/api/people-directory/create") {
+        const payload = await parseBody(req);
+        await refreshDbIfSharedStateChanged(true);
+        const currentDb = readDb();
+        const actor = sessionUser(currentDb, req);
+        try {
+            const preview = peopleViewer.createPerson(currentDb, { actor, changes: payload, preview: true, now: nowIso() });
+            const photoUrl = savePeopleDirectoryPhoto(payload.photoBase64, preview.id);
+            const item = peopleViewer.createPerson(currentDb, { actor, changes: payload, photoUrl, now: nowIso() });
+            writeDb(currentDb);
+            return sendJson(res, 201, { ok: true, item });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
+    }
     if (req.method === "POST" && pathname === "/api/people-directory/update") {
         const payload = await parseBody(req);
         await refreshDbIfSharedStateChanged(true);
         const currentDb = readDb();
         const actor = sessionUser(currentDb, req);
-        let photoUrl = "";
         try {
-            if (payload.photoBase64) {
-                const match = String(payload.photoBase64).match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
-                if (!match) throw Object.assign(new Error("รองรับรูป JPG, PNG หรือ WEBP เท่านั้น"), { statusCode: 400 });
-                const content = Buffer.from(match[2], "base64");
-                if (!content.length || content.length > 8 * 1024 * 1024) throw Object.assign(new Error("รูปถ่ายต้องมีขนาดไม่เกิน 8 MB"), { statusCode: 400 });
-                const profileDir = path.join(STORAGE_DIR, "profile");
-                fs.mkdirSync(profileDir, { recursive: true });
-                const extension = match[1] === "jpeg" ? "jpg" : match[1];
-                const filename = `PROFILE-${crypto.createHash("sha256").update(String(payload.employeeId || "")).digest("hex").slice(0, 12)}-${Date.now()}.${extension}`;
-                fs.writeFileSync(path.join(profileDir, filename), content);
-                photoUrl = `/storage/profile/${filename}`;
-            }
+            const photoUrl = savePeopleDirectoryPhoto(payload.photoBase64, payload.employeeId);
             const item = peopleViewer.updatePerson(currentDb, { actor, employeeId: payload.employeeId, changes: payload, photoUrl, now: nowIso() });
             writeDb(currentDb);
             return sendJson(res, 200, { ok: true, item });
