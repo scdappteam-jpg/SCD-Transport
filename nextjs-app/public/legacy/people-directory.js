@@ -1,6 +1,7 @@
 (() => {
   const TOKEN_KEY = "scdPeopleViewerSession";
   const MAX_PROFILE_PHOTO_BYTES = 8 * 1024 * 1024;
+  const FIXED_POSITIONS = ["วัดไดแมนชั่น"];
   const $ = id => document.getElementById(id);
   const esc = value => String(value || "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
   let items = [];
@@ -84,7 +85,7 @@
     $("editorSubmit").textContent = "บันทึกข้อมูล";
     $("employeeId").value = item.id || item.employeeId || id;
     for (const field of ["firstName", "lastName", "phone", "nickname"]) $(field).value = item[field] || "";
-    populateEditorSelect("position", items.map(person => person.position), item.position, "เลือกตำแหน่ง");
+    populateEditorSelect("position", [...items.map(person => person.position), ...FIXED_POSITIONS], item.position, "เลือกตำแหน่ง");
     populateEditorSelect("editDepartment", items.map(person => person.department), item.department, "เลือกแผนก");
     $("photo").value = ""; photoBase64 = "";
     $("photoPreview").src = item.photoUrl || ""; $("photoPreviewBlock").classList.toggle("hidden", !item.photoUrl); $("downloadPhoto").href = item.photoUrl || "#"; $("downloadPhoto").download = photoFilename(item); $("editorMessage").textContent = "";
@@ -97,7 +98,7 @@
     $("editorSubmit").textContent = "เพิ่มพนักงาน";
     $("employeeId").value = "";
     for (const field of ["firstName", "lastName", "phone", "nickname"]) $(field).value = "";
-    populateEditorSelect("position", items.map(person => person.position), "", "เลือกตำแหน่ง");
+    populateEditorSelect("position", [...items.map(person => person.position), ...FIXED_POSITIONS], "", "เลือกตำแหน่ง");
     populateEditorSelect("editDepartment", items.map(person => person.department), "", "เลือกแผนก");
     $("photo").value = ""; photoBase64 = "";
     $("photoPreview").src = ""; $("photoPreviewBlock").classList.add("hidden"); $("downloadPhoto").href = "#"; $("editorMessage").textContent = "ระบบจะสร้างรหัสพนักงาน EMP ให้อัตโนมัติ";

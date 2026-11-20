@@ -28,15 +28,17 @@ test("person editor uses controlled dropdowns for position and department", () =
   const client = readFileSync(new URL("../public/legacy/people-directory.js", import.meta.url), "utf8");
   assert.match(html, /<select id="position" required><\/select>/);
   assert.match(html, /<select id="editDepartment" required><\/select>/);
-  assert.match(client, /populateEditorSelect\("position", items\.map\(person => person\.position\)/);
+  assert.match(client, /populateEditorSelect\("position", \[\.\.\.items\.map\(person => person\.position\), \.\.\.FIXED_POSITIONS\]/);
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
   assert.match(client, /\$\("employeeId"\)\.value = item\.id \|\| item\.employeeId \|\| id/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261120-add-employee-v1/);
+  assert.match(html, /people-directory\.js\?v=20261120-dimension-position/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
   assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
   assert.match(client, /"\/api\/people-directory\/create"/);
+  assert.match(client, /FIXED_POSITIONS = \["วัดไดแมนชั่น"\]/);
+  assert.match(client, /\[\.\.\.items\.map\(person => person\.position\), \.\.\.FIXED_POSITIONS\]/);
 });
 
 test("people directory API accepts profile photos up to eight megabytes", () => {
