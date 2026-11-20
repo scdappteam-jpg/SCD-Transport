@@ -1,7 +1,7 @@
 (() => {
   const TOKEN_KEY = "scdPeopleViewerSession";
   const MAX_PROFILE_PHOTO_BYTES = 8 * 1024 * 1024;
-  const FIXED_POSITIONS = ["วัดไดแมนชั่น"];
+  const FIXED_POSITIONS = ["พนักงานวัดขนาดสินค้า (Dimension)"];
   const $ = id => document.getElementById(id);
   const esc = value => String(value || "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
   let items = [];
