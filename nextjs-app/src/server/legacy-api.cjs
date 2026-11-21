@@ -666,11 +666,12 @@ function authSessionStateId() {
 }
 
 function scheduleAuthSessionPersist(sessions) {
-    if (!supabaseEnabled()) return;
+    if (!supabaseEnabled()) return Promise.resolve();
     const snapshot = sanitizedClone(Array.isArray(sessions) ? sessions : []);
     authSessionPersistPromise = authSessionPersistPromise.catch(() => {}).then(() => supabaseRequest("POST", "", {
         id: authSessionStateId(), data: { sessions: snapshot }, updated_at: nowIso()
     }));
+    return authSessionPersistPromise;
 }
 
 async function loadAuthSessions(db) {
@@ -3642,7 +3643,12 @@ async function handleApi(req, res, pathname) {
             const token=crypto.randomBytes(32).toString('base64url');
             db.authSessions=(db.authSessions||[]).filter(item=>new Date(item.expiresAt).getTime()>Date.now()).slice(-200);
             db.authSessions.push({id:`SES-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,userId:user.id,tokenHash:crypto.createHash('sha256').update(token).digest('hex'),createdAt:nowIso(),expiresAt:new Date(Date.now()+12*60*60*1e3).toISOString(),authenticationMethod:'PIN+DeviceBinding',deviceBindingId:result.binding.id,deviceVerifiedAt:nowIso()});
-            writeDb(db);return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role,mustChangePin:user.mustChangePin===true}});
+            writeDb(db);
+            if(supabaseEnabled()){
+                try{await Promise.all([dbPersistPromise,scheduleAuthSessionPersist(db.authSessions)]);}
+                catch(error){return sendJson(res,503,{error:'บันทึกการเข้าสู่ระบบไม่สำเร็จ กรุณากดลองอีกครั้ง',code:'DEVICE_SESSION_SAVE_FAILED'});}
+            }
+            return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role,mustChangePin:user.mustChangePin===true}});
         }catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||400,{error:error.message,code:error.code||'DEVICE_LOGIN_FAILED',requestId:error.requestId});}
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/device/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });

@@ -98,7 +98,7 @@ test('release-document action has dedicated clearance above the fixed mobile nav
  assert.match(mobileCss,/#driverReturnActions:not\(\[hidden\]\)\s*\{[^}]*padding-bottom:calc\(var\(--ms-nav\) \+ env\(safe-area-inset-bottom\) \+ 72px\)/s);
  assert.match(mobileCss,/#releaseDocumentBtn\s*\{[^}]*scroll-margin-block-end:calc\(var\(--ms-nav\) \+ env\(safe-area-inset-bottom\) \+ 96px\)/s);
  assert.match(mobileCss,/main\s*\{[^}]*scroll-padding-block-end:calc\(var\(--ms-nav\) \+ env\(safe-area-inset-bottom\) \+ 96px\)/s);
- assert.match(mobileHtml,/mobile\.css\?v=20261121-login-overlay-fix/);
+ assert.match(mobileHtml,/mobile\.css\?v=20261121-attendance-login-fix/);
 });
 test('confirmation and result popups render above the fixed mobile navigation',()=>{
  assert.match(mobileCss,/\.confirm-sheet,\.mobile-modal-backdrop\s*\{[^}]*z-index:2100!important/s);

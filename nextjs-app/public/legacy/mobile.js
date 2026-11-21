@@ -98,6 +98,23 @@ function isMobileAuthenticated() {
     return localStorage.getItem(MOBILE_AUTH_KEY) === "ok";
 }
 
+function attendanceEntryRequested() {
+    const params = new URLSearchParams(location.search);
+    return params.get("view") === "attendance" || params.get("verified") === "device";
+}
+
+function openRequestedMobileView() {
+    if (!attendanceEntryRequested() || !isMobileAuthenticated()) return false;
+    document.body.classList.add("attendance-entry");
+    const brandTitle = document.querySelector(".mh-name strong");
+    const brandSubtitle = document.querySelector(".mh-name span");
+    if (brandTitle) brandTitle.textContent = "S.C.D.TRANSPORT";
+    if (brandSubtitle) brandSubtitle.textContent = "ลงเวลาพนักงาน · Attendance";
+    if (typeof showMnav === "function") showMnav("work");
+    if (typeof showTab === "function") showTab("attendance");
+    return true;
+}
+
 function passwordForUser(userId) {
     return AUTH_CONFIG.userPasswords?.[userId] || AUTH_CONFIG.defaultPassword || "1234";
 }
@@ -112,12 +129,16 @@ function renderMobileAuthState() {
     if (loginCard) loginCard.hidden = auth;
     const logout = $("#mobileLogoutBtn");
     const headerLogout = $("#mobileHeaderLogoutBtn");
+    const attendanceLogout = $("#attendanceLogoutBtn");
     const password = $("#mobileLoginPassword");
     if (logout) logout.hidden = !auth;
     if (headerLogout) headerLogout.hidden = !auth;
+    if (attendanceLogout) attendanceLogout.hidden = !auth;
     if (password && !auth) password.value = "";
     if (auth && typeof showMnav === "function" && !document.body.dataset.mnav) {
-        setTimeout(() => showMnav("home"), 250);
+        setTimeout(() => {
+            if (!openRequestedMobileView()) showMnav("home");
+        }, 250);
     }
 }
 
@@ -381,7 +402,7 @@ function render() {
     // panels.  Explicitly initialise its active view after data arrives;
     // otherwise an authenticated session restored from storage can leave the
     // home card on its initial "กำลังโหลด..." placeholder forever.
-    if (typeof showMnav === "function") showMnav(document.body.dataset.mnav || "home");
+    if (!openRequestedMobileView() && typeof showMnav === "function") showMnav(document.body.dataset.mnav || "home");
 }
 
 function renderBillingReadyList() {
@@ -1484,6 +1505,7 @@ function bindEvents() {
     };
     $("#mobileLogoutBtn").addEventListener("click", logoutMobile);
     $("#mobileHeaderLogoutBtn")?.addEventListener("click", logoutMobile);
+    $("#attendanceLogoutBtn")?.addEventListener("click", logoutMobile);
     $("#mobileLanguageToggle").addEventListener("click", () => {
         state.lang = state.lang === "th" ? "en" : "th";
         localStorage.setItem("smartLogisticsLang", state.lang);
@@ -2109,6 +2131,7 @@ const attState = {
     gpsLon: null,
     currentRecord: null,
     deviceVerified: false,
+    currentLocation: null,
     locationWatchId: null,
     locationHeartbeatTimer: null,
     locationCutoffTimer: null,
@@ -2280,8 +2303,9 @@ async function updateAttendanceGeofenceStatus(latitude, longitude) {
         status.innerHTML = "<strong>กำลังตรวจระยะห่าง...</strong><span>รอผลจากเซิร์ฟเวอร์</span>";
     }
     try {
-        const result = await api(`/api/attendance/location-status?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`);
+        const result = await api(`/api/attendance/location-status?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`, undefined, "GET");
         const location = result.location;
+        attState.currentLocation = location || null;
         if (status && location && result.insideAllowedRadius) {
             status.className = "att-geofence-status inside";
             status.innerHTML = `<strong>✓ อยู่ในพื้นที่ ${escapeHtmlMobile(location.name)} — เช็กอินได้</strong><span>ห่างจุดลงเวลา ${location.distanceMeters} เมตร · รัศมีที่อนุญาต ${location.radiusMeters} เมตร</span>`;
@@ -2521,8 +2545,9 @@ function stopAttCamera() {
 async function submitAttCheckin() {
     const user = currentUser();
     if (!user) return toast("กรุณาเข้าสู่ระบบก่อน");
-    const zone = $("#attZoneSelect")?.value || "";
-    const jobType = $("#attJobTypeSelect")?.value || "";
+    const zone = $("#attZoneSelect")?.value || attState.currentLocation?.name || "";
+    const roleJobType = {Driver:"Transport",WH_Staff:"Inbound",WH3_TeamLeader:"Inbound",Team_Transport:"Transport",Terminal:"XRay",Billing:"Other"}[user.role] || "Other";
+    const jobType = $("#attJobTypeSelect")?.value || roleJobType;
     const deviceVerified = attState.deviceVerified === true;
     if (!attState.photoBase64 && !deviceVerified) return toast("กรุณาเข้าหน้าลงเวลาด้วย PIN และอุปกรณ์ประจำตัวก่อน");
     const btn = $("#attCheckinBtn");
@@ -3619,7 +3644,7 @@ function foCloseMore() {
         location.reload();
     });
     setTimeout(() => {
-        if (currentUser()) showMnav("home");
+        if (currentUser() && !openRequestedMobileView()) showMnav("home");
     }, 600);
     if (window.lucide?.createIcons) {
         try {

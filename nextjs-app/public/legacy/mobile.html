@@ -19,7 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <script>try{if(localStorage.getItem("scdTransportMobileAuth")==="ok")document.documentElement.classList.add("mobile-auth-pending")}catch(e){}</script>
-    <link rel="stylesheet" href="mobile.css?v=20261121-login-overlay-fix">
+    <link rel="stylesheet" href="mobile.css?v=20261121-attendance-login-fix">
     <style>[hidden]{display:none!important}html.mobile-auth-pending .login-card{visibility:hidden}#foPinForm{display:grid;gap:8px}#foPinForm .fo-primary-btn{margin-top:8px}</style>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
   </head>
@@ -35,6 +35,7 @@
       <div class="mobile-header-actions">
         <button id="mobileFontScale" type="button" title="ปรับขนาดตัวอักษร" aria-label="ปรับขนาดตัวอักษร">A</button>
         <button id="mobileLanguageToggle" type="button">TH</button>
+        <button id="attendanceLogoutBtn" class="attendance-logout" type="button" hidden>ออกจากระบบ</button>
       </div>
     </header>
 
@@ -869,7 +870,7 @@
     <script src="inbound-receipt-ui.js?v=3-preview-labels"></script>
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
   <script src="driver-dock-core.js?v=20261031-one-vehicle-one-dock-confirmed-reconcile"></script>
-  <script src="mobile.js?v=20261121-people-attendance-pin"></script>
+  <script src="mobile.js?v=20261121-attendance-login-fix"></script>
   </body>
 </html>
 

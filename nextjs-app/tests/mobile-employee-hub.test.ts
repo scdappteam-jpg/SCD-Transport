@@ -12,10 +12,30 @@ test("mobile entry page is a single employee portal for attendance and field ope
   assert.match(html, /Pickup · WH3 · Terminal · Billing/);
   assert.match(html, /<input id="mobileUserSelect" type="text"/);
   assert.doesNotMatch(html, /<select id="mobileUserSelect"/);
-  assert.match(html, /mobile\.js\?v=20261121-people-attendance-pin/);
+  assert.match(html, /mobile\.js\?v=20261121-attendance-login-fix/);
   assert.match(html, /\[hidden\]\{display:none!important\}/);
   assert.match(html, /mobile-auth-pending/);
   assert.match(auth, /กลับศูนย์รวมพนักงาน/);
+});
+
+test("verified attendance login opens the dedicated check-in view and checks GPS with GET", () => {
+  const html = readFileSync(new URL("../public/legacy/mobile.html", import.meta.url), "utf8");
+  const mobile = readFileSync(new URL("../public/legacy/mobile.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../public/legacy/mobile.css", import.meta.url), "utf8");
+  assert.match(html, /mobile\.css\?v=20261121-attendance-login-fix/);
+  assert.match(mobile, /function attendanceEntryRequested\(\)/);
+  assert.match(mobile, /showMnav\("work"\)/);
+  assert.match(mobile, /showTab\("attendance"\)/);
+  assert.match(mobile, /location-status[\s\S]*undefined, "GET"/);
+  assert.match(css, /body\.attendance-entry \.fo-bottomnav/);
+  assert.match(css, /body\.attendance-entry #attSelectors/);
+});
+
+test("device login waits for the shared session before returning success", () => {
+  const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
+  assert.match(api, /return authSessionPersistPromise/);
+  assert.match(api, /Promise\.all\(\[dbPersistPromise,scheduleAuthSessionPersist\(db\.authSessions\)\]\)/);
+  assert.match(api, /DEVICE_SESSION_SAVE_FAILED/);
 });
 
 test("personnel viewers can use attendance with their existing PIN without seeing operations", () => {
