@@ -7471,7 +7471,7 @@ function renderHrNotifications() {
     const container = $("#hrNotificationList");
     if (!container) return;
     const notifications = state.hrNotifications || [];
-    container.innerHTML = notifications.length ? notifications.map(item => `<article class="hr-request-row"><div class="hr-row-main"><strong>${safeHtml(item.title || "HR")}</strong><span>${safeHtml(item.body || "")}</span><small>${safeHtml(formatDateTime(item.createdAt) || "")}</small></div>${item.read ? `<div class="hr-row-status">อ่านแล้ว</div>` : `<div class="hr-row-status"><button class="ghost" type="button" onclick="markHrNotificationRead('${item.id}')">อ่านแล้ว</button></div>`}</article>`).join("") : `<div class="empty-state compact">ไม่มีการแจ้งเตือน HR</div>`;
+    container.innerHTML = notifications.length ? notifications.map(item => `<article class="hr-request-row"><div class="hr-row-main"><strong>${safeHtml(item.title || "HR")}</strong><span>${safeHtml(item.body || "")}</span><small>${safeHtml(formatBangkok(item.createdAt) || "")}</small></div>${item.read ? `<div class="hr-row-status">อ่านแล้ว</div>` : `<div class="hr-row-status"><button class="ghost" type="button" onclick="markHrNotificationRead('${item.id}')">อ่านแล้ว</button></div>`}</article>`).join("") : `<div class="empty-state compact">ไม่มีการแจ้งเตือน HR</div>`;
 }
 
 async function markHrNotificationRead(id) {
@@ -7524,7 +7524,7 @@ function renderHrOperationsSetup() {
         ${(state.hrPayrollRuns || []).slice(0, 3).map(run => `<article><strong>${safeHtml(run.periodStart)} – ${safeHtml(run.periodEnd)}</strong><p>${safeHtml((run.warnings || ["ร่างเดิม ต้องสร้างใหม่เพื่อใช้การตรวจสอบล่าสุด"]).join(" · "))}</p>
           <div style="overflow:auto"><table class="hr-rep-tbl"><thead><tr><th>พนักงาน</th><th>OT ชม.</th><th>OT ร่าง</th><th>สุทธิร่าง</th></tr></thead><tbody>${(run.rows || []).map(row => `<tr><td>${safeHtml(hrEmployeeName(row.employeeId))}</td><td>${safeHtml(row.otHours)}</td><td>${safeHtml(money(row.otAmount))}</td><td>${safeHtml(money(row.netPay))}</td></tr>`).join("")}</tbody></table></div></article>`).join("") || '<p>ยังไม่มีรอบเงินเดือน</p>'}
         <h3>ประวัติการดำเนินการล่าสุด</h3>
-        ${(state.hrAuditLogs || []).slice(0, 10).map(log => `<p>${safeHtml(formatDateTime(log.at))} · ${safeHtml(hrEmployeeName(log.actorId))} · ${safeHtml(log.action)} ${safeHtml(log.detail)} ${safeHtml(log.entityId)}</p>`).join("") || '<p>ยังไม่มีประวัติในระบบใหม่</p>'}
+        ${(state.hrAuditLogs || []).slice(0, 10).map(log => `<p>${safeHtml(formatBangkok(log.at))} · ${safeHtml(hrEmployeeName(log.actorId))} · ${safeHtml(log.action)} ${safeHtml(log.detail)} ${safeHtml(log.entityId)}</p>`).join("") || '<p>ยังไม่มีประวัติในระบบใหม่</p>'}
       </section>`;
 }
 
