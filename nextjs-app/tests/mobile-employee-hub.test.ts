@@ -18,6 +18,14 @@ test("mobile entry page is a single employee portal for attendance and field ope
   assert.match(auth, /กลับศูนย์รวมพนักงาน/);
 });
 
+test("personnel viewers can use attendance with their existing PIN without seeing operations", () => {
+  const mobile = readFileSync(new URL("../public/legacy/mobile.js", import.meta.url), "utf8");
+  const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
+  assert.match(mobile, /role === "People_Viewer"\) return \[ "attendance" \]/);
+  assert.match(api, /role === "People_Viewer"\) return \{ jobs: \[\], receiptMasters: \[\], locations: \[\], alerts: \[\]/);
+  assert.doesNotMatch(api, /testPinVersion.*VIEW00[123]/);
+});
+
 test("production mobile login resolves typed employee codes and does not persist demo shortcuts", () => {
   const js = readFileSync(new URL("../public/legacy/mobile.js", import.meta.url), "utf8");
   const css = readFileSync(new URL("../public/legacy/mobile.css", import.meta.url), "utf8");

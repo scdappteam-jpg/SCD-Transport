@@ -1824,6 +1824,7 @@ function buildDashboard(db) {
 // job before filtering, which can make a field phone appear stuck on loading.
 function buildMobileDashboard(db, viewer) {
     const role = viewer?.role || "";
+    if (role === "People_Viewer") return { jobs: [], receiptMasters: [], locations: [], alerts: [], billing: [], attachments: [], metrics: {} };
     const ownDriverJob = job => job.driverId === viewer?.id && job.csConfirmed && job.cargoIssuedAt;
     const jobsForRole = {
         Driver: job => ownDriverJob(job),
@@ -3638,7 +3639,11 @@ async function handleApi(req, res, pathname) {
         catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
     }
     const restrictedViewer = sessionUser(db, req);
-    const peopleViewerPaths = new Set(["/api/people-directory", "/api/people-directory/export", "/api/people-directory/create", "/api/people-directory/update", "/api/auth/change-password"]);
+    const peopleViewerPaths = new Set([
+        "/api/people-directory", "/api/people-directory/export", "/api/people-directory/create", "/api/people-directory/update", "/api/auth/change-password",
+        "/api/mobile/bootstrap", "/api/attendance/today", "/api/attendance/location-status", "/api/attendance/all",
+        "/api/attendance/checkin", "/api/attendance/location-ping", "/api/attendance/location-stop", "/api/attendance/checkout"
+    ]);
     if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && !peopleViewerPaths.has(pathname)) {
         return sendJson(res, 403, { error: "บัญชีนี้ใช้ได้เฉพาะทะเบียนบุคลากร" });
     }
@@ -3888,7 +3893,7 @@ async function handleApi(req, res, pathname) {
         const viewer = sessionUser(db, req);
         if (!viewer) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
         return sendJson(res, 200, {
-            users: publicUsers(db),
+            users: viewer.role === peopleViewer.VIEWER_ROLE ? publicUsers(db).filter(user => user.id === viewer.id) : publicUsers(db),
             meetingSafety: db.meetingSafety || {enabled:false,geofencingEnabled:false},
             dashboard: buildMobileDashboard(db, viewer)
         });

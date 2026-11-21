@@ -421,6 +421,7 @@ function cycleMobileFontScale() {
 }
 
 function allowedMobileTabs(role) {
+    if (role === "People_Viewer") return [ "attendance" ];
     if (role === "Driver") return [ "pickup", "attendance" ];
     if (role === "WH_Staff") return [ "inbound", "attendance" ];
     if (role === "WH3_TeamLeader") return [ "inbound", "attendance" ];

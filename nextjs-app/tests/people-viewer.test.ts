@@ -112,7 +112,8 @@ test("directory read and update force a shared-state refresh before resolving em
   assert.match(getRoute, /await refreshDbIfSharedStateChanged\(true\);\s*db = readDb\(\);/);
   assert.match(getRoute, /pathname === "\/api\/people-directory\/create"[\s\S]*await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
   assert.match(updateRoute, /await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
-  assert.match(api, /peopleViewerPaths = new Set\(\["\/api\/people-directory", "\/api\/people-directory\/export", "\/api\/people-directory\/create", "\/api\/people-directory\/update"/);
+  assert.match(api, /peopleViewerPaths = new Set\(\[[\s\S]*"\/api\/people-directory"[\s\S]*"\/api\/mobile\/bootstrap"[\s\S]*"\/api\/attendance\/checkin"[\s\S]*"\/api\/attendance\/checkout"/);
+  assert.match(api, /viewer\.role === peopleViewer\.VIEWER_ROLE \? publicUsers\(db\)\.filter\(user => user\.id === viewer\.id\) : publicUsers\(db\)/);
 });
 
 test("main staff page loads the shared personnel directory instead of login users", () => {
