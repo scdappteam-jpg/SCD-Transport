@@ -176,6 +176,22 @@ test('inside-radius checkin and checkout store server time and location evidence
     assert.equal((await request(db, 'employee', '/api/attendance/checkout', payload)).status, 404);
 });
 
+test('employee can preview whether GPS is inside the assigned check-in radius without writing attendance', async () => {
+    const db = fixture(), before = structuredClone(db);
+    const inside = await request(db, 'employee', '/api/attendance/location-status?latitude=13.7&longitude=100.5', {}, 'GET');
+    assert.equal(inside.status, 200);
+    assert.equal(inside.body.insideAllowedRadius, true);
+    assert.equal(inside.body.canCheckIn, true);
+    assert.equal(inside.body.location.name, 'Office');
+    assert.equal(inside.body.location.distanceMeters, 0);
+    const outside = await request(db, 'employee', '/api/attendance/location-status?latitude=13.8&longitude=100.5', {}, 'GET');
+    assert.equal(outside.status, 200);
+    assert.equal(outside.body.insideAllowedRadius, false);
+    assert.equal(outside.body.canCheckIn, false);
+    assert.equal(outside.writes, 0);
+    assert.deepEqual(db, before);
+});
+
 test('location assignments, disabled locations, overlapping radii and zero coordinates', () => {
     const db = fixture();
     db.hr.checkInLocations.push({ id: 'unassigned', latitude: 0, longitude: 0, radiusMeters: 300 });
@@ -244,6 +260,7 @@ test('mobile waits for fresh GPS on both actions and never submits stale GPS aft
                 currentUser: () => ({ id: 'employee' }),
                 $: () => ({ value: '', disabled: false, textContent: '' }),
                 api: async (_path: string, payload: Record<string, unknown>) => { calls.push(payload); return { record: {} }; },
+                updateAttendanceGeofenceStatus: async () => ({ canCheckIn: true }),
                 renderAttendanceStatus: () => {}, loadMyAttTasks: () => {},
                 showAttResult: () => {}, toast: () => {}, formatBangkokMobile: () => ''
             });

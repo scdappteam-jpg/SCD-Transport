@@ -44,6 +44,23 @@ a[role="button"],
   line-height: 1.45;
 }
 
+.att-geofence-status {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 14px;
+  padding: 13px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.att-geofence-status strong { font-size: 14px; }
+.att-geofence-status span { font-size: 12px; line-height: 1.45; }
+.att-geofence-status.inside { border-color: #86efac; background: #f0fdf4; color: #15803d; }
+.att-geofence-status.warning { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+.att-geofence-status.outside { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+
 .att-simulated-checkin[hidden],
 .att-simulated-checkin-hint[hidden],
 #simulatePickupEvidenceBtn[hidden],

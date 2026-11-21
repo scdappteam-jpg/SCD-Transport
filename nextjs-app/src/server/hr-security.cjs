@@ -82,7 +82,7 @@ function preflight(db, path, payload, actor) {
     }
 }
 
-function attendanceLocation(db, employeeId, latitudeValue, longitudeValue) {
+function attendanceLocation(db, employeeId, latitudeValue, longitudeValue, options = {}) {
     const coordinate = (value, limit) => {
         if (!['number', 'string'].includes(typeof value) || String(value).trim() === '') fail('ต้องส่งพิกัด GPS ที่ใช้ได้', 400);
         const number = Number(value);
@@ -105,10 +105,11 @@ function attendanceLocation(db, employeeId, latitudeValue, longitudeValue) {
     }).sort((a, b) => a.distanceMeters - b.distanceMeters);
     const inside = locations.find(location => location.distanceMeters <= location.radiusMeters);
     const nearestLocation = inside || locations[0] || null;
-    if (db.hr?.settings?.attendance?.enforceAssignedLocations && !inside) {
+    const enforcementEnabled = db.hr?.settings?.attendance?.enforceAssignedLocations === true;
+    if (options.enforce !== false && enforcementEnabled && !inside) {
         fail('อยู่นอกจุดลงเวลาที่กำหนด หรือยังไม่ได้กำหนดจุด กรุณาส่งคำขอแก้ไขเวลาแทน');
     }
-    return { latitude, longitude, nearestLocation, insideAllowedRadius: !!inside };
+    return { latitude, longitude, nearestLocation, insideAllowedRadius: !!inside, enforcementEnabled };
 }
 
 module.exports = { manages, canView, canLead, scoped, profiles, notificationVisible, approvalRecipients, preflight, attendanceLocation };

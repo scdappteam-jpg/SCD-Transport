@@ -2213,6 +2213,7 @@ function setupAttendanceGps() {
     const gpsIcon = $("#attGpsIcon");
     if (!navigator.geolocation) {
         if (gpsText) gpsText.textContent = "ไม่รองรับ GPS";
+        renderAttendanceGeofenceError("อุปกรณ์นี้ไม่รองรับ GPS");
         return;
     }
     navigator.geolocation.getCurrentPosition(pos => {
@@ -2220,13 +2221,59 @@ function setupAttendanceGps() {
         attState.gpsLon = pos.coords.longitude;
         if (gpsText) gpsText.textContent = pos.coords.latitude.toFixed(5) + ", " + pos.coords.longitude.toFixed(5);
         if (gpsIcon) gpsIcon.textContent = "✓";
+        updateAttendanceGeofenceStatus(pos.coords.latitude, pos.coords.longitude);
     }, err => {
         if (gpsText) gpsText.textContent = "ไม่สามารถระบุตำแหน่ง: " + err.message;
         if (gpsIcon) gpsIcon.textContent = "⚠";
+        renderAttendanceGeofenceError("ยังไม่ได้รับพิกัด กรุณาเปิดสิทธิ์ GPS แล้วลองใหม่");
     }, {
         enableHighAccuracy: true,
         timeout: 1e4
     });
+}
+
+function renderAttendanceGeofenceError(message) {
+    const status = $("#attGeofenceStatus");
+    const button = $("#attCheckinBtn");
+    if (status) {
+        status.className = "att-geofence-status outside";
+        status.innerHTML = `<strong>ยังเช็กอินไม่ได้</strong><span>${escapeHtmlMobile(message)}</span>`;
+    }
+    if (button) {
+        button.disabled = true;
+        button.textContent = "รอตรวจ GPS...";
+    }
+}
+
+async function updateAttendanceGeofenceStatus(latitude, longitude) {
+    const status = $("#attGeofenceStatus");
+    const button = $("#attCheckinBtn");
+    if (status) {
+        status.className = "att-geofence-status checking";
+        status.innerHTML = "<strong>กำลังตรวจระยะห่าง...</strong><span>รอผลจากเซิร์ฟเวอร์</span>";
+    }
+    try {
+        const result = await api(`/api/attendance/location-status?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`);
+        const location = result.location;
+        if (status && location && result.insideAllowedRadius) {
+            status.className = "att-geofence-status inside";
+            status.innerHTML = `<strong>✓ อยู่ในพื้นที่ ${escapeHtmlMobile(location.name)} — เช็กอินได้</strong><span>ห่างจุดลงเวลา ${location.distanceMeters} เมตร · รัศมีที่อนุญาต ${location.radiusMeters} เมตร</span>`;
+        } else if (status && location) {
+            status.className = `att-geofence-status ${result.enforcementEnabled ? "outside" : "warning"}`;
+            status.innerHTML = `<strong>${result.enforcementEnabled ? "✕ อยู่นอกพื้นที่ — เช็กอินไม่ได้" : "⚠ อยู่นอกพื้นที่ — ยังไม่เปิดบังคับ GPS"}</strong><span>ห่าง ${escapeHtmlMobile(location.name)} ${location.distanceMeters} เมตร · รัศมี ${location.radiusMeters} เมตร</span>`;
+        } else if (status) {
+            status.className = "att-geofence-status warning";
+            status.innerHTML = "<strong>ยังไม่ได้ผูกจุดเช็กอิน</strong><span>แจ้งผู้ดูแลเพื่อกำหนดจุดลงเวลา</span>";
+        }
+        if (button && !attState.currentRecord) {
+            button.disabled = result.canCheckIn === false;
+            button.textContent = result.canCheckIn === false ? "อยู่นอกพื้นที่" : "✓ เช็คอิน";
+        }
+        return result;
+    } catch (error) {
+        renderAttendanceGeofenceError(error.message || "ตรวจพื้นที่ไม่สำเร็จ");
+        return null;
+    }
 }
 
 function startAttCamera() {
@@ -2349,6 +2396,8 @@ async function submitAttCheckin() {
     }
     try {
         const gps = await refreshGpsForAtt();
+        const geofence = await updateAttendanceGeofenceStatus(gps.gpsLat, gps.gpsLon);
+        if (!geofence || geofence.canCheckIn === false) throw new Error("อยู่นอกจุดลงเวลาที่กำหนด จึงยังเช็กอินไม่ได้");
         const res = await api("/api/attendance/checkin", {
             userId: user.id,
             photo: attState.photoBase64,

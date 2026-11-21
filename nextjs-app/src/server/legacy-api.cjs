@@ -8895,6 +8895,29 @@ async function handleApi(req, res, pathname) {
             date: today
         });
     }
+    if (req.method === "GET" && pathname === "/api/attendance/location-status") {
+        const db = readDb();
+        const actor = sessionUser(db, req);
+        const query = new URL(req.url, "http://localhost").searchParams;
+        let locationResult;
+        try {
+            locationResult = hrSecurity.attendanceLocation(db, actor.id, query.get("latitude"), query.get("longitude"), { enforce: false });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
+        const nearest = locationResult.nearestLocation;
+        return sendJson(res, 200, {
+            insideAllowedRadius: locationResult.insideAllowedRadius,
+            enforcementEnabled: locationResult.enforcementEnabled,
+            canCheckIn: !locationResult.enforcementEnabled || locationResult.insideAllowedRadius,
+            location: nearest ? {
+                id: nearest.id,
+                name: nearest.name,
+                radiusMeters: nearest.radiusMeters,
+                distanceMeters: Math.round(nearest.distanceMeters)
+            } : null
+        });
+    }
     if (req.method === "GET" && pathname === "/api/attendance/all") {
         const db = readDb();
         if (!db.attendance) db.attendance = [];
