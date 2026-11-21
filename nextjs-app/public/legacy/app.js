@@ -10992,7 +10992,9 @@ const attDash = {
     draggingUserId: null,
     notifSince: null,
     notifTimer: null,
-    liveTimer: null
+    liveTimer: null,
+    mapSearch: "",
+    mapSelectedUserId: ""
 };
 
 var _csQueueData = [];
@@ -12016,6 +12018,19 @@ async function renderAttendance() {
     if (mapTitle) mapTitle.textContent = "Operations Map · ตำแหน่งล่าสุดพนักงาน";
     const mapLegend = container.querySelector(".att-map-legend-row");
     if (mapLegend && !mapLegend.querySelector(".att-legend-dot.live")) mapLegend.insertAdjacentHTML("afterbegin", '<span><i class="att-legend-dot live"></i> ตำแหน่งล่าสุด</span>');
+    const map = $("#attOpsMap");
+    if (map && !$("#attMapPeopleSearch")) map.insertAdjacentHTML("beforebegin", `
+      <div class="att-map-search-wrap">
+        <div class="att-map-search-box">
+          <span aria-hidden="true">⌕</span>
+          <input id="attMapPeopleSearch" type="search" autocomplete="off" placeholder="ค้นหาชื่อ ชื่อเล่น หรือรหัสพนักงาน" aria-label="ค้นหาพนักงานบนแผนที่">
+          <button type="button" id="attMapSearchClear" aria-label="ล้างการค้นหา" hidden>×</button>
+        </div>
+        <div id="attMapSearchResults" class="att-map-search-results" hidden></div>
+      </div>
+      <div id="attMapPersonCard" class="att-map-person-card" hidden></div>`);
+    $("#attMapPeopleSearch")?.addEventListener("input", event => filterAttMapPeople(event.target.value));
+    $("#attMapSearchClear")?.addEventListener("click", clearAttMapPeopleSearch);
     await loadAttDashData();
     startNotifPoller();
     if (attDash.liveTimer) clearInterval(attDash.liveTimer);
@@ -12143,11 +12158,98 @@ function attAssignedGroupForRecord(record) {
     return attDash.taskGroups.find(g => g.status !== "done" && (g.assignedUsers || []).some(u => u.userId === record.userId));
 }
 
+function attMapRecordMatches(record, query) {
+    const needle = String(query || "").trim().toLocaleLowerCase("th-TH");
+    if (!needle) return true;
+    return [record.userName, record.userNickname, record.userCode, record.userPosition, record.role]
+        .some(value => String(value || "").toLocaleLowerCase("th-TH").includes(needle));
+}
+
+function attMapPersonPhoto(record, className = "") {
+    const initials = (record.userName || "?").split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
+    if (!record.photoUrl) return `<span class="${className}">${escHtml(initials)}</span>`;
+    return `<span class="${className}"><img src="${escHtml(record.photoUrl)}" alt="รูป ${escHtml(record.userName || "พนักงาน")}" loading="lazy" onerror="this.remove();this.parentElement.textContent='${escHtml(initials)}'"></span>`;
+}
+
+function renderAttMapSearchResults(records) {
+    const results = $("#attMapSearchResults");
+    const clear = $("#attMapSearchClear");
+    const query = String(attDash.mapSearch || "").trim();
+    if (clear) clear.hidden = !query;
+    if (!results) return;
+    if (!query) {
+        results.hidden = true;
+        results.innerHTML = "";
+        return;
+    }
+    const matches = records.filter(record => attMapRecordMatches(record, query)).slice(0, 8);
+    results.hidden = false;
+    results.innerHTML = matches.length ? matches.map(record => `
+      <button type="button" class="att-map-search-result" data-att-user-id="${escHtml(record.userId)}">
+        ${attMapPersonPhoto(record, "att-map-search-avatar")}
+        <span><strong>${escHtml(record.userName || "-")}</strong><small>${escHtml(record.userNickname ? `ชื่อเล่น ${record.userNickname} · ` : "")}${escHtml(record.userCode || record.userId || "")}</small></span>
+        <em>${record.checkOutTime ? "ออกแล้ว" : "เข้างานอยู่"}</em>
+      </button>`).join("") : '<div class="att-map-search-empty">ไม่พบพนักงานที่ค้นหาในรายการเข้างานวันนี้</div>';
+    results.querySelectorAll("[data-att-user-id]").forEach(button => button.addEventListener("click", () => selectAttMapPerson(button.dataset.attUserId)));
+}
+
+function filterAttMapPeople(value) {
+    attDash.mapSearch = String(value || "");
+    attDash.mapSelectedUserId = "";
+    const card = $("#attMapPersonCard");
+    if (card) card.hidden = true;
+    renderAttOperations();
+}
+
+function clearAttMapPeopleSearch() {
+    attDash.mapSearch = "";
+    attDash.mapSelectedUserId = "";
+    const input = $("#attMapPeopleSearch");
+    if (input) input.value = "";
+    const card = $("#attMapPersonCard");
+    if (card) card.hidden = true;
+    renderAttOperations();
+}
+
+function selectAttMapPerson(userId) {
+    const record = (attDash.staff || []).find(item => item.userId === userId);
+    if (!record) return;
+    attDash.mapSelectedUserId = userId;
+    attDash.mapSearch = record.userName || record.userCode || "";
+    const input = $("#attMapPeopleSearch");
+    if (input) input.value = attDash.mapSearch;
+    renderAttOperations();
+    const pointType = !record.checkOutTime && hasAttPoint(record, "live") ? "live" : hasAttPoint(record, "out") ? "out" : "in";
+    showAttMapPerson(userId, pointType);
+}
+
+function showAttMapPerson(userId, pointType = "live") {
+    const record = (attDash.staff || []).find(item => item.userId === userId);
+    const card = $("#attMapPersonCard");
+    if (!record || !card) return;
+    const type = hasAttPoint(record, pointType) ? pointType : hasAttPoint(record, "live") ? "live" : hasAttPoint(record, "out") ? "out" : "in";
+    if (!hasAttPoint(record, type)) return;
+    const point = attPoint(record, type);
+    const accuracy = point.accuracyMeters === null ? "" : ` · ความแม่นยำ ±${Math.round(point.accuracyMeters)} ม.`;
+    card.hidden = false;
+    card.innerHTML = `
+      ${attMapPersonPhoto(record, "att-map-person-photo")}
+      <div class="att-map-person-copy">
+        <strong>${escHtml(record.userName || "-")}</strong>
+        <span>${escHtml(record.userNickname ? `ชื่อเล่น ${record.userNickname} · ` : "")}${escHtml(record.userCode || record.userId || "")} · ${escHtml(record.userPosition || record.role || "")}</span>
+        <small>${escHtml(point.label)} ${attTimeShort(point.time)} · ${attLocationAgeLabel(point.time)}${escHtml(accuracy)}</small>
+      </div>
+      <a href="https://maps.google.com/?q=${point.lat},${point.lon}" target="_blank" rel="noopener">เปิด Google Maps</a>
+      <button type="button" aria-label="ปิดรายละเอียด" onclick="this.parentElement.hidden=true">×</button>`;
+}
+
 function renderAttOperations() {
     const map = $("#attOpsMap");
     const list = $("#attStartEndTimeline");
     if (!map || !list) return;
-    const records = (attDash.staff || []).slice().sort((a, b) => String(a.checkInTime || "").localeCompare(String(b.checkInTime || "")));
+    const allRecords = (attDash.staff || []).slice().sort((a, b) => String(a.checkInTime || "").localeCompare(String(b.checkInTime || "")));
+    renderAttMapSearchResults(allRecords);
+    const records = allRecords.filter(record => attMapRecordMatches(record, attDash.mapSearch));
     const points = records.flatMap(record => {
         const arr = [];
         if (hasAttPoint(record, "in")) arr.push(attPoint(record, "in"));
@@ -12162,7 +12264,7 @@ function renderAttOperations() {
     if (mapSummary) mapSummary.textContent = `${liveCount} กำลังแชร์ · ${records.length} คน`;
     if (timelineSummary) timelineSummary.textContent = `${untaggedCount} ยังไม่ผูกงาน`;
     if (!points.length) {
-        map.innerHTML = `\n      <div class="att-map-empty">\n        <strong>ยังไม่มีพิกัดเช็คอินวันนี้</strong>\n        <span>เมื่อพนักงานเช็คอิน/เช็คเอาต์จาก Mobile ระบบจะแสดงจุดเริ่มต้นและสิ้นสุดที่นี่</span>\n      </div>`;
+        map.innerHTML = attDash.mapSearch ? `\n      <div class="att-map-empty">\n        <strong>ไม่พบพนักงานที่ค้นหาบนแผนที่</strong>\n        <span>ลองค้นหาด้วยชื่อ ชื่อเล่น หรือรหัสพนักงาน</span>\n      </div>` : `\n      <div class="att-map-empty">\n        <strong>ยังไม่มีพิกัดเช็คอินวันนี้</strong>\n        <span>เมื่อพนักงานเช็คอิน/เช็คเอาต์จาก Mobile ระบบจะแสดงจุดเริ่มต้นและสิ้นสุดที่นี่</span>\n      </div>`;
     } else {
         const minLat = Math.min(...points.map(p => p.lat));
         const maxLat = Math.max(...points.map(p => p.lat));
@@ -12183,12 +12285,15 @@ function renderAttOperations() {
             const pos = project(p);
             const group = attAssignedGroupForRecord(p.record);
             const stale = p.type === "live" && Date.now() - Date.parse(p.time || "") > 10 * 60 * 1000;
-            const cls = `${p.type === "out" ? "end" : p.type === "live" ? "live" : "start"} ${stale ? "stale" : ""} ${group ? "" : "untagged"}`;
+            const selected = p.record.userId === attDash.mapSelectedUserId;
+            const cls = `${p.type === "out" ? "end" : p.type === "live" ? "live" : "start"} ${stale ? "stale" : ""} ${selected ? "selected" : ""} ${group ? "" : "untagged"}`;
             const initials = (p.record.userName || "?").split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
             const accuracy = p.accuracyMeters === null ? "" : ` · ±${Math.round(p.accuracyMeters)} ม.`;
-            return `<button class="att-map-marker ${cls}" style="left:${pos.x.toFixed(2)}%;top:${pos.y.toFixed(2)}%" title="${escHtml(p.record.userName || "")} · ${p.label} ${attTimeShort(p.time)}${accuracy} — คลิกเปิด Google Maps" onclick="window.open('https://maps.google.com/?q=${p.lat},${p.lon}','_blank')">\n        <span>${p.type === "out" ? "OUT" : initials}</span>\n      </button>`;
+            const face = p.record.photoUrl ? `<img src="${escHtml(p.record.photoUrl)}" alt="" loading="lazy" onerror="this.remove();this.parentElement.textContent='${escHtml(p.type === "out" ? "OUT" : initials)}'">` : escHtml(p.type === "out" ? "OUT" : initials);
+            return `<button class="att-map-marker ${cls}" data-att-user-id="${escHtml(p.record.userId)}" data-att-point-type="${p.type}" style="left:${pos.x.toFixed(2)}%;top:${pos.y.toFixed(2)}%" title="${escHtml(p.record.userName || "")} · ${p.label} ${attTimeShort(p.time)}${accuracy} — คลิกดูรายละเอียด">\n        <span>${face}</span>\n      </button>`;
         }).join("");
         map.innerHTML = `\n      <div class="att-map-grid-bg"></div>\n      <svg class="att-map-routes" aria-hidden="true">${routes}</svg>\n      ${markers}\n      <div class="att-map-location-badge">\n        <strong>SCD Operations</strong>\n        <span>Live attendance points · start/end</span>\n      </div>`;
+        map.querySelectorAll(".att-map-marker[data-att-user-id]").forEach(marker => marker.addEventListener("click", () => showAttMapPerson(marker.dataset.attUserId, marker.dataset.attPointType)));
     }
     list.innerHTML = records.length ? records.map(record => {
         const group = attAssignedGroupForRecord(record);

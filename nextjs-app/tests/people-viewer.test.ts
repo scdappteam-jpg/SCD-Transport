@@ -73,7 +73,7 @@ test("people viewers can enter the personnel registry from the main login", () =
   assert.match(app, /selectedUser\?\.role === "People_Viewer"/);
   assert.match(app, /sessionStorage\.setItem\("scdPeopleViewerSession", token\)/);
   assert.match(app, /window\.location\.href = "\/legacy\/people-directory\.html"/);
-  assert.match(index, /app\.js\?v=20261121-hr-date-fix/);
+  assert.match(index, /app\.js\?v=20261121-live-person-search/);
 });
 
 test("people directory batch export is protected and contains the expected package files", () => {
@@ -123,7 +123,7 @@ test("main staff page loads the shared personnel directory instead of login user
   assert.match(app, /state\.personnelDirectory = \(data\.items \|\| \[\]\)\.map/);
   assert.match(app, /users\.filter\(user => user\.department === department\.role\)/);
   assert.match(html, /ทะเบียนบุคลากร \/ Personnel Directory/);
-  assert.match(html, /20261121-hr-date-fix/);
+  assert.match(html, /20261121-live-person-search/);
 });
 
 test("SCD employee codes start with management and preserve old login aliases", () => {

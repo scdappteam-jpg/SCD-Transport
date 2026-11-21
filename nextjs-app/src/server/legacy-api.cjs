@@ -8885,10 +8885,15 @@ async function handleApi(req, res, pathname) {
         const users = db.users || [];
         const enriched = records.map(r => {
             const u = users.find(u => u.id === r.userId);
+            const profile = db.hr?.employeeProfiles?.[r.userId] || db.hr?.employeeProfiles?.[u?.employeeId] || {};
             const latest = r.latestLocation || (r.locationTrail || []).at(-1) || null;
             return {
                 ...r,
                 userName: u?.name || r.userName,
+                userCode: u?.code || u?.employeeId || r.userId,
+                userNickname: u?.nickname || profile.nickname || "",
+                userPosition: profile.position || u?.role || r.role || "",
+                photoUrl: profile.profilePhotoUrl || profile.photoUrl || u?.profilePhotoUrl || "",
                 locationTrail: undefined,
                 liveLocation: latest ? {
                     at: latest.at,

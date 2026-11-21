@@ -259,17 +259,28 @@ test('location assignments, disabled locations, overlapping radii and zero coord
 
 test('attendance reads and reassignment respect team ownership', async () => {
     const db = fixture(), today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+    db.hr.employeeProfiles.employee.profilePhotoUrl = '/storage/people-directory/employee.jpg';
     db.attendance = [{ id: 'mine', userId: 'employee', date: today }, { id: 'private', userId: 'other', date: today }];
     for (const path of ['/api/attendance/today', '/api/attendance/all']) {
         for (const actor of ['employee', 'lead']) {
             const result = await request(db, actor, path, {}, 'GET');
             assert.deepEqual(result.body.records.map((row: { id: string }) => row.id), ['mine']);
+            if (path.endsWith('/today')) assert.equal(result.body.records[0].photoUrl, '/storage/people-directory/employee.jpg');
         }
     }
     assert.equal((await request(db, 'stranger', '/api/attendance/reallocate', { attendanceId: 'mine', zone: 'forged' })).status, 403);
     const result = await request(db, 'lead', '/api/attendance/reallocate', { attendanceId: 'mine', zone: 'WH3', by: 'forged' });
     assert.equal(result.status, 200);
     assert.equal(result.body.record.reallocations[0].by, 'Lead');
+});
+
+test('operations map supports people search, profile-photo markers and click details', () => {
+    const appSource = readFileSync(new URL('../public/legacy/app.js', import.meta.url), 'utf8');
+    assert.match(appSource, /attMapPeopleSearch/);
+    assert.match(appSource, /ค้นหาชื่อ ชื่อเล่น หรือรหัสพนักงาน/);
+    assert.match(appSource, /attMapPersonPhoto/);
+    assert.match(appSource, /showAttMapPerson/);
+    assert.match(appSource, /data-att-point-type/);
 });
 
 test('HR notifications require exact recipient regardless of claimed role', () => {
