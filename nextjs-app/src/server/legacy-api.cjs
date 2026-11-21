@@ -1033,8 +1033,29 @@ function ensureCoreUsers(db) {
     }
     const testViewer = db.users.find(user => String(user.code || '').toUpperCase() === peopleViewer.TEST_VIEWER_CODE && user.isTestAccount === true);
     if (testViewer) attendanceDeviceAuth.provisionTestPin(db, testViewer, '123456', 'view999-pin-123456-v1', nowIso());
+    const viewerCodes = user => [ user?.code, ...(user?.loginAliases || []) ].map(value => String(value || '').toUpperCase());
+    const hasPrimaryPersonnelViewers = db.users.some(user => user.role === peopleViewer.VIEWER_ROLE && viewerCodes(user).some(code => code === 'VIEW001' || code === 'VIEW002'));
+    let yuiViewer = db.users.find(user => user.role === peopleViewer.VIEWER_ROLE && (viewerCodes(user).includes('VIEW003') || String(user.name || '').trim() === 'คุณยุ้ย'));
+    if (hasPrimaryPersonnelViewers && !yuiViewer) {
+        const createdAt = nowIso();
+        peopleViewer.provisionAdditional(db, {
+            actor: { id: 'system_personnel_onboarding', role: 'Admin' },
+            record: { code: 'VIEW003', name: 'คุณยุ้ย', nickname: 'ยุ้ย', position: 'ผู้ดูแลข้อมูล', department: 'บริหาร', temporaryPassword: 'Test2026' },
+            preview: false,
+            now: createdAt
+        });
+        yuiViewer = db.users.find(user => String(user.code || '').toUpperCase() === 'VIEW003');
+        const highestScdNumber = db.users.reduce((highest, user) => {
+            const matched = /^SCD(\d+)$/.exec(String(user.code || '').toUpperCase());
+            return matched ? Math.max(highest, Number(matched[1])) : highest;
+        }, 0);
+        yuiViewer.loginAliases = [ ...new Set([ ...(yuiViewer.loginAliases || []), 'VIEW003' ]) ];
+        yuiViewer.code = `SCD${String(highestScdNumber + 1).padStart(3, '0')}`;
+        yuiViewer.updatedAt = createdAt;
+        db.hr.auditLogs.push({ id: `HRAUD-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`, action: 'PersonnelViewerOnboarded', actorId: 'system_personnel_onboarding', accountCode: yuiViewer.code, loginAlias: 'VIEW003', at: createdAt });
+    }
     for (const code of [ 'VIEW001', 'VIEW002', 'VIEW003' ]) {
-        const viewer = db.users.find(user => String(user.code || '').toUpperCase() === code || (user.loginAliases || []).some(alias => String(alias || '').toUpperCase() === code));
+        const viewer = db.users.find(user => viewerCodes(user).includes(code));
         if (viewer?.role === peopleViewer.VIEWER_ROLE) attendanceDeviceAuth.provisionInitialPin(db, viewer, '123456', 'people-viewers-pin-123456-v1', nowIso());
     }
 }
