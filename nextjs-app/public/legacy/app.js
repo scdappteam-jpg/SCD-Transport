@@ -100,6 +100,10 @@ const state = {
     pendingExportType: null,
     selectedStaffId: null,
     staffRoleFilter: "All",
+    personnelDirectory: [],
+    personnelDirectoryLoaded: false,
+    personnelDirectoryLoading: false,
+    personnelDirectoryError: "",
     hrFormMode: "leave",
     leaveRequests: [],
     otRequests: [],
@@ -1053,6 +1057,7 @@ function setView(view) {
     if (view === "dock") renderDockBoard();
     if (view === "service") renderServiceBilling();
     if (view === "contacts") loadContacts();
+    if (view === "staff") loadPersonnelDirectoryForStaff();
     if (view === "mobile" && currentWebUser()?.role === "Billing") showRolePanel("Billing");
     renderLpWidget();
 }
@@ -6928,10 +6933,15 @@ function renderStaffDetail(user) {
     if (!user) return;
     const stat = staffStat(user.id);
     state.selectedStaffId = user.id;
-    $("#staffDetailAvatar").textContent = (user.name || "-")[0].toUpperCase();
+    const avatar = $("#staffDetailAvatar");
+    if (user.photoUrl) {
+        avatar.innerHTML = `<img src="${safeHtml(user.photoUrl)}" alt="รูป ${safeHtml(user.name || "พนักงาน")}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" onerror="this.remove();this.parentElement.textContent='${safeHtml((user.name || "-")[0].toUpperCase())}'">`;
+    } else {
+        avatar.textContent = (user.name || "-")[0].toUpperCase();
+    }
     $("#staffDetailName").textContent = user.name || "-";
-    const identity = [user.englishName, user.nickname ? `ชื่อเล่น ${user.nickname}` : "", user.nationality ? `สัญชาติ ${user.nationality}` : ""].filter(Boolean).join(" · ");
-    $("#staffDetailMeta").textContent = `${staffRoleLabel(user.role)} · ${user.code || user.id}${user.vehiclePlate ? ` · ${user.vehiclePlate}` : ""}${identity ? ` · ${identity}` : ""}`;
+    const identity = [user.nickname ? `ชื่อเล่น ${user.nickname}` : "", user.position, user.department, user.phone].filter(Boolean).join(" · ");
+    $("#staffDetailMeta").textContent = `${user.code || user.id}${identity ? ` · ${identity}` : ""}`;
     $("#staffDetailJobs").textContent = stat.totalJobs;
     $("#staffDetailCompleted").textContent = stat.completedJobs;
     $("#staffDetailDuration").textContent = durationLabel(stat.averageDurationMinutes);
@@ -6941,21 +6951,56 @@ function renderStaffDetail(user) {
 }
 
 function renderStaff() {
-    const users = (state.users || []).filter(user => user.status !== "Inactive");
+    const users = state.personnelDirectoryLoaded ? state.personnelDirectory : [];
+    if (!state.personnelDirectoryLoaded) {
+        $("#staffTotal").textContent = state.personnelDirectoryLoading ? "…" : "0";
+        $("#staffTable").innerHTML = `<tr><td colspan="8"><div class="empty-state">${safeHtml(state.personnelDirectoryError || "กำลังเชื่อมข้อมูลทะเบียนบุคลากร…")}</div></td></tr>`;
+        renderTeamDepartments([]);
+        return;
+    }
     const activeIds = new Set(users.map(user => user.id));
     const stats = (state.dashboard?.staffStats || []).filter(item => activeIds.has(item.userId || item.id));
     $("#staffTotal").textContent = users.length;
     $("#staffAvgKpi").textContent = `${stats.length ? Math.round(stats.reduce((sum, item) => sum + item.kpi, 0) / stats.length) : 0}%`;
-    $("#staffLineConnected").textContent = users.filter(user => user.lineConnected || user.lineUserId).length;
+    $("#staffLineConnected").textContent = new Set(users.map(user => user.department).filter(Boolean)).size;
     renderTeamDepartments(users);
-    const visibleUsers = state.staffRoleFilter === "All" ? users : users.filter(user => user.role === state.staffRoleFilter);
+    const visibleUsers = state.staffRoleFilter === "All" ? users : users.filter(user => user.department === state.staffRoleFilter);
     $("#staffTable").innerHTML = visibleUsers.map((staff, index) => {
         const stat = staffStat(staff.id);
         const code = staff.code || `EMP${String(index + 1).padStart(3, "0")}`;
-        return `\n    <tr>\n      <td><strong>${code}</strong></td>\n      <td><span class="mini-avatar">${staff.name[0]}</span>${staff.name}</td>\n      <td><span class="pill ${staff.role === "Driver" ? "pending" : "inbound"}">${staffRoleLabel(staff.role)}</span>${staff.vehiclePlate ? `<small>${staff.vehiclePlate}</small>` : ""}</td>\n      <td>${stat.totalJobs}</td>\n      <td>${stat.completedJobs}</td>\n      <td>${durationLabel(stat.averageDurationMinutes)}</td>\n      <td><div class="lead-bar"><span style="width:${stat.kpi}%"></span></div>${stat.kpi}%</td>\n      <td><button class="staff-row-action" type="button" data-staff-id="${staff.id}" title="ดูหรือแก้ไข"><i data-lucide="square-pen"></i></button></td>\n    </tr>\n  `;
+        const avatar = staff.photoUrl ? `<span class="mini-avatar personnel-photo" style="overflow:hidden"><img src="${safeHtml(staff.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.remove();this.parentElement.textContent='${safeHtml((staff.name || "-")[0])}'"></span>` : `<span class="mini-avatar">${safeHtml((staff.name || "-")[0])}</span>`;
+        return `\n    <tr>\n      <td><strong>${safeHtml(code)}</strong></td>\n      <td>${avatar}<strong>${safeHtml(staff.name)}</strong>${staff.nickname ? `<small>ชื่อเล่น ${safeHtml(staff.nickname)}</small>` : ""}</td>\n      <td>${safeHtml(staff.position || "-")}</td>\n      <td><span class="pill inbound">${safeHtml(staff.department || "ไม่ระบุแผนก")}</span></td>\n      <td>${safeHtml(staff.phone || "-")}</td>\n      <td>${stat.totalJobs}</td>\n      <td>${stat.completedJobs}</td>\n      <td><button class="staff-row-action" type="button" data-staff-id="${safeHtml(staff.id)}" title="ดูข้อมูล"><i data-lucide="eye"></i></button></td>\n    </tr>\n  `;
     }).join("");
     const selected = users.find(user => user.id === state.selectedStaffId) || users[0];
     if (selected) renderStaffDetail(selected);
+}
+
+async function loadPersonnelDirectoryForStaff(force = false) {
+    if (state.personnelDirectoryLoading || (!force && state.personnelDirectoryLoaded)) {
+        renderStaff();
+        return;
+    }
+    state.personnelDirectoryLoading = true;
+    state.personnelDirectoryError = "";
+    renderStaff();
+    try {
+        const data = await api("/api/people-directory", null, "GET");
+        state.personnelDirectory = (data.items || []).map(person => ({
+            ...person,
+            code: person.id,
+            name: [person.firstName, person.lastName].filter(Boolean).join(" ") || person.id,
+            department: person.department || "ไม่ระบุแผนก",
+            position: person.position || "ไม่ระบุตำแหน่ง"
+        }));
+        state.personnelDirectoryLoaded = true;
+        if (state.selectedStaffId && !state.personnelDirectory.some(person => person.id === state.selectedStaffId)) state.selectedStaffId = null;
+    } catch (error) {
+        state.personnelDirectoryError = `เชื่อมทะเบียนบุคลากรไม่สำเร็จ: ${error.message}`;
+    } finally {
+        state.personnelDirectoryLoading = false;
+        renderStaff();
+        initializeIcons();
+    }
 }
 
 async function loadContacts(force = false) {
@@ -7025,32 +7070,18 @@ function renderContacts() {
     initializeIcons();
 }
 
-function renderTeamDepartments(users = state.users || []) {
+function renderTeamDepartments(users = state.personnelDirectory || []) {
     const grid = $("#teamDepartmentGrid");
     if (!grid) return;
-    const departments = [ {
-        role: "Driver",
-        label: "คนขับรถ / Driver",
-        icon: "truck"
-    }, {
-        role: "WH_Staff",
-        label: "คลัง WH3 / WH Staff",
-        icon: "warehouse"
-    }, {
-        role: "Terminal",
-        label: "Terminal",
-        icon: "plane"
-    }, {
-        role: "Billing",
-        label: "บัญชี / Billing",
-        icon: "receipt-text"
-    }, {
-        role: "Admin",
-        label: "แอดมิน / Admin",
-        icon: "shield-check"
-    } ];
+    const departments = [...new Set(users.map(user => user.department || "ไม่ระบุแผนก"))]
+        .sort((a, b) => a.localeCompare(b, "th"))
+        .map(label => ({ role: label, label, icon: /ขนส่ง|driver/i.test(label) ? "truck" : /คลัง|warehouse|WH/i.test(label) ? "warehouse" : /บัญชี|billing/i.test(label) ? "receipt-text" : /บริหาร|admin/i.test(label) ? "shield-check" : "users" }));
+    if (!departments.length) {
+        grid.innerHTML = `<div class="empty-state">กำลังโหลดแผนกจากทะเบียนบุคลากร…</div>`;
+        return;
+    }
     grid.innerHTML = departments.map(department => {
-        const members = users.filter(user => user.role === department.role);
+        const members = users.filter(user => user.department === department.role);
         const stats = members.map(member => staffStat(member.id));
         const jobs = stats.reduce((sum, stat) => sum + stat.totalJobs, 0);
         const completed = stats.reduce((sum, stat) => sum + stat.completedJobs, 0);
@@ -9305,17 +9336,18 @@ function bindEvents() {
         if (window.innerWidth > 840) setMobileMenu(false);
         if (window.innerWidth <= 840) setSidebarCollapsed(false);
     });
-    $("#openStaffFormBtn").addEventListener("click", () => openStaffEditor());
+    $("#openStaffFormBtn").addEventListener("click", () => {
+        window.location.href = "/legacy/people-directory.html";
+    });
     $("#closeStaffFormBtn").addEventListener("click", closeStaffEditor);
     $("#cancelStaffBtn").addEventListener("click", closeStaffEditor);
     $("#staffRole").addEventListener("change", setStaffVehicleVisibility);
     $("#staffTable").addEventListener("click", event => {
         const button = event.target.closest("[data-staff-id]");
         if (!button) return;
-        const user = state.users.find(item => item.id === button.dataset.staffId);
+        const user = state.personnelDirectory.find(item => item.id === button.dataset.staffId);
         if (!user) return;
         renderStaffDetail(user);
-        openStaffEditor(user);
     });
     $("#teamDepartmentGrid").addEventListener("click", event => {
         const card = event.target.closest("[data-team-role]");

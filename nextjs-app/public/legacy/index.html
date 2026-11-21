@@ -647,7 +647,7 @@
             <div class="metric-grid">
               <article class="metric-card"><i data-lucide="users" class="icon blue" aria-hidden="true"></i><p>พนักงานทั้งหมด / Total Staff</p><strong id="staffTotal">0</strong></article>
               <article class="metric-card"><i data-lucide="bar-chart-2" class="icon purple" aria-hidden="true"></i><p>ประสิทธิภาพเฉลี่ย / Avg Performance</p><strong id="staffAvgKpi">0%</strong></article>
-              <article class="metric-card"><i data-lucide="link" class="icon green" aria-hidden="true"></i><p>LINE Connected</p><strong id="staffLineConnected">0</strong></article>
+              <article class="metric-card"><i data-lucide="building-2" class="icon green" aria-hidden="true"></i><p>จำนวนแผนก / Departments</p><strong id="staffLineConnected">0</strong></article>
               <article class="metric-card"><i data-lucide="activity" class="icon blue" aria-hidden="true"></i><p>System Uptime</p><strong>99.9%</strong></article>
             </div>
             <section class="card team-overview">
@@ -660,8 +660,8 @@
             <div class="staff-layout">
               <article class="card">
                 <div class="card-head">
-                  <h2>จัดการพนักงาน / Staff Management</h2>
-                  <button id="openStaffFormBtn" class="primary-button" type="button">เพิ่มพนักงาน / Add Staff</button>
+                  <div><h2>ทะเบียนบุคลากร / Personnel Directory</h2><p>ข้อมูลชุดเดียวกับทะเบียนบุคลากร อัปเดตอัตโนมัติ</p></div>
+                  <button id="openStaffFormBtn" class="primary-button" type="button">เปิดหน้าจัดการทะเบียน</button>
                 </div>
                 <form id="staffEditor" class="staff-editor" hidden>
                   <div class="staff-form-head"><strong id="staffFormTitle">เพิ่มพนักงาน</strong><button id="closeStaffFormBtn" class="icon-button" type="button" aria-label="Close">×</button></div>
@@ -693,7 +693,7 @@
                 </form>
                 <div class="table-wrap">
                   <table>
-                    <thead><tr><th>Code</th><th>Name</th><th>Role</th><th>Jobs</th><th>Completed</th><th>Avg. Time</th><th>KPI</th><th>Action</th></tr></thead>
+                    <thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ตำแหน่ง</th><th>แผนก</th><th>เบอร์โทร</th><th>งาน</th><th>สำเร็จ</th><th>ดู</th></tr></thead>
                     <tbody id="staffTable"></tbody>
                   </table>
                 </div>
@@ -2647,6 +2647,6 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="warehouse-reservations-page.js?v=2-wh-planning-get"></script>
     <script src="warehouse-inbound-page.js?v=20261031-sit-reset"></script>
     <script src="meeting-workflows-ui.js?v=20261028-inbound"></script>
-    <script src="app.js?v=20261121-people-viewer-main-login"></script>
+    <script src="app.js?v=20261121-linked-personnel-directory"></script>
   </body>
 </html>

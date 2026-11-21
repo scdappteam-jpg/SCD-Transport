@@ -71,7 +71,7 @@ test("people viewers can enter the personnel registry from the main login", () =
   assert.match(app, /selectedUser\?\.role === "People_Viewer"/);
   assert.match(app, /sessionStorage\.setItem\("scdPeopleViewerSession", token\)/);
   assert.match(app, /window\.location\.href = "\/legacy\/people-directory\.html"/);
-  assert.match(index, /app\.js\?v=20261121-people-viewer-main-login/);
+  assert.match(index, /app\.js\?v=20261121-linked-personnel-directory/);
 });
 
 test("people directory batch export is protected and contains the expected package files", () => {
@@ -111,6 +111,17 @@ test("directory read and update force a shared-state refresh before resolving em
   assert.match(getRoute, /pathname === "\/api\/people-directory\/create"[\s\S]*await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
   assert.match(updateRoute, /await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
   assert.match(api, /peopleViewerPaths = new Set\(\["\/api\/people-directory", "\/api\/people-directory\/export", "\/api\/people-directory\/create", "\/api\/people-directory\/update"/);
+});
+
+test("main staff page loads the shared personnel directory instead of login users", () => {
+  const app = readFileSync(new URL("../public/legacy/app.js", import.meta.url), "utf8");
+  const html = readFileSync(new URL("../public/legacy/index.html", import.meta.url), "utf8");
+  assert.match(app, /if \(view === "staff"\) loadPersonnelDirectoryForStaff\(\)/);
+  assert.match(app, /api\("\/api\/people-directory", null, "GET"\)/);
+  assert.match(app, /state\.personnelDirectory = \(data\.items \|\| \[\]\)\.map/);
+  assert.match(app, /users\.filter\(user => user\.department === department\.role\)/);
+  assert.match(html, /ทะเบียนบุคลากร \/ Personnel Directory/);
+  assert.match(html, /20261121-linked-personnel-directory/);
 });
 
 test("viewer creates a directory-only employee with an automatic code and no login credential", () => {
