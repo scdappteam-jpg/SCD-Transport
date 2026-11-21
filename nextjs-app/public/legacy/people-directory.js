@@ -151,6 +151,7 @@
     $("editorTitle").textContent = "แก้ไขข้อมูลบุคลากร";
     $("editorSubmit").textContent = "บันทึกข้อมูล";
     $("employeeId").value = item.id || item.employeeId || id;
+    $("employeeCodeDisplay").value = item.employeeCode || item.code || item.id || item.employeeId || "";
     for (const field of ["firstName", "lastName", "phone", "nickname"]) $(field).value = item[field] || "";
     populateEditorSelect("position", [...items.map(person => person.position), ...FIXED_POSITIONS], item.position, "เลือกตำแหน่ง");
     populateEditorSelect("editDepartment", items.map(person => person.department), item.department, "เลือกแผนก");
@@ -164,6 +165,7 @@
     $("editorTitle").textContent = "เพิ่มพนักงานใหม่";
     $("editorSubmit").textContent = "เพิ่มพนักงาน";
     $("employeeId").value = "";
+    $("employeeCodeDisplay").value = "ระบบจะกำหนดรหัส SCD ให้อัตโนมัติ";
     for (const field of ["firstName", "lastName", "phone", "nickname"]) $(field).value = "";
     populateEditorSelect("position", [...items.map(person => person.position), ...FIXED_POSITIONS], "", "เลือกตำแหน่ง");
     populateEditorSelect("editDepartment", items.map(person => person.department), "", "เลือกแผนก");

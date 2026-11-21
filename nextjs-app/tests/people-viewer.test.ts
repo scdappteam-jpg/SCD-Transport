@@ -31,8 +31,10 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /populateEditorSelect\("position", \[\.\.\.items\.map\(person => person\.position\), \.\.\.FIXED_POSITIONS\]/);
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
   assert.match(client, /\$\("employeeId"\)\.value = item\.id \|\| item\.employeeId \|\| id/);
+  assert.match(client, /\$\("employeeCodeDisplay"\)\.value = item\.employeeCode \|\| item\.code \|\| item\.id/);
+  assert.match(html, /รหัสพนักงาน<input id="employeeCodeDisplay" readonly/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261121-scd-employee-codes/);
+  assert.match(html, /people-directory\.js\?v=20261121-visible-employee-code/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
   assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
