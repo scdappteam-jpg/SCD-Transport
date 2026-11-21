@@ -1205,15 +1205,14 @@ async function readPeopleDirectoryPhoto(photoUrl) {
 async function exportPeopleDirectoryZip(res, items, now = new Date()) {
     const stamp = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(now).replace(/-/g, "");
     const filename = `SCD-People-Generation-Package-${stamp}.zip`;
-    res.writeHead(200, {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "private, no-store"
-    });
     const archive = new ZipArchive({ zlib: { level: 6 } });
+    const chunks = [];
+    const archiveComplete = new Promise((resolve, reject) => {
+        archive.on("data", chunk => chunks.push(Buffer.from(chunk)));
+        archive.on("end", resolve);
+        archive.on("error", reject);
+    });
     archive.on("warning", error => console.warn("People directory ZIP warning:", error.message));
-    archive.on("error", error => res.destroy(error));
-    archive.pipe(res);
 
     const exportedRows = [];
     const missingRows = [];
@@ -1266,6 +1265,15 @@ async function exportPeopleDirectoryZip(res, items, now = new Date()) {
     ].join("\r\n");
     archive.append(Buffer.from(brief, "utf8"), { name: "generation-brief.txt" });
     await archive.finalize();
+    await archiveComplete;
+    const body = Buffer.concat(chunks);
+    res.writeHead(200, {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": body.length,
+        "Cache-Control": "private, no-store"
+    });
+    res.end(body);
 }
 
 async function savePeopleDirectoryPhoto(photoBase64, identity) {

@@ -83,6 +83,9 @@ test("people directory batch export is protected and contains the expected packa
   assert.match(api, /name: "generation-brief\.txt"/);
   assert.match(api, /archive\.append\(photo\.bytes/);
   assert.match(api, /new ZipArchive\(\{ zlib: \{ level: 6 \} \}\)/);
+  assert.match(api, /archive\.on\("data", chunk => chunks\.push\(Buffer\.from\(chunk\)\)\)/);
+  assert.match(api, /"Content-Length": body\.length/);
+  assert.doesNotMatch(api, /archive\.pipe\(res\)/);
 });
 
 test("admin provisions one additional directory viewer with organization fields", () => {
