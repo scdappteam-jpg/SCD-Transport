@@ -32,7 +32,7 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
   assert.match(client, /\$\("employeeId"\)\.value = item\.id \|\| item\.employeeId \|\| id/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261120-cargo-dimension-position/);
+  assert.match(html, /people-directory\.js\?v=20261121-durable-profile-photos/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
   assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
@@ -45,6 +45,16 @@ test("people directory API accepts profile photos up to eight megabytes", () => 
   const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
   assert.match(api, /content\.length > 8 \* 1024 \* 1024/);
   assert.match(api, /รูปถ่ายต้องมีขนาดไม่เกิน 8 MB/);
+});
+
+test("people directory stores profile photos durably and falls back cleanly when an old file is unavailable", () => {
+  const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../public/legacy/people-directory.js", import.meta.url), "utf8");
+  assert.match(api, /people-directory\/profile\/\$\{filename\}/);
+  assert.match(api, /streamSupabasePeopleDirectoryPhoto/);
+  assert.match(api, /await savePeopleDirectoryPhoto\(payload\.photoBase64/);
+  assert.match(client, /photo-fallback hidden/);
+  assert.match(client, /image\.naturalWidth === 0/);
 });
 
 test("admin provisions one additional directory viewer with organization fields", () => {

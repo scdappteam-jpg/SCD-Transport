@@ -1158,7 +1158,11 @@ function nowIso() {
     return (new Date).toISOString();
 }
 
-function savePeopleDirectoryPhoto(photoBase64, identity) {
+function peopleDirectoryPhotoObjectPath(filename) {
+    return `people-directory/profile/${filename}`;
+}
+
+async function savePeopleDirectoryPhoto(photoBase64, identity) {
     if (!photoBase64) return "";
     const match = String(photoBase64).match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
     if (!match) throw Object.assign(new Error("รองรับรูป JPG, PNG หรือ WEBP เท่านั้น"), { statusCode: 400 });
@@ -1169,6 +1173,20 @@ function savePeopleDirectoryPhoto(photoBase64, identity) {
     const extension = match[1] === "jpeg" ? "jpg" : match[1];
     const filename = `PROFILE-${crypto.createHash("sha256").update(String(identity || "")).digest("hex").slice(0, 12)}-${Date.now()}.${extension}`;
     fs.writeFileSync(path.join(profileDir, filename), content);
+    if (supabaseEnabled()) {
+        const objectPath = peopleDirectoryPhotoObjectPath(filename).split("/").map(encodeURIComponent).join("/");
+        const response = await fetch(`${SUPABASE_URL}/storage/v1/object/scd-documents/${objectPath}`, {
+            method: "PUT",
+            headers: {
+                ...supabaseServiceAuth.serviceHeaders(SUPABASE_KEY),
+                "Content-Type": `image/${match[1]}`,
+                "x-upsert": "true"
+            },
+            body: content,
+            signal: AbortSignal.timeout(30000)
+        });
+        if (!response.ok) throw Object.assign(new Error("ไม่สามารถเก็บรูปถ่ายลงพื้นที่จัดเก็บถาวรได้"), { statusCode: 503 });
+    }
     return `/storage/profile/${filename}`;
 }
 
@@ -3538,7 +3556,7 @@ async function handleApi(req, res, pathname) {
         const actor = sessionUser(currentDb, req);
         try {
             const preview = peopleViewer.createPerson(currentDb, { actor, changes: payload, preview: true, now: nowIso() });
-            const photoUrl = savePeopleDirectoryPhoto(payload.photoBase64, preview.id);
+            const photoUrl = await savePeopleDirectoryPhoto(payload.photoBase64, preview.id);
             const item = peopleViewer.createPerson(currentDb, { actor, changes: payload, photoUrl, now: nowIso() });
             writeDb(currentDb);
             return sendJson(res, 201, { ok: true, item });
@@ -3552,7 +3570,7 @@ async function handleApi(req, res, pathname) {
         const currentDb = readDb();
         const actor = sessionUser(currentDb, req);
         try {
-            const photoUrl = savePeopleDirectoryPhoto(payload.photoBase64, payload.employeeId);
+            const photoUrl = await savePeopleDirectoryPhoto(payload.photoBase64, payload.employeeId);
             const item = peopleViewer.updatePerson(currentDb, { actor, employeeId: payload.employeeId, changes: payload, photoUrl, now: nowIso() });
             writeDb(currentDb);
             return sendJson(res, 200, { ok: true, item });
@@ -9155,6 +9173,26 @@ async function streamSupabaseAttachment(res, pathname) {
     return true;
 }
 
+async function streamSupabasePeopleDirectoryPhoto(res, pathname) {
+    if (!supabaseEnabled() || !pathname.startsWith("/storage/profile/")) return false;
+    const filename = path.basename(pathname);
+    if (!/^PROFILE-[A-Fa-f0-9]{12}-\d+\.(jpg|png|webp)$/.test(filename)) return false;
+    const objectPath = peopleDirectoryPhotoObjectPath(filename).split("/").map(encodeURIComponent).join("/");
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/scd-documents/${objectPath}`, {
+        headers: supabaseServiceAuth.serviceHeaders(SUPABASE_KEY),
+        signal: AbortSignal.timeout(30000)
+    });
+    if (!response.ok) return false;
+    const body = Buffer.from(await response.arrayBuffer());
+    res.writeHead(200, {
+        "Content-Type": response.headers.get("content-type") || "image/jpeg",
+        "Content-Length": body.length,
+        "Cache-Control": "private, max-age=300"
+    });
+    res.end(body);
+    return true;
+}
+
 async function serveStatic(req, res, pathname) {
     if (pathname.startsWith("/storage/")) {
         const relative = decodeURIComponent(pathname.replace("/storage/", ""));
@@ -9169,6 +9207,7 @@ async function serveStatic(req, res, pathname) {
             res.writeHead(200, {'Content-Type':'text/html; charset=utf-8','Content-Length':bytes.length,'Cache-Control':'private, no-store'});
             res.end(bytes); return;
         }
+        if (await streamSupabasePeopleDirectoryPhoto(res, pathname)) return;
         if (await streamSupabaseAttachment(res, pathname)) return;
         return sendJson(res, 404, { error: "File not found" });
     }

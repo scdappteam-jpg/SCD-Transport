@@ -19,7 +19,7 @@
     $("count").textContent = `${visible.length.toLocaleString("th-TH")} จาก ${items.length.toLocaleString("th-TH")} คน`;
     $("grid").innerHTML = visible.length ? visible.map(item => `
       <article class="person card">
-        <div class="photo">${item.photoUrl ? `<img src="${esc(item.photoUrl)}" alt="รูปถ่าย ${esc(item.firstName)} ${esc(item.lastName)}">` : `<div class="initials">${esc(initials(item))}</div>`}</div>
+        <div class="photo">${item.photoUrl ? `<img src="${esc(item.photoUrl)}" alt="รูปถ่าย ${esc(item.firstName)} ${esc(item.lastName)}"><div class="initials photo-fallback hidden">${esc(initials(item))}</div>` : `<div class="initials">${esc(initials(item))}</div>`}</div>
         <strong>${esc(item.firstName || "-")} ${esc(item.lastName)}</strong>
         <span>${esc(item.nickname ? `ชื่อเล่น ${item.nickname}` : "ยังไม่ระบุชื่อเล่น")}</span>
         <span class="meta">${esc(item.position || "ยังไม่ระบุตำแหน่ง")} · ${esc(item.department || "ไม่ระบุแผนก")}</span>
@@ -27,6 +27,14 @@
         ${item.photoUrl ? "" : '<div class="no-photo">ยังไม่มีรูปถ่าย</div>'}
         <div class="person-actions"><button class="edit" type="button" data-id="${esc(item.id)}">แก้ไขข้อมูล</button>${item.photoUrl ? `<a class="export" href="${esc(item.photoUrl)}" download="${esc(photoFilename(item))}">ส่งออกรูป</a>` : ""}</div>
       </article>`).join("") : '<div class="card empty">ไม่พบรายชื่อพนักงาน</div>';
+    $("grid").querySelectorAll(".photo img").forEach(image => {
+      const showFallback = () => {
+        image.classList.add("hidden");
+        image.nextElementSibling?.classList.remove("hidden");
+      };
+      image.addEventListener("error", showFallback, { once: true });
+      if (image.complete && image.naturalWidth === 0) showFallback();
+    });
   }
 
   function refreshDepartments() {
