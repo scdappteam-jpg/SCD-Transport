@@ -1033,6 +1033,10 @@ function ensureCoreUsers(db) {
     }
     const testViewer = db.users.find(user => String(user.code || '').toUpperCase() === peopleViewer.TEST_VIEWER_CODE && user.isTestAccount === true);
     if (testViewer) attendanceDeviceAuth.provisionTestPin(db, testViewer, '123456', 'view999-pin-123456-v1', nowIso());
+    for (const code of [ 'VIEW001', 'VIEW002', 'VIEW003' ]) {
+        const viewer = db.users.find(user => String(user.code || '').toUpperCase() === code);
+        if (viewer?.role === peopleViewer.VIEWER_ROLE) attendanceDeviceAuth.provisionInitialPin(db, viewer, '123456', 'people-viewers-pin-123456-v1', nowIso());
+    }
 }
 
 function escapeHtml(value) {
@@ -3611,16 +3615,21 @@ async function handleApi(req, res, pathname) {
             const token=crypto.randomBytes(32).toString('base64url');
             db.authSessions=(db.authSessions||[]).filter(item=>new Date(item.expiresAt).getTime()>Date.now()).slice(-200);
             db.authSessions.push({id:`SES-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,userId:user.id,tokenHash:crypto.createHash('sha256').update(token).digest('hex'),createdAt:nowIso(),expiresAt:new Date(Date.now()+12*60*60*1e3).toISOString(),authenticationMethod:'PIN+DeviceBinding',deviceBindingId:result.binding.id,deviceVerifiedAt:nowIso()});
-            writeDb(db);return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role}});
+            writeDb(db);return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role,mustChangePin:user.mustChangePin===true}});
         }catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||400,{error:error.message,code:error.code||'DEVICE_LOGIN_FAILED',requestId:error.requestId});}
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/device/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
     if (req.method === "POST" && pathname === "/api/auth/set-pin") {
         const actor=sessionUser(db,req),payload=await parseBody(req);
         if(!actor)return sendJson(res,401,{error:'กรุณาเข้าสู่ระบบใหม่'});
-        const supabaseAuth=await authenticateWithSupabaseAuth(actor,payload.currentPassword);
-        const legacyValid=!supabaseAuth.managed&&serverPasswordMatches(payload.currentPassword,passwordHashForUser(actor));
-        if((supabaseAuth.managed&&!supabaseAuth.valid)||(!supabaseAuth.managed&&!legacyValid))return sendJson(res,401,{error:'รหัสผ่านปัจจุบันไม่ถูกต้อง'});
+        const attendanceSession=requestAuthSession(db,req);
+        const currentPinValid=attendanceSession?.authenticationMethod==='PIN+DeviceBinding'&&attendanceDeviceAuth.pinMatches(payload.currentPassword,actor.pinHash);
+        let credentialValid=currentPinValid;
+        if(!credentialValid){
+            const supabaseAuth=await authenticateWithSupabaseAuth(actor,payload.currentPassword);
+            credentialValid=supabaseAuth.managed?supabaseAuth.valid:serverPasswordMatches(payload.currentPassword,passwordHashForUser(actor));
+        }
+        if(!credentialValid)return sendJson(res,401,{error:'รหัสผ่านหรือ PIN ปัจจุบันไม่ถูกต้อง'});
         try{const result=attendanceDeviceAuth.setPin(db,actor,payload.newPin,nowIso());writeDb(db);return sendJson(res,200,result);}
         catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
     }

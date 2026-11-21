@@ -21,6 +21,15 @@ test('fixed 123456 PIN is provisioned only for the VIEW999 test account and rese
  assert.throws(()=>auth.provisionTestPin(db,{id:'REAL',code:'SCD001'},'123456','v1',at),(error:any)=>error.code==='TEST_ACCOUNT_REQUIRED');
 });
 
+test('VIEW001 to VIEW003 receive one initial PIN and must replace it themselves',()=>{
+ const user:any={id:'VIEW-1',code:'VIEW001',role:'People_Viewer'},db:any={users:[user],hr:{auditLogs:[]},attendanceDeviceBindings:[{id:'OLD',userId:user.id,status:'Active'}]};
+ assert.equal(auth.provisionInitialPin(db,user,'123456','v1',at).changed,true);assert.equal(auth.pinMatches('123456',user.pinHash),true);
+ assert.equal(user.mustChangePin,true);assert.equal(db.attendanceDeviceBindings[0].status,'Revoked');
+ assert.equal(auth.provisionInitialPin(db,user,'123456','v1',at).changed,false);
+ auth.setPin(db,user,'482905',at);assert.equal(user.mustChangePin,false);assert.equal(auth.pinMatches('482905',user.pinHash),true);
+ assert.throws(()=>auth.provisionInitialPin(db,{id:'X',code:'VIEW004',role:'People_Viewer'},'123456','v1',at),(error:any)=>error.code==='PIN_ONBOARDING_NOT_ALLOWED');
+});
+
 test('first valid PIN login binds one employee to one device without storing the raw token',()=>{
  const db=fixture(),result=auth.authenticate(db,{login:'EMP001',pin:'482905',deviceToken:tokenA,deviceLabel:'Phone A',at});
  assert.equal(result.user.id,'EMP-1');assert.equal(db.attendanceDeviceBindings.length,1);assert.equal(db.attendanceDeviceBindings[0].deviceHash,auth.deviceHash(tokenA));assert.equal(JSON.stringify(db).includes(tokenA),false);

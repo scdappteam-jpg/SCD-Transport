@@ -5,7 +5,7 @@ import styles from "./styles.module.css";
 
 const DEVICE_KEY="scdAttendanceDeviceToken";
 const SESSION_KEY="scdTransportMobileSession";
-type LoginResult={token?:string;user?:{id:string;code?:string;name:string;nickname?:string;role?:string;status?:string};error?:string};
+type LoginResult={token?:string;user?:{id:string;code?:string;name:string;nickname?:string;role?:string;status?:string;mustChangePin?:boolean};error?:string};
 type ChangeRequest={id:string;userId:string;userName:string;deviceLabel:string;requestedAt:string};
 
 function deviceToken(){

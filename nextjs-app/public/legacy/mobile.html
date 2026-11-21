@@ -773,7 +773,7 @@
         <div class="fo-card">
           <div class="fo-card-head"><strong>ตั้ง PIN สำหรับลงเวลาด้วยอุปกรณ์ประจำตัว</strong></div>
           <form id="foPinForm">
-            <label class="fo-label">รหัสผ่านปัจจุบัน</label><input name="currentPassword" type="password" autocomplete="current-password" required>
+            <label class="fo-label">รหัสผ่านปัจจุบัน หรือ PIN ปัจจุบัน</label><input name="currentPassword" type="password" inputmode="numeric" autocomplete="current-password" required>
             <label class="fo-label">PIN ใหม่ ตัวเลข 6 หลัก</label><input name="newPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required>
             <label class="fo-label">ยืนยัน PIN</label><input name="confirmPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required>
             <button class="fo-primary-btn" type="submit">บันทึก PIN</button><div id="foPinStatus" class="result"></div>

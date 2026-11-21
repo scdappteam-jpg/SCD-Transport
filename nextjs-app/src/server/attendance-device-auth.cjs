@@ -35,8 +35,35 @@ function setPin(db, user, pin, at) {
     user.pinUpdatedAt = at;
     user.pinFailedAttempts = 0;
     user.pinLockedUntil = '';
+    user.mustChangePin = false;
     audit(db, user.id, 'PinConfigured', { employeeId: user.id }, at);
     return { ok: true, pinConfigured: true };
+}
+
+function provisionInitialPin(db, user, pin, version, at) {
+    const allowedCodes = new Set(['VIEW001', 'VIEW002', 'VIEW003']);
+    const code = String(user?.code || '').toUpperCase();
+    if (user?.role !== 'People_Viewer' || !allowedCodes.has(code)) fail('บัญชีนี้ไม่อยู่ในชุดเปิดใช้งาน PIN เริ่มต้น', 403, 'PIN_ONBOARDING_NOT_ALLOWED');
+    const value = String(pin || '');
+    if (!/^\d{6}$/.test(value)) fail('PIN ต้องเป็นตัวเลข 6 หลัก', 422, 'PIN_FORMAT');
+    const marker = clean(version, 80);
+    if (!marker) fail('กรุณาระบุเวอร์ชัน PIN เริ่มต้น', 422, 'PIN_VERSION_REQUIRED');
+    if (user.initialPinVersion === marker && user.pinHash) return { changed: false };
+    user.pinHash = pinHash(value);
+    user.pinUpdatedAt = at;
+    user.pinFailedAttempts = 0;
+    user.pinLockedUntil = '';
+    user.mustChangePin = true;
+    user.initialPinVersion = marker;
+    for (const binding of db.attendanceDeviceBindings || []) {
+        if (binding.userId === user.id && binding.status === 'Active') {
+            binding.status = 'Revoked';
+            binding.revokedAt = at;
+            binding.revokedReason = 'InitialPinReprovisioned';
+        }
+    }
+    audit(db, user.id, 'InitialPinProvisioned', { employeeId: user.id, version: marker }, at);
+    return { changed: true };
 }
 
 function provisionTestPin(db, user, pin, version, at) {
@@ -212,4 +239,4 @@ function audit(db, actorId, action, detail, at) {
     db.hr.auditLogs.push({ id: `HRAUD-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`, actorId, action, detail, at });
 }
 
-module.exports = { pinHash, pinMatches, validatePin, setPin, provisionTestPin, rateState, findUser, authenticate, verifySession, listRequests, decideRequest, resetBinding, deviceHash };
+module.exports = { pinHash, pinMatches, validatePin, setPin, provisionInitialPin, provisionTestPin, rateState, findUser, authenticate, verifySession, listRequests, decideRequest, resetBinding, deviceHash };

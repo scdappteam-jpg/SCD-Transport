@@ -26,6 +26,8 @@ test("personnel viewers can use attendance with their existing PIN without seein
   assert.match(api, /mustChangePassword === true[\s\S]*!peopleViewerAttendancePaths\.has\(pathname\)/);
   assert.match(mobile, /smartLogisticsMobileUserProfile/);
   assert.match(mobile, /isMobileAuthenticated\(\) && localStorage\.getItem\(MOBILE_SESSION_TOKEN_KEY\)/);
+  assert.match(api, /currentPinValid=.*PIN\+DeviceBinding.*pinMatches/);
+  assert.match(api, /people-viewers-pin-123456-v1/);
   assert.doesNotMatch(api, /testPinVersion.*VIEW00[123]/);
 });
 
