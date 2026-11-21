@@ -6951,6 +6951,8 @@ function renderStaffDetail(user) {
 }
 
 function renderStaff() {
+    const codeButton = $("#assignScdCodesBtn");
+    if (codeButton) codeButton.hidden = currentWebUser()?.role !== "Admin";
     const users = state.personnelDirectoryLoaded ? state.personnelDirectory : [];
     if (!state.personnelDirectoryLoaded) {
         $("#staffTotal").textContent = state.personnelDirectoryLoading ? "…" : "0";
@@ -6987,7 +6989,7 @@ async function loadPersonnelDirectoryForStaff(force = false) {
         const data = await api("/api/people-directory", null, "GET");
         state.personnelDirectory = (data.items || []).map(person => ({
             ...person,
-            code: person.id,
+            code: person.employeeCode || person.id,
             name: [person.firstName, person.lastName].filter(Boolean).join(" ") || person.id,
             department: person.department || "ไม่ระบุแผนก",
             position: person.position || "ไม่ระบุตำแหน่ง"
@@ -7001,6 +7003,19 @@ async function loadPersonnelDirectoryForStaff(force = false) {
         renderStaff();
         initializeIcons();
     }
+}
+
+async function standardizeEmployeeCodes(button) {
+    await runAction(button, async () => {
+        const preview = await api("/api/admin/people-codes", { preview: true });
+        const examples = (preview.first || []).map(item => `${item.newCode} ${item.name} (${item.department})`).join("\n");
+        if (!window.confirm(`ยืนยันกำหนดรหัสพนักงาน ${preview.total} คน เป็น SCD001–${preview.lastCode}?\n\nเริ่มจากฝ่ายบริหาร และเก็บรหัสเดิมเป็น Login Alias\n\nตัวอย่าง:\n${examples}`)) return;
+        const result = await api("/api/admin/people-codes", { preview: false });
+        state.personnelDirectoryLoaded = false;
+        state.staffRoleFilter = "All";
+        await loadPersonnelDirectoryForStaff(true);
+        toast(`กำหนดรหัส SCD สำเร็จ ${result.changed} คน`);
+    });
 }
 
 async function loadContacts(force = false) {
@@ -9339,6 +9354,7 @@ function bindEvents() {
     $("#openStaffFormBtn").addEventListener("click", () => {
         window.location.href = "/legacy/people-directory.html";
     });
+    $("#assignScdCodesBtn").addEventListener("click", event => standardizeEmployeeCodes(event.currentTarget));
     $("#closeStaffFormBtn").addEventListener("click", closeStaffEditor);
     $("#cancelStaffBtn").addEventListener("click", closeStaffEditor);
     $("#staffRole").addEventListener("change", setStaffVehicleVisibility);

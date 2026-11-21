@@ -3579,7 +3579,7 @@ async function handleApi(req, res, pathname) {
     if (req.method === "POST" && pathname === "/api/auth/login") {
         const payload = await parseBody(req);
         const loginKey = String(payload.userId || payload.code || "").trim().toUpperCase();
-        const user = (db.users || []).find(item => (item.id === payload.userId || String(item.code || "").toUpperCase() === loginKey) && item.status !== "Inactive");
+        const user = (db.users || []).find(item => (item.id === payload.userId || String(item.code || "").toUpperCase() === loginKey || (item.loginAliases || []).some(alias => String(alias || "").toUpperCase() === loginKey)) && item.status !== "Inactive");
         if (!user) return sendJson(res, 401, { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
         const supabaseAuth = await authenticateWithSupabaseAuth(user, payload.password);
         if (supabaseAuth.managed && supabaseAuth.unavailable) return sendJson(res, 503, { error: "Supabase Auth ใช้งานไม่ได้ชั่วคราว กรุณาลองใหม่" });
@@ -3742,6 +3742,23 @@ async function handleApi(req, res, pathname) {
             result = peopleViewer.provisionAdditional(currentDb, {
                 actor: sessionUser(currentDb, req),
                 record: payload.record,
+                preview: payload.preview !== false,
+                now: nowIso()
+            });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
+        if (!result.preview) writeDb(currentDb);
+        return sendJson(res, 200, { ok: true, ...result });
+    }
+    if (req.method === "POST" && pathname === "/api/admin/people-codes") {
+        const payload = await parseBody(req);
+        await refreshDbIfSharedStateChanged(true);
+        const currentDb = readDb();
+        let result;
+        try {
+            result = peopleViewer.assignScdCodes(currentDb, {
+                actor: sessionUser(currentDb, req),
                 preview: payload.preview !== false,
                 now: nowIso()
             });

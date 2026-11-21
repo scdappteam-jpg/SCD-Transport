@@ -73,12 +73,13 @@
   function render() {
     const query = $("search").value.trim().toLocaleLowerCase("th-TH");
     const department = $("department").value;
-    const visible = items.filter(item => (!department || item.department === department) && (!query || [item.firstName, item.lastName, item.phone, item.nickname, item.position].join(" ").toLocaleLowerCase("th-TH").includes(query)));
+    const visible = items.filter(item => (!department || item.department === department) && (!query || [item.employeeCode, item.firstName, item.lastName, item.phone, item.nickname, item.position].join(" ").toLocaleLowerCase("th-TH").includes(query)));
     $("count").textContent = `${visible.length.toLocaleString("th-TH")} จาก ${items.length.toLocaleString("th-TH")} คน`;
     $("grid").innerHTML = visible.length ? visible.map(item => `
       <article class="person card">
         <div class="photo">${item.photoUrl ? `<img src="${esc(item.photoUrl)}" alt="รูปถ่าย ${esc(item.firstName)} ${esc(item.lastName)}"><div class="initials photo-fallback hidden">${esc(initials(item))}</div>` : `<div class="initials">${esc(initials(item))}</div>`}</div>
         <strong>${esc(item.firstName || "-")} ${esc(item.lastName)}</strong>
+        <span class="meta"><b>${esc(item.employeeCode || item.id)}</b></span>
         <span>${esc(item.nickname ? `ชื่อเล่น ${item.nickname}` : "ยังไม่ระบุชื่อเล่น")}</span>
         <span class="meta">${esc(item.position || "ยังไม่ระบุตำแหน่ง")} · ${esc(item.department || "ไม่ระบุแผนก")}</span>
         <span class="meta">${esc(item.phone || "ยังไม่ระบุเบอร์โทร")}</span>
@@ -167,7 +168,7 @@
     populateEditorSelect("position", [...items.map(person => person.position), ...FIXED_POSITIONS], "", "เลือกตำแหน่ง");
     populateEditorSelect("editDepartment", items.map(person => person.department), "", "เลือกแผนก");
     $("photo").value = ""; photoBase64 = "";
-    $("photoPreview").src = ""; $("photoPreviewBlock").classList.add("hidden"); $("downloadPhoto").href = "#"; $("downloadPhoto").dataset.itemId = ""; $("editorMessage").textContent = "ระบบจะสร้างรหัสพนักงาน EMP ให้อัตโนมัติ";
+    $("photoPreview").src = ""; $("photoPreviewBlock").classList.add("hidden"); $("downloadPhoto").href = "#"; $("downloadPhoto").dataset.itemId = ""; $("editorMessage").textContent = "ระบบจะสร้างรหัสพนักงาน SCD ให้อัตโนมัติ";
     $("editorModal").classList.remove("hidden");
   }
 

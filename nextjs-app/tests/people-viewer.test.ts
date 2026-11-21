@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { provision, provisionTest, provisionAdditional, directory, changePassword, createPerson, updatePerson } = require("../src/server/people-viewer.cjs");
+const { provision, provisionTest, provisionAdditional, directory, assignScdCodes, changePassword, createPerson, updatePerson } = require("../src/server/people-viewer.cjs");
 
 function state() {
   return {
@@ -32,7 +32,7 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
   assert.match(client, /\$\("employeeId"\)\.value = item\.id \|\| item\.employeeId \|\| id/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261121-batch-export/);
+  assert.match(html, /people-directory\.js\?v=20261121-scd-employee-codes/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
   assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
@@ -71,7 +71,7 @@ test("people viewers can enter the personnel registry from the main login", () =
   assert.match(app, /selectedUser\?\.role === "People_Viewer"/);
   assert.match(app, /sessionStorage\.setItem\("scdPeopleViewerSession", token\)/);
   assert.match(app, /window\.location\.href = "\/legacy\/people-directory\.html"/);
-  assert.match(index, /app\.js\?v=20261121-linked-personnel-directory/);
+  assert.match(index, /app\.js\?v=20261121-scd-employee-codes/);
 });
 
 test("people directory batch export is protected and contains the expected package files", () => {
@@ -121,7 +121,35 @@ test("main staff page loads the shared personnel directory instead of login user
   assert.match(app, /state\.personnelDirectory = \(data\.items \|\| \[\]\)\.map/);
   assert.match(app, /users\.filter\(user => user\.department === department\.role\)/);
   assert.match(html, /ทะเบียนบุคลากร \/ Personnel Directory/);
-  assert.match(html, /20261121-linked-personnel-directory/);
+  assert.match(html, /20261121-scd-employee-codes/);
+});
+
+test("SCD employee codes start with management and preserve old login aliases", () => {
+  const db = {
+    users: [
+      { id: "u_admin", code: "ADMIN", name: "Admin", role: "Admin", status: "Active" },
+      { id: "u_driver", code: "EMP100", name: "นาย คนขับ หนึ่ง", role: "Driver", status: "Active" },
+      { id: "u_exec", code: "EMP900", name: "นาง ผู้บริหาร หนึ่ง", role: "Executive", status: "Active" },
+      { id: "u_office", code: "EMP050", name: "นาง ธุรการ หนึ่ง", role: "Employee", status: "Active" },
+    ],
+    hr: { employeeProfiles: {
+      u_driver: { department: "ขนส่ง", position: "พนักงานขับรถ" },
+      u_exec: { department: "บริหาร", position: "ผู้บริหาร" },
+      u_office: { department: "ธุรการ", position: "เจ้าหน้าที่ธุรการ" },
+    }, auditLogs: [] },
+  } as any;
+  const actor = db.users[0];
+  const preview = assignScdCodes(db, { actor, preview: true });
+  assert.equal(preview.first[0].newCode, "SCD001");
+  assert.equal(preview.first[0].name, "นาง ผู้บริหาร หนึ่ง");
+  assert.equal(db.users[2].code, "EMP900");
+  const applied = assignScdCodes(db, { actor, preview: false, now: "2026-11-21T00:00:00.000Z" });
+  assert.equal(db.users[2].code, "SCD001");
+  assert.equal(db.users[3].code, "SCD002");
+  assert.equal(db.users[1].code, "SCD003");
+  assert.deepEqual(db.users[2].loginAliases, ["EMP900"]);
+  assert.equal(applied.items.find((item: any) => item.id === "u_exec").employeeCode, "SCD001");
+  assert.equal(db.hr.auditLogs.at(-1).action, "EmployeeCodesStandardized");
 });
 
 test("viewer creates a directory-only employee with an automatic code and no login credential", () => {
@@ -130,7 +158,7 @@ test("viewer creates a directory-only employee with an automatic code and no log
   const before = db.users.length;
   const preview = createPerson(db, { actor, changes: { firstName: "นางสาว ใหม่", lastName: "ทดสอบ", phone: "089-123-4567", nickname: "ใหม่", position: "ธุรการ", department: "บริหาร" }, preview: true });
   assert.equal(db.users.length, before);
-  assert.match(preview.id, /^EMP\d{6}$/);
+  assert.match(preview.id, /^SCD\d{3}$/);
   const item = createPerson(db, { actor, changes: { firstName: "นางสาว ใหม่", lastName: "ทดสอบ", phone: "089-123-4567", nickname: "ใหม่", position: "ธุรการ", department: "บริหาร" }, photoUrl: "/storage/profile/new-person.jpg", now: "2026-11-20T00:00:00.000Z" });
   const user = db.users.find((entry: any) => entry.id === item.id);
   assert.equal(user.code, item.id);
@@ -182,7 +210,7 @@ test("provisions exactly two editable directory accounts without deactivating ex
 test("directory exposes only approved contact and organization fields", () => {
   const items = directory(state());
   assert.equal(items.length, 2);
-  assert.deepEqual(Object.keys(items[0]).sort(), ["department", "firstName", "id", "lastName", "nickname", "phone", "photoUrl", "position"]);
+  assert.deepEqual(Object.keys(items[0]).sort(), ["department", "employeeCode", "firstName", "id", "lastName", "nickname", "phone", "photoUrl", "position"]);
   const somchai = items.find((item: any) => item.lastName === "ใจดี");
   assert.equal(somchai.firstName, "นาย สมชาย");
   assert.equal(somchai.photoUrl, "/storage/profile/u_emp1.jpg");

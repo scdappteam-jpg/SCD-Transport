@@ -172,20 +172,20 @@ function directoryKey(user) {
 
 function matchesDirectoryKey(user, key) {
     const expected = cleanText(key, 120);
-    return [user?.id, user?.employeeId, user?.code].some(value => cleanText(value, 120) === expected);
+    return [user?.id, user?.employeeId, user?.code, ...(user?.loginAliases || [])].some(value => cleanText(value, 120) === expected);
 }
 
 function nextEmployeeCode(db) {
     const highest = (db.users || []).reduce((max, user) => {
-        const match = cleanText(user?.code, 32).toUpperCase().match(/^EMP(\d+)$/);
+        const match = cleanText(user?.code, 32).toUpperCase().match(/^SCD(\d+)$/);
         return match ? Math.max(max, Number(match[1]) || 0) : max;
     }, 0);
     let sequence = highest + 1;
-    let code = `EMP${String(sequence).padStart(6, "0")}`;
+    let code = `SCD${String(sequence).padStart(3, "0")}`;
     const used = new Set((db.users || []).flatMap(user => [user?.id, user?.employeeId, user?.code]).map(value => cleanText(value, 120).toUpperCase()).filter(Boolean));
     while (used.has(code)) {
         sequence += 1;
-        code = `EMP${String(sequence).padStart(6, "0")}`;
+        code = `SCD${String(sequence).padStart(3, "0")}`;
     }
     return code;
 }
@@ -263,6 +263,7 @@ function directory(db) {
             const names = splitName(user.name);
             return {
                 id: key,
+                employeeCode: cleanText(user.code || key, 32),
                 firstName: names.firstName,
                 lastName: names.lastName,
                 phone: cleanText(user.phone, 80),
@@ -273,6 +274,53 @@ function directory(db) {
             };
         })
         .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`, "th"));
+}
+
+function departmentPriority(value) {
+    const department = cleanText(value, 120).toLocaleLowerCase("th-TH");
+    if (/บริหาร|management|executive/.test(department)) return 0;
+    if (/ธุรการ|administration|admin/.test(department)) return 1;
+    if (/บัญชี|billing|finance/.test(department)) return 2;
+    if (/terminal/.test(department)) return 3;
+    if (/คลัง|warehouse|wh3/.test(department)) return 4;
+    if (/ขนส่ง|transport|driver/.test(department)) return 5;
+    return 6;
+}
+
+function assignScdCodes(db, { actor, preview = true, now = new Date().toISOString() }) {
+    if (!actor || actor.role !== "Admin") fail("เฉพาะ Admin เท่านั้นที่กำหนดรหัสพนักงาน SCD ได้", 403);
+    const users = (db.users || []).filter(user => directoryKey(user) && user.status !== "Inactive" && user.role !== "Admin" && !(user.role === VIEWER_ROLE && user.isTestAccount === true));
+    const rows = users.map(user => {
+        const key = directoryKey(user);
+        const profile = db.hr?.employeeProfiles?.[user.id] || db.hr?.employeeProfiles?.[user.employeeId] || db.hr?.employeeProfiles?.[key] || {};
+        return { user, key, department: cleanText(profile.department || "ไม่ระบุแผนก", 120) };
+    }).sort((a, b) => departmentPriority(a.department) - departmentPriority(b.department)
+        || a.department.localeCompare(b.department, "th")
+        || cleanText(a.user.name, 200).localeCompare(cleanText(b.user.name, 200), "th")
+        || a.key.localeCompare(b.key));
+    const targetUsers = new Set(users);
+    const reserved = new Set((db.users || []).filter(user => !targetUsers.has(user)).map(user => cleanText(user.code, 32).toUpperCase()).filter(Boolean));
+    const mappings = rows.map((row, index) => {
+        const newCode = `SCD${String(index + 1).padStart(3, "0")}`;
+        if (reserved.has(newCode)) fail(`รหัส ${newCode} ถูกใช้โดยบัญชีนอกทะเบียนแล้ว`, 409);
+        return { key: row.key, name: cleanText(row.user.name, 200), department: row.department, oldCode: cleanText(row.user.code, 32), newCode };
+    });
+    const result = { preview: Boolean(preview), total: mappings.length, changed: mappings.filter(item => item.oldCode !== item.newCode).length, first: mappings.slice(0, 5), lastCode: mappings.at(-1)?.newCode || "" };
+    if (preview) return result;
+    for (let index = 0; index < mappings.length; index += 1) {
+        const mapping = mappings[index];
+        const user = rows[index].user;
+        const aliases = new Set((user.loginAliases || []).map(value => cleanText(value, 32).toUpperCase()).filter(Boolean));
+        if (mapping.oldCode && mapping.oldCode !== mapping.newCode) aliases.add(mapping.oldCode.toUpperCase());
+        aliases.delete(mapping.newCode);
+        user.loginAliases = [...aliases];
+        user.code = mapping.newCode;
+        user.updatedAt = now;
+    }
+    db.hr ||= {};
+    db.hr.auditLogs ||= [];
+    db.hr.auditLogs.push({ id: `HRAUD-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, action: "EmployeeCodesStandardized", actorId: actor.id, at: now, detail: { total: result.total, changed: result.changed, firstCode: mappings[0]?.newCode || "", lastCode: result.lastCode } });
+    return { ...result, preview: false, items: directory(db) };
 }
 
 function changePassword(user, password, now = new Date().toISOString()) {
@@ -337,4 +385,4 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     return directory(db).find(item => item.id === userKey);
 }
 
-module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, provisionAdditional, directory, changePassword, createPerson, updatePerson };
+module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, provisionAdditional, directory, assignScdCodes, changePassword, createPerson, updatePerson };
