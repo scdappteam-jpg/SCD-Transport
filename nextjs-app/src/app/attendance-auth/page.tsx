@@ -5,7 +5,7 @@ import styles from "./styles.module.css";
 
 const DEVICE_KEY="scdAttendanceDeviceToken";
 const SESSION_KEY="scdTransportMobileSession";
-type LoginResult={token?:string;user?:{id:string;name:string};error?:string};
+type LoginResult={token?:string;user?:{id:string;code?:string;name:string;nickname?:string;role?:string;status?:string};error?:string};
 type ChangeRequest={id:string;userId:string;userName:string;deviceLabel:string;requestedAt:string};
 
 function deviceToken(){
@@ -34,6 +34,7 @@ export default function AttendanceAuthPage(){
    const response=await fetch("/api/auth/device/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({login,pin,deviceToken:deviceToken(),deviceLabel:deviceLabel()})});
    const data=await response.json() as LoginResult;if(!response.ok)throw new Error(data.error||"ยืนยันอุปกรณ์ไม่ได้");
    localStorage.setItem("scdTransportMobileAuth","ok");localStorage.setItem(SESSION_KEY,data.token||"");localStorage.setItem("smartLogisticsMobileUser",data.user?.id||"");
+   if(data.user)localStorage.setItem("smartLogisticsMobileUserProfile",JSON.stringify({...data.user,status:data.user.status||"Active"}));
    setStatus("ยืนยันสำเร็จ กำลังเปิดหน้าลงเวลา…");location.replace("/legacy/mobile.html?view=attendance&verified=device");
   }catch(error){setStatus(error instanceof Error?error.message:"ยืนยันไม่ได้");}finally{setBusy(false);}
  }

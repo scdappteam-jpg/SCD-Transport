@@ -23,6 +23,9 @@ test("personnel viewers can use attendance with their existing PIN without seein
   const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
   assert.match(mobile, /role === "People_Viewer"\) return \[ "attendance" \]/);
   assert.match(api, /role === "People_Viewer"\) return \{ jobs: \[\], receiptMasters: \[\], locations: \[\], alerts: \[\]/);
+  assert.match(api, /mustChangePassword === true[\s\S]*!peopleViewerAttendancePaths\.has\(pathname\)/);
+  assert.match(mobile, /smartLogisticsMobileUserProfile/);
+  assert.match(mobile, /isMobileAuthenticated\(\) && localStorage\.getItem\(MOBILE_SESSION_TOKEN_KEY\)/);
   assert.doesNotMatch(api, /testPinVersion.*VIEW00[123]/);
 });
 

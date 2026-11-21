@@ -1,6 +1,10 @@
+const storedMobileUserProfile = (() => {
+    try { return JSON.parse(localStorage.getItem("smartLogisticsMobileUserProfile") || "null"); } catch (_) { return null; }
+})();
+
 const state = {
     dashboard: null,
-    users: [],
+    users: storedMobileUserProfile?.id ? [ storedMobileUserProfile ] : [],
     currentUserId: localStorage.getItem("smartLogisticsMobileUser") || "u_driver_01",
     lang: localStorage.getItem("smartLogisticsLang") || "th",
     pickupStartTime: null,
@@ -329,12 +333,21 @@ async function refresh() {
         if (!res.headers.get("content-type")?.includes("application/json")) throw new Error("API returned HTML");
         data = await res.json();
     } catch (error) {
+        if (isMobileAuthenticated() && localStorage.getItem(MOBILE_SESSION_TOKEN_KEY)) {
+            state.dashboard = { jobs: [], receiptMasters: [], locations: [], alerts: [], billing: [], attachments: [], metrics: {} };
+            state.users = storedMobileUserProfile?.id ? [ storedMobileUserProfile ] : state.users;
+            render();
+            toast("โหลดข้อมูลลงเวลาไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง");
+            return;
+        }
         data = window.SMART_LOGISTICS_DEMO;
         toast("Demo mode: แสดงข้อมูลงานตัวอย่าง 10 งาน");
     }
     state.meetingSafety = data.meetingSafety || {enabled:false};
     state.dashboard = data.dashboard;
     state.users = data.users || [];
+    const signedInUser = state.users.find(user => user.id === state.currentUserId);
+    if (signedInUser) localStorage.setItem("smartLogisticsMobileUserProfile", JSON.stringify(signedInUser));
     render();
     updatePickupSafetyButtons();
 }

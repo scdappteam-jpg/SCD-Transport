@@ -3647,7 +3647,11 @@ async function handleApi(req, res, pathname) {
     if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && !peopleViewerPaths.has(pathname)) {
         return sendJson(res, 403, { error: "บัญชีนี้ใช้ได้เฉพาะทะเบียนบุคลากร" });
     }
-    if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && restrictedViewer.mustChangePassword === true && pathname !== "/api/auth/change-password") {
+    const peopleViewerAttendancePaths = new Set([
+        "/api/mobile/bootstrap", "/api/attendance/today", "/api/attendance/location-status", "/api/attendance/all",
+        "/api/attendance/checkin", "/api/attendance/location-ping", "/api/attendance/location-stop", "/api/attendance/checkout"
+    ]);
+    if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && restrictedViewer.mustChangePassword === true && pathname !== "/api/auth/change-password" && !peopleViewerAttendancePaths.has(pathname)) {
         return sendJson(res, 428, { error: "กรุณาเปลี่ยนรหัสผ่านก่อนใช้งาน", code: "PASSWORD_CHANGE_REQUIRED" });
     }
     if (req.method === "POST" && pathname === "/api/auth/change-password") {
