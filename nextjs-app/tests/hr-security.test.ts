@@ -15,14 +15,15 @@ const helpers = source.slice(source.indexOf('function hrRequireSelfServiceActor(
 function fixture() {
     return JSON.parse(JSON.stringify({
         users: [
-            { id: 'employee', role: 'Driver', name: 'Employee' },
+            { id: 'employee', role: 'WH_Staff', name: 'Employee' },
+            { id: 'driver', role: 'Driver', name: 'Driver' },
             { id: 'other', role: 'Driver', name: 'Other' },
             { id: 'lead', role: 'WH3_TeamLeader', name: 'Lead' },
             { id: 'stranger', role: 'WH3_TeamLeader', name: 'Other Lead' },
             { id: 'admin', role: 'Admin', name: 'Admin' }
         ],
         hr: {
-            employeeProfiles: { employee: { supervisorId: 'lead', assignedLocationIds: ['office'] }, other: { supervisorId: 'stranger' } },
+            employeeProfiles: { employee: { supervisorId: 'lead', assignedLocationIds: ['office'] }, driver: { supervisorId: 'lead', assignedLocationIds: ['office'] }, other: { supervisorId: 'stranger' } },
             settings: { attendance: { enforceAssignedLocations: true, defaultRadiusMeters: 300 }, otRates: { normal: 1.5 }, quotas: { personal: 6 } },
             checkInLocations: [{ id: 'office', name: 'Office', latitude: 13.7, longitude: 100.5, radiusMeters: 300 }],
             leaveRequests: [], otRequests: [], attendanceCorrections: [],
@@ -236,6 +237,38 @@ test('employee can preview whether GPS is inside the assigned check-in radius wi
     assert.equal(outside.body.canCheckIn, false);
     assert.equal(outside.writes, 0);
     assert.deepEqual(db, before);
+});
+
+test('drivers can check in outside the geofence while GPS evidence and history remain enabled', async () => {
+    const db = fixture();
+    const outside = { userId: 'driver', gpsLat: 13.8, gpsLon: 100.5, accuracy: 12 };
+    const preview = await request(db, 'driver', '/api/attendance/location-status?latitude=13.8&longitude=100.5', {}, 'GET');
+    assert.equal(preview.status, 200);
+    assert.equal(preview.body.insideAllowedRadius, false);
+    assert.equal(preview.body.globalEnforcementEnabled, true);
+    assert.equal(preview.body.enforcementEnabled, false);
+    assert.equal(preview.body.geofenceExempt, true);
+    assert.equal(preview.body.geofenceExemptionReason, 'driver');
+    assert.equal(preview.body.canCheckIn, true);
+
+    const checkin = await request(db, 'driver', '/api/attendance/checkin', outside);
+    assert.equal(checkin.status, 200);
+    assert.equal(checkin.body.record.attendanceStatus, 'driver_mobile');
+    assert.equal(checkin.body.record.geofenceExempt, true);
+    assert.equal(checkin.body.record.checkInAccuracyMeters, 12);
+    assert.equal(checkin.body.record.locationTrail.length, 1);
+    assert.equal(checkin.body.record.locationTrail[0].source, 'checkin');
+
+    const ping = await request(db, 'driver', '/api/attendance/location-ping', { ...outside, gpsLat: 13.8006, accuracy: 9 }, 'POST', '2026-11-01T03:02:00.000Z');
+    assert.equal(ping.status, 200);
+    assert.equal(ping.body.accepted, true);
+    assert.equal(db.attendance[0].locationTrail.length, 2);
+
+    const checkout = await request(db, 'driver', '/api/attendance/checkout', { ...outside, accuracy: 7 }, 'POST', '2026-11-01T03:10:00.000Z');
+    assert.equal(checkout.status, 200);
+    assert.equal(checkout.body.record.checkOutAccuracyMeters, 7);
+    assert.equal(checkout.body.record.locationTrail.at(-1).source, 'checkout');
+    assert.equal(checkout.body.record.locationTrackingStopReason, 'checkout');
 });
 
 test('location assignments, disabled locations, overlapping radii and zero coordinates', () => {

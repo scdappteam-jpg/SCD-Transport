@@ -2346,7 +2346,10 @@ async function updateAttendanceGeofenceStatus(latitude, longitude) {
         const result = await api(`/api/attendance/location-status?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`, undefined, "GET");
         const location = result.location;
         attState.currentLocation = location || null;
-        if (status && location && result.insideAllowedRadius) {
+        if (status && result.geofenceExempt) {
+            status.className = "att-geofence-status inside";
+            status.innerHTML = `<strong>✓ คนขับรถเช็กอินได้ทุกพื้นที่</strong><span>${location ? `ห่าง ${escapeHtmlMobile(location.name)} ${location.distanceMeters} เมตร · ` : ""}ระบบจะเก็บประวัติ GPS จนกว่าจะเช็กเอาต์</span>`;
+        } else if (status && location && result.insideAllowedRadius) {
             status.className = "att-geofence-status inside";
             status.innerHTML = `<strong>✓ อยู่ในพื้นที่ ${escapeHtmlMobile(location.name)} — เช็กอินได้</strong><span>ห่างจุดลงเวลา ${location.distanceMeters} เมตร · รัศมีที่อนุญาต ${location.radiusMeters} เมตร</span>`;
         } else if (status && location) {
@@ -2490,7 +2493,7 @@ function refreshGpsForAtt() {
         navigator.geolocation.getCurrentPosition(pos => {
             attState.gpsLat = pos.coords.latitude;
             attState.gpsLon = pos.coords.longitude;
-            resolve({ gpsLat: pos.coords.latitude, gpsLon: pos.coords.longitude });
+            resolve({ gpsLat: pos.coords.latitude, gpsLon: pos.coords.longitude, accuracy: pos.coords.accuracy });
         }, () => reject(new Error("ระบุตำแหน่งไม่ได้ กรุณาเปิดสิทธิ์ GPS แล้วลองอีกครั้ง")), {
             enableHighAccuracy: true,
             maximumAge: 0,

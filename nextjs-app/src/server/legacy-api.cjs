@@ -9028,7 +9028,10 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 200, {
             insideAllowedRadius: locationResult.insideAllowedRadius,
             enforcementEnabled: locationResult.enforcementEnabled,
-            canCheckIn: !locationResult.enforcementEnabled || locationResult.insideAllowedRadius,
+            globalEnforcementEnabled: locationResult.globalEnforcementEnabled,
+            geofenceExempt: locationResult.geofenceExempt,
+            geofenceExemptionReason: locationResult.geofenceExemptionReason,
+            canCheckIn: locationResult.geofenceExempt || !locationResult.enforcementEnabled || locationResult.insideAllowedRadius,
             location: nearest ? {
                 id: nearest.id,
                 name: nearest.name,
@@ -9048,7 +9051,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/attendance/checkin") {
         const payload = await parseBody(req);
-        const {userId: userId, photo: photo, gpsLat: gpsLat, gpsLon: gpsLon, zone: zone, jobType: jobType, simulation: simulation, testHouse: testHouse} = payload;
+        const {userId: userId, photo: photo, gpsLat: gpsLat, gpsLon: gpsLon, accuracy: accuracy, zone: zone, jobType: jobType, simulation: simulation, testHouse: testHouse} = payload;
         if (!userId) return sendJson(res, 400, {
             error: "userId required"
         });
@@ -9067,7 +9070,11 @@ async function handleApi(req, res, pathname) {
         let locationResult;
         try { locationResult = hrSecurity.attendanceLocation(db, userId, gpsLat, gpsLon); }
         catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
-        const { latitude, longitude, nearestLocation, insideAllowedRadius } = locationResult;
+        const { latitude, longitude, nearestLocation, insideAllowedRadius, geofenceExempt, geofenceExemptionReason } = locationResult;
+        const accuracyMeters = accuracy == null || accuracy === "" ? null : Number(accuracy);
+        if (accuracyMeters !== null && (!Number.isFinite(accuracyMeters) || accuracyMeters < 0 || accuracyMeters > 5000)) {
+            return sendJson(res, 400, { error: "ค่าความแม่นยำ GPS ไม่ถูกต้อง" });
+        }
         const isSimulation = simulation === true;
         if (isSimulation) {
             const simulationJob = findJob(db, String(testHouse || "").trim());
@@ -9102,7 +9109,7 @@ async function handleApi(req, res, pathname) {
             at: checkInAt,
             latitude,
             longitude,
-            accuracyMeters: null,
+            accuracyMeters,
             source: "checkin"
         }];
         const record = {
@@ -9118,10 +9125,13 @@ async function handleApi(req, res, pathname) {
             checkInEvidenceMode: attendanceSession?.authenticationMethod==='PIN+DeviceBinding'?'pin_device_binding':(photoUrl?'photo_evidence':''),
             checkInLat: latitude,
             checkInLon: longitude,
+            checkInAccuracyMeters: accuracyMeters,
             checkInLocationId: nearestLocation?.id || null,
             checkInLocationName: nearestLocation?.name || "",
             checkInDistanceMeters: nearestLocation ? Math.round(nearestLocation.distanceMeters) : null,
-            attendanceStatus: nearestLocation ? (insideAllowedRadius ? "normal" : "outside_zone") : "location_not_configured",
+            geofenceExempt,
+            geofenceExemptionReason,
+            attendanceStatus: geofenceExempt ? "driver_mobile" : nearestLocation ? (insideAllowedRadius ? "normal" : "outside_zone") : "location_not_configured",
             checkOutTime: null,
             checkOutPhoto: null,
             checkOutLat: null,
@@ -9233,7 +9243,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/attendance/checkout") {
         const payload = await parseBody(req);
-        const {userId: userId, photo: photo, gpsLat: gpsLat, gpsLon: gpsLon} = payload;
+        const {userId: userId, photo: photo, gpsLat: gpsLat, gpsLon: gpsLon, accuracy: accuracy} = payload;
         if (!userId) return sendJson(res, 400, {
             error: "userId required"
         });
@@ -9247,6 +9257,10 @@ async function handleApi(req, res, pathname) {
         let locationResult;
         try { locationResult = hrSecurity.attendanceLocation(db, userId, gpsLat, gpsLon); }
         catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
+        const accuracyMeters = accuracy == null || accuracy === "" ? null : Number(accuracy);
+        if (accuracyMeters !== null && (!Number.isFinite(accuracyMeters) || accuracyMeters < 0 || accuracyMeters > 5000)) {
+            return sendJson(res, 400, { error: "ค่าความแม่นยำ GPS ไม่ถูกต้อง" });
+        }
         if (!db.attendance) db.attendance = [];
         const today = (new Date).toLocaleDateString("en-CA", {
             timeZone: TZ
@@ -9271,6 +9285,7 @@ async function handleApi(req, res, pathname) {
         record.checkOutPhoto = photoUrl;
         record.checkOutLat = locationResult.latitude;
         record.checkOutLon = locationResult.longitude;
+        record.checkOutAccuracyMeters = accuracyMeters;
         record.checkOutLocationId = locationResult.nearestLocation?.id || null;
         record.checkOutLocationName = locationResult.nearestLocation?.name || '';
         record.checkOutDistanceMeters = locationResult.nearestLocation ? Math.round(locationResult.nearestLocation.distanceMeters) : null;
@@ -9278,7 +9293,7 @@ async function handleApi(req, res, pathname) {
             at: record.checkOutTime,
             latitude: locationResult.latitude,
             longitude: locationResult.longitude,
-            accuracyMeters: null,
+            accuracyMeters,
             source: "checkout",
             insideAllowedRadius: locationResult.insideAllowedRadius,
             locationId: locationResult.nearestLocation?.id || null,

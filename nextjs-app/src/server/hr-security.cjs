@@ -90,6 +90,8 @@ function attendanceLocation(db, employeeId, latitudeValue, longitudeValue, optio
         return number;
     };
     const latitude = coordinate(latitudeValue, 90), longitude = coordinate(longitudeValue, 180);
+    const employee = (db.users || []).find(user => user.id === employeeId);
+    const geofenceExempt = employee?.role === 'Driver';
     const assigned = db.hr?.employeeProfiles?.[employeeId]?.assignedLocationIds || [];
     const radians = value => value * Math.PI / 180;
     const locations = (db.hr?.checkInLocations || []).filter(location => location.active !== false &&
@@ -105,11 +107,21 @@ function attendanceLocation(db, employeeId, latitudeValue, longitudeValue, optio
     }).sort((a, b) => a.distanceMeters - b.distanceMeters);
     const inside = locations.find(location => location.distanceMeters <= location.radiusMeters);
     const nearestLocation = inside || locations[0] || null;
-    const enforcementEnabled = db.hr?.settings?.attendance?.enforceAssignedLocations === true;
+    const globalEnforcementEnabled = db.hr?.settings?.attendance?.enforceAssignedLocations === true;
+    const enforcementEnabled = globalEnforcementEnabled && !geofenceExempt;
     if (options.enforce !== false && enforcementEnabled && !inside) {
         fail('อยู่นอกจุดลงเวลาที่กำหนด หรือยังไม่ได้กำหนดจุด กรุณาส่งคำขอแก้ไขเวลาแทน');
     }
-    return { latitude, longitude, nearestLocation, insideAllowedRadius: !!inside, enforcementEnabled };
+    return {
+        latitude,
+        longitude,
+        nearestLocation,
+        insideAllowedRadius: !!inside,
+        enforcementEnabled,
+        globalEnforcementEnabled,
+        geofenceExempt,
+        geofenceExemptionReason: geofenceExempt ? 'driver' : ''
+    };
 }
 
 module.exports = { manages, canView, canLead, scoped, profiles, notificationVisible, approvalRecipients, preflight, attendanceLocation };
