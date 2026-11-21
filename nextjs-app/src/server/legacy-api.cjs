@@ -715,8 +715,12 @@ async function loadDbFromSupabase() {
             dbCache = await loadChunkedState(rows[0].data);
             dbCacheUpdatedAt = String(rows[0].updated_at || "");
             await loadAuthSessions(dbCache);
-            ensureCoreUsers(dbCache);
+            const coreUserResult = ensureCoreUsers(dbCache);
             ensureDbShape(dbCache);
+            if (coreUserResult?.scdViewerAccessChanged) {
+                scheduleSupabasePersist(dbCache);
+                scheduleAuthSessionPersist(dbCache.authSessions || []);
+            }
             relationalMirror.schedule(dbCache);
             console.log(`[db] Loaded shared data from Supabase (${SUPABASE_STATE_TABLE}/${SUPABASE_STATE_ID}).`);
             return;
@@ -1058,6 +1062,8 @@ function ensureCoreUsers(db) {
         const viewer = db.users.find(user => viewerCodes(user).includes(code));
         if (viewer?.role === peopleViewer.VIEWER_ROLE) attendanceDeviceAuth.provisionInitialPin(db, viewer, '123456', 'people-viewers-pin-123456-v1', nowIso());
     }
+    const scdViewerAccess = peopleViewer.provisionScdViewerAccess(db, { now: nowIso() });
+    return { scdViewerAccessChanged: scdViewerAccess.changed > 0 };
 }
 
 function escapeHtml(value) {
@@ -3670,7 +3676,7 @@ async function handleApi(req, res, pathname) {
     }
     const restrictedViewer = sessionUser(db, req);
     const peopleViewerPaths = new Set([
-        "/api/people-directory", "/api/people-directory/export", "/api/people-directory/create", "/api/people-directory/update", "/api/auth/change-password",
+        "/api/people-directory", "/api/people-directory/export", "/api/people-directory/create", "/api/people-directory/update", "/api/people-directory/review", "/api/auth/change-password",
         "/api/mobile/bootstrap", "/api/attendance/today", "/api/attendance/location-status", "/api/attendance/all",
         "/api/attendance/checkin", "/api/attendance/location-ping", "/api/attendance/location-stop", "/api/attendance/checkout"
     ]);
@@ -3735,6 +3741,19 @@ async function handleApi(req, res, pathname) {
         try {
             const photoUrl = await savePeopleDirectoryPhoto(payload.photoBase64, payload.employeeId);
             const item = peopleViewer.updatePerson(currentDb, { actor, employeeId: payload.employeeId, changes: payload, photoUrl, now: nowIso() });
+            writeDb(currentDb);
+            return sendJson(res, 200, { ok: true, item });
+        } catch (error) {
+            return sendJson(res, error.statusCode || 400, { error: error.message });
+        }
+    }
+    if (req.method === "POST" && pathname === "/api/people-directory/review") {
+        const payload = await parseBody(req);
+        await refreshDbIfSharedStateChanged(true);
+        const currentDb = readDb();
+        const actor = sessionUser(currentDb, req);
+        try {
+            const item = peopleViewer.reviewPerson(currentDb, { actor, employeeId: payload.employeeId, now: nowIso() });
             writeDb(currentDb);
             return sendJson(res, 200, { ok: true, item });
         } catch (error) {

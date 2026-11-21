@@ -18,6 +18,43 @@ function hashPassword(password) {
     return `scrypt$${salt.toString("base64")}$${expected.toString("base64")}`;
 }
 
+function provisionScdViewerAccess(db, { now = new Date().toISOString(), version = "scd-viewer-password-123456-v1" } = {}) {
+    const targets = [
+        { legacyCode: "VIEW001", nicknames: new Set(["\u0e01\u0e47\u0e2d\u0e15", "\u0e01\u0e4a\u0e2d\u0e15"]) },
+        { legacyCode: "VIEW002", nicknames: new Set(["\u0e2b\u0e27\u0e32\u0e22"]) }
+    ];
+    const changed = [];
+    db.hr ||= {};
+    db.hr.auditLogs ||= [];
+    for (const target of targets) {
+        const viewer = (db.users || []).find(user => user.role === VIEWER_ROLE && (
+            cleanText(user.code, 32).toUpperCase() === target.legacyCode
+            || (user.loginAliases || []).some(alias => cleanText(alias, 32).toUpperCase() === target.legacyCode)
+            || target.nicknames.has(cleanText(user.nickname, 100))
+        ));
+        if (!viewer || !/^SCD\d{3,6}$/.test(cleanText(viewer.code, 32).toUpperCase()) || viewer.scdCredentialVersion === version) continue;
+        viewer.loginAliases = (viewer.loginAliases || []).filter(alias => cleanText(alias, 32).toUpperCase() !== target.legacyCode);
+        viewer.passwordHash = hashPassword("123456");
+        viewer.mustChangePassword = true;
+        viewer.credentialIssuedAt = now;
+        viewer.scdCredentialVersion = version;
+        viewer.updatedAt = now;
+        changed.push({ id: viewer.id, code: viewer.code, retiredAlias: target.legacyCode });
+    }
+    if (changed.length) db.hr.auditLogs.push({
+        id: `HRAUD-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+        action: "PersonnelViewerScdAccessProvisioned",
+        actorId: "system_personnel_onboarding",
+        at: now,
+        detail: { version, accounts: changed }
+    });
+    if (changed.length && Array.isArray(db.authSessions)) {
+        const changedIds = new Set(changed.map(account => account.id));
+        db.authSessions = db.authSessions.filter(session => !changedIds.has(session.userId));
+    }
+    return { changed: changed.length, accounts: changed };
+}
+
 function validateRecords(records) {
     if (!Array.isArray(records) || records.length !== 2) fail("ต้องกำหนดบัญชีผู้ดูแลข้อมูลจำนวน 2 บัญชี");
     const codes = new Set();
@@ -175,6 +212,11 @@ function matchesDirectoryKey(user, key) {
     return [user?.id, user?.employeeId, user?.code, ...(user?.loginAliases || [])].some(value => cleanText(value, 120) === expected);
 }
 
+function profileKeyFor(db, user, fallback) {
+    const profiles = db.hr?.employeeProfiles || {};
+    return [user?.id, user?.employeeId, fallback].find(key => key && Object.prototype.hasOwnProperty.call(profiles, key)) || fallback;
+}
+
 function nextEmployeeCode(db) {
     const highest = (db.users || []).reduce((max, user) => {
         const match = cleanText(user?.code, 32).toUpperCase().match(/^SCD(\d+)$/);
@@ -276,7 +318,11 @@ function directory(db) {
                 position: cleanText(profile.position || user.role, 120),
                 department: cleanText(profile.department || "ไม่ระบุแผนก", 120),
                 hasBeenEdited: edits.length > 0,
-                lastEditedAt: cleanText(edits[0]?.at, 80)
+                lastEditedAt: cleanText(edits[0]?.at, 80),
+                isReviewed: Boolean(profile.directoryReviewedAt),
+                reviewedAt: cleanText(profile.directoryReviewedAt, 80),
+                reviewedBy: cleanText(profile.directoryReviewedBy, 120),
+                reviewerName: cleanText(profile.directoryReviewerName, 160)
             };
         })
         .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`, "th"));
@@ -349,7 +395,8 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     const lastName = cleanText(changes?.lastName, 120);
     if (!firstName) fail("กรุณาระบุชื่อ");
     const userKey = directoryKey(user);
-    const profile = db.hr?.employeeProfiles?.[user.id] || db.hr?.employeeProfiles?.[user.employeeId] || db.hr?.employeeProfiles?.[userKey] || {};
+    const profileKey = profileKeyFor(db, user, userKey);
+    const profile = db.hr?.employeeProfiles?.[profileKey] || {};
     const protectedSnapshot = {
         code: user.code,
         role: user.role,
@@ -364,17 +411,20 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     user.updatedAt = now;
     db.hr ||= {};
     db.hr.employeeProfiles ||= {};
-    db.hr.employeeProfiles[userKey] = {
+    db.hr.employeeProfiles[profileKey] = {
         ...profile,
         employeeId: userKey,
         nickname: user.nickname,
         position: cleanText(changes?.position, 120),
         department: cleanText(changes?.department, 120),
         ...(photoUrl ? { profilePhotoUrl: photoUrl } : {}),
+        directoryReviewedAt: "",
+        directoryReviewedBy: "",
+        directoryReviewerName: "",
         updatedAt: now
     };
     Object.assign(user, { code: protectedSnapshot.code, role: protectedSnapshot.role, vehiclePlate: protectedSnapshot.vehiclePlate });
-    Object.assign(db.hr.employeeProfiles[userKey], {
+    Object.assign(db.hr.employeeProfiles[profileKey], {
         salary: protectedSnapshot.salary,
         baseSalary: protectedSnapshot.baseSalary,
         payroll: protectedSnapshot.payroll
@@ -391,4 +441,33 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     return directory(db).find(item => item.id === userKey);
 }
 
-module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, provisionAdditional, directory, assignScdCodes, changePassword, createPerson, updatePerson };
+function reviewPerson(db, { actor, employeeId, now = new Date().toISOString() }) {
+    if (!actor || actor.role !== VIEWER_ROLE) fail("เฉพาะผู้ดูแลทะเบียนบุคลากรเท่านั้นที่ยืนยันการตรวจได้", 403);
+    const key = cleanText(employeeId, 120);
+    const user = (db.users || []).find(item => matchesDirectoryKey(item, key));
+    if (!user || user.status === "Inactive" || user.role === "Admin" || (user.role === VIEWER_ROLE && user.isTestAccount === true)) fail(`ไม่พบพนักงานที่ตรวจได้ (ID: ${key || "ไม่ระบุ"})`, 404);
+    const userKey = directoryKey(user);
+    db.hr ||= {};
+    db.hr.employeeProfiles ||= {};
+    const profileKey = profileKeyFor(db, user, userKey);
+    const profile = db.hr.employeeProfiles[profileKey] || {};
+    db.hr.employeeProfiles[profileKey] = {
+        ...profile,
+        employeeId: userKey,
+        directoryReviewedAt: now,
+        directoryReviewedBy: actor.id,
+        directoryReviewerName: cleanText(actor.name || actor.nickname || actor.code, 160),
+        updatedAt: now
+    };
+    db.hr.auditLogs ||= [];
+    db.hr.auditLogs.push({
+        id: `HRAUD-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+        action: "PeopleDirectoryProfileReviewed",
+        actorId: actor.id,
+        employeeId: userKey,
+        at: now
+    });
+    return directory(db).find(item => item.id === userKey);
+}
+
+module.exports = { VIEWER_ROLE, TEST_VIEWER_CODE, validateRecords, provision, provisionTest, provisionAdditional, provisionScdViewerAccess, directory, assignScdCodes, changePassword, createPerson, updatePerson, reviewPerson };

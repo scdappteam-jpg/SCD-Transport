@@ -71,12 +71,12 @@
   const authHeaders = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${sessionStorage.getItem(TOKEN_KEY) || ""}` });
   const initials = item => `${item.firstName || ""} ${item.lastName || ""}`.trim().split(/\s+/).map(part => part[0]).join("").slice(-2).toUpperCase() || "SCD";
   const foldThaiSearch = value => String(value || "").normalize("NFC").toLocaleLowerCase("th-TH").replace(/[\u0e47-\u0e4c]/g, "").replace(/\s+/g, " ").trim();
-  const matchesStatus = item => statusFilter === "all" || (statusFilter === "edited" && item.hasBeenEdited) || (statusFilter === "untouched" && !item.hasBeenEdited) || (statusFilter === "photo" && item.photoUrl) || (statusFilter === "no-photo" && !item.photoUrl);
-  const progressCounts = () => ({ all: items.length, edited: items.filter(item => item.hasBeenEdited).length, untouched: items.filter(item => !item.hasBeenEdited).length, photo: items.filter(item => item.photoUrl).length, "no-photo": items.filter(item => !item.photoUrl).length });
+  const matchesStatus = item => statusFilter === "all" || (statusFilter === "edited" && item.hasBeenEdited) || (statusFilter === "untouched" && !item.hasBeenEdited) || (statusFilter === "photo" && item.photoUrl) || (statusFilter === "no-photo" && !item.photoUrl) || (statusFilter === "reviewed" && item.isReviewed) || (statusFilter === "pending-review" && !item.isReviewed);
+  const progressCounts = () => ({ all: items.length, edited: items.filter(item => item.hasBeenEdited).length, untouched: items.filter(item => !item.hasBeenEdited).length, photo: items.filter(item => item.photoUrl).length, "no-photo": items.filter(item => !item.photoUrl).length, reviewed: items.filter(item => item.isReviewed).length, "pending-review": items.filter(item => !item.isReviewed).length });
 
   function renderKpis() {
     const counts = progressCounts();
-    const cards = [["all", "ทั้งหมด"], ["edited", "แก้ไขแล้ว"], ["untouched", "ยังไม่เคยแก้ไข"], ["photo", "มีรูปแล้ว"], ["no-photo", "ยังไม่มีรูป"]];
+    const cards = [["all", "ทั้งหมด"], ["edited", "แก้ไขแล้ว"], ["untouched", "ยังไม่เคยแก้ไข"], ["photo", "มีรูปแล้ว"], ["no-photo", "ยังไม่มีรูป"], ["reviewed", "ตรวจเรียบร้อย"], ["pending-review", "รอตรวจ"]];
     $("kpiGrid").innerHTML = cards.map(([key, label]) => `<button class="kpi-card${statusFilter === key ? " active" : ""}" type="button" data-status="${key}" aria-pressed="${statusFilter === key}"><span class="kpi-value">${counts[key].toLocaleString("th-TH")}</span><span class="kpi-label">${label}</span></button>`).join("");
   }
 
@@ -94,8 +94,8 @@
         <span>${esc(item.nickname ? `ชื่อเล่น ${item.nickname}` : "ยังไม่ระบุชื่อเล่น")}</span>
         <span class="meta">${esc(item.position || "ยังไม่ระบุตำแหน่ง")} · ${esc(item.department || "ไม่ระบุแผนก")}</span>
         <span class="meta">${esc(item.phone || "ยังไม่ระบุเบอร์โทร")}</span>
-        <div class="status-row"><span class="status-badge ${item.hasBeenEdited ? "edited" : "untouched"}">${item.hasBeenEdited ? "แก้ไขแล้ว" : "ยังไม่เคยแก้ไข"}</span><span class="status-badge ${item.photoUrl ? "photo-ready" : "photo-missing"}">${item.photoUrl ? "มีรูปแล้ว" : "ยังไม่มีรูป"}</span></div>
-        <div class="person-actions"><button class="edit" type="button" data-id="${esc(item.id)}">แก้ไขข้อมูล</button>${item.photoUrl ? `<button class="export" type="button" data-export-id="${esc(item.id)}">ส่งออกรูป</button>` : ""}</div>
+        <div class="status-row"><span class="status-badge ${item.hasBeenEdited ? "edited" : "untouched"}">${item.hasBeenEdited ? "แก้ไขแล้ว" : "ยังไม่เคยแก้ไข"}</span><span class="status-badge ${item.photoUrl ? "photo-ready" : "photo-missing"}">${item.photoUrl ? "มีรูปแล้ว" : "ยังไม่มีรูป"}</span><span class="status-badge ${item.isReviewed ? "reviewed" : "pending-review"}">${item.isReviewed ? "ตรวจเรียบร้อย" : "รอตรวจ"}</span></div>
+        <div class="person-actions"><button class="edit" type="button" data-id="${esc(item.id)}">แก้ไขข้อมูล</button>${item.photoUrl ? `<button class="export" type="button" data-export-id="${esc(item.id)}">ส่งออกรูป</button>` : ""}${item.isReviewed ? `<button class="review done" type="button" disabled>✓ ตรวจแล้ว</button>` : `<button class="review" type="button" data-review-id="${esc(item.id)}">ตรวจเรียบร้อยแล้ว</button>`}</div>
       </article>`).join("") : '<div class="card empty">ไม่พบรายชื่อพนักงาน</div>';
     $("grid").querySelectorAll(".photo img").forEach(image => {
       const showFallback = () => {
@@ -209,6 +209,22 @@
     }
   }
 
+  async function markReviewed(id, button) {
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/people-directory/review", { method: "POST", headers: authHeaders(), body: JSON.stringify({ employeeId: id }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "ยืนยันการตรวจไม่สำเร็จ");
+      const index = items.findIndex(item => item.id === body.item.id);
+      if (index >= 0) items[index] = body.item;
+      $("directoryMessage").textContent = `ยืนยันว่าตรวจข้อมูล ${body.item.firstName} ${body.item.lastName || ""} เรียบร้อยแล้ว`;
+      render();
+    } catch (error) {
+      $("directoryMessage").textContent = error?.message || "ยืนยันการตรวจไม่สำเร็จ";
+      button.disabled = false;
+    }
+  }
+
   $("photo").addEventListener("change", () => {
     const file = $("photo").files[0]; if (!file) return;
     if (file.size > MAX_PROFILE_PHOTO_BYTES || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) { $("editorMessage").textContent = "รูปต้องเป็น JPG, PNG หรือ WEBP และไม่เกิน 8 MB"; $("photo").value = ""; return; }
@@ -218,6 +234,8 @@
   $("changePasswordButton").addEventListener("click", changePassword); $("search").addEventListener("input", render); $("department").addEventListener("change", render); $("exportAll").addEventListener("click", exportAllPeople); $("addPerson").addEventListener("click", openCreate);
   $("kpiGrid").addEventListener("click", event => { const button = event.target.closest("button[data-status]"); if (!button) return; statusFilter = button.dataset.status; render(); });
   $("grid").addEventListener("click", async event => {
+    const reviewButton = event.target.closest("button[data-review-id]");
+    if (reviewButton) return markReviewed(reviewButton.dataset.reviewId, reviewButton);
     const editButton = event.target.closest("button[data-id]");
     if (editButton) return openEditor(editButton.dataset.id);
     const exportButton = event.target.closest("button[data-export-id]");

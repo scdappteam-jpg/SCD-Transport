@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { provision, provisionTest, provisionAdditional, directory, assignScdCodes, changePassword, createPerson, updatePerson } = require("../src/server/people-viewer.cjs");
+const { provision, provisionTest, provisionAdditional, provisionScdViewerAccess, directory, assignScdCodes, changePassword, createPerson, updatePerson, reviewPerson } = require("../src/server/people-viewer.cjs");
 
 function state() {
   return {
@@ -34,7 +34,7 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /\$\("employeeCodeDisplay"\)\.value = item\.employeeCode \|\| item\.code \|\| item\.id/);
   assert.match(html, /รหัสพนักงาน<input id="employeeCodeDisplay" readonly/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261121-directory-progress-kpi/);
+  assert.match(html, /people-directory\.js\?v=20261121-directory-review-status/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
   assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
@@ -47,6 +47,10 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /foldThaiSearch/);
   assert.match(client, /item\.nickname/);
   assert.match(client, /replace\(\/\[\\u0e47-\\u0e4c\]\//);
+  assert.match(client, /\["reviewed", "ตรวจเรียบร้อย"\]/);
+  assert.match(client, /\["pending-review", "รอตรวจ"\]/);
+  assert.match(client, /data-review-id/);
+  assert.match(client, /"\/api\/people-directory\/review"/);
 });
 
 test("people directory API accepts profile photos up to eight megabytes", () => {
@@ -219,7 +223,7 @@ test("provisions exactly two editable directory accounts without deactivating ex
 test("directory exposes only approved contact and organization fields", () => {
   const items = directory(state());
   assert.equal(items.length, 2);
-  assert.deepEqual(Object.keys(items[0]).sort(), ["department", "employeeCode", "firstName", "hasBeenEdited", "id", "lastEditedAt", "lastName", "nickname", "phone", "photoUrl", "position"]);
+  assert.deepEqual(Object.keys(items[0]).sort(), ["department", "employeeCode", "firstName", "hasBeenEdited", "id", "isReviewed", "lastEditedAt", "lastName", "nickname", "phone", "photoUrl", "position", "reviewedAt", "reviewedBy", "reviewerName"]);
   const somchai = items.find((item: any) => item.lastName === "ใจดี");
   assert.equal(somchai.firstName, "นาย สมชาย");
   assert.equal(somchai.photoUrl, "/storage/profile/u_emp1.jpg");
@@ -246,6 +250,43 @@ test("viewer edits only approved fields and preserves payroll role vehicle and c
   assert.equal(db.hr.employeeProfiles.u_emp1.salary, 22000);
   assert.equal(item.nickname, "ชายใหม่"); assert.equal(item.position, "Senior Driver"); assert.equal(item.photoUrl, "/storage/profile/new.jpg");
   assert.equal(item.hasBeenEdited, true); assert.equal(item.lastEditedAt, "2026-11-19T00:00:00.000Z");
+});
+
+test("viewer review is audited, filterable, and a later edit returns the person to pending review", () => {
+  const db = state();
+  const actor: any = { id: "u_view", code: "SCD230", name: "คุณก๊อต", role: "People_Viewer" };
+  const reviewed = reviewPerson(db, { actor, employeeId: "u_emp1", now: "2026-11-21T08:00:00.000Z" });
+  assert.equal(reviewed.isReviewed, true);
+  assert.equal(reviewed.reviewedBy, "u_view");
+  assert.equal(reviewed.reviewerName, "คุณก๊อต");
+  assert.equal(db.hr.auditLogs.at(-1).action, "PeopleDirectoryProfileReviewed");
+  const edited = updatePerson(db, { actor, employeeId: "u_emp1", changes: { firstName: "นาย สมชาย", lastName: "ใจดี", position: "Driver", department: "Transport" }, now: "2026-11-21T09:00:00.000Z" });
+  assert.equal(edited.isReviewed, false);
+  assert.equal(edited.reviewedAt, "");
+  assert.throws(() => reviewPerson(db, { actor: db.users[0], employeeId: "u_emp1" }), /ผู้ดูแลทะเบียน/);
+});
+
+test("Got and Wai use only their real SCD login with a one-time initial password reset", () => {
+  const db: any = {
+    users: [
+      { id: "u_got", code: "SCD230", name: "ปรัตถกร ทรัพย์ธรณี", nickname: "ก๊อต", role: "People_Viewer", status: "Active", loginAliases: ["VIEW001"] },
+      { id: "u_wai", code: "SCD229", name: "คุณหวาย", nickname: "หวาย", role: "People_Viewer", status: "Active", loginAliases: ["VIEW002"] }
+    ],
+    hr: { auditLogs: [] },
+    authSessions: [{ userId: "u_got", tokenHash: "old-got" }, { userId: "u_wai", tokenHash: "old-wai" }, { userId: "other", tokenHash: "keep" }]
+  };
+  const first = provisionScdViewerAccess(db, { now: "2026-11-21T10:00:00.000Z" });
+  assert.equal(first.changed, 2);
+  assert.ok(db.users.every((user: any) => user.loginAliases.length === 0));
+  assert.ok(db.users.every((user: any) => user.mustChangePassword === true));
+  assert.ok(db.users.every((user: any) => /^scrypt\$/.test(user.passwordHash)));
+  assert.deepEqual(db.authSessions.map((session: any) => session.userId), ["other"]);
+  const hashes = db.users.map((user: any) => user.passwordHash);
+  changePassword(db.users[0], "new-pass-230", "2026-11-21T10:05:00.000Z");
+  const second = provisionScdViewerAccess(db, { now: "2026-11-21T11:00:00.000Z" });
+  assert.equal(second.changed, 0);
+  assert.notEqual(db.users[0].passwordHash, hashes[0]);
+  assert.equal(db.users[0].mustChangePassword, false);
 });
 
 test("rejects a batch that is not exactly two accounts", () => {
