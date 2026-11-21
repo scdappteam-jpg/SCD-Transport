@@ -7,6 +7,7 @@
   let items = [];
   let photoBase64 = "";
   let editorMode = "edit";
+  let statusFilter = "all";
   const photoExtension = (url, contentType = "") => {
     const normalizedType = String(contentType || "").toLowerCase();
     if (normalizedType.includes("png")) return "png";
@@ -69,12 +70,22 @@
 
   const authHeaders = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${sessionStorage.getItem(TOKEN_KEY) || ""}` });
   const initials = item => `${item.firstName || ""} ${item.lastName || ""}`.trim().split(/\s+/).map(part => part[0]).join("").slice(-2).toUpperCase() || "SCD";
+  const foldThaiSearch = value => String(value || "").normalize("NFC").toLocaleLowerCase("th-TH").replace(/[\u0e47-\u0e4c]/g, "").replace(/\s+/g, " ").trim();
+  const matchesStatus = item => statusFilter === "all" || (statusFilter === "edited" && item.hasBeenEdited) || (statusFilter === "untouched" && !item.hasBeenEdited) || (statusFilter === "photo" && item.photoUrl) || (statusFilter === "no-photo" && !item.photoUrl);
+  const progressCounts = () => ({ all: items.length, edited: items.filter(item => item.hasBeenEdited).length, untouched: items.filter(item => !item.hasBeenEdited).length, photo: items.filter(item => item.photoUrl).length, "no-photo": items.filter(item => !item.photoUrl).length });
+
+  function renderKpis() {
+    const counts = progressCounts();
+    const cards = [["all", "ทั้งหมด"], ["edited", "แก้ไขแล้ว"], ["untouched", "ยังไม่เคยแก้ไข"], ["photo", "มีรูปแล้ว"], ["no-photo", "ยังไม่มีรูป"]];
+    $("kpiGrid").innerHTML = cards.map(([key, label]) => `<button class="kpi-card${statusFilter === key ? " active" : ""}" type="button" data-status="${key}" aria-pressed="${statusFilter === key}"><span class="kpi-value">${counts[key].toLocaleString("th-TH")}</span><span class="kpi-label">${label}</span></button>`).join("");
+  }
 
   function render() {
-    const query = $("search").value.trim().toLocaleLowerCase("th-TH");
+    const query = foldThaiSearch($("search").value);
     const department = $("department").value;
-    const visible = items.filter(item => (!department || item.department === department) && (!query || [item.employeeCode, item.firstName, item.lastName, item.phone, item.nickname, item.position].join(" ").toLocaleLowerCase("th-TH").includes(query)));
+    const visible = items.filter(item => matchesStatus(item) && (!department || item.department === department) && (!query || foldThaiSearch([item.employeeCode, item.firstName, item.lastName, item.phone, item.nickname, item.position, item.department].join(" ")).includes(query)));
     $("count").textContent = `${visible.length.toLocaleString("th-TH")} จาก ${items.length.toLocaleString("th-TH")} คน`;
+    renderKpis();
     $("grid").innerHTML = visible.length ? visible.map(item => `
       <article class="person card">
         <div class="photo">${item.photoUrl ? `<img src="${esc(item.photoUrl)}" alt="รูปถ่าย ${esc(item.firstName)} ${esc(item.lastName)}"><div class="initials photo-fallback hidden">${esc(initials(item))}</div>` : `<div class="initials">${esc(initials(item))}</div>`}</div>
@@ -83,7 +94,7 @@
         <span>${esc(item.nickname ? `ชื่อเล่น ${item.nickname}` : "ยังไม่ระบุชื่อเล่น")}</span>
         <span class="meta">${esc(item.position || "ยังไม่ระบุตำแหน่ง")} · ${esc(item.department || "ไม่ระบุแผนก")}</span>
         <span class="meta">${esc(item.phone || "ยังไม่ระบุเบอร์โทร")}</span>
-        ${item.photoUrl ? "" : '<div class="no-photo">ยังไม่มีรูปถ่าย</div>'}
+        <div class="status-row"><span class="status-badge ${item.hasBeenEdited ? "edited" : "untouched"}">${item.hasBeenEdited ? "แก้ไขแล้ว" : "ยังไม่เคยแก้ไข"}</span><span class="status-badge ${item.photoUrl ? "photo-ready" : "photo-missing"}">${item.photoUrl ? "มีรูปแล้ว" : "ยังไม่มีรูป"}</span></div>
         <div class="person-actions"><button class="edit" type="button" data-id="${esc(item.id)}">แก้ไขข้อมูล</button>${item.photoUrl ? `<button class="export" type="button" data-export-id="${esc(item.id)}">ส่งออกรูป</button>` : ""}</div>
       </article>`).join("") : '<div class="card empty">ไม่พบรายชื่อพนักงาน</div>';
     $("grid").querySelectorAll(".photo img").forEach(image => {
@@ -205,6 +216,7 @@
   });
   $("loginButton").addEventListener("click", signIn); $("password").addEventListener("keydown", event => { if (event.key === "Enter") signIn(); });
   $("changePasswordButton").addEventListener("click", changePassword); $("search").addEventListener("input", render); $("department").addEventListener("change", render); $("exportAll").addEventListener("click", exportAllPeople); $("addPerson").addEventListener("click", openCreate);
+  $("kpiGrid").addEventListener("click", event => { const button = event.target.closest("button[data-status]"); if (!button) return; statusFilter = button.dataset.status; render(); });
   $("grid").addEventListener("click", async event => {
     const editButton = event.target.closest("button[data-id]");
     if (editButton) return openEditor(editButton.dataset.id);

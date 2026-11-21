@@ -261,6 +261,10 @@ function directory(db) {
             const key = directoryKey(user);
             const profile = db.hr?.employeeProfiles?.[user.id] || db.hr?.employeeProfiles?.[user.employeeId] || db.hr?.employeeProfiles?.[key] || {};
             const names = splitName(user.name);
+            const identifiers = new Set([user.id, user.employeeId, user.code, key, ...(user.loginAliases || [])].map(value => cleanText(value, 120)).filter(Boolean));
+            const edits = (db.hr?.auditLogs || [])
+                .filter(log => log.action === "PeopleDirectoryProfileUpdated" && identifiers.has(cleanText(log.employeeId, 120)))
+                .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
             return {
                 id: key,
                 employeeCode: cleanText(user.code || key, 32),
@@ -270,7 +274,9 @@ function directory(db) {
                 nickname: cleanText(user.nickname || profile.nickname, 100),
                 photoUrl: cleanText(profile.profilePhotoUrl || profile.photoUrl || user.profilePhotoUrl, 1000),
                 position: cleanText(profile.position || user.role, 120),
-                department: cleanText(profile.department || "ไม่ระบุแผนก", 120)
+                department: cleanText(profile.department || "ไม่ระบุแผนก", 120),
+                hasBeenEdited: edits.length > 0,
+                lastEditedAt: cleanText(edits[0]?.at, 80)
             };
         })
         .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`, "th"));

@@ -34,13 +34,19 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /\$\("employeeCodeDisplay"\)\.value = item\.employeeCode \|\| item\.code \|\| item\.id/);
   assert.match(html, /รหัสพนักงาน<input id="employeeCodeDisplay" readonly/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261121-visible-employee-code/);
+  assert.match(html, /people-directory\.js\?v=20261121-directory-progress-kpi/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
   assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
   assert.match(client, /"\/api\/people-directory\/create"/);
   assert.match(client, /FIXED_POSITIONS = \["พนักงานวัดขนาดสินค้า \(Dimension\)"\]/);
   assert.match(client, /\[\.\.\.items\.map\(person => person\.position\), \.\.\.FIXED_POSITIONS\]/);
+  assert.match(html, /id="kpiGrid"/);
+  assert.match(client, /\["untouched", "ยังไม่เคยแก้ไข"\]/);
+  assert.match(client, /\["no-photo", "ยังไม่มีรูป"\]/);
+  assert.match(client, /foldThaiSearch/);
+  assert.match(client, /item\.nickname/);
+  assert.match(client, /replace\(\/\[\\u0e47-\\u0e4c\]\//);
 });
 
 test("people directory API accepts profile photos up to eight megabytes", () => {
@@ -213,7 +219,7 @@ test("provisions exactly two editable directory accounts without deactivating ex
 test("directory exposes only approved contact and organization fields", () => {
   const items = directory(state());
   assert.equal(items.length, 2);
-  assert.deepEqual(Object.keys(items[0]).sort(), ["department", "employeeCode", "firstName", "id", "lastName", "nickname", "phone", "photoUrl", "position"]);
+  assert.deepEqual(Object.keys(items[0]).sort(), ["department", "employeeCode", "firstName", "hasBeenEdited", "id", "lastEditedAt", "lastName", "nickname", "phone", "photoUrl", "position"]);
   const somchai = items.find((item: any) => item.lastName === "ใจดี");
   assert.equal(somchai.firstName, "นาย สมชาย");
   assert.equal(somchai.photoUrl, "/storage/profile/u_emp1.jpg");
@@ -239,6 +245,7 @@ test("viewer edits only approved fields and preserves payroll role vehicle and c
   assert.equal(user.code, "EMP001"); assert.equal(user.role, "Driver"); assert.equal(user.vehiclePlate, "70-1234");
   assert.equal(db.hr.employeeProfiles.u_emp1.salary, 22000);
   assert.equal(item.nickname, "ชายใหม่"); assert.equal(item.position, "Senior Driver"); assert.equal(item.photoUrl, "/storage/profile/new.jpg");
+  assert.equal(item.hasBeenEdited, true); assert.equal(item.lastEditedAt, "2026-11-19T00:00:00.000Z");
 });
 
 test("rejects a batch that is not exactly two accounts", () => {
