@@ -32,7 +32,7 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
   assert.match(client, /\$\("employeeId"\)\.value = item\.id \|\| item\.employeeId \|\| id/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261121-durable-profile-photos/);
+  assert.match(html, /people-directory\.js\?v=20261121-reliable-photo-export/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
   assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
@@ -55,6 +55,10 @@ test("people directory stores profile photos durably and falls back cleanly when
   assert.match(api, /await savePeopleDirectoryPhoto\(payload\.photoBase64/);
   assert.match(client, /photo-fallback hidden/);
   assert.match(client, /image\.naturalWidth === 0/);
+  assert.match(client, /response\.blob\(\)/);
+  assert.match(client, /URL\.createObjectURL\(blob\)/);
+  assert.match(client, /photoFilename\(item, blob\.type\)/);
+  assert.match(client, /data-export-id/);
 });
 
 test("admin provisions one additional directory viewer with organization fields", () => {
