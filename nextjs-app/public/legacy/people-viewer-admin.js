@@ -14,6 +14,8 @@
   preview.addEventListener("click", async () => { preview.disabled = true; try { show(await request(true)); apply.disabled = false; } catch (error) { show(`ตรวจสอบไม่ผ่าน: ${error.message}`); } finally { preview.disabled = false; } });
   apply.addEventListener("click", async () => { preview.disabled = true; apply.disabled = true; show("กำลังสร้างบัญชี…"); try { show(await request(false)); } catch (error) { show(`สร้างไม่สำเร็จ: ${error.message}`); apply.disabled = false; } finally { preview.disabled = false; } });
   const additionalCode = document.getElementById("additionalCode"), additionalName = document.getElementById("additionalName"), additionalNickname = document.getElementById("additionalNickname"), additionalPosition = document.getElementById("additionalPosition"), additionalDepartment = document.getElementById("additionalDepartment"), additionalPassword = document.getElementById("additionalPassword"), previewAdditional = document.getElementById("previewAdditional"), applyAdditional = document.getElementById("applyAdditional"), additionalResult = document.getElementById("additionalResult");
+  additionalCode.value = "AUTO";
+  additionalCode.title = "สร้างรหัส SCD ถัดไปอัตโนมัติ โดยไม่เรียงรหัสเดิมใหม่";
   const showAdditional = value => { additionalResult.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2); };
   async function requestAdditional(previewOnly) {
     const token = localStorage.getItem("scdTransportWebSession");

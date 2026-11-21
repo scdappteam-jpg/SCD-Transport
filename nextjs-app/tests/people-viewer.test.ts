@@ -115,6 +115,25 @@ test("admin provisions one additional directory viewer with organization fields"
   assert.throws(() => provisionAdditional(db, { actor: db.users[0], record, preview: false }), /มีอยู่แล้ว/);
 });
 
+test("additional viewer AUTO code uses the next SCD code without renumbering existing users", () => {
+  const db: any = {
+    users: [
+      { id: "u_admin", code: "ADMIN", role: "Admin", status: "Active" },
+      { id: "u_existing", code: "SCD232", role: "People_Viewer", status: "Active" }
+    ],
+    hr: { employeeProfiles: {}, auditLogs: [] }
+  };
+  const result = provisionAdditional(db, {
+    actor: db.users[0],
+    preview: false,
+    record: { code: "AUTO", name: "น.ส.ปาริชาต สิงห์คำกุล", nickname: "", position: "ผู้ดูแลข้อมูล", department: "บริหาร", temporaryPassword: "123456" }
+  });
+  assert.equal(result.code, "SCD233");
+  assert.equal(db.users[1].code, "SCD232");
+  assert.equal(db.users[2].code, "SCD233");
+  assert.equal(db.users[2].mustChangePassword, true);
+});
+
 test("directory read and update force a shared-state refresh before resolving employees", () => {
   const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
   const getRoute = api.slice(api.indexOf('if (req.method === "GET" && pathname === "/api/people-directory")'), api.indexOf('if (req.method === "POST" && pathname === "/api/people-directory/update")'));

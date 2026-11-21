@@ -155,13 +155,22 @@ function provisionTest(db, { actor, record, preview = true, now = new Date().toI
 
 function provisionAdditional(db, { actor, record, preview = true, now = new Date().toISOString() }) {
     if (!actor || actor.role !== "Admin") fail("เฉพาะ Admin เท่านั้นที่สร้างบัญชีผู้ดูแลข้อมูลได้", 403);
-    const code = cleanText(record?.code, 32).toUpperCase();
+    const requestedCode = cleanText(record?.code, 32).toUpperCase();
+    const highestScdNumber = (db.users || []).reduce((highest, user) => {
+        const match = /^SCD(\d+)$/.exec(cleanText(user?.code, 32).toUpperCase());
+        return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+    const code = !requestedCode || requestedCode === "AUTO"
+        ? `SCD${String(highestScdNumber + 1).padStart(3, "0")}`
+        : requestedCode;
     const name = cleanText(record?.name, 160);
     const nickname = cleanText(record?.nickname, 100);
     const password = String(record?.temporaryPassword || "");
     const position = cleanText(record?.position, 120);
     const department = cleanText(record?.department, 120);
-    if (!VIEWER_CODE.test(code) || code === TEST_VIEWER_CODE) fail("รหัสผู้ใช้ต้องเป็น VIEW ตามด้วยตัวเลข เช่น VIEW003");
+    if ((!VIEWER_CODE.test(code) && !/^SCD\d{3,6}$/.test(code)) || code === TEST_VIEWER_CODE) {
+        fail("รหัสผู้ใช้ต้องเป็น AUTO, SCD หรือ VIEW ตามด้วยตัวเลข");
+    }
     if (!name) fail("กรุณาระบุชื่อบัญชี");
     if (password.length < 6) fail("รหัสผ่านชั่วคราวต้องมีอย่างน้อย 6 ตัวอักษร");
     if (!position || !department) fail("กรุณาระบุตำแหน่งและแผนก");
