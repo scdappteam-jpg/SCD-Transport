@@ -1461,7 +1461,8 @@ function bindEvents() {
             submitMobileLogin();
         }
     });
-    const logoutMobile = () => {
+    const logoutMobile = async () => {
+        await stopAttendanceLocationTracking("logout", true);
         localStorage.removeItem(MOBILE_AUTH_KEY);
         localStorage.removeItem(MOBILE_SESSION_TOKEN_KEY);
         renderMobileAuthState();
@@ -2094,7 +2095,13 @@ const attState = {
     gpsLat: null,
     gpsLon: null,
     currentRecord: null,
-    deviceVerified: false
+    deviceVerified: false,
+    locationWatchId: null,
+    locationHeartbeatTimer: null,
+    locationCutoffTimer: null,
+    lastLocationSentAt: 0,
+    lastLocationSentLat: null,
+    lastLocationSentLon: null
 };
 
 function initAttendanceTab() {
@@ -2113,6 +2120,7 @@ function initAttendanceTab() {
     $("#attCheckinBtn").addEventListener("click", submitAttCheckin);
     $("#attSimulatedCheckinBtn")?.addEventListener("click", submitSimulatedAttCheckin);
     $("#attCheckoutBtn").addEventListener("click", submitAttCheckout);
+    $("#attOpenGpsBtn")?.addEventListener("click", requestAttendanceGpsPermission);
 }
 
 function simulatedCheckinJob() {
@@ -2187,6 +2195,7 @@ function renderAttendanceStatus(record) {
         if (selectors) selectors.hidden = true;
         if (checkinBtn) checkinBtn.hidden = true;
         if (checkoutBtn) checkoutBtn.hidden = false;
+        if (!record.isSimulation) startAttendanceLocationTracking(record);
         stopAttCamera();
     } else {
         badge.textContent = "ยังไม่ได้เช็คอิน";
@@ -2195,6 +2204,7 @@ function renderAttendanceStatus(record) {
         if (selectors) selectors.hidden = false;
         if (checkinBtn) checkinBtn.hidden = false;
         if (checkoutBtn) checkoutBtn.hidden = true;
+        stopAttendanceLocationTracking("inactive", false);
     }
 }
 
@@ -2221,6 +2231,8 @@ function setupAttendanceGps() {
         attState.gpsLon = pos.coords.longitude;
         if (gpsText) gpsText.textContent = pos.coords.latitude.toFixed(5) + ", " + pos.coords.longitude.toFixed(5);
         if (gpsIcon) gpsIcon.textContent = "✓";
+        const gpsButton = $("#attOpenGpsBtn");
+        if (gpsButton) gpsButton.hidden = true;
         updateAttendanceGeofenceStatus(pos.coords.latitude, pos.coords.longitude);
     }, err => {
         if (gpsText) gpsText.textContent = "ไม่สามารถระบุตำแหน่ง: " + err.message;
@@ -2235,14 +2247,16 @@ function setupAttendanceGps() {
 function renderAttendanceGeofenceError(message) {
     const status = $("#attGeofenceStatus");
     const button = $("#attCheckinBtn");
+    const gpsButton = $("#attOpenGpsBtn");
     if (status) {
         status.className = "att-geofence-status outside";
-        status.innerHTML = `<strong>ยังเช็กอินไม่ได้</strong><span>${escapeHtmlMobile(message)}</span>`;
+        status.innerHTML = `<strong>ยังเช็กอินไม่ได้</strong><span>${escapeHtmlMobile(message)}</span><small>iPhone: การตั้งค่า › ความเป็นส่วนตัวและความปลอดภัย › บริการหาตำแหน่งที่ตั้ง › Safari Websites › ขณะใช้งาน<br>Android: แตะไอคอนข้างที่อยู่เว็บไซต์ › สิทธิ์ › ตำแหน่ง › อนุญาต</small>`;
     }
     if (button) {
         button.disabled = true;
         button.textContent = "รอตรวจ GPS...";
     }
+    if (gpsButton) gpsButton.hidden = false;
 }
 
 async function updateAttendanceGeofenceStatus(latitude, longitude) {
@@ -2269,10 +2283,119 @@ async function updateAttendanceGeofenceStatus(latitude, longitude) {
             button.disabled = result.canCheckIn === false;
             button.textContent = result.canCheckIn === false ? "อยู่นอกพื้นที่" : "✓ เช็คอิน";
         }
+        const gpsButton = $("#attOpenGpsBtn");
+        if (gpsButton) gpsButton.hidden = true;
         return result;
     } catch (error) {
         renderAttendanceGeofenceError(error.message || "ตรวจพื้นที่ไม่สำเร็จ");
         return null;
+    }
+}
+
+function requestAttendanceGpsPermission() {
+    const status = $("#attGeofenceStatus");
+    if (status) {
+        status.className = "att-geofence-status checking";
+        status.innerHTML = "<strong>กำลังขอสิทธิ์ GPS...</strong><span>กดอนุญาตเมื่อเบราว์เซอร์แจ้งเตือน</span>";
+    }
+    setupAttendanceGps();
+    if (attState.currentRecord) startAttendanceLocationTracking(attState.currentRecord, true);
+}
+
+function attendanceDistanceMeters(lat1, lon1, lat2, lon2) {
+    const rad = value => value * Math.PI / 180;
+    const h = Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+    return 6371000 * 2 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, h))));
+}
+
+function renderAttendanceTracking(active, detail) {
+    const box = $("#attTrackingStatus");
+    const text = $("#attTrackingDetail");
+    if (!box) return;
+    box.hidden = !active;
+    if (text && detail) text.textContent = detail;
+}
+
+async function sendAttendanceLocation(position) {
+    const record = attState.currentRecord;
+    const user = currentUser();
+    if (!record || record.checkOutTime || record.isSimulation || !user) return;
+    const latitude = position.coords.latitude;
+    const longitude = position.coords.longitude;
+    const now = Date.now();
+    const moved = attState.lastLocationSentLat == null ? Infinity : attendanceDistanceMeters(attState.lastLocationSentLat, attState.lastLocationSentLon, latitude, longitude);
+    if (now - attState.lastLocationSentAt < 5 * 60 * 1000 && moved < 50) return;
+    try {
+        const result = await api("/api/attendance/location-ping", {
+            userId: user.id,
+            gpsLat: latitude,
+            gpsLon: longitude,
+            accuracy: position.coords.accuracy
+        });
+        if (result.stopTracking) return stopAttendanceLocationTracking("max_12_hours", false);
+        if (result.accepted) {
+            attState.lastLocationSentAt = Date.parse(result.latestLocation?.at || new Date().toISOString());
+            attState.lastLocationSentLat = latitude;
+            attState.lastLocationSentLon = longitude;
+        }
+        const updated = new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date);
+        renderAttendanceTracking(true, `ตำแหน่งล่าสุด ${updated} · ความแม่นยำ ±${Math.round(position.coords.accuracy || 0)} ม.`);
+    } catch (error) {
+        if (error.code === "TRACKING_WINDOW_EXPIRED" || /12 ชั่วโมง/.test(error.message || "")) {
+            await stopAttendanceLocationTracking("max_12_hours", false);
+            renderAttendanceTracking(false);
+            return;
+        }
+        renderAttendanceTracking(true, "ส่งตำแหน่งไม่สำเร็จ · ระบบจะลองใหม่อัตโนมัติ");
+    }
+}
+
+function captureAttendanceTrackingPosition() {
+    if (!navigator.geolocation || !attState.currentRecord) return;
+    navigator.geolocation.getCurrentPosition(sendAttendanceLocation, error => {
+        renderAttendanceTracking(true, "GPS ขาดสัญญาณ · ตำแหน่งล่าสุดยังแสดงในระบบ");
+        const gpsButton = $("#attOpenGpsBtn");
+        if (gpsButton && error.code === 1) gpsButton.hidden = false;
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 2e4 });
+}
+
+function startAttendanceLocationTracking(record, force = false) {
+    if (!record || record.checkOutTime || record.isSimulation || !navigator.geolocation) return;
+    if (attState.locationWatchId !== null && !force) return;
+    if (force) stopAttendanceLocationTracking("restart", false);
+    const startedAt = Date.parse(record.checkInTime || "");
+    const remaining = startedAt + 12 * 60 * 60 * 1000 - Date.now();
+    if (!Number.isFinite(remaining) || remaining <= 0) {
+        renderAttendanceTracking(false);
+        return;
+    }
+    const latest = record.liveLocation || record.latestLocation;
+    if (latest) {
+        attState.lastLocationSentAt = Date.parse(latest.at || 0) || 0;
+        attState.lastLocationSentLat = Number(latest.latitude);
+        attState.lastLocationSentLon = Number(latest.longitude);
+    }
+    renderAttendanceTracking(true, "เริ่มแชร์หลังเช็กอิน · อัปเดตทุก 5 นาทีหรือเมื่อเคลื่อนที่ 50 ม.");
+    attState.locationWatchId = navigator.geolocation.watchPosition(sendAttendanceLocation, error => {
+        const gpsButton = $("#attOpenGpsBtn");
+        if (gpsButton && error.code === 1) gpsButton.hidden = false;
+        renderAttendanceTracking(true, error.code === 1 ? "หยุดอัปเดต: กรุณากดเปิด GPS / ตรวจสิทธิ์ตำแหน่ง" : "GPS ขาดสัญญาณ · กำลังรอลองใหม่");
+    }, { enableHighAccuracy: true, maximumAge: 6e4, timeout: 2e4 });
+    captureAttendanceTrackingPosition();
+    attState.locationHeartbeatTimer = setInterval(captureAttendanceTrackingPosition, 5 * 60 * 1000);
+    attState.locationCutoffTimer = setTimeout(() => stopAttendanceLocationTracking("max_12_hours", true), remaining);
+}
+
+async function stopAttendanceLocationTracking(reason = "manual", notifyServer = false) {
+    if (attState.locationWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(attState.locationWatchId);
+    if (attState.locationHeartbeatTimer) clearInterval(attState.locationHeartbeatTimer);
+    if (attState.locationCutoffTimer) clearTimeout(attState.locationCutoffTimer);
+    attState.locationWatchId = null;
+    attState.locationHeartbeatTimer = null;
+    attState.locationCutoffTimer = null;
+    renderAttendanceTracking(false);
+    if (notifyServer && currentUser() && attState.currentRecord && !attState.currentRecord.checkOutTime && !attState.currentRecord.isSimulation) {
+        try { await api("/api/attendance/location-stop", { userId: currentUser().id, reason }); } catch (_) {}
     }
 }
 
@@ -2413,7 +2536,7 @@ async function submitAttCheckin() {
         const msg = err.message || "เกิดข้อผิดพลาด";
         showAttResult("✕ " + msg, true);
     } finally {
-        if (btn) {
+        if (btn && !attState.currentRecord) {
             btn.disabled = false;
             btn.textContent = "✓ เช็คอิน";
         }
@@ -2477,6 +2600,7 @@ async function submitAttCheckout() {
         });
         attState.currentRecord = null;
         attState.photoBase64 = null;
+        await stopAttendanceLocationTracking("checkout", false);
         renderAttendanceStatus(null);
         showAttResult("เช็คเอาต์สำเร็จ เวลา " + formatBangkokMobile(res.record.checkOutTime), false);
     } catch (err) {

@@ -8885,9 +8885,18 @@ async function handleApi(req, res, pathname) {
         const users = db.users || [];
         const enriched = records.map(r => {
             const u = users.find(u => u.id === r.userId);
+            const latest = r.latestLocation || (r.locationTrail || []).at(-1) || null;
             return {
                 ...r,
-                userName: u?.name || r.userName
+                userName: u?.name || r.userName,
+                locationTrail: undefined,
+                liveLocation: latest ? {
+                    at: latest.at,
+                    latitude: latest.latitude,
+                    longitude: latest.longitude,
+                    accuracyMeters: latest.accuracyMeters,
+                    source: latest.source
+                } : null
             };
         });
         return sendJson(res, 200, {
@@ -8978,13 +8987,21 @@ async function handleApi(req, res, pathname) {
             fs.writeFileSync(path.join(attDir, filename), Buffer.from(clean, "base64"));
             photoUrl = "/storage/attendance/" + filename;
         }
+        const checkInAt = nowIso();
+        const initialTrackingPoint = isSimulation ? [] : [{
+            at: checkInAt,
+            latitude,
+            longitude,
+            accuracyMeters: null,
+            source: "checkin"
+        }];
         const record = {
             id: "ATT-" + Date.now() + "-" + crypto.randomBytes(3).toString("hex"),
             userId: userId,
             userName: user.name,
             role: user.role,
             date: today,
-            checkInTime: nowIso(),
+            checkInTime: checkInAt,
             checkInPhoto: photoUrl,
             checkInDeviceVerifiedAt: attendanceSession?.deviceVerifiedAt||'',
             checkInDeviceBindingId: attendanceSession?.deviceBindingId||'',
@@ -9006,12 +9023,103 @@ async function handleApi(req, res, pathname) {
             status: "checkin",
             reallocations: []
         };
+        record.locationTrail = initialTrackingPoint;
+        record.latestLocation = initialTrackingPoint[0] || null;
+        record.locationTrackingStartedAt = isSimulation ? null : checkInAt;
+        record.locationTrackingStoppedAt = null;
+        record.locationTrackingStopReason = "";
         db.attendance.push(record);
+        if (!isSimulation) hrWorkflows.audit(db, sessionUser(db, req), "/api/attendance/location-tracking", { employeeId: userId, action: "started_checkin" }, checkInAt);
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
             record: record
         });
+    }
+    if (req.method === "POST" && pathname === "/api/attendance/location-ping") {
+        const payload = await parseBody(req);
+        const { userId, gpsLat, gpsLon, accuracy } = payload;
+        const db = readDb();
+        const actor = sessionUser(db, req);
+        let locationResult;
+        try { locationResult = hrSecurity.attendanceLocation(db, userId, gpsLat, gpsLon, { enforce: false }); }
+        catch (error) { return sendJson(res, error.statusCode || 400, { error: error.message }); }
+        const accuracyMeters = accuracy == null || accuracy === "" ? null : Number(accuracy);
+        if (accuracyMeters !== null && (!Number.isFinite(accuracyMeters) || accuracyMeters < 0 || accuracyMeters > 5000)) {
+            return sendJson(res, 400, { error: "ค่าความแม่นยำ GPS ไม่ถูกต้อง" });
+        }
+        const record = (db.attendance || []).filter(item => item.userId === userId && !item.checkOutTime && item.isSimulation !== true)
+            .sort((a, b) => String(a.checkInTime || "").localeCompare(String(b.checkInTime || ""))).at(-1);
+        if (!record) return sendJson(res, 409, { error: "ต้องเช็กอินก่อนเริ่มแชร์ตำแหน่ง", code: "ATTENDANCE_NOT_ACTIVE" });
+        const receivedAt = nowIso();
+        const shiftAgeMs = Date.parse(receivedAt) - Date.parse(record.checkInTime || receivedAt);
+        if (!Number.isFinite(shiftAgeMs) || shiftAgeMs < 0 || shiftAgeMs >= 12 * 60 * 60 * 1000) {
+            if (!record.locationTrackingStoppedAt || record.locationTrackingStopReason !== "max_12_hours") {
+                record.locationTrackingStoppedAt = receivedAt;
+                record.locationTrackingStopReason = "max_12_hours";
+                hrWorkflows.audit(db, actor, "/api/attendance/location-tracking", { employeeId: userId, action: "stopped_max_12_hours" }, receivedAt);
+                writeDb(db);
+            }
+            return sendJson(res, 409, { error: "หยุดแชร์ตำแหน่งอัตโนมัติเมื่อครบ 12 ชั่วโมง", code: "TRACKING_WINDOW_EXPIRED", stopTracking: true });
+        }
+        const cutoff = Date.parse(receivedAt) - 30 * 864e5;
+        record.locationTrail = (record.locationTrail || []).filter(point => Number.isFinite(Date.parse(point.at)) && Date.parse(point.at) >= cutoff);
+        const previous = record.locationTrail.at(-1) || null;
+        const radians = value => value * Math.PI / 180;
+        const movedMeters = previous ? (() => {
+            const lat1 = Number(previous.latitude), lon1 = Number(previous.longitude);
+            const lat2 = locationResult.latitude, lon2 = locationResult.longitude;
+            const h = Math.sin(radians(lat2 - lat1) / 2) ** 2 + Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(radians(lon2 - lon1) / 2) ** 2;
+            return 6371000 * 2 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, h))));
+        })() : Infinity;
+        const elapsedMs = previous ? Date.parse(receivedAt) - Date.parse(previous.at) : Infinity;
+        const accepted = !previous || elapsedMs >= 5 * 60 * 1000 || movedMeters >= 50;
+        if (accepted) {
+            const restarting = !record.locationTrackingStartedAt || record.locationTrackingStoppedAt;
+            const point = {
+                at: receivedAt,
+                latitude: locationResult.latitude,
+                longitude: locationResult.longitude,
+                accuracyMeters,
+                source: "web_watch",
+                insideAllowedRadius: locationResult.insideAllowedRadius,
+                locationId: locationResult.nearestLocation?.id || null,
+                distanceMeters: locationResult.nearestLocation ? Math.round(locationResult.nearestLocation.distanceMeters) : null
+            };
+            record.locationTrail.push(point);
+            record.latestLocation = point;
+            record.locationTrackingStartedAt ||= receivedAt;
+            record.locationTrackingStoppedAt = null;
+            record.locationTrackingStopReason = "";
+            if (restarting) hrWorkflows.audit(db, actor, "/api/attendance/location-tracking", { employeeId: userId, action: "restarted" }, receivedAt);
+            writeDb(db);
+        }
+        return sendJson(res, 200, {
+            ok: true,
+            accepted,
+            movedMeters: Math.round(movedMeters === Infinity ? 0 : movedMeters),
+            latestLocation: record.latestLocation || previous,
+            trackingUntil: new Date(Date.parse(record.checkInTime) + 12 * 60 * 60 * 1000).toISOString()
+        });
+    }
+    if (req.method === "POST" && pathname === "/api/attendance/location-stop") {
+        const payload = await parseBody(req);
+        const { userId } = payload;
+        const reason = ["logout", "manual", "max_12_hours"].includes(payload.reason) ? payload.reason : "manual";
+        const db = readDb();
+        const actor = sessionUser(db, req);
+        const record = (db.attendance || []).filter(item => item.userId === userId && !item.checkOutTime && item.isSimulation !== true)
+            .sort((a, b) => String(a.checkInTime || "").localeCompare(String(b.checkInTime || ""))).at(-1);
+        if (!record) return sendJson(res, 200, { ok: true, stopped: false });
+        const stoppedAt = nowIso();
+        const changed = !record.locationTrackingStoppedAt || record.locationTrackingStopReason !== reason;
+        record.locationTrackingStoppedAt = stoppedAt;
+        record.locationTrackingStopReason = reason;
+        if (changed) {
+            hrWorkflows.audit(db, actor, "/api/attendance/location-tracking", { employeeId: userId, action: `stopped_${reason}` }, stoppedAt);
+            writeDb(db);
+        }
+        return sendJson(res, 200, { ok: true, stopped: true, stoppedAt, reason });
     }
     if (req.method === "POST" && pathname === "/api/attendance/checkout") {
         const payload = await parseBody(req);
@@ -9056,7 +9164,23 @@ async function handleApi(req, res, pathname) {
         record.checkOutLocationId = locationResult.nearestLocation?.id || null;
         record.checkOutLocationName = locationResult.nearestLocation?.name || '';
         record.checkOutDistanceMeters = locationResult.nearestLocation ? Math.round(locationResult.nearestLocation.distanceMeters) : null;
+        const checkOutPoint = {
+            at: record.checkOutTime,
+            latitude: locationResult.latitude,
+            longitude: locationResult.longitude,
+            accuracyMeters: null,
+            source: "checkout",
+            insideAllowedRadius: locationResult.insideAllowedRadius,
+            locationId: locationResult.nearestLocation?.id || null,
+            distanceMeters: locationResult.nearestLocation ? Math.round(locationResult.nearestLocation.distanceMeters) : null
+        };
+        const checkoutRetentionCutoff = Date.parse(record.checkOutTime) - 30 * 864e5;
+        record.locationTrail = [ ...(record.locationTrail || []), checkOutPoint ].filter(point => Date.parse(point.at) >= checkoutRetentionCutoff);
+        record.latestLocation = checkOutPoint;
+        record.locationTrackingStoppedAt = record.checkOutTime;
+        record.locationTrackingStopReason = "checkout";
         record.status = "checkout";
+        hrWorkflows.audit(db, sessionUser(db, req), "/api/attendance/location-tracking", { employeeId: userId, action: "stopped_checkout" }, record.checkOutTime);
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,

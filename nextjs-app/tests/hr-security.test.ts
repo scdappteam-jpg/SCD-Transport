@@ -36,14 +36,14 @@ function fixture() {
     }));
 }
 
-async function request(db: ReturnType<typeof fixture>, actorId: string, path: string, payload: Record<string, unknown> = {}, method = 'POST') {
+async function request(db: ReturnType<typeof fixture>, actorId: string, path: string, payload: Record<string, unknown> = {}, method = 'POST', at = '2026-11-01T03:00:00.000Z') {
     let writes = 0;
     const context = vm.createContext({
         req: { method, url: path }, res: {}, pathname: path.split('?')[0],
         db, readDb: () => db, parseBody: async () => payload,
         sessionUser: () => db.users.find((user: { id: string }) => user.id === actorId),
         hrSecurity: policy, hrWorkflows: require('../src/server/hr-workflows.cjs'), URL, Date, crypto, TZ: 'Asia/Bangkok',
-        nowIso: () => '2026-11-01T03:00:00.000Z',
+        nowIso: () => at,
         writeDb: () => { writes++; },
         sendJson: (_res: unknown, status: number, body: unknown) => ({ status, body }),
         notifyHrApprover: () => {}, notifyHrExecutive: () => {}, notifyHrEmployee: () => {},
@@ -125,8 +125,8 @@ test('self approval, cross-team OT recording and close are blocked', async () =>
     assert.equal((await request(db, 'admin', '/api/hr/request-action', { id: 'own', action: 'approve' })).status, 403);
 });
 
-test('attendance cannot be recorded for another account, including by administrators', async () => {
-    for (const path of ['/api/attendance/checkin', '/api/attendance/checkout']) {
+test('attendance and location tracking cannot be recorded for another account, including by administrators', async () => {
+    for (const path of ['/api/attendance/checkin', '/api/attendance/checkout', '/api/attendance/location-ping', '/api/attendance/location-stop']) {
         for (const actor of ['other', 'admin']) {
             const db = fixture();
             assert.equal((await request(db, actor, path, { userId: 'employee', gpsLat: 13.7, gpsLon: 100.5 })).status, 403);
@@ -174,6 +174,52 @@ test('inside-radius checkin and checkout store server time and location evidence
     assert.equal(repeatedCheckin.status, 409);
     assert.equal(repeatedCheckin.body.code, 'ATTENDANCE_ALREADY_COMPLETED');
     assert.equal((await request(db, 'employee', '/api/attendance/checkout', payload)).status, 404);
+});
+
+test('live location is limited to active attendance, 5 minutes or 50 metres, and twelve hours', async () => {
+    const db = fixture();
+    const payload = { userId: 'employee', gpsLat: 13.7, gpsLon: 100.5 };
+    const checkin = await request(db, 'employee', '/api/attendance/checkin', payload);
+    assert.equal(checkin.status, 200);
+    assert.equal(db.attendance[0].locationTrail.length, 1);
+
+    const tooSoon = await request(db, 'employee', '/api/attendance/location-ping', { ...payload, accuracy: 8 }, 'POST', '2026-11-01T03:01:00.000Z');
+    assert.equal(tooSoon.status, 200);
+    assert.equal(tooSoon.body.accepted, false);
+    assert.equal(db.attendance[0].locationTrail.length, 1);
+
+    const moved = await request(db, 'employee', '/api/attendance/location-ping', { ...payload, gpsLat: 13.7006, accuracy: 9 }, 'POST', '2026-11-01T03:02:00.000Z');
+    assert.equal(moved.status, 200);
+    assert.equal(moved.body.accepted, true);
+    assert.ok(moved.body.movedMeters >= 50);
+
+    const interval = await request(db, 'employee', '/api/attendance/location-ping', { ...payload, gpsLat: 13.7006, accuracy: 10 }, 'POST', '2026-11-01T03:07:00.000Z');
+    assert.equal(interval.body.accepted, true);
+    assert.equal(db.attendance[0].latestLocation.source, 'web_watch');
+
+    const expired = await request(db, 'employee', '/api/attendance/location-ping', payload, 'POST', '2026-11-01T15:00:00.000Z');
+    assert.equal(expired.status, 409);
+    assert.equal(expired.body.code, 'TRACKING_WINDOW_EXPIRED');
+    assert.equal(db.attendance[0].locationTrackingStopReason, 'max_12_hours');
+});
+
+test('checkout and logout stop sharing, and today response exposes latest point without full trail', async () => {
+    const db = fixture();
+    const payload = { userId: 'employee', gpsLat: 13.7, gpsLon: 100.5 };
+    await request(db, 'employee', '/api/attendance/checkin', payload);
+    const stopped = await request(db, 'employee', '/api/attendance/location-stop', { userId: 'employee', reason: 'logout' }, 'POST', '2026-11-01T03:05:00.000Z');
+    assert.equal(stopped.status, 200);
+    assert.equal(db.attendance[0].locationTrackingStopReason, 'logout');
+    await request(db, 'employee', '/api/attendance/location-ping', { ...payload, gpsLat: 13.7006 }, 'POST', '2026-11-01T03:06:00.000Z');
+    assert.equal(db.attendance[0].locationTrackingStopReason, '');
+    const checkout = await request(db, 'employee', '/api/attendance/checkout', payload, 'POST', '2026-11-01T03:10:00.000Z');
+    assert.equal(checkout.status, 200);
+    assert.equal(db.attendance[0].locationTrackingStopReason, 'checkout');
+    assert.equal((await request(db, 'employee', '/api/attendance/location-ping', payload, 'POST', '2026-11-01T03:11:00.000Z')).status, 409);
+    const today = await request(db, 'employee', '/api/attendance/today', {}, 'GET');
+    assert.equal(today.status, 200);
+    assert.equal(today.body.records[0].locationTrail, undefined);
+    assert.equal(today.body.records[0].liveLocation.source, 'checkout');
 });
 
 test('employee can preview whether GPS is inside the assigned check-in radius without writing attendance', async () => {
@@ -261,6 +307,7 @@ test('mobile waits for fresh GPS on both actions and never submits stale GPS aft
                 $: () => ({ value: '', disabled: false, textContent: '' }),
                 api: async (_path: string, payload: Record<string, unknown>) => { calls.push(payload); return { record: {} }; },
                 updateAttendanceGeofenceStatus: async () => ({ canCheckIn: true }),
+                stopAttendanceLocationTracking: async () => {},
                 renderAttendanceStatus: () => {}, loadMyAttTasks: () => {},
                 showAttResult: () => {}, toast: () => {}, formatBangkokMobile: () => ''
             });

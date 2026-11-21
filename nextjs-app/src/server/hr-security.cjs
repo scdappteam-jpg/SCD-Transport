@@ -49,7 +49,7 @@ function preflight(db, path, payload, actor) {
         if (payload.employeeId !== actor.id && !manages(actor)) fail('ยื่นคำขอได้เฉพาะตนเอง');
         payload.requesterId = actor.id;
     }
-    if (['/api/attendance/checkin', '/api/attendance/checkout'].includes(path)) {
+    if (['/api/attendance/checkin', '/api/attendance/checkout', '/api/attendance/location-ping', '/api/attendance/location-stop'].includes(path)) {
         if (payload.userId !== actor.id) fail('ต้องลงเวลาด้วยบัญชีของตนเอง');
         // Simulation is never an exemption from HR GPS validation.
         if (payload.simulation !== undefined && payload.simulation !== false && payload.simulation !== true) {

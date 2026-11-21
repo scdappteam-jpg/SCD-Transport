@@ -10991,7 +10991,8 @@ const attDash = {
     taskGroups: [],
     draggingUserId: null,
     notifSince: null,
-    notifTimer: null
+    notifTimer: null,
+    liveTimer: null
 };
 
 var _csQueueData = [];
@@ -12009,8 +12010,22 @@ async function renderAttendance() {
     const container = $("#view-attendance");
     if (!container) return;
     container.innerHTML = `\n  <div class="att-dash-wrap">\n    \x3c!-- ── Header ── --\x3e\n    <div class="att-dash-header">\n      <div>\n        <h2 class="att-dash-title">การเข้างานวันนี้</h2>\n        <div id="attDashDate" class="att-dash-subtitle">กำลังโหลด...</div>\n      </div>\n      <div class="att-dash-actions">\n        <button id="attNotifBtn" onclick="requestAttNotifPermission()" class="att-action-btn notif-btn">\n          เปิดการแจ้งเตือน\n        </button>\n        <button onclick="renderAttendance()" class="att-action-btn">รีเฟรช</button>\n      </div>\n    </div>\n\n    \x3c!-- ── Stats ── --\x3e\n    <div class="att-stats-row" id="attStatsRow">\n      <div class="att-stat-card green"><div class="att-stat-num" id="statOnDuty">—</div><div class="att-stat-lbl">เข้างานอยู่</div></div>\n      <div class="att-stat-card grey"><div class="att-stat-num" id="statCheckedOut">—</div><div class="att-stat-lbl">ออกแล้ว</div></div>\n      <div class="att-stat-card red"><div class="att-stat-num" id="statAbsent">—</div><div class="att-stat-lbl">ยังไม่มา</div></div>\n      <div class="att-stat-card blue"><div class="att-stat-num" id="statTasks">—</div><div class="att-stat-lbl">กลุ่มงาน</div></div>\n      <div class="att-stat-card navy"><div class="att-stat-num" id="statGpsPoints">—</div><div class="att-stat-lbl">จุด GPS เริ่ม-สิ้นสุด</div></div>\n    </div>\n\n    \x3c!-- ── Main Board ── --\x3e\n    <div class="att-ops-grid">\n      <section class="att-map-panel">\n        <div class="att-panel-head compact">\n          <span>Operations Map · จุดเช็คอินพนักงาน</span>\n          <span id="attMapSummary" class="att-map-summary">0 จุด</span>\n        </div>\n        <div id="attOpsMap" class="att-ops-map">\n          <div class="att-map-empty">กำลังโหลดตำแหน่ง...</div>\n        </div>\n        <div class="att-map-legend-row">\n          <span><i class="att-legend-dot start"></i> เริ่มงาน / Check-in</span>\n          <span><i class="att-legend-dot end"></i> สิ้นสุด / Check-out</span>\n          <span><i class="att-legend-dot untagged"></i> ยังไม่ผูกกลุ่มงาน</span>\n        </div>\n      </section>\n\n      <section class="att-timeline-panel">\n        <div class="att-panel-head compact">\n          <span>Start-End Timeline</span>\n          <span id="attTimelineSummary" class="att-map-summary">วันนี้</span>\n        </div>\n        <div id="attStartEndTimeline" class="att-startend-list">\n          <div class="att-loading">กำลังโหลด...</div>\n        </div>\n      </section>\n    </div>\n\n    <div class="att-board">\n\n      \x3c!-- LEFT: Staff Pool --\x3e\n      <div class="att-staff-panel">\n        <div class="att-panel-head">\n          <span>พนักงาน</span>\n          <span id="attStaffCount" class="att-count-badge">0</span>\n        </div>\n        <div class="att-staff-filter">\n          <button class="att-filter-btn active" data-filter="all" onclick="filterAttStaff(this,'all')">ทั้งหมด</button>\n          <button class="att-filter-btn" data-filter="checkin" onclick="filterAttStaff(this,'checkin')">เข้างาน</button>\n          <button class="att-filter-btn" data-filter="unassigned" onclick="filterAttStaff(this,'unassigned')">ยังไม่มีงาน</button>\n        </div>\n        <div id="attStaffList" class="att-staff-list">\n          <div class="att-loading">กำลังโหลด...</div>\n        </div>\n      </div>\n\n      \x3c!-- RIGHT: Task Groups Board --\x3e\n      <div class="att-tasks-panel">\n        <div class="att-panel-head">\n          <span>กลุ่มงาน</span>\n          <button onclick="openCreateTaskModal()" class="att-add-task-btn">+ สร้างกลุ่มงาน</button>\n        </div>\n        <div id="attTaskBoard" class="att-task-board">\n          <div class="att-loading">กำลังโหลด...</div>\n        </div>\n      </div>\n\n    </div>\n  </div>\n\n  \x3c!-- Create Task Modal --\x3e\n  <div id="createTaskModal" class="att-modal-backdrop" style="display:none">\n    <div class="att-modal-box">\n      <h3 class="att-modal-title">+ สร้างกลุ่มงาน</h3>\n      <label class="att-modal-label">ชื่องาน *</label>\n      <input id="newTaskName" placeholder="เช่น โหลดสินค้า EK9815" class="att-modal-input">\n      <div class="att-modal-row2">\n        <div>\n          <label class="att-modal-label">โซน</label>\n          <select id="newTaskZone" class="att-modal-select">\n            <option value="">— เลือกโซน —</option>\n          </select>\n        </div>\n        <div>\n          <label class="att-modal-label">ประเภทงาน</label>\n          <select id="newTaskType" class="att-modal-select">\n            <option value="Inbound">Inbound</option>\n            <option value="Loading">Loading</option>\n            <option value="Pickup">Pickup</option>\n            <option value="XRay">X-Ray</option>\n            <option value="Transport">Transport</option>\n            <option value="Other">อื่นๆ</option>\n          </select>\n        </div>\n      </div>\n      <label class="att-modal-label">สีกลุ่ม</label>\n      <div class="att-color-picker">\n        <button class="att-color-swatch active" data-color="#2563eb" style="background:#2563eb" onclick="selectTaskColor(this,'#2563eb')"></button>\n        <button class="att-color-swatch" data-color="#16a34a" style="background:#16a34a" onclick="selectTaskColor(this,'#16a34a')"></button>\n        <button class="att-color-swatch" data-color="#dc2626" style="background:#dc2626" onclick="selectTaskColor(this,'#dc2626')"></button>\n        <button class="att-color-swatch" data-color="#d97706" style="background:#d97706" onclick="selectTaskColor(this,'#d97706')"></button>\n        <button class="att-color-swatch" data-color="#7c3aed" style="background:#7c3aed" onclick="selectTaskColor(this,'#7c3aed')"></button>\n        <button class="att-color-swatch" data-color="#0891b2" style="background:#0891b2" onclick="selectTaskColor(this,'#0891b2')"></button>\n      </div>\n      <input type="hidden" id="newTaskColor" value="#2563eb">\n      <div class="att-modal-btns">\n        <button onclick="submitCreateTask()" class="att-modal-confirm">✓ สร้างกลุ่มงาน</button>\n        <button onclick="closeCreateTaskModal()" class="att-modal-cancel">ยกเลิก</button>\n      </div>\n      <div id="createTaskResult" class="att-modal-result"></div>\n    </div>\n  </div>`;
+    const gpsLabel = $("#statGpsPoints")?.nextElementSibling;
+    if (gpsLabel) gpsLabel.textContent = "ตำแหน่ง GPS / Live";
+    const mapTitle = $("#attOpsMap")?.previousElementSibling?.querySelector("span:first-child");
+    if (mapTitle) mapTitle.textContent = "Operations Map · ตำแหน่งล่าสุดพนักงาน";
+    const mapLegend = container.querySelector(".att-map-legend-row");
+    if (mapLegend && !mapLegend.querySelector(".att-legend-dot.live")) mapLegend.insertAdjacentHTML("afterbegin", '<span><i class="att-legend-dot live"></i> ตำแหน่งล่าสุด</span>');
     await loadAttDashData();
     startNotifPoller();
+    if (attDash.liveTimer) clearInterval(attDash.liveTimer);
+    attDash.liveTimer = setInterval(() => {
+        if (state.currentView === "attendance") loadAttDashData();
+        else {
+            clearInterval(attDash.liveTimer);
+            attDash.liveTimer = null;
+        }
+    }, 6e4);
 }
 
 async function loadAttDashData() {
@@ -12050,7 +12065,7 @@ function updateAttStats() {
     const out = attDash.staff.filter(r => r.checkOutTime).length;
     const absent = Math.max(0, attDash.allUsers.length - attDash.staff.length);
     const taskCount = attDash.taskGroups.filter(g => g.status !== "done").length;
-    const gpsPoints = attDash.staff.reduce((sum, r) => sum + (hasAttPoint(r, "in") ? 1 : 0) + (hasAttPoint(r, "out") ? 1 : 0), 0);
+    const gpsPoints = attDash.staff.reduce((sum, r) => sum + (hasAttPoint(r, "in") ? 1 : 0) + (hasAttPoint(r, "out") ? 1 : 0) + (!r.checkOutTime && hasAttPoint(r, "live") ? 1 : 0), 0);
     setText("statOnDuty", onDuty);
     setText("statCheckedOut", out);
     setText("statAbsent", absent);
@@ -12073,18 +12088,21 @@ function attNumber(value) {
 }
 
 function hasAttPoint(record, type) {
-    const lat = attNumber(type === "out" ? record.checkOutLat : record.checkInLat);
-    const lon = attNumber(type === "out" ? record.checkOutLon : record.checkInLon);
+    const source = type === "live" ? record.liveLocation || {} : record;
+    const lat = attNumber(type === "live" ? source.latitude : type === "out" ? record.checkOutLat : record.checkInLat);
+    const lon = attNumber(type === "live" ? source.longitude : type === "out" ? record.checkOutLon : record.checkInLon);
     return lat !== null && lon !== null;
 }
 
 function attPoint(record, type) {
+    const live = record.liveLocation || {};
     return {
         type: type,
-        lat: attNumber(type === "out" ? record.checkOutLat : record.checkInLat),
-        lon: attNumber(type === "out" ? record.checkOutLon : record.checkInLon),
-        time: type === "out" ? record.checkOutTime : record.checkInTime,
-        label: type === "out" ? "สิ้นสุดงาน" : "เริ่มงาน",
+        lat: attNumber(type === "live" ? live.latitude : type === "out" ? record.checkOutLat : record.checkInLat),
+        lon: attNumber(type === "live" ? live.longitude : type === "out" ? record.checkOutLon : record.checkInLon),
+        time: type === "live" ? live.at : type === "out" ? record.checkOutTime : record.checkInTime,
+        label: type === "live" ? "ตำแหน่งล่าสุด" : type === "out" ? "สิ้นสุดงาน" : "เริ่มงาน",
+        accuracyMeters: type === "live" ? attNumber(live.accuracyMeters) : null,
         record: record
     };
 }
@@ -12113,6 +12131,14 @@ function attDurationLabel(record) {
     return h ? `${h} ชม. ${m} นาที` : `${m} นาที`;
 }
 
+function attLocationAgeLabel(iso) {
+    const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(iso || "")) / 6e4));
+    if (!Number.isFinite(minutes)) return "ไม่ทราบเวลา";
+    if (minutes < 1) return "เมื่อสักครู่";
+    if (minutes < 60) return `${minutes} นาทีที่แล้ว`;
+    return `${Math.floor(minutes / 60)} ชม. ${minutes % 60} นาทีที่แล้ว`;
+}
+
 function attAssignedGroupForRecord(record) {
     return attDash.taskGroups.find(g => g.status !== "done" && (g.assignedUsers || []).some(u => u.userId === record.userId));
 }
@@ -12126,12 +12152,14 @@ function renderAttOperations() {
         const arr = [];
         if (hasAttPoint(record, "in")) arr.push(attPoint(record, "in"));
         if (hasAttPoint(record, "out")) arr.push(attPoint(record, "out"));
+        if (!record.checkOutTime && hasAttPoint(record, "live")) arr.push(attPoint(record, "live"));
         return arr;
     });
     const mapSummary = $("#attMapSummary");
     const timelineSummary = $("#attTimelineSummary");
     const untaggedCount = records.filter(r => !attAssignedGroupForRecord(r)).length;
-    if (mapSummary) mapSummary.textContent = `${points.length} จุด · ${records.length} คน`;
+    const liveCount = records.filter(r => !r.checkOutTime && hasAttPoint(r, "live")).length;
+    if (mapSummary) mapSummary.textContent = `${liveCount} กำลังแชร์ · ${records.length} คน`;
     if (timelineSummary) timelineSummary.textContent = `${untaggedCount} ยังไม่ผูกงาน`;
     if (!points.length) {
         map.innerHTML = `\n      <div class="att-map-empty">\n        <strong>ยังไม่มีพิกัดเช็คอินวันนี้</strong>\n        <span>เมื่อพนักงานเช็คอิน/เช็คเอาต์จาก Mobile ระบบจะแสดงจุดเริ่มต้นและสิ้นสุดที่นี่</span>\n      </div>`;
@@ -12146,17 +12174,19 @@ function renderAttOperations() {
             x: 10 + (p.lon - minLon) / lonSpan * 80,
             y: 88 - (p.lat - minLat) / latSpan * 76
         });
-        const routes = records.filter(r => hasAttPoint(r, "in") && hasAttPoint(r, "out")).map(r => {
+        const routes = records.filter(r => hasAttPoint(r, "in") && (hasAttPoint(r, "out") || hasAttPoint(r, "live"))).map(r => {
             const a = project(attPoint(r, "in"));
-            const b = project(attPoint(r, "out"));
+            const b = project(attPoint(r, hasAttPoint(r, "out") ? "out" : "live"));
             return `<line x1="${a.x.toFixed(2)}%" y1="${a.y.toFixed(2)}%" x2="${b.x.toFixed(2)}%" y2="${b.y.toFixed(2)}%" />`;
         }).join("");
         const markers = points.map(p => {
             const pos = project(p);
             const group = attAssignedGroupForRecord(p.record);
-            const cls = `${p.type === "out" ? "end" : "start"} ${group ? "" : "untagged"}`;
+            const stale = p.type === "live" && Date.now() - Date.parse(p.time || "") > 10 * 60 * 1000;
+            const cls = `${p.type === "out" ? "end" : p.type === "live" ? "live" : "start"} ${stale ? "stale" : ""} ${group ? "" : "untagged"}`;
             const initials = (p.record.userName || "?").split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
-            return `<button class="att-map-marker ${cls}" style="left:${pos.x.toFixed(2)}%;top:${pos.y.toFixed(2)}%" title="${escHtml(p.record.userName || "")} · ${p.label} ${attTimeShort(p.time)} — คลิกเปิด Google Maps" onclick="window.open('https://maps.google.com/?q=${p.lat},${p.lon}','_blank')">\n        <span>${p.type === "out" ? "OUT" : initials}</span>\n      </button>`;
+            const accuracy = p.accuracyMeters === null ? "" : ` · ±${Math.round(p.accuracyMeters)} ม.`;
+            return `<button class="att-map-marker ${cls}" style="left:${pos.x.toFixed(2)}%;top:${pos.y.toFixed(2)}%" title="${escHtml(p.record.userName || "")} · ${p.label} ${attTimeShort(p.time)}${accuracy} — คลิกเปิด Google Maps" onclick="window.open('https://maps.google.com/?q=${p.lat},${p.lon}','_blank')">\n        <span>${p.type === "out" ? "OUT" : initials}</span>\n      </button>`;
         }).join("");
         map.innerHTML = `\n      <div class="att-map-grid-bg"></div>\n      <svg class="att-map-routes" aria-hidden="true">${routes}</svg>\n      ${markers}\n      <div class="att-map-location-badge">\n        <strong>SCD Operations</strong>\n        <span>Live attendance points · start/end</span>\n      </div>`;
     }
@@ -12166,6 +12196,12 @@ function renderAttOperations() {
         const hasOut = hasAttPoint(record, "out");
         return `\n      <article class="att-startend-item ${group ? "" : "untagged"}">\n        <div class="att-se-dotline">\n          <span class="att-se-dot start"></span>\n          <span class="att-se-line ${hasOut ? "complete" : ""}"></span>\n          <span class="att-se-dot ${hasOut ? "end" : "pending"}"></span>\n        </div>\n        <div class="att-se-main">\n          <div class="att-se-head">\n            <strong>${escHtml(record.userName || "-")}</strong>\n            <span class="att-se-badge ${group ? "tagged" : "untagged"}">${group ? escHtml(group.name) : "ยังไม่ผูกกลุ่มงาน"}</span>\n          </div>\n          <div class="att-se-meta">\n            <span>เริ่ม ${attTimeShort(record.checkInTime)}${hasIn ? ` · <a class="att-gps-link" href="https://maps.google.com/?q=${Number(record.checkInLat)},${Number(record.checkInLon)}" target="_blank" rel="noopener">${Number(record.checkInLat).toFixed(4)}, ${Number(record.checkInLon).toFixed(4)}</a>` : " · ไม่มี GPS"}</span>\n            <span>สิ้นสุด ${record.checkOutTime ? attTimeShort(record.checkOutTime) : "ยังทำงานอยู่"}${hasOut ? ` · <a class="att-gps-link" href="https://maps.google.com/?q=${Number(record.checkOutLat)},${Number(record.checkOutLon)}" target="_blank" rel="noopener">${Number(record.checkOutLat).toFixed(4)}, ${Number(record.checkOutLon).toFixed(4)}</a>` : ""}</span>\n          </div>\n          <div class="att-se-foot">\n            <span>${escHtml(record.zone || "ไม่ระบุโซน")} · ${escHtml(record.jobType || "ไม่ระบุประเภทงาน")}</span>\n            <b>${attDurationLabel(record)}</b>\n          </div>\n        </div>\n      </article>`;
     }).join("") : `\n    <div class="att-empty-board compact">\n      <div style="font-weight:700">ยังไม่มีประวัติเข้างานวันนี้</div>\n      <div style="font-size:12px;color:var(--muted)">เมื่อพนักงานเช็คอินจาก Mobile จะเห็นเวลาเริ่ม-สิ้นสุดทันที แม้ยังไม่ได้ลากเข้ากลุ่มงาน</div>\n    </div>`;
+    list.querySelectorAll(".att-startend-item").forEach((item, index) => {
+        const live = records[index] && !records[index].checkOutTime && hasAttPoint(records[index], "live") ? attPoint(records[index], "live") : null;
+        if (!live) return;
+        const stale = Date.now() - Date.parse(live.time || "") > 10 * 60 * 1000;
+        item.querySelector(".att-se-meta")?.insertAdjacentHTML("beforeend", `<span class="att-live-meta ${stale ? "stale" : ""}">● ตำแหน่งล่าสุด ${attLocationAgeLabel(live.time)}${live.accuracyMeters === null ? "" : ` · ±${Math.round(live.accuracyMeters)} ม.`} · <a class="att-gps-link" href="https://maps.google.com/?q=${live.lat},${live.lon}" target="_blank" rel="noopener">เปิดแผนที่</a></span>`);
+    });
 }
 
 const ROLE_ICON = {
