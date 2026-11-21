@@ -13,6 +13,8 @@ test("mobile entry page is a single employee portal for attendance and field ope
   assert.match(html, /<input id="mobileUserSelect" type="text"/);
   assert.doesNotMatch(html, /<select id="mobileUserSelect"/);
   assert.match(html, /mobile\.js\?v=20261121-login-input-safe-area/);
+  assert.match(html, /\[hidden\]\{display:none!important\}/);
+  assert.match(html, /mobile-auth-pending/);
   assert.match(auth, /กลับศูนย์รวมพนักงาน/);
 });
 
@@ -24,5 +26,7 @@ test("production mobile login resolves typed employee codes and does not persist
   assert.match(js, /var demo = params\.get\("demo"\) === "1"/);
   assert.doesNotMatch(js, /localStorage\.getItem\("scdDemoLogin"\) === "1"/);
   assert.match(css, /env\(safe-area-inset-top\)/);
+  assert.match(css, /\.login-card\[hidden\]\{display:none!important\}/);
+  assert.match(css, /body\.mobile-locked main>:not\(\.login-card\)\{display:none!important\}/);
   assert.match(css, /@media\(max-width:520px\)\{\.employee-mobile-hub-grid\{grid-template-columns:1fr\}/);
 });

@@ -100,6 +100,7 @@ function passwordForUser(userId) {
 
 function renderMobileAuthState() {
     const auth = isMobileAuthenticated();
+    document.documentElement.classList.remove("mobile-auth-pending");
     window.SCDTestUserMode?.render({users:state.users,userId:state.currentUserId,authenticated:auth,
         isAdmin:auth&&currentUser()?.role==='Admin',adminToken:localStorage.getItem(MOBILE_SESSION_TOKEN_KEY),onSwitch:establishMobileLogin});
     document.body.classList.toggle("mobile-locked", !auth);

@@ -18,8 +18,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="mobile.css?v=20261121-login-input-safe-area">
-    <style>#foPinForm{display:grid;gap:8px}#foPinForm .fo-primary-btn{margin-top:8px}</style>
+    <script>try{if(localStorage.getItem("scdTransportMobileAuth")==="ok")document.documentElement.classList.add("mobile-auth-pending")}catch(e){}</script>
+    <link rel="stylesheet" href="mobile.css?v=20261121-login-overlay-fix">
+    <style>[hidden]{display:none!important}html.mobile-auth-pending .login-card{visibility:hidden}#foPinForm{display:grid;gap:8px}#foPinForm .fo-primary-btn{margin-top:8px}</style>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
   </head>
   <body class="mobile-locked">
