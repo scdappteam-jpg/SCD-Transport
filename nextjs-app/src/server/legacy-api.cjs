@@ -1031,6 +1031,8 @@ function ensureCoreUsers(db) {
             db.users.push(user);
         }
     }
+    const testViewer = db.users.find(user => String(user.code || '').toUpperCase() === peopleViewer.TEST_VIEWER_CODE && user.isTestAccount === true);
+    if (testViewer) attendanceDeviceAuth.provisionTestPin(db, testViewer, '123456', 'view999-pin-123456-v1', nowIso());
 }
 
 function escapeHtml(value) {

@@ -13,6 +13,14 @@ test('six digit PIN is hashed and common or employee-derived PINs are rejected',
  const encoded=auth.pinHash('482905');assert.equal(auth.pinMatches('482905',encoded),true);assert.equal(encoded.includes('482905'),false);
 });
 
+test('fixed 123456 PIN is provisioned only for the VIEW999 test account and resets its old device',()=>{
+ const user:any={id:'VIEW-TEST',code:'VIEW999',isTestAccount:true},db:any={users:[user],hr:{auditLogs:[]},attendanceDeviceBindings:[{id:'OLD',userId:user.id,status:'Active'}]};
+ assert.equal(auth.provisionTestPin(db,user,'123456','v1',at).changed,true);
+ assert.equal(auth.pinMatches('123456',user.pinHash),true);assert.equal(db.attendanceDeviceBindings[0].status,'Revoked');
+ assert.equal(auth.provisionTestPin(db,user,'123456','v1',at).changed,false);
+ assert.throws(()=>auth.provisionTestPin(db,{id:'REAL',code:'SCD001'},'123456','v1',at),(error:any)=>error.code==='TEST_ACCOUNT_REQUIRED');
+});
+
 test('first valid PIN login binds one employee to one device without storing the raw token',()=>{
  const db=fixture(),result=auth.authenticate(db,{login:'EMP001',pin:'482905',deviceToken:tokenA,deviceLabel:'Phone A',at});
  assert.equal(result.user.id,'EMP-1');assert.equal(db.attendanceDeviceBindings.length,1);assert.equal(db.attendanceDeviceBindings[0].deviceHash,auth.deviceHash(tokenA));assert.equal(JSON.stringify(db).includes(tokenA),false);

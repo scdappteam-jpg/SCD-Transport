@@ -39,6 +39,29 @@ function setPin(db, user, pin, at) {
     return { ok: true, pinConfigured: true };
 }
 
+function provisionTestPin(db, user, pin, version, at) {
+    if (!user?.isTestAccount) fail('ตั้ง PIN แบบคงที่ได้เฉพาะบัญชีทดสอบ', 403, 'TEST_ACCOUNT_REQUIRED');
+    const value = String(pin || '');
+    if (!/^\d{6}$/.test(value)) fail('PIN ต้องเป็นตัวเลข 6 หลัก', 422, 'PIN_FORMAT');
+    const marker = clean(version, 80);
+    if (!marker) fail('กรุณาระบุเวอร์ชัน PIN ทดสอบ', 422, 'PIN_VERSION_REQUIRED');
+    if (user.testPinVersion === marker && user.pinHash) return { changed: false };
+    user.pinHash = pinHash(value);
+    user.pinUpdatedAt = at;
+    user.pinFailedAttempts = 0;
+    user.pinLockedUntil = '';
+    user.testPinVersion = marker;
+    for (const binding of db.attendanceDeviceBindings || []) {
+        if (binding.userId === user.id && binding.status === 'Active') {
+            binding.status = 'Revoked';
+            binding.revokedAt = at;
+            binding.revokedReason = 'TestPinReprovisioned';
+        }
+    }
+    audit(db, user.id, 'TestPinProvisioned', { employeeId: user.id, version: marker }, at);
+    return { changed: true };
+}
+
 function rateState(db, userId, now = Date.now()) {
     db.deviceLoginAttempts = (db.deviceLoginAttempts || []).filter(item => now - Date.parse(item.at) < 24 * 60 * 60 * 1000).slice(-2000);
     const failures = db.deviceLoginAttempts.filter(item => item.userId === userId && item.result === 'Failed').sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
@@ -189,4 +212,4 @@ function audit(db, actorId, action, detail, at) {
     db.hr.auditLogs.push({ id: `HRAUD-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`, actorId, action, detail, at });
 }
 
-module.exports = { pinHash, pinMatches, validatePin, setPin, rateState, findUser, authenticate, verifySession, listRequests, decideRequest, resetBinding, deviceHash };
+module.exports = { pinHash, pinMatches, validatePin, setPin, provisionTestPin, rateState, findUser, authenticate, verifySession, listRequests, decideRequest, resetBinding, deviceHash };
