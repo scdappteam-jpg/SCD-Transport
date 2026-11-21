@@ -1354,6 +1354,7 @@ function serverPasswordMatches(password, encoded) {
 // production credential.
 function passwordHashForUser(user) {
     if (!user) return "";
+    if (user.passwordChangedAt && user.passwordHash) return user.passwordHash;
     return SERVER_PASSWORD_HASHES[user.id] || user.passwordHash || "";
 }
 
@@ -1395,6 +1396,33 @@ async function authenticateWithSupabaseAuth(user, password) {
     } catch (_) {
         return { managed: true, valid: false, unavailable: true };
     }
+}
+
+async function updateSupabaseAuthPassword(user, password) {
+    if (!user || !supabaseEnabled()) return { managed: false };
+    const profileUrl = `${SUPABASE_URL}/rest/v1/user_profiles?legacy_user_id=eq.${encodeURIComponent(user.id)}&select=auth_user_id&limit=1`;
+    let profileResponse;
+    try {
+        profileResponse = await fetchSupabaseAuth(profileUrl, { headers: supabaseServiceAuth.serviceHeaders(SUPABASE_KEY) });
+    } catch (_) {
+        throw Object.assign(new Error("Supabase Auth ใช้งานไม่ได้ชั่วคราว กรุณาลองใหม่"), { statusCode: 503 });
+    }
+    if (!profileResponse.ok) throw Object.assign(new Error("ไม่สามารถตรวจสอบบัญชีส่วนกลางได้"), { statusCode: 503 });
+    const profiles = await profileResponse.json().catch(() => []);
+    const authUserId = Array.isArray(profiles) ? profiles[0]?.auth_user_id : "";
+    if (!authUserId) return { managed: false };
+    let response;
+    try {
+        response = await fetchSupabaseAuth(`${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(authUserId)}`, {
+            method: "PUT",
+            headers: { ...supabaseServiceAuth.serviceHeaders(SUPABASE_KEY), "Content-Type": "application/json" },
+            body: JSON.stringify({ password: String(password || "") })
+        });
+    } catch (_) {
+        throw Object.assign(new Error("บันทึกรหัสผ่านส่วนกลางไม่สำเร็จ กรุณาลองใหม่"), { statusCode: 503 });
+    }
+    if (!response.ok) throw Object.assign(new Error("บันทึกรหัสผ่านส่วนกลางไม่สำเร็จ กรุณาลองใหม่"), { statusCode: 503 });
+    return { managed: true };
 }
 
 // Never send password fields back to a browser.  This is deliberately kept
@@ -3634,7 +3662,7 @@ async function handleApi(req, res, pathname) {
             dbCache = db;
             scheduleAuthSessionPersist(db.authSessions);
         } else writeDb(db);
-        return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, code: user.code, name: user.name, nickname: user.nickname || "", role: user.role, mustChangePassword: user.mustChangePassword === true } });
+        return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, code: user.code, name: user.name, nickname: user.nickname || "", role: user.role, mustChangePassword: user.mustChangePassword === true, mustChangePin: user.mustChangePin === true } });
     }
     if (req.method === "POST" && pathname === "/api/auth/device/login") {
         const payload = await parseBody(req);
@@ -3648,7 +3676,7 @@ async function handleApi(req, res, pathname) {
                 try{await Promise.all([dbPersistPromise,scheduleAuthSessionPersist(db.authSessions)]);}
                 catch(error){return sendJson(res,503,{error:'บันทึกการเข้าสู่ระบบไม่สำเร็จ กรุณากดลองอีกครั้ง',code:'DEVICE_SESSION_SAVE_FAILED'});}
             }
-            return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role,mustChangePin:user.mustChangePin===true}});
+            return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role,mustChangePassword:user.mustChangePassword===true,mustChangePin:user.mustChangePin===true}});
         }catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||400,{error:error.message,code:error.code||'DEVICE_LOGIN_FAILED',requestId:error.requestId});}
     }
     if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/device/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
@@ -3701,9 +3729,20 @@ async function handleApi(req, res, pathname) {
         const currentDb = readDb();
         const actor = sessionUser(currentDb, req);
         try {
-            const result = peopleViewer.changePassword(actor, payload.password, nowIso());
+            if (!actor || actor.status === "Inactive") throw Object.assign(new Error("กรุณาเข้าสู่ระบบใหม่"), { statusCode: 401 });
+            const nextCredential = String(payload.password || payload.newCredential || "");
+            attendanceDeviceAuth.validatePin(nextCredential, actor);
+            await updateSupabaseAuthPassword(actor, nextCredential);
+            const encoded = attendanceDeviceAuth.pinHash(nextCredential);
+            actor.passwordHash = encoded;
+            actor.pinHash = attendanceDeviceAuth.pinHash(nextCredential);
+            actor.mustChangePassword = false;
+            actor.mustChangePin = false;
+            actor.passwordChangedAt = nowIso();
+            actor.pinUpdatedAt = actor.passwordChangedAt;
+            actor.updatedAt = actor.passwordChangedAt;
             writeDb(currentDb);
-            return sendJson(res, 200, result);
+            return sendJson(res, 200, { ok: true, mustChangePassword: false, mustChangePin: false });
         } catch (error) {
             return sendJson(res, error.statusCode || 400, { error: error.message });
         }

@@ -5,7 +5,7 @@ import styles from "./styles.module.css";
 
 const DEVICE_KEY="scdAttendanceDeviceToken";
 const SESSION_KEY="scdTransportMobileSession";
-type LoginResult={token?:string;user?:{id:string;code?:string;name:string;nickname?:string;role?:string;status?:string;mustChangePin?:boolean};error?:string};
+type LoginResult={token?:string;user?:{id:string;code?:string;name:string;nickname?:string;role?:string;status?:string;mustChangePin?:boolean;mustChangePassword?:boolean};error?:string};
 type ChangeRequest={id:string;userId:string;userName:string;deviceLabel:string;requestedAt:string};
 
 function deviceToken(){
@@ -20,7 +20,7 @@ function deviceLabel(){
 }
 
 export default function AttendanceAuthPage(){
- const [login,setLogin]=useState("");const [pin,setPin]=useState("");const [status,setStatus]=useState("");const [busy,setBusy]=useState(false);const [requests,setRequests]=useState<ChangeRequest[]>([]);const [canApprove,setCanApprove]=useState(false);
+ const [login,setLogin]=useState("");const [pin,setPin]=useState("");const [status,setStatus]=useState("");const [busy,setBusy]=useState(false);const [requests,setRequests]=useState<ChangeRequest[]>([]);const [canApprove,setCanApprove]=useState(false);const [pending,setPending]=useState<LoginResult|null>(null);const [nextPin,setNextPin]=useState("");const [confirmPin,setConfirmPin]=useState("");
  async function loadRequests(){
   const token=localStorage.getItem(SESSION_KEY);if(!token)return;
   const response=await fetch("/api/attendance/device-change/requests",{headers:{Authorization:`Bearer ${token}`}});
@@ -33,10 +33,16 @@ export default function AttendanceAuthPage(){
    if(!/^\d{6}$/.test(pin))throw new Error("PIN ต้องเป็นตัวเลข 6 หลัก");
    const response=await fetch("/api/auth/device/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({login,pin,deviceToken:deviceToken(),deviceLabel:deviceLabel()})});
    const data=await response.json() as LoginResult;if(!response.ok)throw new Error(data.error||"ยืนยันอุปกรณ์ไม่ได้");
-   localStorage.setItem("scdTransportMobileAuth","ok");localStorage.setItem(SESSION_KEY,data.token||"");localStorage.setItem("smartLogisticsMobileUser",data.user?.id||"");
+   localStorage.setItem(SESSION_KEY,data.token||"");
+   if(data.user?.mustChangePin||data.user?.mustChangePassword){setPending(data);setStatus("เข้าใช้ครั้งแรก กรุณาตั้ง PIN ใหม่ก่อนใช้งาน");return;}
+   localStorage.setItem("scdTransportMobileAuth","ok");localStorage.setItem("smartLogisticsMobileUser",data.user?.id||"");
    if(data.user)localStorage.setItem("smartLogisticsMobileUserProfile",JSON.stringify({...data.user,status:data.user.status||"Active"}));
    setStatus("ยืนยันสำเร็จ กำลังเปิดหน้าลงเวลา…");location.replace("/legacy/mobile.html?view=attendance&verified=device");
   }catch(error){setStatus(error instanceof Error?error.message:"ยืนยันไม่ได้");}finally{setBusy(false);}
+ }
+ async function saveCredential(event:React.FormEvent){
+  event.preventDefault();if(!/^\d{6}$/.test(nextPin)){setStatus("PIN ต้องเป็นตัวเลข 6 หลัก");return;}if(nextPin!==confirmPin){setStatus("PIN ทั้งสองช่องไม่ตรงกัน");return;}if(!pending?.token){setStatus("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่");return;}setBusy(true);setStatus("กำลังบันทึกรหัสเดียวสำหรับทุกระบบ…");
+  try{const response=await fetch("/api/auth/change-password",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${pending.token}`},body:JSON.stringify({password:nextPin})});const data=await response.json();if(!response.ok)throw new Error(data.error||"บันทึก PIN ไม่สำเร็จ");localStorage.setItem("scdTransportMobileAuth","ok");localStorage.setItem("smartLogisticsMobileUser",pending.user?.id||"");if(pending.user)localStorage.setItem("smartLogisticsMobileUserProfile",JSON.stringify({...pending.user,mustChangePin:false,mustChangePassword:false,status:pending.user.status||"Active"}));setStatus("ตั้ง PIN สำเร็จ กำลังเปิดหน้าลงเวลา…");location.replace("/legacy/mobile.html?view=attendance&verified=device");}catch(error){setStatus(error instanceof Error?error.message:"บันทึก PIN ไม่สำเร็จ");}finally{setBusy(false);}
  }
  async function decide(requestId:string,decision:"Approved"|"Rejected"){
   const token=localStorage.getItem(SESSION_KEY);if(!token)return;setBusy(true);
@@ -44,7 +50,7 @@ export default function AttendanceAuthPage(){
  }
  return <main className={styles.page}><section className={styles.card}>
   <div className={styles.brand}>SCD</div><h1>ลงเวลาพนักงาน</h1><p>QR นี้ใช้เปิดระบบเท่านั้น กรอกรหัสพนักงานและ PIN เพื่อยืนยันอุปกรณ์ประจำตัว</p>
-  <form onSubmit={begin} className={styles.form}><label>รหัสพนักงาน / Username<input value={login} onChange={e=>setLogin(e.target.value)} autoComplete="username" required placeholder="สแกนบัตรหรือพิมพ์รหัส"/></label><label>PIN ตัวเลข 6 หลัก<input value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" autoComplete="current-password" type="password" pattern="[0-9]{6}" required placeholder="••••••"/></label><button disabled={busy}>{busy?"กำลังตรวจสอบ…":"ยืนยัน PIN และเข้าหน้าลงเวลา"}</button><a href="/legacy/mobile.html">กลับศูนย์รวมพนักงาน</a></form>
+  {!pending?<form onSubmit={begin} className={styles.form}><label>รหัสพนักงาน / Username<input value={login} onChange={e=>setLogin(e.target.value)} autoComplete="username" required placeholder="สแกนบัตรหรือพิมพ์รหัส"/></label><label>PIN ตัวเลข 6 หลัก<input value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" autoComplete="current-password" type="password" pattern="[0-9]{6}" required placeholder="••••••"/></label><button disabled={busy}>{busy?"กำลังตรวจสอบ…":"ยืนยัน PIN และเข้าหน้าลงเวลา"}</button><a href="/legacy/mobile.html">กลับศูนย์รวมพนักงาน</a></form>:<form onSubmit={saveCredential} className={styles.form}><h2>ตั้ง PIN ครั้งแรก</h2><p>PIN ใหม่นี้ใช้ชุดเดียวกันทั้งระบบงาน ทะเบียนบุคลากร และการลงเวลา</p><label>PIN ใหม่ 6 หลัก<input value={nextPin} onChange={e=>setNextPin(e.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" autoComplete="new-password" type="password" pattern="[0-9]{6}" required placeholder="••••••"/></label><label>ยืนยัน PIN ใหม่<input value={confirmPin} onChange={e=>setConfirmPin(e.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" autoComplete="new-password" type="password" pattern="[0-9]{6}" required placeholder="••••••"/></label><button disabled={busy}>{busy?"กำลังบันทึก…":"บันทึก PIN และเข้าใช้งาน"}</button></form>}
   <p className={styles.status} role="status">{status}</p><small>อุปกรณ์แรกจะถูกผูกกับบัญชีนี้อัตโนมัติ หากเปลี่ยนโทรศัพท์ต้องรอหัวหน้าหรือ Admin อนุมัติ</small>
   {canApprove&&<div className={styles.approvals}><h2>คำขอเปลี่ยนอุปกรณ์ ({requests.length})</h2>{requests.length===0?<p>ไม่มีคำขอรออนุมัติ</p>:requests.map(item=><div className={styles.request} key={item.id}><div><b>{item.userName}</b><br/><span>{item.deviceLabel}</span></div><div><button disabled={busy} onClick={()=>decide(item.id,"Approved")}>อนุมัติ</button><button className={styles.reject} disabled={busy} onClick={()=>decide(item.id,"Rejected")}>ปฏิเสธ</button></div></div>)}</div>}
  </section></main>;

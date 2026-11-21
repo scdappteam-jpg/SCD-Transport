@@ -151,6 +151,41 @@ function quickMobileLogin(userId) {
     submitMobileLogin();
 }
 
+let pendingMobileCredential = null;
+
+function requestMobileCredentialChange(data, fallbackUserId) {
+    pendingMobileCredential = { token: data.token, userId: data.user?.id || fallbackUserId };
+    localStorage.setItem(MOBILE_SESSION_TOKEN_KEY, data.token);
+    document.querySelector(".employee-mobile-hub")?.setAttribute("hidden", "");
+    $("#mobileFieldLogin")?.setAttribute("hidden", "");
+    $("#mobileFirstCredential")?.removeAttribute("hidden");
+    $("#mobileNewCredential")?.focus();
+}
+
+async function saveMobileCredential() {
+    const nextCredential = $("#mobileNewCredential")?.value.trim() || "";
+    const confirmation = $("#mobileConfirmCredential")?.value.trim() || "";
+    const status = $("#mobileCredentialStatus");
+    if (!/^\d{6}$/.test(nextCredential)) return status.textContent = "PIN ต้องเป็นตัวเลข 6 หลัก";
+    if (nextCredential !== confirmation) return status.textContent = "PIN ทั้งสองช่องไม่ตรงกัน";
+    if (!pendingMobileCredential?.token) return status.textContent = "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่";
+    status.textContent = "กำลังบันทึกรหัสเดียวสำหรับทุกระบบ...";
+    try {
+        const response = await mobileFetch(apiUrl("/api/auth/change-password"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${pendingMobileCredential.token}` },
+            body: JSON.stringify({ password: nextCredential })
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error || "บันทึก PIN ไม่สำเร็จ");
+        const { userId, token } = pendingMobileCredential;
+        pendingMobileCredential = null;
+        await establishMobileLogin(userId, token);
+    } catch (error) {
+        status.textContent = error.message || "บันทึก PIN ไม่สำเร็จ";
+    }
+}
+
 async function establishMobileLogin(userId, token = "") {
     state.currentUserId = userId;
     localStorage.setItem("smartLogisticsMobileUser", state.currentUserId);
@@ -193,7 +228,11 @@ async function submitMobileLogin() {
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.token) {
-            await establishMobileLogin(userId, data.token);
+            if (data.user?.mustChangePassword || data.user?.mustChangePin) {
+                requestMobileCredentialChange(data, userId);
+                return;
+            }
+            await establishMobileLogin(data.user?.id || userId, data.token);
             return;
         }
         if (data.code === "SERVER_AUTH_NOT_CONFIGURED") {
@@ -1506,6 +1545,7 @@ function bindEvents() {
     $("#mobileLogoutBtn").addEventListener("click", logoutMobile);
     $("#mobileHeaderLogoutBtn")?.addEventListener("click", logoutMobile);
     $("#attendanceLogoutBtn")?.addEventListener("click", logoutMobile);
+    $("#mobileSaveCredentialBtn")?.addEventListener("click", saveMobileCredential);
     $("#mobileLanguageToggle").addEventListener("click", () => {
         state.lang = state.lang === "th" ? "en" : "th";
         localStorage.setItem("smartLogisticsLang", state.lang);

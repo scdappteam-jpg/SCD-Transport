@@ -71,6 +71,17 @@
           <button id="webLoginBtn" type="button" style="margin-top:10px">เข้าสู่ระบบ →</button>
           <div id="webLoginMessage" class="login-message" role="status" aria-live="polite"></div>
           </form>
+          <form id="webFirstCredentialForm" autocomplete="off" hidden onsubmit="return false;">
+            <p>เข้าใช้งานครั้งแรก · First sign-in</p>
+            <h1>ตั้งรหัส PIN ใหม่</h1>
+            <div class="step-note">PIN ตัวเลข 6 หลักนี้ใช้ชุดเดียวกันทั้งระบบงาน ทะเบียนบุคลากร และการลงเวลา</div>
+            <label>PIN ใหม่ 6 หลัก</label>
+            <input id="webNewCredential" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" placeholder="กรอกตัวเลข 6 หลัก">
+            <label>ยืนยัน PIN ใหม่</label>
+            <input id="webConfirmCredential" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" placeholder="กรอก PIN ซ้ำอีกครั้ง">
+            <button id="webSaveCredentialBtn" type="button" style="margin-top:10px">บันทึก PIN และเข้าสู่ระบบ →</button>
+            <div id="webCredentialMessage" class="login-message" role="status" aria-live="polite"></div>
+          </form>
           <div class="quick-start-wrap" id="quickStartWrap" hidden>
             <div class="quick-start-label"><i></i><span>เข้าด่วนสำหรับทดสอบ</span><i></i></div>
             <div class="quick-start-grid">
@@ -2647,6 +2658,6 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="warehouse-reservations-page.js?v=2-wh-planning-get"></script>
     <script src="warehouse-inbound-page.js?v=20261031-sit-reset"></script>
     <script src="meeting-workflows-ui.js?v=20261028-inbound"></script>
-    <script src="app.js?v=20261121-live-person-search"></script>
+    <script src="app.js?v=20261121-unified-credential"></script>
   </body>
 </html>

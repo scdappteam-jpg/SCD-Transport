@@ -34,7 +34,7 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /\$\("employeeCodeDisplay"\)\.value = item\.employeeCode \|\| item\.code \|\| item\.id/);
   assert.match(html, /รหัสพนักงาน<input id="employeeCodeDisplay" readonly/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261121-directory-review-status/);
+  assert.match(html, /people-directory\.js\?v=20261121-unified-credential/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
   assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
@@ -83,7 +83,7 @@ test("people viewers can enter the personnel registry from the main login", () =
   assert.match(app, /selectedUser\?\.role === "People_Viewer"/);
   assert.match(app, /sessionStorage\.setItem\("scdPeopleViewerSession", token\)/);
   assert.match(app, /window\.location\.href = "\/legacy\/people-directory\.html"/);
-  assert.match(index, /app\.js\?v=20261121-live-person-search/);
+  assert.match(index, /app\.js\?v=20261121-unified-credential/);
 });
 
 test("people directory batch export is protected and contains the expected package files", () => {

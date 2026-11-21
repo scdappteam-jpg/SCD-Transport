@@ -400,6 +400,41 @@ async function establishWebLogin(userId, token = "") {
     toast("เข้าสู่ระบบ S.C.D.TRANSPORT แล้ว");
 }
 
+let pendingWebCredential = null;
+
+function requestWebCredentialChange(data, fallbackUserId) {
+    pendingWebCredential = { token: data.token, userId: data.user?.id || fallbackUserId };
+    localStorage.setItem(WEB_SESSION_TOKEN_KEY, data.token);
+    $("#webLoginForm").hidden = true;
+    $("#quickStartWrap")?.setAttribute("hidden", "");
+    $("#webFirstCredentialForm").hidden = false;
+    $("#webNewCredential")?.focus();
+}
+
+async function saveWebCredential() {
+    const nextCredential = $("#webNewCredential")?.value.trim() || "";
+    const confirmation = $("#webConfirmCredential")?.value.trim() || "";
+    const message = $("#webCredentialMessage");
+    if (!/^\d{6}$/.test(nextCredential)) return message.textContent = "PIN ต้องเป็นตัวเลข 6 หลัก";
+    if (nextCredential !== confirmation) return message.textContent = "PIN ทั้งสองช่องไม่ตรงกัน";
+    if (!pendingWebCredential?.token) return message.textContent = "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่";
+    message.textContent = "กำลังบันทึกรหัสเดียวสำหรับทุกระบบ...";
+    try {
+        const response = await fetch(apiUrl("/api/auth/change-password"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${pendingWebCredential.token}` },
+            body: JSON.stringify({ password: nextCredential })
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error || "บันทึก PIN ไม่สำเร็จ");
+        const { userId, token } = pendingWebCredential;
+        pendingWebCredential = null;
+        await establishWebLogin(userId, token);
+    } catch (error) {
+        message.textContent = error.message || "บันทึก PIN ไม่สำเร็จ";
+    }
+}
+
 async function submitWebLogin() {
     const userId = $("#webLoginUser")?.value || "";
     const password = $("#webLoginPassword")?.value.trim();
@@ -423,8 +458,12 @@ async function submitWebLogin() {
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.token) {
+            if (data.user?.mustChangePassword || data.user?.mustChangePin) {
+                requestWebCredentialChange(data, userId);
+                return;
+            }
             if (message) message.textContent = "";
-            await establishWebLogin(userId, data.token);
+            await establishWebLogin(data.user?.id || userId, data.token);
             return;
         }
         // Preserve access only until Render has per-user hashes configured.
@@ -9143,6 +9182,7 @@ function bindEvents() {
     $("#alertBell")?.addEventListener("click", () => setView("alerts"));
     $("#fleetDemoRefresh")?.addEventListener("click", () => renderFleetDemo(true));
     $("#webLoginBtn")?.addEventListener("click", submitWebLogin);
+    $("#webSaveCredentialBtn")?.addEventListener("click", saveWebCredential);
     $("#webLoginPassword")?.addEventListener("keydown", event => {
         if (event.key === "Enter") {
             event.preventDefault();

@@ -147,8 +147,8 @@
 
   async function changePassword() {
     const password = $("newPassword").value;
-    if (password.length < 6) { $("changeMessage").textContent = "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"; return; }
-    if (password !== $("confirmPassword").value) { $("changeMessage").textContent = "รหัสผ่านทั้งสองช่องไม่ตรงกัน"; return; }
+    if (!/^\d{6}$/.test(password)) { $("changeMessage").textContent = "PIN ต้องเป็นตัวเลข 6 หลัก"; return; }
+    if (password !== $("confirmPassword").value) { $("changeMessage").textContent = "PIN ทั้งสองช่องไม่ตรงกัน"; return; }
     const response = await fetch("/api/auth/change-password", { method: "POST", headers: authHeaders(), body: JSON.stringify({ password }) });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) { $("changeMessage").textContent = body.error || "เปลี่ยนรหัสผ่านไม่สำเร็จ"; return; }
