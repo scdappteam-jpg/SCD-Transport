@@ -32,7 +32,7 @@ test("person editor uses controlled dropdowns for position and department", () =
   assert.match(client, /populateEditorSelect\("editDepartment", items\.map\(person => person\.department\)/);
   assert.match(client, /\$\("employeeId"\)\.value = item\.id \|\| item\.employeeId \|\| id/);
   assert.match(html, /ไม่เกิน 8 MB/);
-  assert.match(html, /people-directory\.js\?v=20261121-reliable-photo-export/);
+  assert.match(html, /people-directory\.js\?v=20261121-batch-export/);
   assert.match(client, /MAX_PROFILE_PHOTO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(client, /ไม่เกิน 8 MB/);
   assert.match(html, /id="addPerson"[^>]*>\+ เพิ่มพนักงานใหม่/);
@@ -49,6 +49,7 @@ test("people directory API accepts profile photos up to eight megabytes", () => 
 
 test("people directory stores profile photos durably and falls back cleanly when an old file is unavailable", () => {
   const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
+  const html = readFileSync(new URL("../public/legacy/people-directory.html", import.meta.url), "utf8");
   const client = readFileSync(new URL("../public/legacy/people-directory.js", import.meta.url), "utf8");
   assert.match(api, /people-directory\/profile\/\$\{filename\}/);
   assert.match(api, /streamSupabasePeopleDirectoryPhoto/);
@@ -59,6 +60,28 @@ test("people directory stores profile photos durably and falls back cleanly when
   assert.match(client, /URL\.createObjectURL\(blob\)/);
   assert.match(client, /photoFilename\(item, blob\.type\)/);
   assert.match(client, /data-export-id/);
+  assert.match(html, /id="exportAll"[^>]*>ส่งออกชุดงาน ZIP/);
+  assert.match(client, /"\/api\/people-directory\/export"/);
+  assert.match(client, /response\.headers\.get\("content-disposition"\)/);
+});
+
+test("people viewers can enter the personnel registry from the main login", () => {
+  const app = readFileSync(new URL("../public/legacy/app.js", import.meta.url), "utf8");
+  const index = readFileSync(new URL("../public/legacy/index.html", import.meta.url), "utf8");
+  assert.match(app, /selectedUser\?\.role === "People_Viewer"/);
+  assert.match(app, /sessionStorage\.setItem\("scdPeopleViewerSession", token\)/);
+  assert.match(app, /window\.location\.href = "\/legacy\/people-directory\.html"/);
+  assert.match(index, /app\.js\?v=20261121-people-viewer-main-login/);
+});
+
+test("people directory batch export is protected and contains the expected package files", () => {
+  const api = readFileSync(new URL("../src/server/legacy-api.cjs", import.meta.url), "utf8");
+  assert.match(api, /pathname === "\/api\/people-directory\/export"/);
+  assert.match(api, /actor\.role !== peopleViewer\.VIEWER_ROLE/);
+  assert.match(api, /name: "personnel\.csv"/);
+  assert.match(api, /name: "missing-photos\.csv"/);
+  assert.match(api, /name: "generation-brief\.txt"/);
+  assert.match(api, /archive\.append\(photo\.bytes/);
 });
 
 test("admin provisions one additional directory viewer with organization fields", () => {
@@ -83,7 +106,7 @@ test("directory read and update force a shared-state refresh before resolving em
   assert.match(getRoute, /await refreshDbIfSharedStateChanged\(true\);\s*db = readDb\(\);/);
   assert.match(getRoute, /pathname === "\/api\/people-directory\/create"[\s\S]*await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
   assert.match(updateRoute, /await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
-  assert.match(api, /peopleViewerPaths = new Set\(\["\/api\/people-directory", "\/api\/people-directory\/create", "\/api\/people-directory\/update"/);
+  assert.match(api, /peopleViewerPaths = new Set\(\["\/api\/people-directory", "\/api\/people-directory\/export", "\/api\/people-directory\/create", "\/api\/people-directory\/update"/);
 });
 
 test("viewer creates a directory-only employee with an automatic code and no login credential", () => {

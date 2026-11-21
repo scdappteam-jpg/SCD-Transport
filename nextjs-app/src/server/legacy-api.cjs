@@ -9,6 +9,7 @@ const hrBulkImport = require('./hr-bulk-import.cjs');
 const contactDirectory = require('./contact-directory.cjs');
 const fleetDriverImport = require('./fleet-driver-import.cjs');
 const peopleViewer = require('./people-viewer.cjs');
+const archiver = require('archiver');
 const http = require("http");
 
 const https = require("https");
@@ -1160,6 +1161,111 @@ function nowIso() {
 
 function peopleDirectoryPhotoObjectPath(filename) {
     return `people-directory/profile/${filename}`;
+}
+
+function peopleDirectoryCsvCell(value) {
+    let text = String(value ?? "").replace(/\r?\n/g, " ").trim();
+    if (/^[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+}
+
+function peopleDirectoryExportName(value, fallback = "employee") {
+    const cleaned = String(value || "").replace(/[<>:"/\\|?*\x00-\x1f]/g, "-").replace(/\s+/g, " ").trim();
+    return (cleaned || fallback).slice(0, 120);
+}
+
+function peopleDirectoryPhotoExtension(photoUrl, contentType = "") {
+    const type = String(contentType || "").toLowerCase();
+    if (type.includes("png")) return "png";
+    if (type.includes("webp")) return "webp";
+    if (type.includes("jpeg") || type.includes("jpg")) return "jpg";
+    const match = String(photoUrl || "").match(/\.(jpe?g|png|webp)(?:[?#]|$)/i);
+    return match ? (match[1].toLowerCase() === "jpeg" ? "jpg" : match[1].toLowerCase()) : "jpg";
+}
+
+async function readPeopleDirectoryPhoto(photoUrl) {
+    let pathname;
+    try { pathname = new URL(String(photoUrl || ""), "https://scd.local").pathname; }
+    catch { return null; }
+    if (!pathname.startsWith("/storage/profile/")) return null;
+    const filename = path.basename(decodeURIComponent(pathname));
+    if (!filename || filename !== decodeURIComponent(pathname).slice("/storage/profile/".length)) return null;
+    const localPath = path.join(STORAGE_DIR, "profile", filename);
+    if (fs.existsSync(localPath)) return { bytes: fs.readFileSync(localPath), contentType: "" };
+    if (!supabaseEnabled()) return null;
+    const objectPath = peopleDirectoryPhotoObjectPath(filename).split("/").map(encodeURIComponent).join("/");
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/scd-documents/${objectPath}`, {
+        headers: supabaseServiceAuth.serviceHeaders(SUPABASE_KEY),
+        signal: AbortSignal.timeout(30000)
+    });
+    if (!response.ok) return null;
+    return { bytes: Buffer.from(await response.arrayBuffer()), contentType: response.headers.get("content-type") || "" };
+}
+
+async function exportPeopleDirectoryZip(res, items, now = new Date()) {
+    const stamp = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(now).replace(/-/g, "");
+    const filename = `SCD-People-Generation-Package-${stamp}.zip`;
+    res.writeHead(200, {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "private, no-store"
+    });
+    const archive = archiver("zip", { zlib: { level: 6 } });
+    archive.on("warning", error => console.warn("People directory ZIP warning:", error.message));
+    archive.on("error", error => res.destroy(error));
+    archive.pipe(res);
+
+    const exportedRows = [];
+    const missingRows = [];
+    const failedRows = [];
+    for (const item of items) {
+        let photoFile = "";
+        let photoStatus = item.photoUrl ? "พบ URL แต่โหลดรูปไม่สำเร็จ" : "ยังไม่มีรูป";
+        if (item.photoUrl) {
+            try {
+                const photo = await readPeopleDirectoryPhoto(item.photoUrl);
+                if (photo?.bytes?.length) {
+                    const extension = peopleDirectoryPhotoExtension(item.photoUrl, photo.contentType);
+                    const stem = [item.id, item.firstName, item.lastName].filter(Boolean).map(value => peopleDirectoryExportName(value)).join("_");
+                    photoFile = `photos/${stem}.${extension}`;
+                    archive.append(photo.bytes, { name: photoFile });
+                    photoStatus = "พร้อมส่งเจน";
+                } else failedRows.push(item);
+            } catch { failedRows.push(item); }
+        } else missingRows.push(item);
+        exportedRows.push({ ...item, photoFile, photoStatus });
+    }
+
+    const headers = ["รหัสพนักงาน", "ชื่อ", "นามสกุล", "ชื่อเล่น", "เบอร์โทร", "ตำแหน่ง", "แผนก", "ชื่อไฟล์รูป", "สถานะรูป"];
+    const rows = exportedRows.map(item => [item.id, item.firstName, item.lastName, item.nickname, item.phone, item.position, item.department, item.photoFile, item.photoStatus]);
+    const csv = "\uFEFF" + [headers, ...rows].map(row => row.map(peopleDirectoryCsvCell).join(",")).join("\r\n");
+    archive.append(Buffer.from(csv, "utf8"), { name: "personnel.csv" });
+
+    const missingHeaders = ["รหัสพนักงาน", "ชื่อ", "นามสกุล", "เหตุผล"];
+    const missingCsvRows = [
+        ...missingRows.map(item => [item.id, item.firstName, item.lastName, "ยังไม่มีรูปในระบบ"]),
+        ...failedRows.map(item => [item.id, item.firstName, item.lastName, "มีรายการรูป แต่ไม่สามารถอ่านไฟล์ต้นฉบับได้"])
+    ];
+    const missingCsv = "\uFEFF" + [missingHeaders, ...missingCsvRows].map(row => row.map(peopleDirectoryCsvCell).join(",")).join("\r\n");
+    archive.append(Buffer.from(missingCsv, "utf8"), { name: "missing-photos.csv" });
+
+    const brief = [
+        "SCD Personnel Photo Generation Brief",
+        "",
+        "1. ใช้รูปในโฟลเดอร์ photos เป็นรูปต้นฉบับเท่านั้น",
+        "2. รักษาใบหน้าและเอกลักษณ์ของบุคคล ห้ามเปลี่ยนโครงหน้า สีผิว หรืออายุ",
+        "3. เปลี่ยนพื้นหลังเป็นสีขาวสะอาด และจัดใบหน้าให้อยู่กึ่งกลาง",
+        "4. หากเปลี่ยนเสื้อ ให้ใช้แบบเสื้อมาตรฐานเดียวกันทุกคน",
+        "5. ส่งคืนเป็น JPG หรือ PNG โดยคงรหัสพนักงานไว้ต้นชื่อไฟล์",
+        "6. ห้ามใช้ข้อมูลหรือรูปในชุดนี้นอกขอบเขตงานที่ได้รับมอบหมาย",
+        "",
+        `จำนวนรายชื่อทั้งหมด: ${items.length}`,
+        `จำนวนรูปที่ส่งออกได้: ${exportedRows.filter(item => item.photoFile).length}`,
+        `จำนวนที่ยังไม่มีรูป: ${missingRows.length}`,
+        `จำนวนไฟล์ที่อ่านไม่สำเร็จ: ${failedRows.length}`
+    ].join("\r\n");
+    archive.append(Buffer.from(brief, "utf8"), { name: "generation-brief.txt" });
+    await archive.finalize();
 }
 
 async function savePeopleDirectoryPhoto(photoBase64, identity) {
@@ -3522,7 +3628,7 @@ async function handleApi(req, res, pathname) {
         catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
     }
     const restrictedViewer = sessionUser(db, req);
-    const peopleViewerPaths = new Set(["/api/people-directory", "/api/people-directory/create", "/api/people-directory/update", "/api/auth/change-password"]);
+    const peopleViewerPaths = new Set(["/api/people-directory", "/api/people-directory/export", "/api/people-directory/create", "/api/people-directory/update", "/api/auth/change-password"]);
     if (restrictedViewer?.role === peopleViewer.VIEWER_ROLE && !peopleViewerPaths.has(pathname)) {
         return sendJson(res, 403, { error: "บัญชีนี้ใช้ได้เฉพาะทะเบียนบุคลากร" });
     }
@@ -3548,6 +3654,14 @@ async function handleApi(req, res, pathname) {
         if (!actor || ![peopleViewer.VIEWER_ROLE, "Admin"].includes(actor.role)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดูทะเบียนบุคลากร" });
         const items = peopleViewer.directory(db);
         return sendJson(res, 200, { items, count: items.length });
+    }
+    if (req.method === "GET" && pathname === "/api/people-directory/export") {
+        await refreshDbIfSharedStateChanged(true);
+        db = readDb();
+        const actor = sessionUser(db, req);
+        if (!actor || actor.role !== peopleViewer.VIEWER_ROLE) return sendJson(res, 403, { error: "เฉพาะผู้ดูแลทะเบียนบุคลากรเท่านั้นที่ส่งออกชุดข้อมูลได้" });
+        await exportPeopleDirectoryZip(res, peopleViewer.directory(db));
+        return;
     }
     if (req.method === "POST" && pathname === "/api/people-directory/create") {
         const payload = await parseBody(req);

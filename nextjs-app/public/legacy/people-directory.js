@@ -34,6 +34,39 @@
     if (messageElement) messageElement.textContent = `ส่งออกรูป ${item.firstName || ""} ${item.lastName || ""} แล้ว`;
   }
 
+  async function exportAllPeople() {
+    const button = $("exportAll");
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "กำลังรวมข้อมูลและรูป…";
+    $("directoryMessage").textContent = "กำลังสร้าง ZIP อาจใช้เวลาสักครู่ตามจำนวนรูป";
+    try {
+      const response = await fetch("/api/people-directory/export", { headers: { Authorization: `Bearer ${sessionStorage.getItem(TOKEN_KEY) || ""}` }, cache: "no-store" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "สร้างชุดส่งออกไม่สำเร็จ");
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") || "";
+      const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || "SCD-People-Generation-Package.zip";
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+      $("directoryMessage").textContent = `ส่งออกชุดงาน ${items.length.toLocaleString("th-TH")} รายชื่อแล้ว`;
+    } catch (error) {
+      $("directoryMessage").textContent = error?.message || "ส่งออกชุดงานไม่สำเร็จ กรุณาลองใหม่";
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+
   const authHeaders = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${sessionStorage.getItem(TOKEN_KEY) || ""}` });
   const initials = item => `${item.firstName || ""} ${item.lastName || ""}`.trim().split(/\s+/).map(part => part[0]).join("").slice(-2).toUpperCase() || "SCD";
 
@@ -168,7 +201,7 @@
     const reader = new FileReader(); reader.onload = () => { photoBase64 = String(reader.result); $("photoPreview").src = photoBase64; $("photoPreviewBlock").classList.remove("hidden"); $("downloadPhoto").href = photoBase64; $("downloadPhoto").download = `SCD-${$("employeeId").value || "employee"}-preview.${file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg"}`; $("downloadPhoto").dataset.itemId = ""; $("editorMessage").textContent = "ตรวจรูปในพรีวิวก่อนกดบันทึกข้อมูล"; }; reader.readAsDataURL(file);
   });
   $("loginButton").addEventListener("click", signIn); $("password").addEventListener("keydown", event => { if (event.key === "Enter") signIn(); });
-  $("changePasswordButton").addEventListener("click", changePassword); $("search").addEventListener("input", render); $("department").addEventListener("change", render); $("addPerson").addEventListener("click", openCreate);
+  $("changePasswordButton").addEventListener("click", changePassword); $("search").addEventListener("input", render); $("department").addEventListener("change", render); $("exportAll").addEventListener("click", exportAllPeople); $("addPerson").addEventListener("click", openCreate);
   $("grid").addEventListener("click", async event => {
     const editButton = event.target.closest("button[data-id]");
     if (editButton) return openEditor(editButton.dataset.id);

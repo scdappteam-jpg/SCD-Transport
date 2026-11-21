@@ -381,6 +381,12 @@ async function establishWebLogin(userId, token = "") {
     localStorage.setItem(WEB_AUTH_USER_KEY, userId);
     if (token) localStorage.setItem(WEB_SESSION_TOKEN_KEY, token);
     else localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
+    const selectedUser = (state.users || []).find(user => user.id === userId || user.code === userId);
+    if (selectedUser?.role === "People_Viewer" && token) {
+        sessionStorage.setItem("scdPeopleViewerSession", token);
+        window.location.href = "/legacy/people-directory.html";
+        return;
+    }
     await refresh();
     renderWebLogin();
     renderAll();

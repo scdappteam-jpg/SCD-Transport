@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "5.101.4",
+    "archiver": "^8.0.0",
     "axios": "^1.11.0",
     "cross-env": "^10.0.0",
     "lucide-react": "^0.539.0",
