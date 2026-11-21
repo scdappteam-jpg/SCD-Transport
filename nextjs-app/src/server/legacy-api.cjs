@@ -9,7 +9,7 @@ const hrBulkImport = require('./hr-bulk-import.cjs');
 const contactDirectory = require('./contact-directory.cjs');
 const fleetDriverImport = require('./fleet-driver-import.cjs');
 const peopleViewer = require('./people-viewer.cjs');
-const archiver = require('archiver');
+const { ZipArchive } = require('archiver');
 const http = require("http");
 
 const https = require("https");
@@ -1210,7 +1210,7 @@ async function exportPeopleDirectoryZip(res, items, now = new Date()) {
         "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "private, no-store"
     });
-    const archive = archiver("zip", { zlib: { level: 6 } });
+    const archive = new ZipArchive({ zlib: { level: 6 } });
     archive.on("warning", error => console.warn("People directory ZIP warning:", error.message));
     archive.on("error", error => res.destroy(error));
     archive.pipe(res);

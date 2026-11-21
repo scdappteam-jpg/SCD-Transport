@@ -82,6 +82,7 @@ test("people directory batch export is protected and contains the expected packa
   assert.match(api, /name: "missing-photos\.csv"/);
   assert.match(api, /name: "generation-brief\.txt"/);
   assert.match(api, /archive\.append\(photo\.bytes/);
+  assert.match(api, /new ZipArchive\(\{ zlib: \{ level: 6 \} \}\)/);
 });
 
 test("admin provisions one additional directory viewer with organization fields", () => {
