@@ -18,8 +18,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="mobile.css?v=20261121-live-location">
-    <style>.face-login-link{display:grid;min-height:48px;place-items:center;border:1px solid #bfdbfe;border-radius:12px;color:#0b4ea2;background:#eff6ff;font-weight:700;text-decoration:none}#foPinForm{display:grid;gap:8px}#foPinForm .fo-primary-btn{margin-top:8px}</style>
+    <link rel="stylesheet" href="mobile.css?v=20261121-employee-hub">
+    <style>#foPinForm{display:grid;gap:8px}#foPinForm .fo-primary-btn{margin-top:8px}</style>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
   </head>
   <body class="mobile-locked">
@@ -48,6 +48,23 @@
             </div>
           </div>
           <div class="login-panel">
+            <div class="employee-mobile-hub" aria-labelledby="employeeMobileHubTitle">
+              <p>ศูนย์รวมพนักงาน / Employee Portal</p>
+              <h1 id="employeeMobileHubTitle">เลือกเมนูที่ต้องการใช้งาน</h1>
+              <div class="employee-mobile-hub-grid">
+                <a href="/attendance-auth" class="employee-hub-card attendance">
+                  <span class="employee-hub-icon" aria-hidden="true">✓</span>
+                  <b>ลงเวลาและเปิด GPS</b>
+                  <small>ใช้รหัสพนักงานและ PIN 6 หลัก</small>
+                </a>
+                <a href="#mobileFieldLogin" class="employee-hub-card operations">
+                  <span class="employee-hub-icon" aria-hidden="true">→</span>
+                  <b>งานภาคสนาม</b>
+                  <small>Pickup · WH3 · Terminal · Billing</small>
+                </a>
+              </div>
+            </div>
+            <div id="mobileFieldLogin" class="mobile-field-login">
             <p>เข้าสู่ระบบ / Sign In</p>
             <h1>ระบบติดตามงานขนส่ง / Logistics System</h1>
             <label>ผู้ใช้งาน / User</label>
@@ -55,7 +72,6 @@
             <label>รหัสผ่าน / Password</label>
             <input id="mobileLoginPassword" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอกรหัสผ่าน / Enter password">
             <button id="mobileLoginBtn" type="button">เข้าสู่ระบบ / Sign In</button>
-            <a href="/attendance-auth" class="face-login-link">เข้าลงเวลาด้วย PIN + อุปกรณ์ประจำตัว</a>
             <button id="mobileLogoutBtn" type="button" class="logout-inline" hidden>ออกจากระบบ / Logout</button>
             <div id="mobileLoginStatus" class="login-status" role="status"></div>
             <div class="quick-start-wrap" id="quickStartWrap" hidden>
@@ -69,6 +85,7 @@
                 <button class="qs-btn qs-exec" type="button" onclick="quickMobileLogin('u_admin_01')">Admin</button>
                 <button class="qs-btn qs-cs" type="button" onclick="quickMobileLogin('u_cs_01')">CS</button>
               </div>
+            </div>
             </div>
           </div>
         </div>
