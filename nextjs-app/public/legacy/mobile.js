@@ -119,7 +119,8 @@ function renderMobileAuthState() {
 function quickMobileLogin(userId) {
     const sel = document.getElementById("mobileUserSelect");
     const pw = document.getElementById("mobileLoginPassword");
-    if (sel) sel.value = userId;
+    const user = mobileUsers().find(item => item.id === userId);
+    if (sel) sel.value = user?.code || userId;
     if (pw) pw.value = "1234";
     submitMobileLogin();
 }
@@ -141,18 +142,22 @@ async function establishMobileLogin(userId, token = "") {
 }
 
 async function submitMobileLogin() {
-    const userId = $("#mobileUserSelect")?.value || "";
+    const login = $("#mobileUserSelect")?.value.trim() || "";
     const password = $("#mobileLoginPassword")?.value.trim();
-    if (!userId) {
-        $("#mobileLoginStatus").textContent = "กรุณาเลือกผู้ใช้งาน";
+    if (!login) {
+        $("#mobileLoginStatus").textContent = "กรุณากรอกรหัสพนักงาน";
         $("#mobileUserSelect")?.focus();
         return;
     }
+    const loginKey = login.toUpperCase();
+    const matchedUser = mobileUsers().find(user => user.id === login || String(user.code || "").toUpperCase() === loginKey || (user.loginAliases || []).some(alias => String(alias || "").toUpperCase() === loginKey));
+    const userId = matchedUser?.id || login;
     $("#mobileLoginStatus").textContent = "กำลังตรวจสอบรหัสผ่าน...";
     try {
         if (window.SCDTestUserMode?.available()) {
+            if (!matchedUser) throw new Error("ไม่พบรหัสพนักงานนี้");
             const data = await window.SCDTestUserMode.switchUser(userId);
-            await establishMobileLogin(userId, data.token);
+            await establishMobileLogin(data.user?.id || matchedUser?.id || userId, data.token);
             return;
         }
         const res = await mobileFetch(apiUrl("/api/auth/login"), {
@@ -434,17 +439,10 @@ function visibleDriverJobs() {
 }
 
 function renderMobileLogin() {
-    const select = $("#mobileUserSelect");
-    if (!select) return;
-    const users = mobileUsers();
-    select.innerHTML = users.map(user => `<option value="${user.id}">${user.name}${user.vehiclePlate ? ` / ${user.vehiclePlate}` : ""} · ${user.role}</option>`).join("");
-    if (!users.some(user => user.id === state.currentUserId)) {
-        state.currentUserId = users[0]?.id || "";
-    }
-    select.value = state.currentUserId;
-    const user = currentUser();
-    const authText = isMobileAuthenticated() ? "เข้าสู่ระบบแล้ว" : window.SCDTestUserMode?.available() ? "โหมดทดสอบ กดเลือกยูสได้โดยไม่ใส่รหัส" : "กรอกรหัสผ่านที่ตั้งไว้เพื่อเข้าใช้งาน";
-    $("#mobileLoginStatus").textContent = user ? `${authText}: ${user.name}${user.vehiclePlate ? ` / ${user.vehiclePlate}` : ""} · ${user.role}` : "ยังไม่มีผู้ใช้";
+    const input = $("#mobileUserSelect");
+    if (!input) return;
+    if (!isMobileAuthenticated() && !input.value) input.value = "";
+    $("#mobileLoginStatus").textContent = isMobileAuthenticated() ? "เข้าสู่ระบบแล้ว" : "กรอกรหัสพนักงานและรหัสผ่านเพื่อเข้าใช้งาน";
     renderMobileAuthState();
     applyRoleVisibility();
 }
@@ -3725,9 +3723,8 @@ function initQuickStartVisibilityMobile() {
     var wrap = document.getElementById("quickStartWrap");
     if (!wrap) return;
     var params = new URLSearchParams(location.search);
-    var demo = params.get("demo") === "1" || localStorage.getItem("scdDemoLogin") === "1";
-    if (params.get("demo") === "1") localStorage.setItem("scdDemoLogin", "1");
-    if (params.get("demo") === "0") { localStorage.removeItem("scdDemoLogin"); demo = false; }
+    var demo = params.get("demo") === "1";
+    localStorage.removeItem("scdDemoLogin");
     wrap.hidden = !demo;
 }
 document.addEventListener("DOMContentLoaded", initQuickStartVisibilityMobile);

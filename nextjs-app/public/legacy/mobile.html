@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="mobile.css?v=20261121-employee-hub">
+    <link rel="stylesheet" href="mobile.css?v=20261121-login-input-safe-area">
     <style>#foPinForm{display:grid;gap:8px}#foPinForm .fo-primary-btn{margin-top:8px}</style>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
   </head>
@@ -67,8 +67,8 @@
             <div id="mobileFieldLogin" class="mobile-field-login">
             <p>เข้าสู่ระบบ / Sign In</p>
             <h1>ระบบติดตามงานขนส่ง / Logistics System</h1>
-            <label>ผู้ใช้งาน / User</label>
-            <select id="mobileUserSelect"></select>
+            <label for="mobileUserSelect">รหัสพนักงาน / Employee ID</label>
+            <input id="mobileUserSelect" type="text" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="กรอกรหัสพนักงาน เช่น SCD001">
             <label>รหัสผ่าน / Password</label>
             <input id="mobileLoginPassword" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอกรหัสผ่าน / Enter password">
             <button id="mobileLoginBtn" type="button">เข้าสู่ระบบ / Sign In</button>
@@ -868,7 +868,7 @@
     <script src="inbound-receipt-ui.js?v=3-preview-labels"></script>
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
   <script src="driver-dock-core.js?v=20261031-one-vehicle-one-dock-confirmed-reconcile"></script>
-  <script src="mobile.js?v=20261121-live-location"></script>
+  <script src="mobile.js?v=20261121-login-input-safe-area"></script>
   </body>
 </html>
 
