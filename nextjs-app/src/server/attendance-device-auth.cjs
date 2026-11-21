@@ -42,8 +42,8 @@ function setPin(db, user, pin, at) {
 
 function provisionInitialPin(db, user, pin, version, at) {
     const allowedCodes = new Set(['VIEW001', 'VIEW002', 'VIEW003']);
-    const code = String(user?.code || '').toUpperCase();
-    if (user?.role !== 'People_Viewer' || !allowedCodes.has(code)) fail('บัญชีนี้ไม่อยู่ในชุดเปิดใช้งาน PIN เริ่มต้น', 403, 'PIN_ONBOARDING_NOT_ALLOWED');
+    const identifiers = [user?.code, ...(user?.loginAliases || [])].map(value => String(value || '').toUpperCase());
+    if (user?.role !== 'People_Viewer' || !identifiers.some(value => allowedCodes.has(value))) fail('บัญชีนี้ไม่อยู่ในชุดเปิดใช้งาน PIN เริ่มต้น', 403, 'PIN_ONBOARDING_NOT_ALLOWED');
     const value = String(pin || '');
     if (!/^\d{6}$/.test(value)) fail('PIN ต้องเป็นตัวเลข 6 หลัก', 422, 'PIN_FORMAT');
     const marker = clean(version, 80);
@@ -104,7 +104,7 @@ function recordAttempt(db, userId, result, reason, at) {
 
 function findUser(db, login) {
     const key = clean(login, 120).toUpperCase();
-    return (db.users || []).find(user => user.status !== 'Inactive' && (String(user.id).toUpperCase() === key || String(user.code || '').toUpperCase() === key));
+    return (db.users || []).find(user => user.status !== 'Inactive' && (String(user.id).toUpperCase() === key || String(user.code || '').toUpperCase() === key || (user.loginAliases || []).some(alias => String(alias || '').toUpperCase() === key)));
 }
 
 function deviceHash(token) {

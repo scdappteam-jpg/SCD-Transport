@@ -30,6 +30,12 @@ test('VIEW001 to VIEW003 receive one initial PIN and must replace it themselves'
  assert.throws(()=>auth.provisionInitialPin(db,{id:'X',code:'VIEW004',role:'People_Viewer'},'123456','v1',at),(error:any)=>error.code==='PIN_ONBOARDING_NOT_ALLOWED');
 });
 
+test('standardized SCD accounts retain VIEW aliases for PIN login and onboarding',()=>{
+ const user:any={id:'U1',code:'SCD001',loginAliases:['VIEW001'],role:'People_Viewer',status:'Active'},db:any={users:[user],hr:{auditLogs:[]}};
+ auth.provisionInitialPin(db,user,'123456','v1',at);
+ assert.equal(auth.findUser(db,'view001'),user);assert.equal(auth.findUser(db,'SCD001'),user);assert.equal(auth.pinMatches('123456',user.pinHash),true);
+});
+
 test('first valid PIN login binds one employee to one device without storing the raw token',()=>{
  const db=fixture(),result=auth.authenticate(db,{login:'EMP001',pin:'482905',deviceToken:tokenA,deviceLabel:'Phone A',at});
  assert.equal(result.user.id,'EMP-1');assert.equal(db.attendanceDeviceBindings.length,1);assert.equal(db.attendanceDeviceBindings[0].deviceHash,auth.deviceHash(tokenA));assert.equal(JSON.stringify(db).includes(tokenA),false);

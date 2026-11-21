@@ -12,7 +12,7 @@ test("mobile entry page is a single employee portal for attendance and field ope
   assert.match(html, /Pickup · WH3 · Terminal · Billing/);
   assert.match(html, /<input id="mobileUserSelect" type="text"/);
   assert.doesNotMatch(html, /<select id="mobileUserSelect"/);
-  assert.match(html, /mobile\.js\?v=20261121-login-input-safe-area/);
+  assert.match(html, /mobile\.js\?v=20261121-people-attendance-pin/);
   assert.match(html, /\[hidden\]\{display:none!important\}/);
   assert.match(html, /mobile-auth-pending/);
   assert.match(auth, /กลับศูนย์รวมพนักงาน/);

@@ -1034,7 +1034,7 @@ function ensureCoreUsers(db) {
     const testViewer = db.users.find(user => String(user.code || '').toUpperCase() === peopleViewer.TEST_VIEWER_CODE && user.isTestAccount === true);
     if (testViewer) attendanceDeviceAuth.provisionTestPin(db, testViewer, '123456', 'view999-pin-123456-v1', nowIso());
     for (const code of [ 'VIEW001', 'VIEW002', 'VIEW003' ]) {
-        const viewer = db.users.find(user => String(user.code || '').toUpperCase() === code);
+        const viewer = db.users.find(user => String(user.code || '').toUpperCase() === code || (user.loginAliases || []).some(alias => String(alias || '').toUpperCase() === code));
         if (viewer?.role === peopleViewer.VIEWER_ROLE) attendanceDeviceAuth.provisionInitialPin(db, viewer, '123456', 'people-viewers-pin-123456-v1', nowIso());
     }
 }
