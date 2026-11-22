@@ -18,6 +18,12 @@ test('Consol quantity precedes its unit: 6 PLT and 53 CTN never become 53 PLT', 
         packageType: 'PLT', pieces: '6', packageCounts: { PLT: 6, CTN: 53 }
     });
     assert.equal(consolPacking([53, 'CTN', 393.1], { etd: 0, grs: 2 }).pieces, '53');
+    assert.deepEqual(consolPacking([26, '', 'PLT ', 32, '', 'CTN ', 451], { etd: 0, grs: 6 }), {
+        packageType: 'PLT', pieces: '26', packageCounts: { PLT: 26, CTN: 32 }
+    });
+    assert.deepEqual(consolPacking([12, '', 'CTN ', 0, '', '    ', 74], { etd: 0, grs: 6 }), {
+        packageType: 'CTN', pieces: '12', packageCounts: { CTN: 12 }
+    });
 });
 
 test('reviewed merge preserves canonical workflow, both quantities, aliases and reversible archive', () => {
