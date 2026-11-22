@@ -106,12 +106,13 @@ function attendanceEntryRequested() {
 function openRequestedMobileView() {
     if (!isMobileAuthenticated()) return false;
     const tabs = allowedMobileTabs(currentUser()?.role);
-    if (!attendanceEntryRequested() && !(tabs.length === 1 && tabs[0] === "attendance")) return false;
-    document.body.classList.add("attendance-entry");
+    const attendance = attendanceEntryRequested() || (tabs.length === 1 && tabs[0] === "attendance");
+    document.body.classList.toggle("attendance-entry", attendance);
     const brandTitle = document.querySelector(".mh-name strong");
     const brandSubtitle = document.querySelector(".mh-name span");
     if (brandTitle) brandTitle.textContent = "S.C.D.TRANSPORT";
-    if (brandSubtitle) brandSubtitle.textContent = "ลงเวลาพนักงาน · Attendance";
+    if (brandSubtitle) brandSubtitle.textContent = attendance ? "ลงเวลาพนักงาน · Attendance" : "Field Operation · งานภาคสนาม";
+    if (!attendance) return false;
     if (typeof showMnav === "function") showMnav("work");
     if (typeof showTab === "function") showTab("attendance");
     return true;
@@ -123,6 +124,10 @@ function passwordForUser(userId) {
 
 function renderMobileAuthState() {
     const auth = isMobileAuthenticated();
+    if (!auth) {
+        document.body.classList.remove("attendance-entry");
+        delete document.body.dataset.mnav;
+    }
     document.documentElement.classList.remove("mobile-auth-pending");
     window.SCDTestUserMode?.render({users:state.users,userId:state.currentUserId,authenticated:auth,
         isAdmin:auth&&currentUser()?.role==='Admin',adminToken:localStorage.getItem(MOBILE_SESSION_TOKEN_KEY),onSwitch:establishMobileLogin});

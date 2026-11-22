@@ -42,3 +42,23 @@ test('employee and directory bootstrap never disclose cargo or evidence data', (
     assert.equal(dashboard.billing.length, 0);
   }
 });
+
+test('switching from attendance-only employee to EI restores the operation shell', () => {
+  let role = 'Employee';
+  let attendance = false;
+  const subtitle = {textContent: ''};
+  const ctx = vm.createContext({
+    isMobileAuthenticated: () => true,
+    currentUser: () => ({role}),
+    attendanceEntryRequested: () => false,
+    document: { body: {classList: {toggle: (_name: string, value: boolean) => attendance = value}}, querySelector: () => subtitle },
+    showMnav: () => {}, showTab: () => {},
+  });
+  vm.runInContext(fn(mobile, 'allowedMobileTabs') + '\n' + fn(mobile, 'openRequestedMobileView'), ctx);
+  assert.equal(vm.runInContext('openRequestedMobileView()', ctx), true);
+  assert.equal(attendance, true);
+  role = 'EI_Customer';
+  assert.equal(vm.runInContext('openRequestedMobileView()', ctx), false);
+  assert.equal(attendance, false);
+  assert.match(subtitle.textContent, /Field Operation/);
+});
