@@ -3695,6 +3695,11 @@ async function handleApi(req, res, pathname) {
         try{const result=attendanceDeviceAuth.setPin(db,actor,payload.newPin,nowIso());writeDb(db);return sendJson(res,200,result);}
         catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
     }
+    if (req.method === "GET" && pathname === "/api/auth/me") {
+        const actor=sessionUser(db,req);
+        if(!actor)return sendJson(res,401,{error:"กรุณาเข้าสู่ระบบใหม่"});
+        return sendJson(res,200,{user:{id:actor.id,code:actor.code,name:actor.name,role:actor.role,mustChangePassword:actor.mustChangePassword===true,mustChangePin:actor.mustChangePin===true}});
+    }
     if (req.method === "GET" && pathname === "/api/attendance/device-change/requests") {
         try { return sendJson(res,200,{requests:attendanceDeviceAuth.listRequests(db,sessionUser(db,req))}); }
         catch(error){return sendJson(res,Number(error.statusCode)||403,{error:error.message,code:error.code});}

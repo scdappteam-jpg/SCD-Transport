@@ -261,5 +261,22 @@
   });
   $("editor").addEventListener("submit", saveEditor); $("closeEditor").addEventListener("click", closeEditor); $("cancelEditor").addEventListener("click", closeEditor);
   $("logout").addEventListener("click", () => { sessionStorage.removeItem(TOKEN_KEY); location.reload(); });
+  const mainSystemButton=document.createElement("button");
+  mainSystemButton.type="button";mainSystemButton.className="secondary";mainSystemButton.textContent="เปิดระบบหลักด้วยบัญชีนี้";
+  $("logout").before(mainSystemButton);
+  mainSystemButton.addEventListener("click",async()=>{
+    mainSystemButton.disabled=true;
+    try {
+      const response=await fetch("/api/auth/me",{headers:authHeaders(),cache:"no-store"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"ตรวจเซสชันไม่สำเร็จ");
+      if(data.user.role!=="Admin")throw new Error(`บัญชีที่เข้าอยู่คือ ${data.user.name} (${data.user.role}) — ต้องเข้าสู่ระบบ Admin เพื่อสร้างบัญชีทดสอบ`);
+      if(data.user.mustChangePassword||data.user.mustChangePin)throw new Error("กรุณาตั้ง PIN ใหม่ให้เรียบร้อยก่อนเปิดระบบหลัก");
+      localStorage.setItem("scdTransportWebSession",sessionStorage.getItem(TOKEN_KEY)||"");
+      localStorage.setItem("scdTransportWebUser",data.user.id);
+      localStorage.setItem("scdTransportWebAuth","ok");
+      location.href="/legacy/index.html?view=staff";
+    } catch(error){$("directoryMessage").textContent=error.message||"เปิดระบบหลักไม่สำเร็จ";mainSystemButton.disabled=false;}
+  });
   loadDirectory();
 })();
