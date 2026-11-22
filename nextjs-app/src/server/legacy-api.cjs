@@ -9,6 +9,7 @@ const hrBulkImport = require('./hr-bulk-import.cjs');
 const contactDirectory = require('./contact-directory.cjs');
 const fleetDriverImport = require('./fleet-driver-import.cjs');
 const peopleViewer = require('./people-viewer.cjs');
+const userProvisioning = require('./user-provisioning.cjs');
 const { ZipArchive } = require('archiver');
 const http = require("http");
 
@@ -3709,6 +3710,9 @@ async function handleApi(req, res, pathname) {
         catch(error){return sendJson(res,Number(error.statusCode)||422,{error:error.message,code:error.code});}
     }
     const restrictedViewer = sessionUser(db, req);
+    if (restrictedViewer?.initialCredentialRequired === true && pathname !== "/api/auth/change-password") {
+        return sendJson(res,428,{error:"กรุณาตั้ง PIN ใหม่ก่อนใช้งาน",code:"PASSWORD_CHANGE_REQUIRED"});
+    }
     const peopleViewerPaths = new Set([
         "/api/people-directory", "/api/people-directory/export", "/api/people-directory/create", "/api/people-directory/update", "/api/people-directory/review", "/api/auth/change-password",
         "/api/mobile/bootstrap", "/api/attendance/today", "/api/attendance/location-status", "/api/attendance/all",
@@ -3738,6 +3742,7 @@ async function handleApi(req, res, pathname) {
             actor.pinHash = attendanceDeviceAuth.pinHash(nextCredential);
             actor.mustChangePassword = false;
             actor.mustChangePin = false;
+            actor.initialCredentialRequired = false;
             actor.passwordChangedAt = nowIso();
             actor.pinUpdatedAt = actor.passwordChangedAt;
             actor.updatedAt = actor.passwordChangedAt;
@@ -7261,13 +7266,23 @@ async function handleApi(req, res, pathname) {
             customers: db.customers
         });
     }
+    if (req.method === "POST" && pathname === "/api/users/provision-test-suite") {
+        const actor = requireSessionRole(db, req, ["Admin"]);
+        if (!actor) return sendJson(res,403,{error:"ไม่มีสิทธิ์สร้างบัญชีทดสอบ"});
+        await parseBody(req);
+        try {
+            const accounts=userProvisioning.provisionSuite(db,actor,nowIso());
+            writeDb(db);
+            return sendJson(res,200,{ok:true,accounts});
+        } catch(error) { return sendJson(res,error.statusCode||400,{error:error.message}); }
+    }
     if (req.method === "POST" && pathname === "/api/users/upsert") {
         const payload = await parseBody(req);
         const actor = requireSessionRole(db, req, [ "Admin", "Executive" ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์จัดการผู้ใช้งาน" });
         const name = String(payload.name || "").trim();
         const code = String(payload.code || "").trim().toUpperCase();
-        const allowedRoles = new Set([ "Driver", "WH_Staff", "Terminal", "Billing", "Admin", "Executive" ]);
+        const allowedRoles = new Set(userProvisioning.ROLES);
         if (!name || !code) return sendJson(res, 400, {
             error: "Employee code and name are required"
         });
@@ -7279,6 +7294,11 @@ async function handleApi(req, res, pathname) {
             error: `Employee code ${code} already exists`
         });
         let user = payload.id ? db.users.find(item => item.id === payload.id) : null;
+        if (payload.id && !user) return sendJson(res,404,{error:"ไม่พบบัญชีที่ต้องการแก้ไข"});
+        if (!user && payload.initialPin) {
+            try { attendanceDeviceAuth.validatePin(payload.initialPin,{code}); }
+            catch(error){return sendJson(res,error.statusCode||422,{error:error.message});}
+        }
         if (!user) {
             const roleKey = String(payload.role).toLowerCase().replace(/[^a-z0-9]+/g, "_");
             user = {
@@ -7286,6 +7306,7 @@ async function handleApi(req, res, pathname) {
                 createdAt: nowIso()
             };
             db.users.push(user);
+            if (payload.initialPin) userProvisioning.initializeCredential(user,String(payload.initialPin),nowIso());
         }
         Object.assign(user, {
             code: code,

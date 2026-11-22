@@ -674,6 +674,8 @@
                   <div><h2>ทะเบียนบุคลากร / Personnel Directory</h2><p>ข้อมูลชุดเดียวกับทะเบียนบุคลากร อัปเดตอัตโนมัติ</p></div>
                   <div class="button-pair"><button id="assignScdCodesBtn" class="ghost-button" type="button">จัดรหัส SCD</button><button id="openStaffFormBtn" class="primary-button" type="button">เปิดหน้าจัดการทะเบียน</button></div>
                 </div>
+                <div class="button-pair"><button id="createLoginAccountBtn" type="button">เพิ่มบัญชีเข้าสู่ระบบ</button><button id="createRoleTestSuiteBtn" type="button">สร้างบัญชีทดสอบครบทุกบทบาท</button></div>
+                <div id="roleTestSuiteResult" class="result" hidden></div>
                 <form id="staffEditor" class="staff-editor" hidden>
                   <div class="staff-form-head"><strong id="staffFormTitle">เพิ่มพนักงาน</strong><button id="closeStaffFormBtn" class="icon-button" type="button" aria-label="Close">×</button></div>
                   <div class="staff-form-grid">
@@ -693,9 +695,19 @@
                         <option value="Billing">บัญชี / Billing</option>
                         <option value="Admin">แอดมิน / Admin</option>
                         <option value="Executive">ผู้บริหาร / Executive</option>
+                        <option value="CS">เจ้าหน้าที่ลูกค้าสัมพันธ์ / CS</option>
+                        <option value="Team_Transport">ทีมจัดรถ / Transport</option>
+                        <option value="WH3_TeamLeader">หัวหน้าคลัง WH3</option>
+                        <option value="Tagging_Staff">พนักงานติดแท็ก</option>
+                        <option value="QA_Inspector">เจ้าหน้าที่ QA</option>
+                        <option value="Check_House">เจ้าหน้าที่ Check House</option>
+                        <option value="EI_Customer">ผู้อนุมัติ EI</option>
+                        <option value="Employee">พนักงานทั่วไป</option>
+                        <option value="People_Viewer">ผู้ดูแลทะเบียนบุคลากร</option>
                       </select>
                     </label>
                     <label id="staffVehicleField">ทะเบียนรถ / Vehicle Plate<input id="staffVehiclePlate" placeholder="เช่น 70-1234"></label>
+                    <label id="staffInitialPinField">PIN เริ่มต้น 6 หลัก<input id="staffInitialPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password"><small>บัญชีใหม่ใช้รหัสเดียวทั้งระบบ และต้องตั้งใหม่เมื่อเข้าใช้ครั้งแรก</small></label>
                     <label>เบอร์โทร / Phone<input id="staffPhone" inputmode="tel"></label>
                     <label>LINE User ID<input id="staffLineId"></label>
                     <label>สถานะ / Status<select id="staffStatus"><option value="Active">ใช้งาน / Active</option><option value="Inactive">ระงับ / Inactive</option></select></label>

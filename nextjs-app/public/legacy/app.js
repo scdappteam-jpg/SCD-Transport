@@ -298,6 +298,8 @@ function currentWebUser() {
 }
 
 function allowedWebViews(role) {
+    if (role === "Employee") return ["dashboard","hr"];
+    if (role === "People_Viewer") return [];
     if (role === "Driver") return [ "dashboard", "driver-time-log", "contacts", "hr", "flight-board", "dock" ];
     if (role === "WH_Staff") return [ "dashboard", "wh-inbound", "wh-quality", "wh-reservations", "contacts", "hr", "flight-board", "dock" ];
     if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
@@ -8101,6 +8103,9 @@ function openStaffEditor(user = null) {
     $("#staffPhone").value = user?.phone || "";
     $("#staffLineId").value = user?.lineUserId || "";
     $("#staffStatus").value = user?.status === "Inactive" ? "Inactive" : "Active";
+    $("#staffInitialPinField").hidden = Boolean(user);
+    $("#staffInitialPin").value = "";
+    $("#staffInitialPin").required = !user;
     setStaffVehicleVisibility();
     $("#staffName").focus();
 }
@@ -9424,6 +9429,14 @@ function bindEvents() {
     $("#assignScdCodesBtn").addEventListener("click", event => standardizeEmployeeCodes(event.currentTarget));
     $("#closeStaffFormBtn").addEventListener("click", closeStaffEditor);
     $("#cancelStaffBtn").addEventListener("click", closeStaffEditor);
+    $("#createLoginAccountBtn")?.addEventListener("click",()=>openStaffEditor());
+    $("#createRoleTestSuiteBtn")?.addEventListener("click",event=>runAction(event.currentTarget,async()=>{
+        const data=await api("/api/users/provision-test-suite",{});
+        const box=$("#roleTestSuiteResult");
+        box.hidden=false;
+        box.innerHTML=`<p>บัญชีทดสอบต้องเปลี่ยน PIN ครั้งแรก เก็บรหัสเริ่มต้นไว้ก่อนออกจากหน้านี้</p><table><thead><tr><th>รหัส</th><th>บทบาท</th><th>PIN เริ่มต้น</th></tr></thead><tbody>${data.accounts.map(a=>`<tr><td>${safeHtml(a.code)}</td><td>${safeHtml(a.role)}</td><td>${safeHtml(a.initialPin||"มีบัญชีแล้ว — ใช้รหัสเดิม")}</td></tr>`).join("")}</tbody></table>`;
+        toast("สร้างชุดบัญชีทดสอบแล้ว");
+    }));
     $("#staffRole").addEventListener("change", setStaffVehicleVisibility);
     $("#staffTable").addEventListener("click", event => {
         const button = event.target.closest("[data-staff-id]");
@@ -9455,6 +9468,7 @@ function bindEvents() {
                 englishName: $("#staffEnglishName").value.trim(),
                 nickname: $("#staffNickname").value.trim(),
                 nationality: $("#staffNationality").value.trim(),
+                initialPin: $("#staffInitialPin").value,
                 role: $("#staffRole").value,
                 vehiclePlate: $("#staffVehiclePlate").value.trim(),
                 phone: $("#staffPhone").value.trim(),
