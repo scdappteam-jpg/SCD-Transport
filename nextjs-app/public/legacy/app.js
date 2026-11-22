@@ -8160,9 +8160,9 @@ function renderBillingReadyList() {
     $("#billingPendingAmountMetric").textContent = money(state.dashboard.metrics?.pendingAmount || 0);
     const nowTs = Date.now();
     list.innerHTML = jobs.length ? jobs.map(job => {
-        const bill = state.dashboard.billing?.find(b => b.jobs?.includes(job.houseNumber) || b.houseNumber === job.houseNumber);
+        const bill = state.dashboard.billing?.find(b => b.houseNumbers?.includes(job.houseNumber) || b.jobs?.includes(job.houseNumber) || b.houseNumber === job.houseNumber);
         const dueDateMs = bill?.dueDate ? new Date(bill.dueDate).getTime() : job.dueDate ? new Date(job.dueDate).getTime() : 0;
-        const isOverdue = dueDateMs && dueDateMs < nowTs && ![ "Paid" ].includes(job.status);
+        const isOverdue = dueDateMs && bill?.status !== "Draft" && !bill?.testOnly && new Date(dueDateMs).toLocaleDateString("en-CA",{timeZone:"Asia/Bangkok"}) < new Date(nowTs).toLocaleDateString("en-CA",{timeZone:"Asia/Bangkok"}) && ![ "Paid", "Billed" ].includes(job.status);
         const diffDays = dueDateMs ? Math.ceil((dueDateMs - nowTs) / 864e5) : null;
         let dueBadge = "";
         if (isOverdue) dueBadge = `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">⚠ OVERDUE ${Math.abs(diffDays)}วัน</span>`; else if (diffDays !== null && diffDays <= 3) dueBadge = `<span style="background:#fffbeb;color:#d97706;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">⏰ ครบกำหนด ${diffDays}วัน</span>`; else if (dueDateMs) dueBadge = `<span style="color:#64748b;font-size:9px">Due ${new Date(dueDateMs).toLocaleDateString("th-TH")}</span>`;
@@ -8397,7 +8397,7 @@ function renderBillingContext(preserveCustomerInputs = false) {
         $("#billingCustomerPhone").value = customer.phone || "";
         $("#billingCustomerTaxId").value = customer.taxId || "";
         $("#billingCustomerCreditTerm").value = customer.creditTerm ?? "";
-        $("#billingCustomerAddress").value = customer.address || job?.pickupLocation || "";
+        $("#billingCustomerAddress").value = customer.address || "";
     }
     const preview = $("#billingPreview");
     if (preview) {
@@ -8406,11 +8406,14 @@ function renderBillingContext(preserveCustomerInputs = false) {
         const previewEmail = $("#billingCustomerEmail")?.value || customer.billingEmail || "-";
         const previewPhone = $("#billingCustomerPhone")?.value || customer.phone || "-";
         const previewTax = $("#billingCustomerTaxId")?.value || customer.taxId || "-";
-        const previewAddress = $("#billingCustomerAddress")?.value || customer.address || job?.pickupLocation || "-";
+        const previewAddress = escapeHtml(invoice?.billingAddress || $("#billingCustomerAddress")?.value || customer.address || "-");
+        const previewJobs = (invoice?.houseNumbers || [job?.houseNumber]).map(h => state.dashboard.jobs.find(j => j.houseNumber === h) || {houseNumber:h});
+        const previewRows = previewJobs.map(j => `<tr><td>${escapeHtml(j.houseNumber)}</td><td>${escapeHtml(j.flightNo || "-")}</td><td>${escapeHtml(j.status || "-")}</td><td class="right">${money(j.amount || 0)}</td></tr>`).join("");
+        const previewTotal = invoice ? invoice.amount : job?.amount || 0;
         const previewCredit = $("#billingCustomerCreditTerm")?.value || customer.creditTerm || 0;
         const invoiceId = invoice?.id || $("#invoiceId")?.value || "Draft not created";
         const dueDate = invoice?.dueDate ? new Date(invoice.dueDate).toLocaleDateString("th-TH") : "-";
-        preview.innerHTML = job ? `\n      <article class="invoice-paper-preview">\n        <header>\n          <div>\n            <strong>S.C.D.TRANSPORT</strong>\n            <span>Invoice / ใบวางบิล</span>\n          </div>\n          <div>\n            <b>${invoiceId}</b>\n            <small>${invoice ? invoice.status : "Draft preview"}</small>\n          </div>\n        </header>\n        <section class="invoice-party">\n          <div>\n            <small>Bill To / ลูกค้า</small>\n            <b>${previewCustomer}</b>\n            <span>${previewAddress}</span>\n          </div>\n          <div>\n            <small>Contact</small>\n            <span>${previewEmail}</span>\n            <span>${previewPhone}</span>\n            <span>Tax ID: ${previewTax}</span>\n          </div>\n        </section>\n        <table>\n          <thead><tr><th>House</th><th>Flight</th><th>Status</th><th class="right">Amount</th></tr></thead>\n          <tbody>\n            <tr>\n              <td>${job.houseNumber}</td>\n              <td>${job.flightNo || "-"}</td>\n              <td>${job.status}</td>\n              <td class="right">${money(job.amount || 0)}</td>\n            </tr>\n          </tbody>\n        </table>\n        <footer>\n          <span>Credit Term: ${previewCredit} วัน</span>\n          <span>Due Date: ${dueDate}</span>\n          <strong>Total ${money(job.amount || 0)} บาท</strong>\n        </footer>\n        ${invoice?.pdfUrl ? `<a href="${assetUrl(invoice.pdfUrl)}" target="_blank" rel="noreferrer">เปิดเอกสาร Invoice</a>` : ""}\n      </article>\n    ` : `<strong>เลือก House เพื่อ Preview / Select House</strong>`;
+        preview.innerHTML = job ? `\n      <article class="invoice-paper-preview">\n        <header>\n          <div>\n            <strong>S.C.D.TRANSPORT</strong>\n            <span>${invoice?.testOnly ? "SIT ONLY — TEST INVOICE (NOT FOR PAYMENT)" : "Invoice / ใบวางบิล"}</span>\n          </div>\n          <div>\n            <b>${invoiceId}</b>\n            <small>${invoice ? invoice.status : "Draft preview"}</small>\n          </div>\n        </header>\n        <section class="invoice-party">\n          <div>\n            <small>Bill To / ลูกค้า</small>\n            <b>${previewCustomer}</b>\n            <span>${previewAddress}</span>\n          </div>\n          <div>\n            <small>Contact</small>\n            <span>${previewEmail}</span>\n            <span>${previewPhone}</span>\n            <span>Tax ID: ${previewTax}</span>\n          </div>\n        </section>\n        <table>\n          <thead><tr><th>House</th><th>Flight</th><th>Status</th><th class="right">Amount</th></tr></thead>\n          <tbody>\n            ${previewRows}\n          </tbody>\n        </table>\n        <footer>\n          <span>Credit Term: ${previewCredit} วัน</span>\n          <span>Due Date: ${dueDate}</span>\n          <strong>Total ${money(previewTotal)} บาท</strong>\n        </footer>\n        ${invoice?.pdfUrl ? `<a href="${assetUrl(invoice.pdfUrl)}" target="_blank" rel="noreferrer">เปิดเอกสาร Invoice</a>` : ""}\n      </article>\n    ` : `<strong>เลือก House เพื่อ Preview / Select House</strong>`;
     }
     const attachmentList = $("#billingAttachmentList");
     if (attachmentList) {
