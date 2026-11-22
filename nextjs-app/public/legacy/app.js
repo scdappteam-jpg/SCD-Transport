@@ -288,7 +288,7 @@ function renderWebLoginUsers() {
     }
     _loginRetryCount = 0;
     const saved = localStorage.getItem(WEB_AUTH_USER_KEY) || "";
-    select.innerHTML = users.length ? users.map(user => `<option value="${user.id}">${user.name}${user.vehiclePlate ? ` (${user.vehiclePlate})` : ""} · ${staffRoleLabel(user.role)}</option>`).join("") : `<option value="">ไม่พบผู้ใช้งาน</option>`;
+    select.innerHTML = users.length ? users.map(user => `<option value="${safeHtml(user.id)}">${user.code ? `${safeHtml(user.code)} · ` : ""}${safeHtml(user.name)}${user.vehiclePlate ? ` (${safeHtml(user.vehiclePlate)})` : ""} · ${staffRoleLabel(user.role)}</option>`).join("") : `<option value="">ไม่พบผู้ใช้งาน</option>`;
     select.value = users.some(user => user.id === saved) ? saved : users[0]?.id || "";
 }
 
@@ -9435,6 +9435,14 @@ function bindEvents() {
         const box=$("#roleTestSuiteResult");
         box.hidden=false;
         box.innerHTML=`<p>บัญชีทดสอบต้องเปลี่ยน PIN ครั้งแรก เก็บรหัสเริ่มต้นไว้ก่อนออกจากหน้านี้</p><table><thead><tr><th>รหัส</th><th>บทบาท</th><th>PIN เริ่มต้น</th></tr></thead><tbody>${data.accounts.map(a=>`<tr><td>${safeHtml(a.code)}</td><td>${safeHtml(a.role)}</td><td>${safeHtml(a.initialPin||"มีบัญชีแล้ว — ใช้รหัสเดิม")}</td></tr>`).join("")}</tbody></table>`;
+        const download=document.createElement("button");
+        download.type="button"; download.textContent="ดาวน์โหลดรหัสเริ่มต้น CSV";
+        download.addEventListener("click",()=>{
+            const csv="\uFEFFcode,role,initialPin\n"+data.accounts.map(a=>[a.code,a.role,a.initialPin||"EXISTING"].join(",")).join("\n");
+            const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+            const link=document.createElement("a");link.href=url;link.download="SCD-SIT-accounts.csv";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        });
+        box.appendChild(download);
         toast("สร้างชุดบัญชีทดสอบแล้ว");
     }));
     $("#staffRole").addEventListener("change", setStaffVehicleVisibility);
