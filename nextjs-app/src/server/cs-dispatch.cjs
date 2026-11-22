@@ -19,4 +19,15 @@ function assignment(db, payload) {
     return {driverId: driver.id, driverName: driver.name || '', vehiclePlate: plate};
 }
 
-module.exports = {applyCsDetails, assignment};
+function validateApproval(db, payload) {
+    const fail=(message,statusCode=422)=>{throw Object.assign(new Error(message),{statusCode});};
+    if(!Array.isArray(payload.houseNumbers)||!payload.houseNumbers.length||payload.houseNumbers.some(h=>typeof h!=='string'||!h.trim()))fail('กรุณาเลือก House ที่จะยืนยัน');
+    const houses=payload.houseNumbers.map(h=>h.trim());
+    if(new Set(houses).size!==houses.length)fail('พบ House ซ้ำในคำขอยืนยัน');
+    const missing=houses.filter(h=>!(db.jobs||[]).some(j=>j.houseNumber===h));
+    if(missing.length)fail('ไม่พบ House: '+missing.join(', '),404);
+    const invoiceNo=String(payload.invoiceNo||'').trim();
+    if(!invoiceNo)fail('กรุณากรอกเลข Invoice ก่อน Confirm');
+    return {...payload,houseNumbers:houses,invoiceNo};
+}
+module.exports = {applyCsDetails, assignment, validateApproval};

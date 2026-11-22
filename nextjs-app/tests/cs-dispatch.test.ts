@@ -10,6 +10,19 @@ const server=readFileSync(new URL('../src/server/legacy-api.cjs',import.meta.url
 function fn(source:string,name:string){return source.match(new RegExp(`^(?:async )?function ${name}\\([\\s\\S]*?^}`,'m'))![0];}
 const base=()=>({houseNumber:'F001',hawbNumber:'484001',mawbNumber:'205-86393230',pieceCount:3,contactPerson:'Old',pickupPhone:'OLD',invoiceNo:'OLD-INV',pickupItems:[{houseNumber:'F001',invoiceNo:'OLD-ROW',contact:'Old row',tel:'OLD'},{houseNumber:'OTHER',invoiceNo:'KEEP'}],inboundReceipt:{CTN:1},flightNo:'TBC'});
 const payload={invoiceNo:'SIM-INVOICE',contactName:'SIM New Contact',contactPhone:'SIM-Phone-Ext123'};
+
+test('CS rejects empty invoice, duplicate or unknown Houses before any approval is written',()=>{
+ const db={jobs:[base()]};const before=JSON.stringify(db);
+ for(const input of [{houseNumbers:['F001'],invoiceNo:' '},{houseNumbers:['F001','F001'],invoiceNo:'INV'},{houseNumbers:['F001','UNKNOWN'],invoiceNo:'INV'}])assert.throws(()=>handoff.validateApproval(db,input));
+ assert.equal(JSON.stringify(db),before);
+ assert.equal(handoff.validateApproval(db,{houseNumbers:['F001'],invoiceNo:' INV '}).invoiceNo,'INV');
+});
+
+test('CS mixed packing totals do not add pallets and cartons as one piece count',()=>{
+ const ctx=vm.createContext({});vm.runInContext(fn(front,'csPackingSummary'),ctx);
+ const result=vm.runInContext('csPackingSummary([{pieceCount:26,packageCounts:{CTN:32,PLT:26}},{pieceCount:12,packageCounts:{CTN:12}},{pieceCount:11,packageCounts:{CTN:40,PLT:11}},{pieceCount:1,packageCounts:{CTN:3,PLT:1}}])',ctx);
+ assert.equal(result,'87 CTN / 38 PLT');
+});
 test('CS edits survive Cargo hand-off without changing other House quantities or workflow',()=>{
  const job=base(),before=structuredClone(job);handoff.applyCsDetails(job,payload);
  assert.equal(job.invoiceNo,payload.invoiceNo);assert.equal(job.contactPerson,payload.contactName);assert.equal(job.pickupPhone,payload.contactPhone);

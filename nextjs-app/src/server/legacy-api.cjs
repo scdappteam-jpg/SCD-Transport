@@ -1995,16 +1995,26 @@ function pickupDispatchIsReady(jobs) {
 function upsertJob(db, payload) {
     const houseNumber = String(payload.houseNumber || "").trim();
     if (!houseNumber) throw new Error("House number is required");
-    const customer = payload.customerName ? getOrCreateCustomer(db, payload.customerName, payload) : db.customers.find(item => item.id === payload.customerId) || db.customers[0];
     const now = nowIso();
     let job = findJob(db, houseNumber);
+    if (payload.customerId && !payload.customerName && !db.customers.some(item => item.id === payload.customerId)) throw new Error("ไม่พบลูกค้าที่เลือก กรุณาเลือกใหม่");
+    const customer = payload.customerName ? getOrCreateCustomer(db, payload.customerName, payload)
+        : db.customers.find(item => item.id === (payload.customerId || job?.customerId))
+            || getOrCreateCustomer(db, job?.customerName || "ไม่ระบุลูกค้า", payload);
     if (!job) {
         job = {
-            id: payload.jobId || `JOB-${Date.now()}`,
+            id: payload.jobId && !db.jobs.some(item => item.id === payload.jobId) ? payload.jobId : `JOB-${crypto.randomUUID()}`,
             houseNumber: houseNumber,
             createdAt: now
         };
         db.jobs.push(job);
+    }
+    if (db.jobs.some(item => item !== job && item.id === job.id)) {
+        const previousId = job.id;
+        job.id = `JOB-${crypto.randomUUID()}`;
+        for (const plan of db.loadPlans || []) for (const row of plan.rows || []) {
+            if (row.houseNumber === job.houseNumber && row.jobId === previousId) row.jobId = job.id;
+        }
     }
     Object.assign(job, {
         customerId: customer.id,
@@ -2074,7 +2084,9 @@ function upsertJob(db, payload) {
         ownerCode: payload.ownerCode || job.ownerCode || "",
         refsNo: payload.refsNo || job.refsNo || "",
         source: payload.source || job.source || "",
-        adminPrepared: Boolean(payload.adminPrepared || job.adminPrepared),
+        pickupCase: payload.pickupCase || job.pickupCase || (payload.adminPrepared ?? job.adminPrepared ? "SpecialMD" : "GeneralManual"),
+        cargoFormMode: payload.cargoFormMode || job.cargoFormMode || (payload.adminPrepared ?? job.adminPrepared ? "AdminPrepared" : "DriverWrites"),
+        adminPrepared: Boolean(payload.adminPrepared ?? job.adminPrepared),
         updatedAt: now
     });
     deriveApprovalFields(db, job, payload);
@@ -8555,10 +8567,12 @@ async function handleApi(req, res, pathname) {
         });
     }
     if (req.method === "POST" && pathname === "/api/jobs/cs-confirm") {
-        const payload = await parseBody(req);
+        let payload = await parseBody(req);
         const db = readDb();
         const actor = requireSessionRole(db, req, [ "Admin", "Executive", "CS" ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ยืนยันงานแทน CS" });
+        try { payload = csDispatch.validateApproval(db, payload); }
+        catch (error) { return sendJson(res, error.statusCode || 422, {error:error.message}); }
         payload.confirmedBy = actor.name || actor.id;
         payload.userId = actor.id;
         const {houseNumbers: houseNumbers, invoiceNo: invoiceNo, confirmedBy: confirmedBy, evidenceChannel: evidenceChannel, evidenceNote: evidenceNote, evidenceFiles: evidenceFiles} = payload;
