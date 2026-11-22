@@ -260,7 +260,12 @@
     try { await exportPhoto(item, $("editorMessage")); } catch (error) { $("editorMessage").textContent = error?.message || "ส่งออกรูปไม่สำเร็จ กรุณาลองใหม่"; }
   });
   $("editor").addEventListener("submit", saveEditor); $("closeEditor").addEventListener("click", closeEditor); $("cancelEditor").addEventListener("click", closeEditor);
-  $("logout").addEventListener("click", () => { sessionStorage.removeItem(TOKEN_KEY); location.reload(); });
+  function logoutDirectory() {
+    sessionStorage.removeItem(TOKEN_KEY);
+    for (const key of ["scdTransportWebAuth", "scdTransportWebSession", "scdTransportWebUser"]) localStorage.removeItem(key);
+    location.reload();
+  }
+  $("logout").addEventListener("click", logoutDirectory);
   const mainSystemButton=document.createElement("button");
   mainSystemButton.type="button";mainSystemButton.className="secondary";mainSystemButton.textContent="เปิดระบบหลักด้วยบัญชีนี้";
   $("logout").before(mainSystemButton);

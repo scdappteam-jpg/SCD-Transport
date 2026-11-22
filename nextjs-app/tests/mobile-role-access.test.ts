@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 const mobile = readFileSync(new URL('../public/legacy/mobile.js', import.meta.url), 'utf8');
 const api = readFileSync(new URL('../src/server/legacy-api.cjs', import.meta.url), 'utf8');
 const web = readFileSync(new URL('../public/legacy/app.js', import.meta.url), 'utf8');
+const directory = readFileSync(new URL('../public/legacy/people-directory.js', import.meta.url), 'utf8');
 const fn = (source: string, name: string) => source.match(new RegExp(`^function ${name}\\([\\s\\S]*?^}`, 'm'))![0];
 const policy = vm.createContext({});
 vm.runInContext(fn(mobile, 'allowedMobileTabs'), policy);
@@ -96,3 +97,13 @@ for (const scenario of ['network-failure', 'directory-session', 'first-use-sessi
     if (scenario === 'first-use-session') assert.equal(credentialPrompt, true);
   });
 }
+
+test('directory logout also clears the shared main session to permit another account', () => {
+  const removed: string[] = [];
+  let reloaded = false;
+  const ctx = vm.createContext({TOKEN_KEY:'directory',sessionStorage:{removeItem:(key:string)=>removed.push(key)},localStorage:{removeItem:(key:string)=>removed.push(key)},location:{reload:()=>reloaded=true}});
+  vm.runInContext(directory.match(/  function logoutDirectory\([\s\S]*?^  }/m)![0], ctx);
+  vm.runInContext('logoutDirectory()', ctx);
+  assert.deepEqual(removed, ['directory','scdTransportWebAuth','scdTransportWebSession','scdTransportWebUser']);
+  assert.equal(reloaded, true);
+});
