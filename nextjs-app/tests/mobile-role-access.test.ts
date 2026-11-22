@@ -107,3 +107,16 @@ test('directory logout also clears the shared main session to permit another acc
   assert.deepEqual(removed, ['directory','scdTransportWebAuth','scdTransportWebSession','scdTransportWebUser']);
   assert.equal(reloaded, true);
 });
+
+test('background login-list rendering preserves the account already selected by the tester', () => {
+  const select = {value:'sit-cs',innerHTML:''};
+  const ctx = vm.createContext({
+    $:()=>select, state:{users:[{id:'admin',name:'Admin',role:'Admin'},{id:'sit-cs',name:'SIT CS',role:'CS'}]},
+    window:{location:{search:''}},URLSearchParams,
+    localStorage:{getItem:()=>null},safeHtml:(value:string)=>value,staffRoleLabel:(role:string)=>role,
+    _loginRetryCount:0, WEB_AUTH_USER_KEY:'saved-user',
+  });
+  vm.runInContext(fn(web,'renderWebLoginUsers'),ctx);
+  vm.runInContext('renderWebLoginUsers(); renderWebLoginUsers();',ctx);
+  assert.equal(select.value,'sit-cs');
+});

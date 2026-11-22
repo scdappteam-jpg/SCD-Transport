@@ -287,7 +287,7 @@ function renderWebLoginUsers() {
         return;
     }
     _loginRetryCount = 0;
-    const saved = localStorage.getItem(WEB_AUTH_USER_KEY) || "";
+    const saved = [select.value, localStorage.getItem(WEB_AUTH_USER_KEY)].find(id => users.some(user => user.id === id)) || "";
     select.innerHTML = users.length ? users.map(user => `<option value="${safeHtml(user.id)}">${user.code ? `${safeHtml(user.code)} · ` : ""}${safeHtml(user.name)}${user.vehiclePlate ? ` (${safeHtml(user.vehiclePlate)})` : ""} · ${staffRoleLabel(user.role)}</option>`).join("") : `<option value="">ไม่พบผู้ใช้งาน</option>`;
     select.value = users.some(user => user.id === saved) ? saved : users[0]?.id || "";
 }
