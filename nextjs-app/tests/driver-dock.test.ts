@@ -85,8 +85,12 @@ test('home and Dock refresh share selection and stale async responses cannot rep
  assert.ok(source.includes('if(request!==mobileDockRequest||house!=='));
 });
 test('mobile queue counts use physical Driver completion rather than release document status',()=>{
- assert.ok(source.includes('allDriverJobs.filter(j => !DriverDock.completedForDriver(j))'));
- assert.ok(source.includes('allDriverJobs.filter(j => DriverDock.completedForDriver(j))'));
+ assert.ok(source.includes('allDriverJobs.filter(j => !mobileJobCompleted(j))'));
+ assert.ok(source.includes('allDriverJobs.filter(j => mobileJobCompleted(j))'));
+ const context=vm.createContext({DriverDock:core});
+ vm.runInContext(source.slice(source.indexOf('function mobileJobCompleted('),source.indexOf('function mobilePackingSummary(')),context);
+ assert.equal(vm.runInContext('mobileJobCompleted({status:"WaitingForDock"},"Driver")',context),false);
+ assert.equal(vm.runInContext('mobileJobCompleted({status:"Stored",driverRouteStatus:"Available",wh3UnloadCompletedAt:"2026-11-22T07:00:00Z"},"Driver")',context),true);
 });
 test('home arrival button uses pickup arrival before Dock queue',()=>{
  assert.ok(source.includes('DriverDock.nextQueueAction(selectedJob)'));

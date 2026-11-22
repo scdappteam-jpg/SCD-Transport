@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
+import {createRequire} from 'node:module';
 
 const mobile = readFileSync(new URL('../public/legacy/mobile.js', import.meta.url), 'utf8');
 const api = readFileSync(new URL('../src/server/legacy-api.cjs', import.meta.url), 'utf8');
@@ -11,6 +12,27 @@ const fn = (source: string, name: string) => source.match(new RegExp(`^function 
 const policy = vm.createContext({});
 vm.runInContext(fn(mobile, 'allowedMobileTabs'), policy);
 const tabs = (role: string) => Array.from(vm.runInContext(`allowedMobileTabs(${JSON.stringify(role)})`, policy));
+
+test('Terminal retains every persisted shipping stage and EI can find picked Houses', () => {
+  const ctx = vm.createContext({normalizeJob:(j:unknown)=>j, driverDock:{project:(j:unknown)=>j}, inboundReceipts:{masterKey:()=>''}});
+  vm.runInContext(fn(api,'buildMobileDashboard'),ctx);
+  const stages=['AOTQueueApproved','GoodsLoaded','TerminalArrived','WeightDimensionRecorded','XRayPassed','XRayHold','ReXRayRequired','PackingConsolidation','ReadyForBilling'];
+  for(const role of ['Terminal','Check_House']){
+    const data=vm.runInContext(`buildMobileDashboard({jobs:${JSON.stringify(stages.map(status=>({status})))},dock:{}},{role:${JSON.stringify(role)}})`,ctx);
+    assert.deepEqual(Array.from(data.jobs,(j:{status:string})=>j.status),stages);
+  }
+  assert.equal(vm.runInContext('buildMobileDashboard({jobs:[{status:"OutboundPicking"}],dock:{}},{role:"EI_Customer"}).jobs.length',ctx),1);
+});
+
+test('inbound Driver completion does not complete Terminal work and packing units remain separate',()=>{
+  const require=createRequire(import.meta.url);
+  const ctx=vm.createContext({DriverDock:require('../public/legacy/driver-dock-core.js'),InboundReceipts:require('../public/legacy/receipt-core/index.js')});
+  vm.runInContext(fn(mobile,'mobileJobCompleted')+'\n'+fn(mobile,'mobilePackingSummary'),ctx);
+  const job={status:'GoodsLoaded',driverRouteStatus:'Available',wh3UnloadCompletedAt:'2026-11-22T07:00:00Z'};
+  assert.equal(vm.runInContext(`mobileJobCompleted(${JSON.stringify(job)},'Driver')`,ctx),true);
+  assert.equal(vm.runInContext(`mobileJobCompleted(${JSON.stringify(job)},'Terminal')`,ctx),false);
+  assert.equal(vm.runInContext('mobilePackingSummary([{packageCounts:{CTN:32,PLT:26}},{packageCounts:{CTN:12}},{packageCounts:{CTN:40,PLT:11}},{packageCounts:{CTN:3,PLT:1}}])',ctx),'87 CTN + 38 PLT');
+});
 
 test('all provisioned roles have explicit mobile access; unknown roles get no operations', () => {
   const attendanceOnly = ['People_Viewer', 'Employee', 'CS', 'Tagging_Staff', 'QA_Inspector'];

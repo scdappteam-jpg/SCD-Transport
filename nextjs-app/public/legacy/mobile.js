@@ -435,7 +435,7 @@ function render() {
     const visibleList = jobs.slice(0, mobileListLimit);
     $("#mobileJobList").innerHTML = jobs.length
         ? `${visibleList.map((job, index) => foDriverJobCard(job, index)).join("")}${jobs.length > mobileListLimit ? `<article class="job"><div><strong>แสดง ${mobileListLimit} จาก ${jobs.length} งาน</strong><br><small>ใช้สแกนหรือค้นหา House เพื่อเปิดงานที่เหลือ</small></div></article>` : ""}`
-        : `<article class="job"><div><strong>ยังไม่มีงานของคนขับคนนี้</strong><br><small>No assigned jobs for this driver</small></div></article>`;
+        : `<article class="job"><div><strong>ยังไม่มีงานตามสิทธิ์ของบัญชีนี้</strong><br><small>No jobs for this role</small></div></article>`;
     $("#locationList").innerHTML = state.dashboard.locations.map(location => `\n    <article class="location">\n      <strong>${location.id}</strong><br>\n      <small>${location.status}${location.currentHouseId ? ` · ${location.currentHouseId}` : ""}</small>\n    </article>\n  `).join("");
     renderBillingReadyList();
     updateInboundInfo();
@@ -520,6 +520,22 @@ function visibleDriverJobs() {
     if (!user) return [];
     if (user.role !== "Driver") return state.dashboard?.jobs || [];
     return (state.dashboard?.jobs || []).filter(job => job.driverId === user.id && job.csConfirmed && job.cargoIssuedAt);
+}
+
+function mobileJobCompleted(job, role = currentUser()?.role) {
+    if (role === 'Driver') return DriverDock.completedForDriver(job);
+    return ['Billed', 'Completed', 'InvoiceSent'].includes(job.status)
+        || (['Terminal', 'Check_House'].includes(role) && job.status === 'ReadyForBilling');
+}
+
+function mobilePackingSummary(jobs) {
+    const counts = {};
+    for (const job of jobs) {
+        const plan = InboundReceipts.planned(job);
+        if (!plan.known) return 'ยังไม่ยืนยันหน่วยบรรจุ';
+        for (const [unit, qty] of Object.entries(plan.counts)) counts[unit] = (counts[unit] || 0) + qty;
+    }
+    return Object.entries(counts).map(([unit, qty]) => `${qty} ${unit}`).join(' + ') || 'ยังไม่ยืนยันหน่วยบรรจุ';
 }
 
 function renderMobileLogin() {
@@ -3074,7 +3090,7 @@ async function renderMDock() {
           <div class="fo-dock-no">Dock ${escapeHtmlMobile(data.bay.id || "-")}</div>
           <div class="fo-dock-kv"><span>เลขคิว</span><b>${DriverDock.ticket(data.bay.queueNumber)}</b></div>
           <div class="fo-dock-kv"><span>ทะเบียนรถ</span><b>${escapeHtmlMobile(data.bay.vehiclePlate || "-")}</b></div>
-          <div class="fo-dock-sub">${escapeHtmlMobile(data.bay.houseNumber || house)} · ${escapeHtmlMobile(data.bay.pieceCount || "-")} ชิ้น</div>
+          <div class="fo-dock-sub">${DriverDock.houses(data.bay).length} House: ${escapeHtmlMobile(DriverDock.houses(data.bay).join(', '))} · ${escapeHtmlMobile(mobilePackingSummary(DriverDock.houses(data.bay).map(h => findAnyJob(h) || {})))}</div>
           <div class="fo-dock-kv"><span>ช่องเก็บปลายทาง</span><b>${escapeHtmlMobile(data.bay.locationId || "รอระบุ")}</b></div>
           <div class="fo-dock-kv"><span>จัดช่องเมื่อ</span><b>${data.bay.assignedAt ? formatBangkokMobile(data.bay.assignedAt).slice(-8, -3) : "-"}</b></div>
           ${driverDockControls(data,house)}
@@ -3223,15 +3239,15 @@ async function renderMHome() {
         card.innerHTML = !rec ? `\n      <div class="fo-ci-status"><strong>ยังไม่ได้เช็คอินวันนี้</strong><span>เริ่มงานด้วยการเช็คอิน พร้อมรูปถ่ายและ GPS</span></div>\n      <button type="button" class="fo-primary-btn big" onclick="foGoCheckin()">เช็คอินเริ่มงาน</button>` : `\n      <div class="fo-ci-status">\n        <strong>${rec.checkOutTime ? "จบวันทำงานแล้ว" : "กำลังปฏิบัติงาน"} ${foUntaggedBadge(rec)}</strong>\n        <div class="fo-ci-grid">\n          <div><small>เริ่มงาน</small><b>${formatBangkokMobile(rec.checkInTime).slice(-8, -3) || "-"}</b><span>${gpsIn}</span></div>\n          <div><small>เลิกงาน</small><b>${rec.checkOutTime ? formatBangkokMobile(rec.checkOutTime).slice(-8, -3) : "—"}</b>${gpsOut ? `<span>${gpsOut}</span>` : ""}</div>\n        </div>\n      </div>\n      ${!rec.checkOutTime ? `<button type="button" class="fo-primary-btn big outline" onclick="foGoCheckin()">เช็คเอาท์เลิกงาน</button>` : ""}`;
     }
     const allDriverJobs = visibleDriverJobs();
-    const runningJobs = allDriverJobs.filter(j => !DriverDock.completedForDriver(j));
-    const completedJobs = allDriverJobs.filter(j => DriverDock.completedForDriver(j));
+    const runningJobs = allDriverJobs.filter(j => !mobileJobCompleted(j));
+    const completedJobs = allDriverJobs.filter(j => mobileJobCompleted(j));
     const cancelledJobs = allDriverJobs.filter(j => [ "Cancelled", "Rejected" ].includes(j.status));
     const jobs = runningJobs.filter(j => ![ "Cancelled", "Rejected" ].includes(j.status));
     const next = driverDockSelection(jobs);
     const jc = $("#foNextJobCard");
     if (jc) {
         jc.classList.add("ez-driver-home-card");
-        jc.innerHTML = `\n      <div class="ez-summary-head">\n        <div><strong>สรุปคิว</strong><span>ข้อมูลวันนี้ ${formatBangkokMobile((new Date).toISOString())}</span></div>\n        <button type="button" class="ez-refresh-btn" onclick="refresh()">↻ รีเฟรช</button>\n      </div>\n      <div class="ez-summary-tiles">\n        <button type="button" class="active" onclick="showMnav('work')"><span></span><b>${runningJobs.length}</b><small>กำลังดำเนินการ</small></button>\n        <button type="button" onclick="showMnav('map')"><span></span><b>${completedJobs.length}</b><small>เสร็จสิ้น</small></button>\n        <button type="button" onclick="showMnav('work')"><span>✕</span><b>${cancelledJobs.length}</b><small>ยกเลิก</small></button>\n        <button type="button" onclick="showMnav('work')"><span>▦</span><b>${allDriverJobs.length}</b><small>ทั้งหมด</small></button>\n      </div>\n      <div class="ez-queue-title"><strong>จำนวนคิวทั้งหมด: ${allDriverJobs.length}</strong><span>กำลังดำเนินการ (${runningJobs.length}) · เสร็จสิ้น (${completedJobs.length}) · ยกเลิก (${cancelledJobs.length})</span></div>\n      <div class="ez-driver-tabs" role="tablist">\n        <button type="button" class="active">กำลังดำเนินการ (${runningJobs.length})</button>\n        <button type="button" onclick="showMnav('map')">เสร็จสิ้น (${completedJobs.length})</button>\n        <button type="button" onclick="showMnav('work')">ยกเลิก (${cancelledJobs.length})</button>\n        <button type="button" onclick="showMnav('work')">ทั้งหมด (${allDriverJobs.length})</button>\n      </div>\n      ${next ? foDriverJobCard(next) : `<div class="fo-empty">ไม่มีงานค้างของคนขับคนนี้</div>`}`;
+        jc.innerHTML = `\n      <div class="ez-summary-head">\n        <div><strong>สรุปคิว</strong><span>ข้อมูลวันนี้ ${formatBangkokMobile((new Date).toISOString())}</span></div>\n        <button type="button" class="ez-refresh-btn" onclick="refresh()">↻ รีเฟรช</button>\n      </div>\n      <div class="ez-summary-tiles">\n        <button type="button" class="active" onclick="showMnav('work')"><span></span><b>${runningJobs.length}</b><small>กำลังดำเนินการ</small></button>\n        <button type="button" onclick="showMnav('map')"><span></span><b>${completedJobs.length}</b><small>เสร็จสิ้น</small></button>\n        <button type="button" onclick="showMnav('work')"><span>✕</span><b>${cancelledJobs.length}</b><small>ยกเลิก</small></button>\n        <button type="button" onclick="showMnav('work')"><span>▦</span><b>${allDriverJobs.length}</b><small>ทั้งหมด</small></button>\n      </div>\n      <div class="ez-queue-title"><strong>จำนวนคิวทั้งหมด: ${allDriverJobs.length}</strong><span>กำลังดำเนินการ (${runningJobs.length}) · เสร็จสิ้น (${completedJobs.length}) · ยกเลิก (${cancelledJobs.length})</span></div>\n      <div class="ez-driver-tabs" role="tablist">\n        <button type="button" class="active">กำลังดำเนินการ (${runningJobs.length})</button>\n        <button type="button" onclick="showMnav('map')">เสร็จสิ้น (${completedJobs.length})</button>\n        <button type="button" onclick="showMnav('work')">ยกเลิก (${cancelledJobs.length})</button>\n        <button type="button" onclick="showMnav('work')">ทั้งหมด (${allDriverJobs.length})</button>\n      </div>\n      ${next ? foDriverJobCard(next) : `<div class="fo-empty">ไม่มีงานค้างตามสิทธิ์ของบัญชีนี้</div>`}`;
     }
     renderMDock();
     renderMFlight();

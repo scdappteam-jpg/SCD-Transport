@@ -1898,9 +1898,9 @@ function buildMobileDashboard(db, viewer) {
         WH_Staff: job => [ "ReturningWH3", "ArrivedWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status),
         WH3_TeamLeader: job => [ "ReturningWH3", "ArrivedWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status),
         Team_Transport: job => ![ "Billed", "Completed", "Cancelled" ].includes(job.status),
-        EI_Customer: job => [ "ReadyForTerminal", "OutboundConfirmed", "EIApprovalPending", "EIApproved", "AOTQueueBooked", "AOTQueueApproved" ].includes(job.status),
-        Check_House: job => [ "AOTQueueApproved", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
-        Terminal: job => [ "AOTQueueApproved", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
+        EI_Customer: job => [ "ReadyForTerminal", "OutboundLocated", "OutboundPicking", "OutboundConfirmed", "EIApprovalPending", "EIApproved", "AOTQueueBooked", "AOTQueueApproved" ].includes(job.status),
+        Check_House: job => [ "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "XRayHold", "ReXRayRequired", "PackingConsolidation", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
+        Terminal: job => [ "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "XRayHold", "ReXRayRequired", "PackingConsolidation", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
         Billing: job => job.readyForBilling || [ "PendingBillingReview", "BillingReviewed", "InvoiceDrafted", "InvoiceSent" ].includes(job.status)
     }[role];
     const jobs = (db.jobs || []).filter(jobsForRole || (() => true)).map(job => driverDock.project(normalizeJob(job),db.dock));
