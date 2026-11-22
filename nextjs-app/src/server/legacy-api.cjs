@@ -4546,6 +4546,11 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "GET" && pathname === "/api/integrations/status") {
         return sendJson(res, 200, {
+            persistence: {
+                database: supabaseEnabled() ? "Supabase shared state" : "Server local state",
+                storage: supabaseEnabled() ? "Supabase Storage" : "Server local storage",
+                configured: supabaseEnabled()
+            },
             importFeed: {
                 directory: IMPORT_FEED_DIR,
                 intervalMinutes: Math.round(IMPORT_INTERVAL_MS / 6e4),

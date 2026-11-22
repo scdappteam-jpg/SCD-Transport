@@ -1097,6 +1097,10 @@ function setView(view) {
     if (view === "service") renderServiceBilling();
     if (view === "contacts") loadContacts();
     if (view === "staff") loadPersonnelDirectoryForStaff();
+    if (view === "settings") {
+        loadSettingsForm();
+        loadIntegrationStatus();
+    }
     if (view === "mobile" && currentWebUser()?.role === "Billing") showRolePanel("Billing");
     renderLpWidget();
 }
@@ -3272,6 +3276,29 @@ function loadSettingsForm() {
     $("#settingSystemName").value = localStorage.getItem("smartLogisticsSystemName") || "S.C.D.TRANSPORT";
     $("#settingDefaultLanguage").value = localStorage.getItem("smartLogisticsLang") || state.lang || "th";
     $("#settingDefaultRange").value = localStorage.getItem("smartLogisticsDefaultRange") || "10";
+}
+
+async function loadIntegrationStatus() {
+    const setStatus = (nameId, statusId, name, configured) => {
+        const nameEl = $(nameId);
+        const statusEl = $(statusId);
+        if (nameEl) nameEl.textContent = name;
+        if (statusEl) {
+            statusEl.textContent = configured ? "Active" : "Not configured";
+            statusEl.className = `pill ${configured ? "completed" : "pending"}`;
+        }
+    };
+    try {
+        const data = await api("/api/integrations/status", null, "GET");
+        setStatus("#settingDatabaseName", "#settingDatabaseStatus", data.persistence?.database || "Server state", Boolean(data.persistence?.configured));
+        setStatus("#settingStorageName", "#settingStorageStatus", data.persistence?.storage || "Server storage", Boolean(data.persistence?.configured));
+        setStatus("#settingN8nName", "#settingN8nStatus", data.n8n?.configured ? "Webhook configured" : "Webhook key missing", Boolean(data.n8n?.configured));
+        setStatus("#settingLineName", "#settingLineStatus", data.line?.configured ? "Webhook configured" : "Webhook URL missing", Boolean(data.line?.configured));
+    } catch {
+        [ ["#settingDatabaseName", "#settingDatabaseStatus"], ["#settingStorageName", "#settingStorageStatus"], ["#settingN8nName", "#settingN8nStatus"], ["#settingLineName", "#settingLineStatus"] ].forEach(([nameId, statusId]) => {
+            setStatus(nameId, statusId, "ตรวจสอบสถานะไม่สำเร็จ", false);
+        });
+    }
 }
 
 function escapeCell(value) {
