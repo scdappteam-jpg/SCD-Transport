@@ -3320,6 +3320,19 @@ function ensureWarehouseLayoutBuildingGroups(map) {
 }
 
 function logActivity(db, payload) {
+    // End only an existing timer whose business action has really completed.
+    // Keep its original operator; never create timing evidence for API-only work.
+    ((p,at)=>{
+        const keys={OutboundLocationFound:'outbound_locate',EIApproved:'outbound_picking',TerminalArrived:'outbound_delivery',XRay:'outbound_terminal',LoadingDetailClosed:'outbound_close'};
+        const key=keys[p.activityType];if(!key)return;
+        const job=(db.jobs||[]).find(j=>j.houseNumber===p.houseNumber),step=job?.stepTracking?.[key];
+        if(!step||step.status!=='InProgress')return;
+        const verified={outbound_locate:job.outboundFoundAt,outbound_picking:job.outboundPickedAt&&job.eiApproved&&job.eiApprovedAt,outbound_delivery:job.goodsLoadedAt&&job.terminalArrivedAt,outbound_terminal:job.xrayStatus==='Passed'&&job.weighEndedAt,outbound_close:job.loadingDetailUploaded&&job.terminalClosedAt}[key];
+        if(!verified)return;
+        const start=Date.parse(step.startedAt),end=Date.parse(at);if(!Number.isFinite(start)||!Number.isFinite(end)||end<start)return;
+        const priorLog=(db.activityLogs||[]).find(l=>l.logId===step.logId);if(priorLog&&!priorLog.endTime)priorLog.endTime=at;
+        Object.assign(step,{status:'Completed',completedAt:at,completedBy:p.userId||'',durationMinutes:Math.round((end-start)/60000)});
+    })(payload,nowIso());
     const log = {
         logId: `LOG-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
         houseNumber: payload.houseNumber,
@@ -6998,6 +7011,7 @@ async function handleApi(req, res, pathname) {
             item.status = "ReadyForBilling";
             item.terminalClosedAt = nowIso();
             item.updatedAt = nowIso();
+            logActivity(db,{houseNumber:item.houseNumber,userId:actor.id,activityType:'LoadingDetailClosed'});
         }
         await createAlert(db, `พร้อมวางบิล: Flight ${job.flightNo}`, "info");
         writeDb(db);
