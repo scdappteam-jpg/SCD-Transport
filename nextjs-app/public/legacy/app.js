@@ -11079,6 +11079,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     bindEvents();
     if (isWebAuthenticated()) {
         await refresh();
+        renderWebLogin();
         applyWebRoleVisibility();
         applyRequestedWebView();
         renderWebSessionUser();

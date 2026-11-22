@@ -120,3 +120,18 @@ test('background login-list rendering preserves the account already selected by 
   vm.runInContext('renderWebLoginUsers(); renderWebLoginUsers();',ctx);
   assert.equal(select.value,'sit-cs');
 });
+
+test('restored web sessions dismiss the login overlay after bootstrap completes', async () => {
+  let boot: (()=>Promise<void>) | undefined;
+  let refreshed = false;
+  let loginHidden = false;
+  const ctx = vm.createContext({
+    document:{addEventListener:(_event:string,handler:()=>Promise<void>)=>boot=handler},
+    initSidebarCollapsed:()=>{},bindEvents:()=>{},isWebAuthenticated:()=>true,
+    refresh:async()=>{refreshed=true;},renderWebLogin:()=>{assert.equal(refreshed,true);loginHidden=true;},
+    applyWebRoleVisibility:()=>{},applyRequestedWebView:()=>{},renderWebSessionUser:()=>{},applyLanguage:()=>{},initializeIcons:()=>{},
+  });
+  vm.runInContext(web.match(/document.addEventListener\("DOMContentLoaded", async \(\) => \{[\s\S]*?^}\);/m)![0],ctx);
+  await boot!();
+  assert.equal(loginHidden,true);
+});
