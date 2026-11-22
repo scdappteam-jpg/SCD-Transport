@@ -278,7 +278,7 @@ let _loginRetryCount = 0;
 function renderWebLoginUsers() {
     const select = $("#webLoginUser");
     if (!select) return;
-    const fallback = window.SMART_LOGISTICS_DEMO?.users || [];
+    const fallback = new URLSearchParams(window.location.search).get("demo") === "1" ? window.SMART_LOGISTICS_DEMO?.users || [] : [];
     const pool = state.users?.length ? state.users : fallback;
     const users = pool.filter(user => user.status !== "Inactive");
     if (!users.length && _loginRetryCount < 12) {
@@ -836,7 +836,25 @@ async function refresh() {
         const res = await fetch(apiUrl("/api/bootstrap"), {
             cache: "no-store"
         });
-        if (res.status === 401) {
+        if (res.status === 403 || res.status === 428) {
+            const meResponse = await fetch(apiUrl("/api/auth/me"), {cache:"no-store"});
+            if (meResponse.ok) {
+                const me = await meResponse.json();
+                const token = localStorage.getItem(WEB_SESSION_TOKEN_KEY);
+                if (res.status === 428) {
+                    requestWebCredentialChange({token, user:me.user}, me.user.id);
+                    clearSkeletons();
+                    return;
+                }
+                if (me.user?.role === "People_Viewer") {
+                    sessionStorage.setItem("scdPeopleViewerSession", token);
+                    window.location.href = "/legacy/people-directory.html";
+                    clearSkeletons();
+                    return;
+                }
+            }
+        }
+        if (res.status === 401 || res.status === 403) {
             localStorage.removeItem(WEB_AUTH_KEY);
             localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
             const usersResponse = await fetch(apiUrl("/api/auth/users"), {cache:"no-store"});
@@ -856,8 +874,13 @@ async function refresh() {
         console.warn("refresh() API error:", error.message);
     }
     if (!apiOk || !data) {
+        if (new URLSearchParams(window.location.search).get("demo") !== "1") {
+            toast("โหลดข้อมูลจริงไม่สำเร็จ กรุณาลองใหม่ — ยังไม่ได้อัปเดตข้อมูลบนหน้าจอ");
+            clearSkeletons();
+            return;
+        }
         data = window.SMART_LOGISTICS_DEMO;
-        toast("Demo mode: ไม่สามารถเชื่อมต่อ server — แสดงข้อมูลตัวอย่าง");
+        toast("Demo mode: แสดงข้อมูลตัวอย่างตามที่เลือก");
     }
     if (!data) return;
     state.dashboard = data.dashboard;

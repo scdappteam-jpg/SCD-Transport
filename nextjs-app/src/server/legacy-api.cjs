@@ -1442,6 +1442,7 @@ function publicUsers(db) {
 function loginUsers(db) {
     return (db.users || []).map(user => ({
         id: user.id,
+        code: user.code || "",
         name: user.name,
         role: user.role,
         vehiclePlate: user.vehiclePlate || "",

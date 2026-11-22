@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 
 const mobile = readFileSync(new URL('../public/legacy/mobile.js', import.meta.url), 'utf8');
 const api = readFileSync(new URL('../src/server/legacy-api.cjs', import.meta.url), 'utf8');
+const web = readFileSync(new URL('../public/legacy/app.js', import.meta.url), 'utf8');
 const fn = (source: string, name: string) => source.match(new RegExp(`^function ${name}\\([\\s\\S]*?^}`, 'm'))![0];
 const policy = vm.createContext({});
 vm.runInContext(fn(mobile, 'allowedMobileTabs'), policy);
@@ -62,3 +63,36 @@ test('switching from attendance-only employee to EI restores the operation shell
   assert.equal(attendance, false);
   assert.match(subtitle.textContent, /Field Operation/);
 });
+
+test('login user options expose employee codes without private credential fields', () => {
+  const ctx = vm.createContext({});
+  vm.runInContext(fn(api, 'loginUsers'), ctx);
+  const users = vm.runInContext('loginUsers({users:[{id:"sit",code:"SIT003",name:"SIT",role:"CS",passwordHash:"secret",pinHash:"secret"}]})', ctx);
+  assert.equal(users[0].code, 'SIT003');
+  assert.equal(users[0].passwordHash, undefined);
+  assert.equal(users[0].pinHash, undefined);
+});
+
+for (const scenario of ['network-failure', 'directory-session', 'first-use-session']) {
+  test(`web refresh never replaces actual data with demo records: ${scenario}`, async () => {
+    const dashboard = {jobs: [{houseNumber: 'ACTUAL'}]};
+    let credentialPrompt = false;
+    const win = {location: {search: '', href: ''}, SMART_LOGISTICS_DEMO: {dashboard:{jobs:[{houseNumber:'DEMO'}]}}};
+    const ctx = vm.createContext({
+      state: {dashboard}, window: win, URLSearchParams,
+      showSkeletons: () => {}, clearSkeletons: () => {}, toast: () => {},
+      apiUrl: (path: string) => path,
+      WEB_SESSION_TOKEN_KEY: 'session',
+      localStorage: {getItem: () => 'token'}, sessionStorage: {setItem: () => {}},
+      requestWebCredentialChange: () => credentialPrompt = true,
+      fetch: async (url: string) => url === '/api/auth/me'
+        ? {ok:true,json:async()=>({user:{id:'SIT',role:'People_Viewer'}})}
+        : {ok:false,status:scenario==='network-failure'?503:scenario==='first-use-session'?428:403},
+    });
+    vm.runInContext(web.match(/^async function refresh\([\s\S]*?^}/m)![0], ctx);
+    await vm.runInContext('refresh()', ctx);
+    assert.equal(ctx.state.dashboard, dashboard);
+    if (scenario === 'directory-session') assert.equal(win.location.href, '/legacy/people-directory.html');
+    if (scenario === 'first-use-session') assert.equal(credentialPrompt, true);
+  });
+}
