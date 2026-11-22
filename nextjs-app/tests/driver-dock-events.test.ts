@@ -32,6 +32,34 @@ test('a multi-House vehicle becomes available only after every House in its roun
 test('Driver ownership is mandatory including outside the SIT allowlist',()=>{
  for(const a of [null,{id:'driver',role:'Admin'},{id:'other',role:'Driver'}])assert.throws(()=>events.prepare(fixture(),a,payload()),/คนขับ|มอบหมาย/);
 });
+
+test('vehicle Dock events advance all Houses in the same assigned bay and replay without changing times',()=>{
+ const db=fixture();db.jobs[0].transportRoundId='ROUND-ALL';
+ const second=structuredClone(db.jobs[0]);second.houseNumber='SIT-WH3-DOCK-20261028-A2';db.jobs.push(second);
+ (db.dock.bays[0] as Record<string,unknown>).houseNumbers=db.jobs.map(j=>j.houseNumber);
+ for(const [revision,event] of ['arrive','unload-start','unload-complete'].entries()){
+  const round=events.prepareRound(db,actor,{...payload(event,revision),evidence:proof},`2026-10-28T01:0${revision+1}:00Z`);
+  for(const p of round.plans)events.apply(p,event==='unload-complete'?[{fileId:p.job.houseNumber+'-PROOF'}]:[]);
+ }
+ assert.ok(db.jobs.every(j=>core.progress(j,db.dock.bays[0]).revision===3));
+ assert.ok(db.jobs.every(j=>j.driverRouteStatus==='Available'));
+ assert.equal(db.jobs[0].driverCompletedAt,second.driverCompletedAt);
+ const before=structuredClone(db);
+ for(const p of events.prepareRound(db,actor,{...payload(),requestId:'vehicle-replay'},'2026-10-28T02:00:00Z').plans)events.apply(p);
+ assert.deepEqual(db,before);
+});
+
+test('vehicle Dock validation rejects another driver or a House missing its previous step before any mutation',()=>{
+ const db=fixture();const second=structuredClone(db.jobs[0]);second.houseNumber='SIT-WH3-DOCK-20261028-A2';second.driverId='OTHER';db.jobs.push(second);
+ (db.dock.bays[0] as Record<string,unknown>).houseNumbers=db.jobs.map(j=>j.houseNumber);
+ const before=structuredClone(db);assert.throws(()=>events.prepareRound(db,actor,payload()),/มอบหมาย/);assert.deepEqual(db,before);
+ second.driverId='driver';events.apply(events.prepare(db,actor,payload(),'2026-10-28T01:01:00Z'));
+ const partial=structuredClone(db);assert.throws(()=>events.prepareRound(db,actor,payload('unload-start',1)),/เข้าท่า/);assert.deepEqual(db,partial);
+ // Repeating the arrival for the vehicle fills only the missing House.
+ for(const p of events.prepareRound(db,actor,payload('arrive',1),'2026-10-28T01:02:00Z').plans)events.apply(p);
+ assert.equal(core.progress(db.jobs[0],db.dock.bays[0]).arrivedAt,'2026-10-28T01:01:00Z');
+ assert.equal(core.progress(second,db.dock.bays[0]).arrivedAt,'2026-10-28T01:02:00Z');
+});
 test('missing arrival, documents, CS, cancelled work, stale bay and uncalled Dock reject without writes',()=>{
  for(const change of [(d:ReturnType<typeof fixture>)=>{d.jobs[0].arrivedWh3At='';},(d:ReturnType<typeof fixture>)=>{d.jobs[0].releaseDocumentReceivedAt='';},(d:ReturnType<typeof fixture>)=>{d.jobs[0].csConfirmed=false;},(d:ReturnType<typeof fixture>)=>{d.jobs[0].status='Cancelled';},(d:ReturnType<typeof fixture>)=>{d.dock.bays[0].assignedAt='2026-10-28T02:00:00Z';},(d:ReturnType<typeof fixture>)=>{d.dock.bays[0].status='Available';}]){
   const db=fixture();change(db);const old=structuredClone(db);assert.throws(()=>events.prepare(db,actor,payload()));assert.deepEqual(db,old);

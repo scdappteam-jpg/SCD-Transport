@@ -3033,12 +3033,14 @@ function driverDockStep(button){
     if(sit&&!simulation)return showMobileActionModal('ต้องยืนยันข้อมูล SIT','เลือกยืนยันใช้ข้อมูลจำลองเฉพาะ SIT ก่อนบันทึก');
     const input=box.querySelector('[data-dock-proof]');
     if(event==='unload-complete'&&!input?.files?.length)return showMobileActionModal('ยังไม่มีหลักฐาน','แนบภาพหรือเอกสารลงสินค้าเสร็จก่อนบันทึก');
-    showConfirmSheet(button.textContent,`House ${context.house} / ${context.bay.id} / คิว ${DriverDock.ticket(context.bay.queueNumber)}${sit?' / SIT จำลองเท่านั้น':''}`,()=>{
+    const roundHouses=context.bay.houseNumbers?.length?context.bay.houseNumbers:[context.house];
+    const wholeVehicle=roundHouses.length>1;
+    showConfirmSheet(button.textContent,`${wholeVehicle?'ทั้งรถ '+roundHouses.length+' House: '+roundHouses.join(', '):'House '+context.house} / ${context.bay.id} / คิว ${DriverDock.ticket(context.bay.queueNumber)}${sit?' / SIT จำลองเท่านั้น':''}`,()=>{
         mobileDockBusy=true;
         void runAction(button,async()=>{
             const files=event==='unload-complete'?await filesToCompressedBase64(input):[];
-            await api('/api/driver/dock-event',{houseNumber:context.house,bayId:context.bay.id,assignedAt:context.bay.assignedAt,expectedRevision:context.progress?.revision||0,event,simulation,requestId:crypto.randomUUID(),evidence:files[0],note:sit?'SIT ONLY: simulated driver Dock event, no physical goods movement.':''});
-            toast(event==='unload-complete'?'ลงสินค้า House นี้เสร็จแล้ว · รถจะว่างเมื่อลงครบทั้งรอบ':'บันทึกขั้นตอน Dock แล้ว');
+            await api(wholeVehicle?'/api/driver/dock-round-event':'/api/driver/dock-event',{houseNumber:context.house,bayId:context.bay.id,assignedAt:context.bay.assignedAt,expectedRevision:context.progress?.revision||0,event,simulation,requestId:crypto.randomUUID(),evidence:files[0],note:sit?'SIT ONLY: simulated driver Dock event, no physical goods movement.':''});
+            toast(event==='unload-complete'?(wholeVehicle?'ลงสินค้าครบทั้งรถ '+roundHouses.length+' House แล้ว':'ลงสินค้า House นี้เสร็จแล้ว · รถจะว่างเมื่อลงครบทั้งรอบ'):'บันทึกขั้นตอน Dock แล้ว');
         }).finally(()=>{mobileDockBusy=false;void renderMDock();});
     });
 }

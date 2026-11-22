@@ -5018,6 +5018,21 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, { ok: true, bay: bay, ...dockBoard(db) });
     }
+    if(req.method==='POST'&&pathname==='/api/driver/dock-round-event'){
+        await refreshDbIfSharedStateChanged();db=readDb();
+        try{
+            const p=await parseBody(req),actor=sessionUser(db,req);
+            const round=driverDockEvents.prepareRound(db,actor,p);
+            const records=[];
+            for(const plan of round.plans){
+                const files=!plan.replayed&&p.event==='unload-complete'?[saveBase64File(db,{houseNumber:plan.job.houseNumber,fileType:'WH3UnloadEvidence',base64:p.evidence.base64,mimeType:p.evidence.mimeType})]:[];
+                records.push(driverDockEvents.apply(plan,files));
+                if(!plan.replayed)logActivity(db,{houseNumber:plan.job.houseNumber,userId:actor.id,activityType:'DriverDock:'+p.event,dockBay:plan.bay.id,simulation:plan.record.simulation,endTime:plan.record.at});
+            }
+            if(round.plans.some(plan=>!plan.replayed))writeDb(db);
+            return sendJson(res,200,{ok:true,houseNumbers:round.houseNumbers,records,progress:driverDock.progress(round.plans[0].job,round.bay)});
+        }catch(error){return sendJson(res,error.statusCode||422,{error:error.message});}
+    }
     if(req.method==='POST'&&pathname==='/api/driver/dock-event'){
         await refreshDbIfSharedStateChanged();db=readDb();
         try{

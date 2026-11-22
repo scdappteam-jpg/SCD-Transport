@@ -48,4 +48,18 @@ function apply(plan,files=[]){
     }
     return plan.record;
 }
-module.exports={prepare,apply};
+function prepareRound(db,actor,p,at=new Date().toISOString()) {
+    const first=prepare(db,actor,p,at);
+    const houses=dockVehicleGroup.houses(first.bay);
+    if(!houses.length)fail('ไม่พบ House ในรอบรถ');
+    // Validate every assigned House, including ownership and step order,
+    // before the caller saves evidence or applies any event.
+    const plans=houses.map((houseNumber,index)=>{
+        const job=(db.jobs||[]).find(j=>j.houseNumber===houseNumber);
+        if(!job)fail('ไม่พบ House ในท่า: '+houseNumber,404);
+        const revision=houseNumber===p.houseNumber?p.expectedRevision:core.progress(job,first.bay).revision;
+        return prepare(db,actor,{...p,houseNumber,expectedRevision:revision,requestId:p.requestId+'-'+index},at);
+    });
+    return {plans,houseNumbers:houses,bay:first.bay};
+}
+module.exports={prepare,apply,prepareRound};
