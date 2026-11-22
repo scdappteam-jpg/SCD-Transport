@@ -3426,6 +3426,7 @@ async function createAlert(db, message, severity = "warning") {
 }
 
 async function deliverInvoiceEmail(bill, attachmentUrls = []) {
+    if(bill.testOnly)return {delivered:false,status:'SITOnlyNoExternalDelivery'};
     if (!process.env.EMAIL_WEBHOOK_URL) {
         return {
             delivered: false,
@@ -3482,11 +3483,12 @@ function generateCargoFormHtml(job, items = []) {
     return html;
 }
 
-function generateBatchInvoiceHtml(bill, jobs, customer) {
+function generateBatchInvoiceHtml(db, bill, jobs, customer) {
     const rows = jobs.map((job, index) => `\n    <tr>\n      <td>${index + 1}</td>\n      <td>${escapeHtml(job.houseNumber)}</td>\n      <td>${escapeHtml(job.pickupDate || formatBangkok(job.flightTime))}</td>\n      <td>${escapeHtml(job.routeType || job.destination || "-")}</td>\n      <td>${escapeHtml(job.pieceCount || "-")}</td>\n      <td>${escapeHtml(job.vehiclePlate || "-")}</td>\n    </tr>`).join("");
-    const invoiceHtml = `<!doctype html>\n<html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(bill.id)}</title>\n<style>\n@page{size:A4 portrait;margin:12mm}body{font-family:"TH Sarabun New",Arial,sans-serif;margin:0;color:#17201d;font-size:18px}\nheader{display:flex;justify-content:space-between;border-bottom:2px solid #17314f;padding-bottom:10px}h1{margin:0;color:#17314f}.meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:18px 0}.meta div{border-bottom:1px solid #d8e0e8;padding:5px 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #9baaba;padding:6px;text-align:left}th{background:#edf4fb}.total{text-align:right;font-size:24px;font-weight:700;margin-top:16px}footer{margin-top:24px;color:#65758b}\n</style></head><body>\n<header><div><strong>SmartLogistics</strong><div>ใบวางบิลแบบรวม / Batch Invoice</div></div><div><h1>INVOICE</h1><strong>${escapeHtml(bill.id)}</strong></div></header>\n<section class="meta">\n<div><strong>ลูกค้า:</strong> ${escapeHtml(customer?.name || bill.customerName)}</div><div><strong>Tax ID:</strong> ${escapeHtml(customer?.taxId || "-")}</div>\n<div><strong>รอบ:</strong> ${escapeHtml(bill.billingMonth)} / ${escapeHtml(bill.billingPeriod)}</div><div><strong>Credit:</strong> ${escapeHtml(customer?.creditTerm || 0)} วัน</div>\n<div><strong>ประเภท:</strong> ${escapeHtml(bill.billingPlan)}</div><div><strong>จำนวน:</strong> ${bill.tripCount} เที่ยว / ${jobs.length} House</div>\n</section>\n<table><thead><tr><th>#</th><th>HAWB / House</th><th>วันที่</th><th>เส้นทาง</th><th>จำนวน</th><th>ทะเบียนรถ</th></tr></thead><tbody>${rows}</tbody></table>\n<p class="total">ยอดรวม ${Number(bill.amount || 0).toLocaleString("th-TH")} บาท</p>\n<footer>Due: ${escapeHtml(formatBangkok(bill.dueDate))} · Billing email: ${escapeHtml(bill.billingEmail || "-")}</footer>\n</body></html>`;
+    const invoiceHtml = `<!doctype html>\n<html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(bill.id)}</title>\n<style>\n@page{size:A4 portrait;margin:12mm}body{font-family:"TH Sarabun New",Arial,sans-serif;margin:0;color:#17201d;font-size:18px}\nheader{display:flex;justify-content:space-between;border-bottom:2px solid #17314f;padding-bottom:10px}h1{margin:0;color:#17314f}.meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:18px 0}.meta div{border-bottom:1px solid #d8e0e8;padding:5px 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #9baaba;padding:6px;text-align:left}th{background:#edf4fb}.total{text-align:right;font-size:24px;font-weight:700;margin-top:16px}footer{margin-top:24px;color:#65758b}\n</style></head><body>\n<header><div><strong>SmartLogistics</strong><div>ใบวางบิลแบบรวม / Batch Invoice</div></div><div><h1>${bill.testOnly ? "SIT ONLY — TEST INVOICE (NOT FOR PAYMENT)" : "INVOICE"}</h1><strong>${escapeHtml(bill.id)}</strong></div></header>\n<section class="meta">\n<div><strong>ลูกค้า:</strong> ${escapeHtml(customer?.name || bill.customerName)}</div><div><strong>Tax ID:</strong> ${escapeHtml(customer?.taxId || "-")}</div>\n<div><strong>ที่อยู่:</strong> ${escapeHtml(bill.billingAddress || customer?.address || "-")}</div>\n<div><strong>รอบ:</strong> ${escapeHtml(bill.billingMonth)} / ${escapeHtml(bill.billingPeriod)}</div><div><strong>Credit:</strong> ${escapeHtml(customer?.creditTerm || 0)} วัน</div>\n<div><strong>ประเภท:</strong> ${escapeHtml(bill.billingPlan)}</div><div><strong>จำนวน:</strong> ${bill.tripCount} เที่ยว / ${jobs.length} House</div>\n</section>\n<table><thead><tr><th>#</th><th>HAWB / House</th><th>วันที่</th><th>เส้นทาง</th><th>จำนวน</th><th>ทะเบียนรถ</th></tr></thead><tbody>${rows}</tbody></table>\n<p class="total">ยอดรวม ${Number(bill.amount || 0).toLocaleString("th-TH")} บาท</p>\n<footer>Due: ${escapeHtml(formatBangkok(bill.dueDate))} · Billing email: ${escapeHtml(bill.billingEmail || "-")}</footer>\n</body></html>`;
     const filename = `${bill.id}.html`;
     fs.writeFileSync(path.join(INVOICE_DIR, filename), invoiceHtml, "utf8");
+    invoiceDocument.register(db, bill, jobs[0], invoiceHtml);
     return `/storage/invoices/${filename}`;
 }
 
@@ -7061,10 +7063,12 @@ async function handleApi(req, res, pathname) {
         if (notReviewed.length) return sendJson(res, 409, {
             error: `Review documents first: ${notReviewed.map(job => job.houseNumber).join(", ")}`
         });
-        const customer = db.customers.find(item => item.id === customerIds[0]);
+        const customer = invoiceDocument.customerForDraft(db,jobs[0],payload);
         const bill = {
             id: `INV-${(new Date).getFullYear()}-${String(db.billing.length + 1).padStart(4, "0")}`,
             batch: true,
+            testOnly: payload.testOnly===true,
+            billingAddress: customer?.address || "",
             houseNumber: jobs[0].houseNumber,
             houseNumbers: jobs.map(job => job.houseNumber),
             customerId: customerIds[0],
@@ -7079,7 +7083,7 @@ async function handleApi(req, res, pathname) {
             dueDate: new Date(Date.now() + Number(customer?.creditTerm || 0) * 864e5).toISOString(),
             status: "Draft"
         };
-        bill.pdfUrl = generateBatchInvoiceHtml(bill, jobs, customer);
+        bill.pdfUrl = generateBatchInvoiceHtml(db, bill, jobs, customer);
         db.billing.push(bill);
         jobs.forEach(job => {
             job.status = "InvoiceDrafted";
@@ -7098,6 +7102,7 @@ async function handleApi(req, res, pathname) {
         const payload=await parseBody(req);
         try {
             const plan=invoiceDocument.refreshPlan(db,sessionUser(db,req),payload);
+            plan.bill.billingAddress=plan.customer.address;
             generateInvoiceHtml(db,plan.bill,plan.job,plan.customer);
             writeDb(db);
             return sendJson(res,200,{ok:true,invoiceId:plan.bill.id,houseNumber:plan.job.houseNumber,pdfUrl:plan.bill.pdfUrl});
@@ -7123,9 +7128,11 @@ async function handleApi(req, res, pathname) {
                 error: "Review billing documents before creating invoice"
             });
         }
-        const customer = db.customers.find(item => item.id === job.customerId);
+        const customer = invoiceDocument.customerForDraft(db,job,payload);
         const bill = {
             id: `INV-${(new Date).getFullYear()}-${String(db.billing.length + 1).padStart(4, "0")}`,
+            testOnly: payload.testOnly===true,
+            billingAddress: customer?.address || "",
             houseNumber: job.houseNumber,
             customerId: job.customerId,
             customerName: customer ? customer.name : job.customerName,

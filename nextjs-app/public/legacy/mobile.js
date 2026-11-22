@@ -620,7 +620,7 @@ function stepUserName(userId) {
 function renderOutboundStepTrackers() {
     const job = findAnyJob(terminalHouseValue());
     $$("#tab-outbound .step-tracker").forEach(container => {
-        const step = job?.stepTracking?.[container.dataset.stepKey];
+        const step = outboundTrackedStep(job, container.dataset.stepKey);
         const status = step?.status || "NotStarted";
         const statusLabel = status === "Completed" ? "เสร็จแล้ว" : status === "InProgress" ? "กำลังดำเนินการ" : "ยังไม่เริ่ม";
         const detail = step ? `${stepUserName(step.userId)}${step.durationMinutes ? ` · ${step.durationMinutes} นาที` : ""}` : "กดเริ่มงานเพื่อบันทึกผู้ทำและเวลา";
@@ -648,14 +648,26 @@ const OUTBOUND_FLOW_STEPS = [ {
     label: "Loading Detail และปิดงาน"
 } ];
 
+function outboundTrackedStep(job, key) {
+    const recorded = job?.stepTracking?.[key];
+    const completedAt = {
+        outbound_locate: job?.outboundFoundAt,
+        outbound_picking: job?.outboundPickedAt && job?.eiApproved && job?.eiApprovedAt,
+        outbound_delivery: job?.goodsLoadedAt && job?.terminalArrivedAt,
+        outbound_terminal: job?.xrayStatus === 'Passed' && job?.weighEndedAt,
+        outbound_close: job?.loadingDetailUploaded && job?.terminalClosedAt
+    }[key];
+    return completedAt ? {...recorded, status:'Completed', completedAt, userId:recorded?.userId || (key==='outbound_locate' ? job?.outboundFoundBy : '') || ''} : recorded;
+}
+
 function renderOutboundWorkflow() {
     const job = findAnyJob(terminalHouseValue());
     const unlocked = Boolean(job && state.outboundUnlockedHouse === job.houseNumber);
-    const nextStepIndex = unlocked ? OUTBOUND_FLOW_STEPS.findIndex(item => job.stepTracking?.[item.key]?.status !== "Completed") : -1;
+    const nextStepIndex = unlocked ? OUTBOUND_FLOW_STEPS.findIndex(item => outboundTrackedStep(job,item.key)?.status !== "Completed") : -1;
     const summary = $("#outboundFlowSummary");
     if (summary) {
         summary.innerHTML = OUTBOUND_FLOW_STEPS.map((item, index) => {
-            const status = unlocked ? job.stepTracking?.[item.key]?.status || "NotStarted" : "Locked";
+            const status = unlocked ? outboundTrackedStep(job,item.key)?.status || "NotStarted" : "Locked";
             const isNext = index === nextStepIndex && status === "NotStarted";
             const statusLabel = status === "Completed" ? "เสร็จ" : status === "InProgress" ? "กำลังทำ" : status === "Locked" ? "รอสแกน" : isNext ? "ขั้นตอนถัดไป" : "ล็อก";
             return `<article class="flow-summary-item ${status.toLowerCase()} ${isNext ? "current" : ""}"><span>${index + 1}</span><div><strong>${item.label}</strong><small>${statusLabel}</small></div></article>`;
@@ -685,7 +697,7 @@ function renderOutboundWorkflow() {
         const isCurrent = index === visibleIndex;
         section.hidden = !isCurrent;
         if (!isCurrent) return;
-        const stepStatus = job.stepTracking?.[OUTBOUND_FLOW_STEPS[index].key]?.status || "NotStarted";
+        const stepStatus = outboundTrackedStep(job,OUTBOUND_FLOW_STEPS[index].key)?.status || "NotStarted";
         section.querySelectorAll("input, select, textarea, button").forEach(control => {
             if (control.closest(".step-tracker")) return;
             control.disabled = stepStatus !== "InProgress";

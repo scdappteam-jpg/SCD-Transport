@@ -59,7 +59,7 @@ function billing(db,jobs,payload,documentStatus,{batch=false}={}) {
         if (job.billingReviewStatus!=='Reviewed') fail(`House ${job.houseNumber} ต้องผ่านการตรวจเอกสารก่อนสร้าง Invoice`);
         if (!documentStatus(db,job).ready) fail(`House ${job.houseNumber} เอกสารวางบิลปัจจุบันไม่ครบ`,422);
         if (job.invoiceId || (db.billing||[]).some(bill=>bill.status!=='Cancelled' && (bill.houseNumbers||[bill.houseNumber]).includes(job.houseNumber))) fail(`House ${job.houseNumber} มี Invoice แล้ว ห้ามสร้างซ้ำ`);
-        const customer=(db.customers||[]).find(customer=>customer.id===job.customerId);
+        const customer=require('./invoice-document.cjs').customerForDraft(db,job,payload);
         if (!customer || !String(customer.name||'').trim() || !String(customer.address||'').trim()) fail(`House ${job.houseNumber} ยังไม่มีชื่อลูกค้าและที่อยู่ออกบิลครบ`,422);
     }
     const values=batch && payload.amount!=null && payload.amount!=='' ? [payload.amount] : jobs.map(job=>job.amount);

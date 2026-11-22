@@ -34,6 +34,17 @@ test('inbound Driver completion does not complete Terminal work and packing unit
   assert.equal(vm.runInContext('mobilePackingSummary([{packageCounts:{CTN:32,PLT:26}},{packageCounts:{CTN:12}},{packageCounts:{CTN:40,PLT:11}},{packageCounts:{CTN:3,PLT:1}}])',ctx),'87 CTN + 38 PLT');
 });
 
+test('mobile handoffs resume from persisted warehouse and EI work without attributing it to Terminal',()=>{
+ const ctx=vm.createContext({});vm.runInContext(fn(mobile,'outboundTrackedStep'),ctx);
+ const job={outboundFoundAt:'found',outboundFoundBy:'warehouse',outboundPickedAt:'picked',eiApproved:true,eiApprovedAt:'ei',goodsLoadedAt:'loaded'};
+ assert.equal(vm.runInContext(`outboundTrackedStep(${JSON.stringify(job)},'outbound_locate').status`,ctx),'Completed');
+ assert.equal(vm.runInContext(`outboundTrackedStep(${JSON.stringify(job)},'outbound_picking').status`,ctx),'Completed');
+ assert.equal(vm.runInContext(`outboundTrackedStep(${JSON.stringify(job)},'outbound_picking').userId`,ctx),'');
+ assert.equal(vm.runInContext(`outboundTrackedStep(${JSON.stringify(job)},'outbound_delivery')`,ctx),undefined);
+ assert.equal(vm.runInContext(`outboundTrackedStep(${JSON.stringify({...job,terminalArrivedAt:'arrived'})},'outbound_delivery').status`,ctx),'Completed');
+ assert.equal(vm.runInContext(`outboundTrackedStep(${JSON.stringify({...job,weighEndedAt:'weighed',xrayStatus:'Hold'})},'outbound_terminal')`,ctx),undefined);
+});
+
 test('all provisioned roles have explicit mobile access; unknown roles get no operations', () => {
   const attendanceOnly = ['People_Viewer', 'Employee', 'CS', 'Tagging_Staff', 'QA_Inspector'];
   for (const role of attendanceOnly) assert.deepEqual(tabs(role), ['attendance'], role);
