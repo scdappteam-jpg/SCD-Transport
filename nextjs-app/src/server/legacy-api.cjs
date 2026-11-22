@@ -4123,14 +4123,12 @@ async function handleApi(req, res, pathname) {
                 signal: controller.signal
             });
             clearTimeout(timeout);
-            const data = await scanRes.json();
-            if (!scanRes.ok) return sendJson(res, 502, {
-                error: data.detail || "Scanner service error"
-            });
+            const data = await require('./scanner-response.cjs').readScannerResponse(scanRes);
             return sendJson(res, 200, data);
         } catch (err) {
-            return sendJson(res, 503, {
-                error: `Scanner service unavailable (${err.message}) — ต้องเปิด python-scanqrcode-tps ก่อน / Run the scanner service first`
+            return sendJson(res, err.statusCode || 503, {
+                error: err.statusCode ? err.message : 'ติดต่อบริการอ่านบาร์โค้ดไม่ได้ กรุณารอแล้วลองใหม่ ยังไม่อนุมัติ QA',
+                upstreamStatus: err.upstreamStatus
             });
         }
     }

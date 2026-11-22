@@ -496,10 +496,6 @@
           <input id="preLoadPhoto" type="file" accept="image/*" capture="environment">
           <button id="loadBayBtn" type="button">รวมของที่ Loading Bay / Load Bay</button>
           <button id="terminalArrivalBtn" type="button" class="soft">ส่งถึง Terminal / Arrived</button>
-          <div class="button-row two terminal-workflow-actions">
-            <button id="terminalUnloadStartBtn" type="button" class="soft">Unloading start</button>
-            <button id="terminalUnloadDoneBtn" type="button" class="soft">Unloading done</button>
-          </div>
         </section>
 
         <section class="inbound-step outbound-workflow-detail" hidden>
@@ -515,6 +511,10 @@
           <label id="lithiumDocLabel">อัปโหลดเอกสาร Terminal / Permit / Lithium</label>
           <input id="lithiumDoc" type="file" accept="image/*,application/pdf" capture="environment">
           <button id="validateDocBtn" type="button">ตรวจเอกสาร Terminal</button>
+          <div class="button-row two terminal-workflow-actions">
+            <button id="terminalUnloadStartBtn" type="button" class="soft">เริ่มลงสินค้า / เริ่มชั่ง</button>
+            <button id="terminalUnloadDoneBtn" type="button" class="soft">ลงสินค้าเสร็จ / บันทึกผลชั่ง</button>
+          </div>
           <label>Weight / Dimension</label>
           <input id="terminalWeight" inputmode="decimal" placeholder="น้ำหนัก เช่น 25.5 kg">
           <input id="terminalDimension" autocomplete="off" placeholder="Dimension เช่น 120 x 120 x 80">
@@ -881,7 +881,7 @@
     <script src="inbound-receipt-ui.js?v=3-preview-labels"></script>
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
   <script src="driver-dock-core.js?v=20261031-one-vehicle-one-dock-confirmed-reconcile"></script>
-  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=2"></script>
+  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=3"></script>
   </body>
 </html>
 
