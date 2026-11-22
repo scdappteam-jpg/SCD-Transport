@@ -104,7 +104,9 @@ function attendanceEntryRequested() {
 }
 
 function openRequestedMobileView() {
-    if (!attendanceEntryRequested() || !isMobileAuthenticated()) return false;
+    if (!isMobileAuthenticated()) return false;
+    const tabs = allowedMobileTabs(currentUser()?.role);
+    if (!attendanceEntryRequested() && !(tabs.length === 1 && tabs[0] === "attendance")) return false;
     document.body.classList.add("attendance-entry");
     const brandTitle = document.querySelector(".mh-name strong");
     const brandSubtitle = document.querySelector(".mh-name span");
@@ -495,15 +497,17 @@ function cycleMobileFontScale() {
 
 function allowedMobileTabs(role) {
     if (role === "People_Viewer") return [ "attendance" ];
+    if ([ "CS", "Employee", "Tagging_Staff", "QA_Inspector" ].includes(role)) return [ "attendance" ];
     if (role === "Driver") return [ "pickup", "attendance" ];
     if (role === "WH_Staff") return [ "inbound", "attendance" ];
     if (role === "WH3_TeamLeader") return [ "inbound", "attendance" ];
     if (role === "Team_Transport") return [ "inbound", "outbound", "attendance" ];
-    if (role === "EI_Customer") return [ "inbound" ];
+    if (role === "EI_Customer") return [ "outbound" ];
     if (role === "Check_House") return [ "outbound" ];
     if (role === "Terminal") return [ "outbound" ];
     if (role === "Billing") return [ "billing" ];
-    return [ "pickup", "inbound", "outbound", "billing" ];
+    if ([ "Admin", "Executive" ].includes(role)) return [ "pickup", "inbound", "outbound", "billing", "attendance" ];
+    return [];
 }
 
 function visibleDriverJobs() {
@@ -1251,6 +1255,7 @@ function computedEndPlace() {
 }
 
 function showTab(tab) {
+    if (!allowedMobileTabs(currentUser()?.role).includes(tab)) return;
     $$(".action-card").forEach(button => button.classList.toggle("active", button.dataset.mobileTab === tab));
     $$(".mobile-panel[id^='tab-']").forEach(panel => panel.classList.toggle("active", panel.id === `tab-${tab}`));
     if (tab === "attendance") initAttendanceTab();
@@ -2891,6 +2896,11 @@ async function foLoadAttToday(force) {
 }
 
 function showMnav(nav) {
+    const tabs = allowedMobileTabs(currentUser()?.role);
+    if (tabs.length === 1 && tabs[0] === "attendance") {
+        nav = "work";
+        showTab("attendance");
+    }
     foState.nav = nav;
     document.body.dataset.mnav = nav;
     document.querySelectorAll("#foBottomNav button").forEach(b => b.classList.toggle("active", b.dataset.mnav === nav));

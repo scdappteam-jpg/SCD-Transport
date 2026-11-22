@@ -1,0 +1,44 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import { readFileSync } from 'node:fs';
+
+const mobile = readFileSync(new URL('../public/legacy/mobile.js', import.meta.url), 'utf8');
+const api = readFileSync(new URL('../src/server/legacy-api.cjs', import.meta.url), 'utf8');
+const fn = (source: string, name: string) => source.match(new RegExp(`^function ${name}\\([\\s\\S]*?^}`, 'm'))![0];
+const policy = vm.createContext({});
+vm.runInContext(fn(mobile, 'allowedMobileTabs'), policy);
+const tabs = (role: string) => Array.from(vm.runInContext(`allowedMobileTabs(${JSON.stringify(role)})`, policy));
+
+test('all provisioned roles have explicit mobile access; unknown roles get no operations', () => {
+  const attendanceOnly = ['People_Viewer', 'Employee', 'CS', 'Tagging_Staff', 'QA_Inspector'];
+  for (const role of attendanceOnly) assert.deepEqual(tabs(role), ['attendance'], role);
+  for (const role of ['Admin', 'Executive']) assert.deepEqual(tabs(role), ['pickup', 'inbound', 'outbound', 'billing', 'attendance'], role);
+  assert.deepEqual(tabs('Driver'), ['pickup', 'attendance']);
+  for (const role of ['WH_Staff', 'WH3_TeamLeader']) assert.deepEqual(tabs(role), ['inbound', 'attendance'], role);
+  assert.deepEqual(tabs('Team_Transport'), ['inbound', 'outbound', 'attendance']);
+  for (const role of ['EI_Customer', 'Check_House', 'Terminal']) assert.deepEqual(tabs(role), ['outbound'], role);
+  assert.deepEqual(tabs('Billing'), ['billing']);
+  assert.deepEqual(tabs('unrecognised-role'), []);
+});
+
+test('direct operation tab selection cannot bypass role visibility', () => {
+  let changed = 0;
+  const ctx = vm.createContext({ currentUser: () => ({role: 'Employee'}), $$: () => { changed++; return []; }, initAttendanceTab: () => {} });
+  vm.runInContext(fn(mobile, 'allowedMobileTabs') + '\n' + fn(mobile, 'showTab'), ctx);
+  vm.runInContext('showTab("billing"); showTab("pickup"); showTab("inbound");', ctx);
+  assert.equal(changed, 0);
+  vm.runInContext('showTab("attendance")', ctx);
+  assert.equal(changed, 2);
+});
+
+test('employee and directory bootstrap never disclose cargo or evidence data', () => {
+  const ctx = vm.createContext({});
+  vm.runInContext(fn(api, 'buildMobileDashboard'), ctx);
+  for (const role of ['Employee', 'People_Viewer']) {
+    const dashboard = vm.runInContext(`buildMobileDashboard({jobs:[{houseNumber:'PRIVATE'}],attachments:[{url:'PRIVATE'}]}, {role:${JSON.stringify(role)}})`, ctx);
+    assert.equal(dashboard.jobs.length, 0);
+    assert.equal(dashboard.attachments.length, 0);
+    assert.equal(dashboard.billing.length, 0);
+  }
+});

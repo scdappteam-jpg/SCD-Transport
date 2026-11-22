@@ -324,6 +324,8 @@ function applyWebRoleVisibility() {
     const user = currentWebUser();
     if (!user) return;
     const allowed = allowedWebViews(user.role);
+    const alertBell = $("#alertBell");
+    if (alertBell) alertBell.hidden = !allowed.includes("alerts");
     $$(".nav-item, .side-link").forEach(button => {
         if (button.dataset.view) button.hidden = !allowed.includes(button.dataset.view);
     });

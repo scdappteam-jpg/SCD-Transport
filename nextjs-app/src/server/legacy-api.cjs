@@ -1886,6 +1886,7 @@ function buildDashboard(db) {
 function buildMobileDashboard(db, viewer) {
     const role = viewer?.role || "";
     if (role === "People_Viewer") return { jobs: [], receiptMasters: [], locations: [], alerts: [], billing: [], attachments: [], metrics: {} };
+    if (role === "Employee") return { jobs: [], receiptMasters: [], locations: [], alerts: [], billing: [], attachments: [], metrics: {} };
     const ownDriverJob = job => job.driverId === viewer?.id && job.csConfirmed && job.cargoIssuedAt;
     const jobsForRole = {
         Driver: job => ownDriverJob(job),
