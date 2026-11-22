@@ -33,3 +33,13 @@ test('legacy invoices with no registered document retain a usable fallback',()=>
 test('unkeyed invoice rows are not silently removed',()=>{
  assert.equal(files(null,[{fileType:'InvoiceDocument'},{fileType:'InvoiceDocument'}]).length,2);
 });
+
+test('actual billing preview renders saved SIT address, all batch Houses and invoice total without breaking bootstrap',()=>{
+ const preview={innerHTML:''};const jobs=[{houseNumber:'HOUSE-1',flightNo:'SIT100',status:'Billed',amount:10},{houseNumber:'HOUSE-2',flightNo:'SIT100',status:'Billed',amount:20}];
+ const bill={id:'INV-SIT',testOnly:true,billingAddress:'SIT ONLY <virtual> & address',houseNumbers:['HOUSE-1','HOUSE-2'],amount:0,status:'Billed'};
+ const ctx=vm.createContext({$: (selector:string)=>selector==='#billingPreview'?preview:null,state:{dashboard:{jobs,attachments:[]}},updateBillingCloseButton:()=>{},billingSelectedJob:()=>jobs[0],billingCustomerForJob:()=>({name:'customer',address:'master address'}),selectedInvoice:()=>bill,money:String,assetUrl:String,Date});
+ vm.runInContext(source.match(/^function escapeCell\([\s\S]*?^}/m)![0],ctx);
+ vm.runInContext(source.slice(source.indexOf('function renderBillingContext('),source.indexOf('function safeHtml(')),ctx);
+ vm.runInContext('renderBillingContext()',ctx);
+ assert.match(preview.innerHTML,/SIT ONLY — TEST INVOICE/);assert.match(preview.innerHTML,/SIT ONLY &lt;virtual&gt; &amp; address/);assert.match(preview.innerHTML,/HOUSE-1/);assert.match(preview.innerHTML,/HOUSE-2/);assert.match(preview.innerHTML,/Total 0 บาท/);assert.doesNotMatch(preview.innerHTML,/master address/);
+});

@@ -8406,9 +8406,9 @@ function renderBillingContext(preserveCustomerInputs = false) {
         const previewEmail = $("#billingCustomerEmail")?.value || customer.billingEmail || "-";
         const previewPhone = $("#billingCustomerPhone")?.value || customer.phone || "-";
         const previewTax = $("#billingCustomerTaxId")?.value || customer.taxId || "-";
-        const previewAddress = escapeHtml(invoice?.billingAddress || $("#billingCustomerAddress")?.value || customer.address || "-");
+        const previewAddress = escapeCell(invoice?.billingAddress || $("#billingCustomerAddress")?.value || customer.address || "-");
         const previewJobs = (invoice?.houseNumbers || [job?.houseNumber]).map(h => state.dashboard.jobs.find(j => j.houseNumber === h) || {houseNumber:h});
-        const previewRows = previewJobs.map(j => `<tr><td>${escapeHtml(j.houseNumber)}</td><td>${escapeHtml(j.flightNo || "-")}</td><td>${escapeHtml(j.status || "-")}</td><td class="right">${money(j.amount || 0)}</td></tr>`).join("");
+        const previewRows = previewJobs.map(j => `<tr><td>${escapeCell(j.houseNumber)}</td><td>${escapeCell(j.flightNo || "-")}</td><td>${escapeCell(j.status || "-")}</td><td class="right">${money(j.amount || 0)}</td></tr>`).join("");
         const previewTotal = invoice ? invoice.amount : job?.amount || 0;
         const previewCredit = $("#billingCustomerCreditTerm")?.value || customer.creditTerm || 0;
         const invoiceId = invoice?.id || $("#invoiceId")?.value || "Draft not created";
