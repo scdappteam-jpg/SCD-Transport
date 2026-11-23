@@ -8182,7 +8182,9 @@ function billingPeriodLabel(period) {
 }
 
 function billingTripKey(job) {
-    return job.billingTripId || job.pickupBatchId || job.batchId || job.jobId || `${billingJobDate(job)}|${job.vehiclePlate || job.driverId || job.houseNumber}|${job.routeType || job.destination || ""}`;
+    const round = job.transportRoundId || job.billingTripId || job.pickupBatchId || job.batchId;
+    if (round) return `${job.workDate || job.pickupDate || ""}|${round}`;
+    return job.jobId || `${billingJobDate(job)}|${job.vehiclePlate || job.driverId || job.houseNumber}|${job.routeType || job.destination || ""}`;
 }
 
 function buildBillingBatchGroups() {
