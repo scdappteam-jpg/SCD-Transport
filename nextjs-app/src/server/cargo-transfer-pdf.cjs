@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Server-only PDF renderer. */
 const {PDFDocument} = require('pdfkit');
 const path = require('node:path');
+const fs = require('node:fs');
 const ctf = require('../../public/legacy/ctf-core/index.js');
 
 function fail(message, statusCode=422) {throw Object.assign(new Error(message),{statusCode});}
@@ -15,8 +16,12 @@ function select(db, houses, findJob) {
 }
 
 async function render(models) {
-    const doc=new PDFDocument({autoFirstPage:false,margin:20,size:'A4',compress:true,info:{Title:'Cargo Transfer Form',Author:'S.C.D. Transport'}});
-    const fonts=path.join(__dirname,'../../public/legacy/fonts');
+    // Turbopack rewrites __dirname to /ROOT/src/server. Runtime font files live
+    // under the application cwd; do not resolve them through the bundled path.
+    const fonts=[path.join(process.cwd(),'public/legacy/fonts'),path.join(process.cwd(),'nextjs-app/public/legacy/fonts'),path.join(__dirname,'../../public/legacy/fonts')].find(dir=>fs.existsSync(path.join(dir,'Sarabun-Regular.ttf'))&&fs.existsSync(path.join(dir,'Sarabun-Bold.ttf')));
+    if(!fonts)throw new Error('Cargo Transfer PDF Thai fonts are missing');
+    // Also avoid PDFKit's implicit Helvetica AFM lookup in a bundled server.
+    const doc=new PDFDocument({font:path.join(fonts,'Sarabun-Regular.ttf'),autoFirstPage:false,margin:20,size:'A4',compress:true,info:{Title:'Cargo Transfer Form',Author:'S.C.D. Transport'}});
     doc.registerFont('Thai',path.join(fonts,'Sarabun-Regular.ttf'));
     doc.registerFont('ThaiBold',path.join(fonts,'Sarabun-Bold.ttf'));
     doc.font('Thai');

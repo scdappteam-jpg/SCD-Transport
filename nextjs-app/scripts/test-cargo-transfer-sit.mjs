@@ -9,6 +9,9 @@ import assert from 'node:assert/strict';
 import net from 'node:net';
 const require=createRequire(import.meta.url), root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const out=path.resolve(process.argv[2] || path.join(root,'storage/sit-ctf-proof'));
+const nextBuild=process.env.SCD_CTF_NEXT_BUILD;
+if(nextBuild && (!/^[.A-Za-z0-9_-]+$/.test(nextBuild)||!fs.existsSync(path.join(root,nextBuild,'BUILD_ID'))))throw new Error('Invalid completed Next build directory');
+const configFile=path.join(root,'next.config.ts'),configBefore=nextBuild?fs.readFileSync(configFile,'utf8'):null;
 fs.mkdirSync(out,{recursive:true});
 const dataDir=path.join(out,'isolated-db');fs.mkdirSync(dataDir,{recursive:true});
 const dbFile=path.join(dataDir,'db.json');
@@ -36,7 +39,7 @@ const env={...process.env,HOST:'127.0.0.1',PORT:String(port),DATA_DIR:dataDir,ST
 for(const key of Object.keys(env))if(/SUPABASE|WEBHOOK|CARTRACK|SCD_AUTH_PASSWORD|EMAIL_PROVIDER|RELATIONAL_MIRROR/i.test(key))delete env[key];
 const log=fs.openSync(path.join(out,'server.log'),'a');let child;
 const origin='http://127.0.0.1:'+port, results=[];
-async function start(){child=spawn(process.execPath,[path.join(root,'src/server/legacy-api.cjs')],{cwd:root,env,stdio:['ignore',log,log],windowsHide:true});for(let i=0;i<60;i++){try{const r=await fetch(origin+'/api/bootstrap',{headers:{Authorization:'Bearer '+tokens.Billing,'x-scd-mobile-compact':'1'}});if(r.ok)return;}catch{}await new Promise(r=>setTimeout(r,100));}throw new Error('SIT API did not start');}
+async function start(){if(nextBuild)fs.writeFileSync(configFile,configBefore.replace('const nextConfig: NextConfig = {',`const nextConfig: NextConfig = {\n  distDir: "${nextBuild}",`));child=spawn(process.execPath,nextBuild?[path.join(root,'node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port',String(port)]:[path.join(root,'src/server/legacy-api.cjs')],{cwd:root,env,stdio:['ignore',log,log],windowsHide:true});for(let i=0;i<100;i++){try{const r=await fetch(origin+'/api/bootstrap',{headers:{Authorization:'Bearer '+tokens.Billing,'x-scd-mobile-compact':'1'}});if(r.ok)return;}catch{}await new Promise(r=>setTimeout(r,100));}throw new Error('SIT API did not start');}
 async function stop(){if(child && child.exitCode===null){const done=new Promise(r=>child.once('exit',r));child.kill();await done;}}
 async function call(name,route,body,expected=200,role='Team_Transport'){
  const r=await fetch(origin+route,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(role?{Authorization:'Bearer '+tokens[role]}:{}),'x-scd-mobile-compact':'1'},...(body===undefined?{}:{body:JSON.stringify(body)})});
@@ -79,4 +82,4 @@ try {
  save('05-single-reopened.pdf',await call('reopened saved footer PDF',api,{houses:one},200,'Billing'));
  save('persisted-jobs.json',JSON.stringify(reopened.dashboard.jobs,null,2));
  console.log('SIT HTTP checks passed: '+results.length+'; output '+out);
-}finally{await stop();fs.closeSync(log);save('results.json',JSON.stringify({source:'isolated HTTP API; file-backed SIT database; no Production connection',at:new Date().toISOString(),results},null,2));}
+}finally{await stop();if(nextBuild)fs.writeFileSync(configFile,configBefore);fs.closeSync(log);save('results.json',JSON.stringify({source:nextBuild?'isolated Next.js production build over HTTP; file-backed SIT database; no Production connection':'isolated HTTP API; file-backed SIT database; no Production connection',at:new Date().toISOString(),results},null,2));}

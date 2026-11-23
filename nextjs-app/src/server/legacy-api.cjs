@@ -6529,12 +6529,12 @@ async function handleApi(req, res, pathname) {
         if(!actor)return sendJson(res,403,{error:"ไม่มีสิทธิ์ดาวน์โหลด Cargo Transfer PDF"});
         const payload=await parseBody(req);
         try {
-            const models=cargoTransferPdf.select(db,payload.houses,findJob);
+            const models=cargoTransferPdf.select(db,payload?.houses,findJob);
             const pdf=await cargoTransferPdf.render(models);
             const name=String(payload.houses[0]).replace(/[^A-Za-z0-9-]/g,'').slice(0,64);
             res.writeHead(200,{"Content-Type":"application/pdf","Content-Disposition":`attachment; filename="Cargo-Transfer-${name}.pdf"`,"Content-Length":pdf.length,"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"});
             res.end(pdf);return;
-        }catch(error){return sendJson(res,error.statusCode||500,{error:error.statusCode?error.message:"สร้าง PDF ไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ"});}
+        }catch(error){if(!error.statusCode)console.error('Cargo Transfer PDF generation failed',error);return sendJson(res,error.statusCode||500,{error:error.statusCode?error.message:"สร้าง PDF ไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ"});}
     }
     if (req.method === "POST" && pathname === "/api/outbound/transfer-form") {
         const payload = await parseBody(req);
