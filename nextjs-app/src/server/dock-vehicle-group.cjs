@@ -19,6 +19,17 @@ function forHouses(db,houseNumbers){
 }
 function entryForHouse(entries,house){return (entries||[]).find(entry=>contains(entry,house))||null;}
 function bayForHouse(bays,house){return (bays||[]).find(bay=>contains(bay,house))||null;}
+function assertVehicleAvailable(db,plate,bayId){
+    const key=value=>String(value||'').normalize('NFKC').toUpperCase().replace(/[\s-]/g,'');
+    const requested=key(plate);
+    if(!requested)return;
+    const occupied=(db.dock?.bays||[]).find(bay=>{
+        if(bay.id===bayId||bay.status!=='Occupied')return false;
+        const job=(db.jobs||[]).find(item=>contains(bay,item.houseNumber));
+        return key(bay.vehiclePlate||job?.vehiclePlate)===requested;
+    });
+    if(occupied){const error=new Error(`รถทะเบียน ${plate} กำลังใช้งาน ${occupied.name||occupied.id} อยู่ กรุณาลงสินค้าและคืนท่าเดิมก่อนเรียกเข้าท่าอื่น`);error.statusCode=409;throw error;}
+}
 function hasProgress(job,bay){
     return (job?.driverDockHistory||[]).some(event=>event.bayId===bay.id&&event.assignedAt===bay.assignedAt);
 }
@@ -71,4 +82,4 @@ function normalizeQueue(db){
     db.dock.queue=[...grouped.values()].map(entry=>({...entry,houseNumber:entry.houseNumbers[0]}));
     return db.dock.queue;
 }
-module.exports={houses,contains,roundKey,jobs,forHouses,entryForHouse,bayForHouse,normalizeQueue,normalizeBays};
+module.exports={houses,contains,roundKey,jobs,forHouses,entryForHouse,bayForHouse,assertVehicleAvailable,normalizeQueue,normalizeBays};

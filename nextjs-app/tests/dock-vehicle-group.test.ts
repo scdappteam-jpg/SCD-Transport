@@ -3,6 +3,15 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),groups=require('../src/server/dock-vehicle-group.cjs');
 const jobs:Record<string,any>[]=['A1','A2','A3'].map(houseNumber=>({houseNumber,driverId:'DRIVER-1',transportRoundId:'ROUND-1'}));
+test('one physical truck cannot occupy two bays even when its Houses have different round IDs',()=>{
+ const db={jobs:[{houseNumber:'A',vehiclePlate:'SIT-189-UAT',transportRoundId:'R1'},{houseNumber:'B',vehiclePlate:'sit 189 uat',transportRoundId:'R2'}],dock:{bays:[{id:'D8',name:'ท่า 8',status:'Occupied',houseNumber:'A'}]}};
+ const before=structuredClone(db);
+ assert.throws(()=>groups.assertVehicleAvailable(db,'sit 189 uat','D9'),/ท่า 8/);
+ assert.doesNotThrow(()=>groups.assertVehicleAvailable(db,'SIT-189-UAT','D8'));
+ assert.doesNotThrow(()=>groups.assertVehicleAvailable(db,'SIT-OTHER','D9'));
+ assert.deepEqual(db,before);
+ db.dock.bays[0].status='Available';assert.doesNotThrow(()=>groups.assertVehicleAvailable(db,'SIT-189-UAT','D9'));
+});
 test('three House queue rows from one vehicle round consolidate to one queue ticket',()=>{
  const db:any={jobs,dock:{queue:jobs.map((job,index)=>({id:`Q${index+1}`,houseNumber:job.houseNumber,queueNumber:index+5,createdAt:`2026-10-31T01:0${index}:00Z`}))}};
  groups.normalizeQueue(db);

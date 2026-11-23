@@ -4970,6 +4970,8 @@ async function handleApi(req, res, pathname) {
         if (bay.houseNumber && !roundHouses.some(house=>dockVehicleGroup.contains(bay,house))) {
             return sendJson(res, 409, { error: `${bay.name} ถูกใช้โดย House ${bay.houseNumber}` });
         }
+        const vehiclePlate=payload.vehiclePlate||existingBay?.vehiclePlate||entry?.vehiclePlate||job?.vehiclePlate||'';
+        try{dockVehicleGroup.assertVehicleAvailable(db,vehiclePlate,bay.id);}catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
         if (meetingPolicy.active(db,[job])) {
             try {dockPlanning.assignment(meetingPolicy.scoped(db),job,entry||{},bay);} catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
         }
@@ -4981,7 +4983,7 @@ async function handleApi(req, res, pathname) {
             status: "Occupied",
             houseNumber: roundHouses[0],
             houseNumbers: roundHouses,
-            vehiclePlate: payload.vehiclePlate || existingBay?.vehiclePlate || (entry ? entry.vehiclePlate : "") || "",
+            vehiclePlate,
             driverName: payload.driverName || existingBay?.driverName || (entry ? entry.driverName : "") || "",
             assignedAt,
             assignedBy: existingBay?.assignedBy || payload.userId || "",
