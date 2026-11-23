@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- server-only CommonJS compatibility service
 const crypto = require("crypto");
 
 const VIEWER_ROLE = "People_Viewer";
@@ -156,13 +157,10 @@ function provisionTest(db, { actor, record, preview = true, now = new Date().toI
 function provisionAdditional(db, { actor, record, preview = true, now = new Date().toISOString() }) {
     if (!actor || actor.role !== "Admin") fail("เฉพาะ Admin เท่านั้นที่สร้างบัญชีผู้ดูแลข้อมูลได้", 403);
     const requestedCode = cleanText(record?.code, 32).toUpperCase();
-    const highestScdNumber = (db.users || []).reduce((highest, user) => {
-        const match = /^SCD(\d+)$/.exec(cleanText(user?.code, 32).toUpperCase());
-        return match ? Math.max(highest, Number(match[1])) : highest;
-    }, 0);
     const code = !requestedCode || requestedCode === "AUTO"
-        ? `SCD${String(highestScdNumber + 1).padStart(3, "0")}`
+        ? nextEmployeeCode(db)
         : requestedCode;
+    if ((db.hr?.settings?.reservedEmployeeCodes || []).includes(code)) fail(`รหัส ${code} ถูกสำรองไว้สำหรับกู้ข้อมูลเดิม`, 409);
     const name = cleanText(record?.name, 160);
     const nickname = cleanText(record?.nickname, 100);
     const password = String(record?.temporaryPassword || "");
@@ -234,6 +232,7 @@ function nextEmployeeCode(db) {
     let sequence = highest + 1;
     let code = `SCD${String(sequence).padStart(3, "0")}`;
     const used = new Set((db.users || []).flatMap(user => [user?.id, user?.employeeId, user?.code]).map(value => cleanText(value, 120).toUpperCase()).filter(Boolean));
+    for (const reserved of db.hr?.settings?.reservedEmployeeCodes || []) used.add(cleanText(reserved, 32).toUpperCase());
     while (used.has(code)) {
         sequence += 1;
         code = `SCD${String(sequence).padStart(3, "0")}`;
@@ -361,6 +360,7 @@ function assignScdCodes(db, { actor, preview = true, now = new Date().toISOStrin
         || a.key.localeCompare(b.key));
     const targetUsers = new Set(users);
     const reserved = new Set((db.users || []).filter(user => !targetUsers.has(user)).map(user => cleanText(user.code, 32).toUpperCase()).filter(Boolean));
+    for (const code of db.hr?.settings?.reservedEmployeeCodes || []) reserved.add(cleanText(code, 32).toUpperCase());
     const mappings = rows.map((row, index) => {
         const newCode = `SCD${String(index + 1).padStart(3, "0")}`;
         if (reserved.has(newCode)) fail(`รหัส ${newCode} ถูกใช้โดยบัญชีนอกทะเบียนแล้ว`, 409);

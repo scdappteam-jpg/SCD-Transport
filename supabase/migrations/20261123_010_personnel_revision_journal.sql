@@ -32,6 +32,13 @@ BEGIN
        AND NEW.data#>'{stateChunks,keys}' IS NULL THEN
         RAISE EXCEPTION 'SCD chunk manifest downgrade refused: restart outdated workers';
     END IF;
+    IF EXISTS (
+        SELECT 1 FROM jsonb_array_elements(coalesce(NEW.data->'users','[]')) u
+        WHERE u->>'code' IN (SELECT jsonb_array_elements_text(coalesce(NEW.data#>'{hr,settings,reservedEmployeeCodes}','[]')))
+        AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(coalesce(OLD.data->'users','[]')) prior WHERE prior->>'code'=u->>'code')
+    ) THEN
+        RAISE EXCEPTION 'SCD employee code is reserved for original-data recovery';
+    END IF;
     old_profiles := coalesce(OLD.data#>'{hr,employeeProfiles}', '{}'::jsonb);
     new_profiles := coalesce(NEW.data#>'{hr,employeeProfiles}', '{}'::jsonb);
     IF (jsonb_array_length(coalesce(OLD.data->'users','[]'::jsonb)) > 50
