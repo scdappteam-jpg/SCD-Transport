@@ -9,7 +9,7 @@ async function requestJson(url, options, {fetcher=fetch,totalMs=10000,attemptMs=
             return await Promise.race([
                 (async()=>{
                     const response=await fetcher(url,{...options,signal:controller.signal});
-                    if(response.ok)return options.method==='GET'&&response.status!==204?await response.json():null;
+                    if(response.ok)return (options.method==='GET'||options.headers?.Prefer?.includes('return=representation'))&&response.status!==204?await response.json():null;
                     const detail=await response.text();
                     throw Object.assign(new Error(`Shared database HTTP ${response.status}: ${detail.slice(0,500)}`),{nonRetryable:response.status<500&&response.status!==429});
                 })(),

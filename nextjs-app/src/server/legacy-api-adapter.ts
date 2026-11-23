@@ -63,7 +63,15 @@ export async function handleLegacyStorageRequest(request: Request, pathname: str
   return storageResponse(request, pathname, legacyApi.serveStatic);
 }
 
-export async function handleLegacyApiRequest(request: Request, pathname: string): Promise<Response> {
+let apiRequestQueue: Promise<unknown> = Promise.resolve();
+
+export function handleLegacyApiRequest(request: Request, pathname: string): Promise<Response> {
+  const result = apiRequestQueue.catch(() => {}).then(() => handleSerializedLegacyApiRequest(request, pathname));
+  apiRequestQueue = result.catch(() => {});
+  return result;
+}
+
+async function handleSerializedLegacyApiRequest(request: Request, pathname: string): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -88,6 +96,7 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
 
   let status = 200;
   const headers = new Headers();
+  headers.set("X-SCD-State-Protection", "versioned-20261123");
   const chunks: Buffer[] = [];
   const output: LegacyResponse = {
     headersSent: false,

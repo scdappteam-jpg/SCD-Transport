@@ -1,6 +1,7 @@
 const invoiceDocument = require('./invoice-document.cjs');
 const billingClose = require('./billing-close.cjs');
 const stateHttp = require('./state-http.cjs');
+const stateCommit = require('./state-commit.cjs');
 const supabaseServiceAuth = require('./supabase-service-auth.cjs');
 const meetingPolicy=require('./meeting-policy.cjs');
 const hrSecurity = require('./hr-security.cjs');
@@ -642,14 +643,14 @@ function sanitizedClone(db) {
     return sharedStateMemory.sanitizedClone(db);
 }
 
-async function supabaseRequest(method, query, body) {
+async function supabaseRequest(method, query, body, {returnRepresentation = false} = {}) {
     const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_STATE_TABLE}${query}`;
     return stateHttp.requestJson(url, {
         method,
         headers: {
             ...supabaseServiceAuth.serviceHeaders(SUPABASE_KEY),
             "Content-Type": "application/json",
-            Prefer: method === "GET" ? "return=representation" : "resolution=merge-duplicates,return=minimal"
+            Prefer: method === "GET" || returnRepresentation ? "return=representation" : "resolution=merge-duplicates,return=minimal"
         },
         body: body ? JSON.stringify(body) : undefined
     });
@@ -703,7 +704,7 @@ async function loadChunkedState(main) {
     if (!manifest || manifest.version !== STATE_CHUNK_VERSION) return main;
     const loadKind = async (kind, count) => {
         if (!count) return [];
-        const loaded = await sharedStateMemory.loadStateChunks({kind, count, idFor: stateChunkId, hash: chunkHash,
+        const loaded = await sharedStateMemory.loadStateChunks({kind, count, idFor: (k, i) => manifest.keys?.[k]?.[i] || stateChunkId(k, i), hash: chunkHash,
             fetchRows: ids => supabaseRequest("GET", `?or=(${ids.map(id => `id.eq.${encodeURIComponent(id)}`).join(",")})&select=id,data`, null)
         });
         persistedChunkHashes[kind] = loaded.hashes;
@@ -763,26 +764,35 @@ async function refreshDbIfSharedStateChanged(force = false) {
     }
 }
 
-async function persistDbToSupabase(db) {
+async function persistDbToSupabase(db, expectedVersion = dbCacheUpdatedAt, commitId) {
     if (!supabaseEnabled()) return;
     const { main, jobChunks, alertChunks } = compactStateDocument(db);
-    const previous = persistedChunkHashes;
+    const previousKeys = db.stateChunks?.keys || {};
+    main.stateChunks.keys = {jobs: [], alerts: []};
     const writeKind = async (kind, chunks) => {
         const hashes = chunks.map(chunkHash);
-        const changed = chunks.map((items, index) => ({ items, index })).filter(({ index }) => hashes[index] !== previous[kind][index]);
+        const keys = chunks.map((items, index) => stateCommit.contentChunkId(SUPABASE_STATE_ID, kind, index, items));
+        main.stateChunks.keys[kind] = keys;
+        const changed = chunks.map((items, index) => ({ items, index })).filter(({ index }) => keys[index] !== previousKeys[kind]?.[index]);
         await Promise.all(changed.map(({ items, index }) => supabaseRequest("POST", "", {
-            id: stateChunkId(kind, index),
+            id: keys[index],
             data: { items },
             updated_at: (new Date).toISOString()
         })));
         persistedChunkHashes[kind] = hashes;
     };
     await Promise.all([ writeKind("jobs", jobChunks), writeKind("alerts", alertChunks) ]);
-    await supabaseRequest("POST", "", {
-        id: SUPABASE_STATE_ID,
-        data: main,
-        updated_at: (new Date).toISOString()
-    });
+    if (!expectedVersion && String(process.env.SCD_ALLOW_SHARED_STATE_SEED || 'false').toLowerCase() === 'true') {
+        // Explicit bootstrap must not upsert over a row another worker created.
+        const version = nowIso();
+        await supabaseRequest('POST', '', {id: SUPABASE_STATE_ID, data: main, updated_at: version}, {returnRepresentation: true});
+        dbCacheUpdatedAt = version;
+    } else {
+        dbCacheUpdatedAt = await stateCommit.commitMain({request: supabaseRequest, id: SUPABASE_STATE_ID, main, expectedVersion, commitId});
+    }
+    db.stateChunks = main.stateChunks;
+    if (dbCache) dbCache.stateChunks = main.stateChunks;
+    relationalMirror.schedule(db);
 }
 
 const supabaseHealth = {
@@ -797,6 +807,8 @@ const supabaseHealth = {
 
 let pendingSnapshot = null;
 let retryTimer = null;
+let lastStateWriteError = null;
+const snapshotVersions = new WeakMap();
 
 function describeSupabaseError(message) {
     return supabaseServiceAuth.syncErrorHint(message);
@@ -831,11 +843,18 @@ async function retrySupabasePersist() {
     supabaseHealth.retrying = true;
     const snapshot = pendingSnapshot;
     try {
-        await persistDbToSupabase(snapshot);
+        const version = snapshotVersions.get(snapshot);
+        await persistDbToSupabase(snapshot, version?.expected, version?.commitId);
         if (pendingSnapshot === snapshot) pendingSnapshot = null;
         markSupabaseOk();
     } catch (err) {
         markSupabaseFailed(err);
+        if (err.code === 'STATE_WRITE_CONFLICT') {
+            lastStateWriteError = err;
+            if (pendingSnapshot === snapshot) pendingSnapshot = null;
+            dbCache = null;
+            return supabaseHealth;
+        }
         supabaseHealth.pendingWrites += 0;
         queueRetry();
     } finally {
@@ -848,15 +867,24 @@ function scheduleSupabasePersist(db) {
     if (!supabaseEnabled()) return;
     // เขียนทันที (ตัวตั้งเวลาอาจหายถ้าเครื่องถูกรีไซเคิลหลังตอบ response)
     const snapshot = sanitizedClone(db);
+    snapshotVersions.set(snapshot, {expected: dbCacheUpdatedAt, commitId: crypto.randomUUID()});
+    lastStateWriteError = null;
     pendingSnapshot = snapshot;
     dbPersistPromise = dbPersistPromise.catch(() => {}).then(async () => {
         try {
-            await persistDbToSupabase(snapshot);
+            const version = snapshotVersions.get(snapshot);
+            await persistDbToSupabase(snapshot, version.expected, version.commitId);
             if (pendingSnapshot === snapshot) pendingSnapshot = null;
             markSupabaseOk();
         } catch (err) {
             // ข้อมูลยังอยู่ในเครื่องและในหน่วยความจำ ไม่หาย — เข้าคิวลองใหม่ ไม่ขวางผู้ใช้
             markSupabaseFailed(err);
+            if (err.code === 'STATE_WRITE_CONFLICT') {
+                lastStateWriteError = err;
+                if (pendingSnapshot === snapshot) pendingSnapshot = null;
+                dbCache = null;
+                return;
+            }
             supabaseHealth.pendingWrites = 1;
             queueRetry();
         }
@@ -901,6 +929,7 @@ async function flushSharedStatePersistence() {
 // Supabase.  Keep a stalled retry queue from holding a field screen forever.
 async function flushMutationPersistence() {
     await stateHttp.confirmBooking(flushSharedStatePersistence, supabaseEnabled, () => pendingSnapshot);
+    if (lastStateWriteError) throw lastStateWriteError;
 }
 
 async function flushAuthSessionPersistence() {
@@ -955,7 +984,6 @@ function writeDb(db) {
         ensureDbShape(db);
         dbCache = db;
         scheduleSupabasePersist(db);
-        relationalMirror.schedule(db);
     }
     try {
         const content = JSON.stringify(db, (k, v) => typeof v === "string" ? v.replace(/[\uFFFD\uFFFE\uFFFF]/g, "") : v);
@@ -3550,6 +3578,12 @@ async function handleApi(req, res, pathname) {
         if(!dbCache)return sendJson(res,503,{error:'ฐานข้อมูลบุคลากรใช้งานไม่ได้ชั่วคราว กรุณาลองใหม่ ข้อมูลเดิมยังไม่ถูกเปลี่ยนแปลง',code:'SHARED_STATE_UNAVAILABLE'});
     }
     let db = readDb();
+    if (supabaseEnabled() && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+        await flushSharedStatePersistence();
+        await refreshDbIfSharedStateChanged(true);
+        if (!dbCache) return sendJson(res, 503, {error:'กรุณาโหลดข้อมูลล่าสุดก่อนทำรายการใหม่', code:'STATE_WRITE_CONFLICT'});
+        db = readDb();
+    }
     if ((req.method === "GET" && [ "/api/mobile/bootstrap", "/api/bootstrap" ].includes(pathname)) || pathname === "/api/operations/control") {
         await refreshDbIfSharedStateChanged();
         db = readDb();
@@ -9851,7 +9885,7 @@ module.exports = {
     flushSupabasePersistence: flushSupabasePersistence,
     flushSharedStatePersistence: flushSharedStatePersistence,
     flushMutationPersistence: flushMutationPersistence,
-    flushBookingPersistence: () => stateHttp.confirmBooking(flushSharedStatePersistence, supabaseEnabled, () => pendingSnapshot),
+    flushBookingPersistence: flushMutationPersistence,
     flushAuthSessionPersistence: flushAuthSessionPersistence,
     serveStatic: serveStatic
 };
