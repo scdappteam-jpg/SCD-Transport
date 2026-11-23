@@ -15,7 +15,7 @@ function prepareDetails(payload) {
     for (const key of detailDates) {
         if (!Object.hasOwn(source,key)) continue;
         const value = source[key];
-        if (value !== '' && (typeof value !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d{1,3})?)?(Z|[+-]\d\d:\d\d)$/.test(value) || !Number.isFinite(Date.parse(value)))) fail('วันที่และเวลาท้ายใบไม่ถูกต้อง ต้องระบุเขตเวลา');
+        if (value !== '' && (typeof value !== 'string' || !/^\d{4}-\d\d-\d\dT([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?(Z|[+-]\d\d:\d\d)$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value.slice(0,10)+'T00:00:00Z').toISOString().slice(0,10)!==value.slice(0,10))) fail('วันที่และเวลาท้ายใบไม่ถูกต้อง ต้องระบุเขตเวลา');
         result[key] = value ? new Date(value).toISOString() : '';
     }
     if (Object.hasOwn(source,'damage')) {
@@ -82,6 +82,8 @@ function prepare(db, payload, findJob) {
         details=prepareDetails(payload);
         const merged={...(jobs[0].cargoTransferDetails||{}),...details};
         if (merged.unloadStartedAt && merged.unloadFinishedAt && merged.unloadStartedAt>merged.unloadFinishedAt) fail('เวลาลงเสร็จต้องไม่ก่อนเริ่มลงสินค้า');
+        const effective=document.models({rows:jobs,jobs:jobs.map(job=>({...job,cargoTransferDetails:merged}))})[0];
+        if(effective.unloadStart && effective.unloadEnd && Date.parse(effective.unloadStart)>Date.parse(effective.unloadEnd))fail('เวลาลงเสร็จต้องไม่ก่อนเริ่มลงสินค้าที่บันทึกไว้');
         if (merged.damage==='yes' && !merged.issueCause) fail('กรุณาระบุสาเหตุหรือรายละเอียดความเสียหาย');
         if (payload.expectedUpdatedAt !== (jobs[0].cargoTransferDetails?.updatedAt || '')) fail('ข้อมูลท้ายใบเปลี่ยนแล้ว กรุณาโหลดใหม่ก่อนบันทึก',409);
     } else if (payload.action === 'return') {

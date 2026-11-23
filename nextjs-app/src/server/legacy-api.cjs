@@ -34,6 +34,7 @@ const consolSchedule = require("./consol-schedule.cjs");
 const cargoIssuePlan = require("./cargo-issue-plan.cjs");
 const shippingGuards = require("./shipping-guards.cjs");
 const cargoTransfer = require("./cargo-transfer.cjs");
+const cargoTransferPdf = require("./cargo-transfer-pdf.cjs");
 const workflowIntegrity = require("./workflow-integrity.cjs");
 const operationsControl = require("./operations-control.cjs");
 const sharedStateMemory = require("./shared-state-memory.cjs");
@@ -6522,6 +6523,18 @@ async function handleApi(req, res, pathname) {
             job: normalizeJob(job),
             terminalProfile: TERMINAL_PROFILES[terminal]
         });
+    }
+    if (req.method === "POST" && pathname === "/api/outbound/transfer-form/pdf") {
+        const actor=requireSessionRole(db,req,["Admin","Executive","WH3_TeamLeader","WH_Staff","Team_Transport","Terminal","Billing"]);
+        if(!actor)return sendJson(res,403,{error:"ไม่มีสิทธิ์ดาวน์โหลด Cargo Transfer PDF"});
+        const payload=await parseBody(req);
+        try {
+            const models=cargoTransferPdf.select(db,payload.houses,findJob);
+            const pdf=await cargoTransferPdf.render(models);
+            const name=String(payload.houses[0]).replace(/[^A-Za-z0-9-]/g,'').slice(0,64);
+            res.writeHead(200,{"Content-Type":"application/pdf","Content-Disposition":`attachment; filename="Cargo-Transfer-${name}.pdf"`,"Content-Length":pdf.length,"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"});
+            res.end(pdf);return;
+        }catch(error){return sendJson(res,error.statusCode||500,{error:error.statusCode?error.message:"สร้าง PDF ไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ"});}
     }
     if (req.method === "POST" && pathname === "/api/outbound/transfer-form") {
         const payload = await parseBody(req);

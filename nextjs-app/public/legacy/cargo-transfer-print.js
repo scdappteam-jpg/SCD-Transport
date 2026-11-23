@@ -1,6 +1,19 @@
 (async function() {
-    const status=document.getElementById('status'), target=document.getElementById('document'), button=document.getElementById('print');
+    const status=document.getElementById('status'), target=document.getElementById('document'), button=document.getElementById('print'), pdfButton=document.getElementById('downloadPdf');
     button.addEventListener('click',()=>window.print());
+    pdfButton.addEventListener('click',async()=>{
+        pdfButton.disabled=true;
+        try {
+            const token=localStorage.getItem('scdTransportWebSession');
+            if(!token)throw new Error('กรุณาเข้าสู่ระบบหลักก่อนดาวน์โหลด PDF');
+            const houses=[...new Set([...target.querySelectorAll('[data-ctf-house]')].map(row=>row.dataset.ctfHouse))];
+            const response=await fetch('/api/outbound/transfer-form/pdf',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({houses})});
+            if(!response.ok){const error=await response.json();throw new Error(error.error||'ดาวน์โหลด PDF ไม่สำเร็จ');}
+            const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');
+            a.href=url;a.download='Cargo-Transfer-'+houses[0]+'.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+            status.textContent='ดาวน์โหลด PDF แล้ว · A4 แนวตั้ง · กรุณาตรวจข้อมูลและช่องลงชื่อก่อนใช้';
+        } catch(error){status.textContent=error.message;} finally{pdfButton.disabled=false;}
+    });
     try {
         const query=new URLSearchParams(location.search), ticket=query.get('ticket');
         if(ticket && /^[a-f0-9-]{36}$/.test(ticket)) {
@@ -28,5 +41,6 @@
         if(!target.querySelector('.ctf-sheet'))throw new Error('ไม่มีรายการ Cargo Transfer ให้พิมพ์');
         status.textContent='ตรวจข้อมูลก่อนพิมพ์ · A4 แนวตั้ง · สเกล 100% · ปิดหัวกระดาษและท้ายกระดาษของเบราว์เซอร์';
         button.disabled=false;
+        pdfButton.disabled=false;
     } catch(error) { status.textContent=error.message; }
 })();

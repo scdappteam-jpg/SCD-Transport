@@ -122,7 +122,7 @@ export async function handleLegacyApiRequest(request: Request, pathname: string)
   }
   // Booking validation/auth failures did not mutate state and must not wait
   // behind unrelated database writes before returning their original status.
-  if (pathname === "/api/outbound/aot-booking" && status >= 400) {
+  if ((pathname === "/api/outbound/aot-booking" && status >= 400) || pathname === "/api/outbound/transfer-form/pdf") {
     return new Response(Buffer.concat(chunks), {status, headers});
   }
   // Only a write request needs to wait for the shared-state snapshot.  A

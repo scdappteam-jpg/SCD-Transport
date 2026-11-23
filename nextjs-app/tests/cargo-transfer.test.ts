@@ -122,3 +122,10 @@ test('CTF record saves all Houses with audit and rejects stale cross-document an
  for(const details of [{damage:'maybe'},{unloadBy:null},{unloadStartedAt:'today'},{damage:'yes'},{unloadStartedAt:'2026-10-19T15:00:00+07:00',unloadFinishedAt:'2026-10-19T14:00:00+07:00'}])await rejectsWithoutMutation(f,{...p,expectedUpdatedAt:'2026-10-19T07:00:00.000Z',details},422);
  const before=structuredClone(f.db.jobs[0].cargoTransferDocument);await f.call({...p,expectedUpdatedAt:'2026-10-19T07:00:00.000Z',details:{damage:'yes',issueCause:'SIT damaged corner'}});assert.deepEqual(f.db.jobs[0].cargoTransferDocument,before);assert.equal((f.db.jobs[0].cargoTransferDetailsHistory as unknown[]).length,2);
 });
+
+test('CTF footer rejects impossible calendar dates and completion before an existing actual unload',async()=>{
+ const f=fixture();await f.call(request());
+ for(const value of ['2026-02-30T14:00:00+07:00','2026-10-19T24:00:00+07:00'])await rejectsWithoutMutation(f,{action:'record',houses:request().houses,expectedUpdatedAt:'',details:{unloadStartedAt:value}},422);
+ f.db.jobs.forEach(j=>{j.unloadingStartedAt='2026-10-19T08:00:00Z';});
+ await rejectsWithoutMutation(f,{action:'record',houses:request().houses,expectedUpdatedAt:'',details:{unloadFinishedAt:'2026-10-19T14:00:00+07:00'}},422);
+});
