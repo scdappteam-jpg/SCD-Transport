@@ -28,6 +28,10 @@ BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'SCD source-of-truth deletion refused; use reviewed database maintenance';
     END IF;
+    IF OLD.data#>'{stateChunks,keys}' IS NOT NULL
+       AND NEW.data#>'{stateChunks,keys}' IS NULL THEN
+        RAISE EXCEPTION 'SCD chunk manifest downgrade refused: restart outdated workers';
+    END IF;
     old_profiles := coalesce(OLD.data#>'{hr,employeeProfiles}', '{}'::jsonb);
     new_profiles := coalesce(NEW.data#>'{hr,employeeProfiles}', '{}'::jsonb);
     IF (jsonb_array_length(coalesce(OLD.data->'users','[]'::jsonb)) > 50
