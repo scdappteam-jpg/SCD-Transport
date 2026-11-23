@@ -1116,6 +1116,7 @@
                       <small>ข้อมูลนี้ใช้บันทึกการยิงเข้าระบบ EI และพร้อมเชื่อม API ในอนาคต</small>
                     </div>
                     <div id="transferIssueResult" class="result compact-result"></div>
+<details><summary>บันทึกข้อมูลรับ–ส่งและท้ายใบ Cargo Transfer</summary><p>เลือก House ให้ครบหนึ่งใบ แล้วกดโหลดข้อมูลก่อนแก้ไข เวลาเป็นประเทศไทย ชื่อที่กรอกไม่ใช่ลายเซ็น</p><button id="loadTransferDetailsBtn" type="button" class="secondary">โหลดข้อมูลท้ายใบ</button><div id="transferDetailsFields" class="transfer-form-grid"><label>ผู้ลงสินค้า<input type="text" data-ctf-detail="unloadBy"></label><label>ผู้รับ Terminal<input type="text" data-ctf-detail="tmoReceivedBy"></label><label>เวลาปล่อยสินค้าจากคลัง<input type="datetime-local" data-ctf-detail="whReleasedAt"></label><label>เวลาส่งมอบของคนขับ<input type="datetime-local" data-ctf-detail="driverTransferredAt"></label><label>เวลาผู้รับ Terminal รับสินค้า<input type="datetime-local" data-ctf-detail="tmoReceivedAt"></label><label>เวลาเริ่มลงสินค้า<input type="datetime-local" data-ctf-detail="unloadStartedAt"></label><label>เวลาลงสินค้าเสร็จ<input type="datetime-local" data-ctf-detail="unloadFinishedAt"></label><label>สาเหตุ / รายละเอียดความเสียหาย<input type="text" data-ctf-detail="issueCause"></label><label>ปัญหาการทำงาน / หมายเหตุ<input type="text" data-ctf-detail="operationNote"></label><label>เบอร์ติดต่อหัวหน้างาน<input type="text" data-ctf-detail="supervisorContact"></label><label>สินค้าเสียหาย<select data-ctf-detail="damage"><option value="">ยังไม่บันทึก</option><option value="no">ไม่พบ</option><option value="yes">พบ</option></select></label></div><button id="saveTransferDetailsBtn" type="button">บันทึกท้ายใบ</button></details>
                     <div id="cargoTransferPreview" class="transfer-preview"></div>
                     <div class="document-return-box">
                       <strong>รับ Cargo Transfer ตัวจริงคืน / Original document returned</strong>
@@ -2671,6 +2672,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="warehouse-reservations-page.js?v=2-wh-planning-get"></script>
     <script src="warehouse-inbound-page.js?v=20261031-sit-reset"></script>
     <script src="meeting-workflows-ui.js?v=20261028-inbound"></script>
-    <script src="app.js?v=20261121-unified-credential&amp;roles=20261122e&amp;full-loop=3"></script>
+    <script src="ctf-core/index.js?v=20261123-ctf"></script>
+    <script src="app.js?v=20261121-unified-credential&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261123"></script>
   </body>
 </html>

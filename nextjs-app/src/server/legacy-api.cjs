@@ -6525,15 +6525,19 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/transfer-form") {
         const payload = await parseBody(req);
-        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport" ]);
+        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "Team_Transport", ...(payload.action === "record" ? ["Terminal"] : []) ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ออก Cargo Transfer Form" });
         payload.userId = actor.id;
-        let houses, jobs;
-        try { ({ houses, jobs } = cargoTransfer.prepare(db, payload, findJob)); }
+        let houses, jobs, details;
+        try { ({ houses, jobs, details } = cargoTransfer.prepare(db, payload, findJob)); }
         catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
         const issuedAt = nowIso();
+        const document = payload.action === "issue" ? cargoTransfer.snapshot(jobs, payload, issuedAt, actor.id) : null;
         jobs.forEach(job => {
-            if (payload.action === "return") {
+            if (payload.action === "record") {
+                job.cargoTransferDetailsHistory = [...(job.cargoTransferDetailsHistory || []), {before:job.cargoTransferDetails || null, at:issuedAt, by:actor.id}];
+                job.cargoTransferDetails = {...(job.cargoTransferDetails || {}), ...details, updatedAt:issuedAt, updatedBy:actor.id};
+            } else if (payload.action === "return") {
                 saveBase64File(db, {
                     houseNumber: job.houseNumber,
                     fileType: "CargoTransferReturned",
@@ -6553,6 +6557,7 @@ async function handleApi(req, res, pathname) {
                     files: payload.lithiumFiles
                 });
                 Object.assign(job, {
+                    cargoTransferDocument: document,
                     cargoTransferIssuedAt: issuedAt,
                     cargoTransferGroup: houses,
                     cargoTransferDate: payload.transferDate || "",
@@ -6572,7 +6577,7 @@ async function handleApi(req, res, pathname) {
             logActivity(db, {
                 houseNumber: job.houseNumber,
                 userId: payload.userId,
-                activityType: payload.action === "return" ? "CargoTransferReturned" : "CargoTransferIssued"
+                activityType: payload.action === "record" ? "CargoTransferDetailsUpdated" : payload.action === "return" ? "CargoTransferReturned" : "CargoTransferIssued"
             });
         });
         writeDb(db);

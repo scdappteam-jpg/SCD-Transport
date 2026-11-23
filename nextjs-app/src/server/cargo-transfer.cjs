@@ -1,5 +1,30 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- CommonJS compatibility service. */
 const receipts = require('./inbound-receipts.cjs');
+const document = require('../../public/legacy/ctf-core/index.js');
+
+const detailText = ['unloadBy', 'tmoReceivedBy', 'issueCause', 'operationNote', 'supervisorContact'];
+const detailDates = ['whReleasedAt', 'driverTransferredAt', 'tmoReceivedAt', 'unloadStartedAt', 'unloadFinishedAt'];
+function prepareDetails(payload) {
+    const source = payload.details;
+    if (!source || typeof source !== 'object' || Array.isArray(source)) fail('กรุณาระบุข้อมูลท้ายใบ');
+    const result = {};
+    for (const key of detailText) {
+        if (Object.hasOwn(source,key) && (typeof source[key] !== 'string' || source[key].length > 1000)) fail('ข้อมูลท้ายใบไม่ถูกต้อง');
+        if (Object.hasOwn(source,key)) result[key] = source[key].trim();
+    }
+    for (const key of detailDates) {
+        if (!Object.hasOwn(source,key)) continue;
+        const value = source[key];
+        if (value !== '' && (typeof value !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d{1,3})?)?(Z|[+-]\d\d:\d\d)$/.test(value) || !Number.isFinite(Date.parse(value)))) fail('วันที่และเวลาท้ายใบไม่ถูกต้อง ต้องระบุเขตเวลา');
+        result[key] = value ? new Date(value).toISOString() : '';
+    }
+    if (Object.hasOwn(source,'damage')) {
+        if (!['','yes','no'].includes(source.damage)) fail('กรุณาเลือกผลตรวจความเสียหาย');
+        result.damage = source.damage;
+    }
+    if (!Object.keys(result).length) fail('ไม่มีข้อมูลท้ายใบให้บันทึก');
+    return result;
+}
 
 function fail(message, statusCode = 422) {
     const error = new Error(message);
@@ -41,17 +66,30 @@ function metadata(payload) {
 }
 
 function prepare(db, payload, findJob) {
-    if (!['issue', 'return'].includes(payload.action)) fail('Cargo Transfer รองรับเฉพาะ action issue หรือ return');
+    if (!['issue', 'return', 'record'].includes(payload.action)) fail('Cargo Transfer รองรับเฉพาะ action issue return หรือ record');
     if (!Array.isArray(payload.houses) || !payload.houses.length || payload.houses.some(house => typeof house !== 'string' || !house.trim())) fail('กรุณาระบุเลข House ที่ถูกต้องอย่างน้อยหนึ่งงาน');
     const houses = [...new Set(payload.houses.map(house => house.trim()))];
     const jobs = houses.map(house => findJob(db, house));
     const missing = houses.filter((house, index) => !jobs[index]);
     if (missing.length) fail(`ไม่พบ House ${missing.join(', ')} กรุณาตรวจทั้งชุดก่อนบันทึก`, 404);
-    if (payload.action === 'return') {
+    let details;
+    if (payload.action === 'record') {
+        if (jobs.some(job => !job.cargoTransferIssuedAt)) fail('ยังไม่ออก Cargo Transfer',409);
+        const key = job => job.cargoTransferDocument?.id || JSON.stringify([job.cargoTransferIssuedAt,job.cargoTransferGroup]);
+        if (jobs.some(job=>key(job)!==key(jobs[0]))) fail('เลือกได้ครั้งละหนึ่งใบ Cargo Transfer',409);
+        const expected=jobs[0].cargoTransferDocument?.rows?.map(row=>row.houseNumber) || jobs[0].cargoTransferGroup || houses;
+        if (expected.length!==houses.length || expected.some(h=>!houses.includes(h))) fail('กรุณาเลือก House ให้ครบทั้งใบก่อนบันทึกท้ายใบ',409);
+        details=prepareDetails(payload);
+        const merged={...(jobs[0].cargoTransferDetails||{}),...details};
+        if (merged.unloadStartedAt && merged.unloadFinishedAt && merged.unloadStartedAt>merged.unloadFinishedAt) fail('เวลาลงเสร็จต้องไม่ก่อนเริ่มลงสินค้า');
+        if (merged.damage==='yes' && !merged.issueCause) fail('กรุณาระบุสาเหตุหรือรายละเอียดความเสียหาย');
+        if (payload.expectedUpdatedAt !== (jobs[0].cargoTransferDetails?.updatedAt || '')) fail('ข้อมูลท้ายใบเปลี่ยนแล้ว กรุณาโหลดใหม่ก่อนบันทึก',409);
+    } else if (payload.action === 'return') {
         const unissued = jobs.filter(job => !job.cargoTransferIssuedAt);
         if (unissued.length) fail(`ยังไม่ออก Cargo Transfer สำหรับ House ${unissued.map(job => job.houseNumber).join(', ')}`, 409);
         evidence({base64:payload.imageBase64, mimeType:payload.mimeType}, 'Cargo Transfer ตัวจริงคืน');
     } else {
+        if (jobs.some(job=>job.cargoTransferIssuedAt)) fail('งานนี้มีใบ Cargo Transfer แล้ว กรุณาโหลดใบเดิมเพื่อพิมพ์ซ้ำหรือบันทึกท้ายใบ',409);
         files(payload.permitFiles, 'Permit', true);
         files(payload.lithiumFiles, 'Lithium', jobs.some(job => job.requiresLithiumDocs || /lithium/i.test(job.productType || '')));
         // Validate every selected House before the adapter saves any file or changes any job.
@@ -61,7 +99,7 @@ function prepare(db, payload, findJob) {
         }
         metadata(payload);
     }
-    return {houses, jobs};
+    return {houses, jobs, details};
 }
 
-module.exports = {prepare};
+module.exports = {prepare, snapshot:document.snapshot};

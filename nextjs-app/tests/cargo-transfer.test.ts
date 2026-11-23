@@ -6,6 +6,7 @@ import test from 'node:test';
 const require=createRequire(import.meta.url);
 const cargoTransfer=require('../src/server/cargo-transfer.cjs');
 const receipts=require('../src/server/inbound-receipts.cjs');
+const ctf=require('../public/legacy/ctf-core/index.js');
 const api=readFileSync(new URL('../src/server/legacy-api.cjs',import.meta.url),'utf8');
 const front=readFileSync(new URL('../public/legacy/app.js',import.meta.url),'utf8');
 const cut=(s:string,a:string,b:string)=>{const start=s.indexOf(a),end=s.indexOf(b,start);assert.ok(start>=0&&end>start);return s.slice(start,end);};
@@ -75,14 +76,49 @@ test('Cargo Transfer may issue only selected ready Houses without moving outstan
     const r=await f.call({...request(),houses:request().houses.slice(0,2)});assert.equal(r.code,200);assert.deepEqual(f.db.jobs[2],outstanding);assert.equal(f.io.files,2);
 });
 test('Cargo Transfer preview includes House Onhand Master separate latest Flight planned units and escapes text',()=>{
-    const rows=jobs();rows[0].flightNo='NH851/21';rows[0].customerName='<script>alert(1)</script>';rows[1].packageCounts={CTN:10,PLT:2};
+    const rows=jobs();rows[0].flightNo='NH851/21';rows[0].customerName='<script>alert(1)</script>';rows[1].packageCounts={CTN:10,PLT:2};rows[1].inboundReceipt={counts:{CTN:10,PLT:2},confirmedAt:'2026-10-19T07:00:00Z'};
     const fields:Record<string,{value:string}>={'#transferHouseList':{value:rows.map(j=>j.houseNumber).join('\n')},'#terminalHouse':{value:rows[0].houseNumber}};
-    const ctx=vm.createContext({state:{dashboard:{jobs:rows}},$: (id:string)=>fields[id],InboundReceipts:receipts});
+    const ctx=vm.createContext({CargoTransferDocument:ctf,buildCtfPreviewHtml:ctf.render,state:{dashboard:{jobs:rows}},$: (id:string)=>fields[id],InboundReceipts:receipts});
     vm.runInContext(cut(front,'function normalizeHouseBarcode(','function money(')+cut(front,'function jobPackingLabel(','let receiptJobs =')+cut(front,'function safeHtml(','function alertActionItems(')+cut(front,'function transferHouseNumbers(','function renderTransferPreview('),ctx);
     const html=vm.runInContext('transferSheetHtml()',ctx);
-    assert.ok(html.includes('<th>Master</th><th>Flight</th>'));assert.ok(html.includes('205-86393230'));assert.ok(html.includes('NH851/21'));assert.ok(html.includes('10 CTN / 2 PLT'));assert.ok(!html.includes('<script>'));assert.ok(rows.every(j=>html.includes(j.houseNumber)&&html.includes(j.onhandNumber as string)));
+    assert.ok(html.includes('<th>MAWB / FLIGHT</th>'));assert.ok(html.includes('205-86393230'));assert.ok(html.includes('NH851/21'));assert.ok(html.includes('10 CTN / 2 PLT'));assert.ok(!html.includes('<script>'));assert.ok(rows.every(j=>html.includes(j.houseNumber)&&html.includes(j.onhandNumber as string)));
     fields['#transferHouseList'].value+='\nUNKNOWN';assert.ok(vm.runInContext('transferSheetHtml()',ctx).includes('ไม่พบ House'));
     assert.throws(()=>vm.runInContext('validateTransferSelection("issue")',ctx),/ไม่พบ House/);
     fields['#transferHouseList'].value=rows[0].houseNumber;rows[0].csConfirmed=false;assert.throws(()=>vm.runInContext('validateTransferSelection("issue")',ctx),/CS/);
     assert.throws(()=>vm.runInContext('validateTransferSelection("return")',ctx),/ยังไม่ออก/);
+});
+
+test('Issued CTF snapshot preserves date time IC quantities and vehicle after later edits',async()=>{
+ const f=fixture();f.db.jobs[0].icNumber='BKK1208517';await f.call(request());
+ const j=f.db.jobs[0],saved=structuredClone(j.cargoTransferDocument);
+ j.aotVehiclePlate='CHANGED';j.customerName='CHANGED';j.icNumber='CHANGED';j.inboundReceipt={counts:{CTN:999},confirmedAt:'later'};
+ const html=ctf.render({rows:f.db.jobs.map(j=>({houseNumber:j.houseNumber,customerName:'STALE IMPORT'})),jobs:f.db.jobs,driver:'WRONG',date:'2099-01-01'});
+ assert.ok(html.includes('19/10/2026'));assert.ok(html.includes('14:00'));assert.ok(html.includes('BKK1208517'));assert.ok(html.includes('216 CTN'));assert.ok(html.includes('test-plate'));assert.ok(!html.includes('CHANGED'));assert.ok(!html.includes('STALE IMPORT'));assert.deepEqual(j.cargoTransferDocument,saved);
+ await rejectsWithoutMutation(f,request(),409);
+});
+test('CTF draft escapes untrusted data and never generates time pass marks or signatures',()=>{
+ const j={houseNumber:'SIT-01',customerName:'<img src=x onerror=alert(1)>',packageCounts:{CTN:4,PLT:2},icNumber:'BKK-1',qaVerified:false};
+ const html=ctf.render({rows:[{houseNumber:'SIT-01'}],jobs:[j]});
+ assert.ok(html.includes('DRAFT'));assert.ok(html.includes('4 CTN / 2 PLT'));assert.ok(!html.includes('<img'));assert.ok(!html.includes('<td>✓</td>'));assert.ok(!html.includes('Invalid Date'));
+ const unknown=ctf.render({rows:[{houseNumber:'UNKNOWN'}],jobs:[]});assert.ok(unknown.includes('ไม่พบ House'));
+});
+test('CTF separates documents and paginates without silently combining different trucks',()=>{
+ const rows=Array.from({length:20},(_,i)=>({houseNumber:`H${i}`,cargoTransferIssuedAt:'2026-11-22T08:00:00Z',cargoTransferGroup:Array.from({length:20},(_,i)=>`H${i}`),aotVehiclePlate:'A'}));
+ const html=ctf.render({rows,jobs:rows});assert.equal((html.match(/<article /g)||[]).length,2);assert.ok(html.includes('1/2'));assert.ok(html.includes('2/2'));
+ const mixed=[rows[0],{...rows[1],cargoTransferIssuedAt:'2026-11-22T09:00:00Z',aotVehiclePlate:'B'}];assert.equal(ctf.models({rows:mixed,jobs:mixed}).length,2);
+ assert.ok(ctf.render({rows:[rows[0]],jobs:rows}).includes('รายการที่เลือกไม่ครบใบเดิม'));
+});
+test('CTF footer uses recorded events, Bangkok time and does not infer TMO receipt',()=>{
+ const j={houseNumber:'H1',cargoTransferIssuedAt:'2026-11-22T08:00:00Z',cargoTransferDate:'2026-11-22',unloadingStartedAt:'2026-11-22T08:15:00Z',unloadingCompletedAt:'2026-11-22T08:30:00Z',terminalArrivedAt:'2026-11-22T08:00:00Z',xrayStatus:'Passed',qaVerified:true,cargoTransferPermitAttached:true};
+ const model=ctf.models({rows:[j],jobs:[j]})[0];assert.equal(model.tmoReceivedAt,'');assert.equal(model.unloadStart,j.unloadingStartedAt);assert.equal(ctf.localDate(model.unloadEnd),'22/11/2026, 15:30');
+ const html=ctf.render({rows:[j],jobs:[j]});assert.equal((html.match(/<td>✓<\/td>/g)||[]).length,3);assert.ok(html.includes('ยังไม่บันทึก'));
+});
+test('CTF record saves all Houses with audit and rejects stale cross-document and invalid details atomically',async()=>{
+ const f=fixture();await f.call(request());
+ const p={action:'record',houses:request().houses,expectedUpdatedAt:'',details:{unloadBy:'SIT unload',tmoReceivedBy:'SIT receiver',unloadStartedAt:'2026-10-19T14:00:00+07:00',unloadFinishedAt:'2026-10-19T14:15:00+07:00',damage:'no',supervisorContact:'SIT only'}};
+ const r=await f.call(p);assert.equal(r.code,200);assert.ok(f.db.jobs.every(j=>(j.cargoTransferDetails as Record<string,unknown>).unloadBy==='SIT unload'));assert.ok(f.db.jobs.every(j=>j.status==='Stored'));
+ await rejectsWithoutMutation(f,p,409);
+ await rejectsWithoutMutation(f,{...p,houses:p.houses.slice(0,1)},409);
+ for(const details of [{damage:'maybe'},{unloadBy:null},{unloadStartedAt:'today'},{damage:'yes'},{unloadStartedAt:'2026-10-19T15:00:00+07:00',unloadFinishedAt:'2026-10-19T14:00:00+07:00'}])await rejectsWithoutMutation(f,{...p,expectedUpdatedAt:'2026-10-19T07:00:00.000Z',details},422);
+ const before=structuredClone(f.db.jobs[0].cargoTransferDocument);await f.call({...p,expectedUpdatedAt:'2026-10-19T07:00:00.000Z',details:{damage:'yes',issueCause:'SIT damaged corner'}});assert.deepEqual(f.db.jobs[0].cargoTransferDocument,before);assert.equal((f.db.jobs[0].cargoTransferDetailsHistory as unknown[]).length,2);
 });
