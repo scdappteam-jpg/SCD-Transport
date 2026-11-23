@@ -124,9 +124,24 @@
   async function loadDirectory() {
     const token = sessionStorage.getItem(TOKEN_KEY);
     if (!token) return false;
-    const response = await fetch("/api/people-directory", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    let response;
+    try {
+      response = await fetch("/api/people-directory", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    } catch (_) {
+      $("directoryMessage").textContent = $("message").textContent = "การเชื่อมต่อขัดข้องชั่วคราว กรุณาลองโหลดข้อมูลอีกครั้ง ระบบยังเก็บการเข้าสู่ระบบไว้";
+      return false;
+    }
     if (response.status === 428) { $("login").classList.add("hidden"); $("changePassword").classList.remove("hidden"); return true; }
-    if (!response.ok) { sessionStorage.removeItem(TOKEN_KEY); return false; }
+    if (!response.ok) {
+      if (response.status === 401) {
+        sessionStorage.removeItem(TOKEN_KEY);
+        $("directory").classList.add("hidden"); $("login").classList.remove("hidden");
+      }
+      $("directoryMessage").textContent = $("message").textContent = response.status === 401
+        ? "การเข้าสู่ระบบหมดอายุ กรุณาเข้าสู่ระบบใหม่"
+        : "โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง ระบบยังเก็บการเข้าสู่ระบบไว้";
+      return false;
+    }
     const body = await response.json();
     items = body.items || [];
     refreshDepartments(); render();

@@ -732,9 +732,12 @@ async function loadDbFromSupabase() {
             console.log(`[db] Loaded shared data from Supabase (${SUPABASE_STATE_TABLE}/${SUPABASE_STATE_ID}).`);
             return;
         }
+        if (String(process.env.SCD_ALLOW_SHARED_STATE_SEED || "false").toLowerCase() !== "true") {
+            throw new Error("Shared state document is missing; automatic seed is disabled to protect production data");
+        }
         const seed = readDbFromFile();
-        dbCache = seed;
         await persistDbToSupabase(seed);
+        dbCache = seed;
         relationalMirror.schedule(dbCache);
         console.log(`[db] Seeded Supabase shared data from bundled/runtime db.json.`);
     } catch (err) {
@@ -3699,7 +3702,8 @@ async function handleApi(req, res, pathname) {
         db.authSessions.push({ id: `SES-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`, userId: user.id, tokenHash: crypto.createHash("sha256").update(token).digest("hex"), createdAt: nowIso(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1e3).toISOString() });
         if (supabaseEnabled()) {
             dbCache = db;
-            scheduleAuthSessionPersist(db.authSessions);
+            try { await scheduleAuthSessionPersist(db.authSessions); }
+            catch (_) { return sendJson(res, 503, {error: "บันทึกการเข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่", code: "SESSION_SAVE_FAILED"}); }
         } else writeDb(db);
         return sendJson(res, 200, { ok: true, token, expiresInSeconds: 43200, user: { id: user.id, code: user.code, name: user.name, nickname: user.nickname || "", role: user.role, mustChangePassword: user.mustChangePassword === true, mustChangePin: user.mustChangePin === true } });
     }
