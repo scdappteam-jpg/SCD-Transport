@@ -1625,14 +1625,14 @@ function renderAdminDriverOptions() {
     const drivers = driverUsers();
     select.innerHTML = drivers.map(driver => `<option value="${driver.id}">${driver.name}${driver.vehiclePlate ? ` / ${driver.vehiclePlate}` : ""}</option>`).join("");
     select.value = drivers.some(driver => driver.id === current) ? current : drivers[0]?.id || "";
-    applyAdminDriver();
+    applyAdminDriver(select.value === current);
 }
 
-function applyAdminDriver() {
+function applyAdminDriver(preserveInputs = false) {
     const driver = selectedAdminDriver();
     if (!driver) return;
-    $("#adminDriverName").value = driver.name || "";
-    $("#adminVehiclePlate").value = driver.vehiclePlate || "";
+    if (preserveInputs !== true || !$("#adminDriverName").value.trim()) $("#adminDriverName").value = driver.name || "";
+    if (preserveInputs !== true || !$("#adminVehiclePlate").value.trim()) $("#adminVehiclePlate").value = driver.vehiclePlate || "";
     updateAdminBatchSummary();
     renderCargoPreview();
 }

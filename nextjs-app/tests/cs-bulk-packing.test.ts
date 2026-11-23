@@ -12,3 +12,13 @@ test('CS bulk prompt and final confirmation preserve mixed CTN and PLT totals ra
     assert.equal(prompts.length,1);assert.equal(confirmations.length,1);
     for(const text of [...prompts,...confirmations]){assert.match(text,/87 CTN \/ 38 PLT/);assert.doesNotMatch(text,/50 ชิ้น/);assert.match(text,/3 ราย/);}
 });
+test('Cargo preview refresh preserves the assigned job plate, while an explicit driver change applies the new default',()=>{
+    const fields:Record<string,{value:string;innerHTML?:string}>={'#adminDriverSelect':{value:'SIT-driver'},'#adminDriverName':{value:'SIT Job Driver'},'#adminVehiclePlate':{value:'SIT-JOB-PLATE'}};
+    const driver={id:'SIT-driver',name:'SIT Default Driver',vehiclePlate:''};
+    const ctx=vm.createContext({$:(id:string)=>fields[id],driverUsers:()=>[driver],selectedAdminDriver:()=>driver,updateAdminBatchSummary:()=>{},renderCargoPreview:()=>{}});
+    for(const pattern of [/^function renderAdminDriverOptions\([\s\S]*?^}/m,/^function applyAdminDriver\([\s\S]*?^}/m])vm.runInContext(source.match(pattern)![0],ctx);
+    vm.runInContext('renderAdminDriverOptions()',ctx);
+    assert.equal(fields['#adminVehiclePlate'].value,'SIT-JOB-PLATE');assert.equal(fields['#adminDriverName'].value,'SIT Job Driver');
+    driver.vehiclePlate='SIT-NEW-DRIVER';vm.runInContext('applyAdminDriver({type:"change"})',ctx);
+    assert.equal(fields['#adminVehiclePlate'].value,'SIT-NEW-DRIVER');assert.equal(fields['#adminDriverName'].value,'SIT Default Driver');
+});

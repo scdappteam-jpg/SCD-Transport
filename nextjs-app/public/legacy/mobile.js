@@ -785,7 +785,9 @@ function renderPickupGuide() {
 
 function pickupWorkflowStep(job) {
     const states = [ job?.driverRouteStatus, job?.status ];
-    return states.some(state => [ "ReturningWH3", "ArrivedWH3", "ReleasedForDock", "AwaitingReleaseDocument", "WaitingForDock" ].includes(state)) ? 4 : 1;
+    // A successful load refreshes the job before the driver confirms pickup.
+    // Keep the signature/confirmation step visible while that job is Loading.
+    return states.some(state => [ "Loading", "PickedUp", "ReturningWH3", "ArrivedWH3", "ReleasedForDock", "AwaitingReleaseDocument", "WaitingForDock" ].includes(state)) ? 4 : 1;
 }
 
 function renderPickupDriverActions() {
@@ -1202,10 +1204,27 @@ function renderDriverCsHandoff(jobs) {
     box.innerHTML = jobs.map(job => `<div><strong>House ${escapeHtmlMobile(job.hawbNumber || job.houseNumber)}</strong><br>Onhand ${escapeHtmlMobile(job.onhandNumber || job.houseNumber)} · Master ${escapeHtmlMobile(job.mawbNumber || job.masterNumber || "รอยืนยัน")}<br>Invoice: ${escapeHtmlMobile(job.csInvoiceNo || job.invoiceNo || "-")}<br>ผู้ติดต่อ: ${escapeHtmlMobile(job.csContactName || job.contactPerson || job.contact || "-")}<br>โทร: ${escapeHtmlMobile(job.csContactPhone || job.pickupPhone || job.tel || "-")}<br>คนขับ: ${escapeHtmlMobile(job.driverName || "-")} · รถ ${escapeHtmlMobile(job.vehiclePlate || "-")}</div>`).join("<hr>");
 }
 
+function resetPickupEvidenceForSelection(selectionKey) {
+    if (state.pickupEvidenceSelection === selectionKey) return;
+    state.pickupEvidenceSelection = selectionKey;
+    state.pickupStartTime = null;
+    state.simulatedPickupEvidenceHouse = "";
+    $$(".pickup-check").forEach(input => { input.checked = false; });
+    [ "productImages", "cargoImages", "doorClosedImages", "driverInspectorName", "driverReceiverName" ].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.value = "";
+    });
+    [ "signaturePad", "receiverSignaturePad" ].forEach(id => {
+        const canvas = document.getElementById(id);
+        if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    });
+}
+
 function applyDriverJob(houseNumber) {
     const today = (new Date).toISOString().slice(0, 10);
     $("#driverPickupDate").value ||= today;
     const selectedJobs = jobsFromSelection(houseNumber);
+    resetPickupEvidenceForSelection(JSON.stringify(selectedJobs.map(job => job.houseNumber).sort()));
     if(selectedJobs[0]&&currentUser()?.role==='Driver')localStorage.setItem(`scdDriverSelectedHouse:${currentUser().id}`,selectedJobs[0].houseNumber);
     renderDriverCsHandoff(selectedJobs);
     if (!houseNumber || !selectedJobs.length) {
