@@ -10334,10 +10334,16 @@ function bindEvents() {
         });
         toast("อนุมัติคิวแล้ว / Queue approved");
     }));
+    for (const [selector, phase, message] of [["#wh3LoadStartBtn", "wh3-load-start", "บันทึกเริ่มโหลด WH3 แล้ว"], ["#terminalQueueReceivedBtn", "queue", "บันทึกรับคิว Terminal แล้ว"]]) {
+        $(selector)?.addEventListener("click", event => runAction(event.currentTarget, async () => {
+            await api("/api/outbound/load-bay", { houseNumber: normalizeHouseBarcode($("#terminalHouse").value), phase });
+            toast(message);
+        }));
+    }
     $("#loadBayBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const houseNumber = normalizeHouseBarcode($("#terminalHouse").value);
         if (!houseNumber) throw new Error("กรุณาระบุ House ก่อนโหลดขึ้นรถ");
-        if (!window.confirm(`ยืนยันโหลด House ${houseNumber} ขึ้นรถไป Terminal?\n\nระบบจะบันทึกหลักฐานรูปก่อนโหลด และย้ายงานออกจากขั้นเตรียมขนออก WH3`)) return;
+        if (!window.confirm(`ยืนยันโหลดเสร็จและออก WH3 สำหรับ House ${houseNumber}?\n\nระบบจะบันทึกเวลาออก WH3 และหลักฐานรูปก่อนออกเดินทาง`)) return;
         const image = await fileToCompressedBase64($("#preLoadPhoto"));
         await api("/api/outbound/load-bay", {
             houseNumber: houseNumber,
@@ -10346,7 +10352,7 @@ function bindEvents() {
             mimeType: image.mimeType,
             arrived: false
         });
-        toast("โหลดขึ้นรถแล้ว / Goods loaded");
+        toast("โหลดเสร็จและออก WH3 แล้ว / Departed WH3");
     }));
     $("#terminalArrivalBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const houseNumber = normalizeHouseBarcode($("#terminalHouse").value);
@@ -11462,17 +11468,17 @@ async function csBulkConfirmFiltered() {
     if (_csQueueTab !== "pending") return toast("สลับไปแท็บรอยืนยันก่อน");
     const jobs = _csApplyFilters(_csQueueData, _csJobDate);
     if (!jobs.length) return toast("ไม่มีงานตามเงื่อนไขให้ยืนยัน");
-    const totalPieces = jobs.reduce((sum, job) => sum + Number(job.pieceCount || 0), 0);
+    const packingSummary = csPackingSummary(jobs);
     const customerCount = new Set(jobs.map(job => job.customerName || "ไม่ระบุลูกค้า")).size;
     const sampleHouses = jobs.slice(0, 8).map(job => job.houseNumber).join(", ");
     const invoiceNo = await scdPrompt({
         title: "ยืนยันแบบกลุ่ม " + jobs.length + " งาน",
-        note: `ลูกค้า ${customerCount} ราย · ${totalPieces} ชิ้น · ตัวอย่าง House: ${sampleHouses}${jobs.length > 8 ? "..." : ""}`,
+        note: `ลูกค้า ${customerCount} ราย · ${packingSummary} · ตัวอย่าง House: ${sampleHouses}${jobs.length > 8 ? "..." : ""}`,
         label: "เลขอ้างอิง / Invoice",
         value: "BULK-" + new Date().toISOString().slice(0, 10)
     });
     if (!invoiceNo) return;
-    if (!window.confirm(`ยืนยัน CS แบบกลุ่มทั้งหมด ${jobs.length} งาน ด้วยอ้างอิง "${invoiceNo}"?\n\nลูกค้า ${customerCount} ราย · ${totalPieces} ชิ้น\nตัวอย่าง House: ${sampleHouses}${jobs.length > 8 ? "..." : ""}\n\nหลังยืนยัน งานจะหายจากคิวรอ CS และพร้อมเปิดใบ Cargo ทันที`)) return;
+    if (!window.confirm(`ยืนยัน CS แบบกลุ่มทั้งหมด ${jobs.length} งาน ด้วยอ้างอิง "${invoiceNo}"?\n\nลูกค้า ${customerCount} ราย · ${packingSummary}\nตัวอย่าง House: ${sampleHouses}${jobs.length > 8 ? "..." : ""}\n\nหลังยืนยัน งานจะหายจากคิวรอ CS และพร้อมเปิดใบ Cargo ทันที`)) return;
     if (jobs.length >= 50) {
         const typedCount = await scdPrompt({
             title: "ยืนยันจำนวนงานอีกครั้ง",

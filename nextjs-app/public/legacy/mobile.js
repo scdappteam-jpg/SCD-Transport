@@ -1996,6 +1996,12 @@ function bindEvents() {
         });
         toast("อนุมัติคิวแล้ว / Queue approved");
     }));
+    for (const [selector, phase, message] of [["#wh3LoadStartBtn", "wh3-load-start", "บันทึกเริ่มโหลด WH3 แล้ว"], ["#terminalQueueReceivedBtn", "queue", "บันทึกรับคิว Terminal แล้ว"]]) {
+        $(selector)?.addEventListener("click", event => runAction(event.currentTarget, async () => {
+            await api("/api/outbound/load-bay", { houseNumber: terminalHouseValue(), phase });
+            toast(message);
+        }));
+    }
     $("#loadBayBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const image = await fileToCompressedBase64($("#preLoadPhoto"));
         await api("/api/outbound/load-bay", {
@@ -2005,7 +2011,7 @@ function bindEvents() {
             mimeType: image.mimeType,
             arrived: false
         });
-        toast("รวมของที่ Loading Bay แล้ว / Goods loaded");
+        toast("โหลดเสร็จและออก WH3 แล้ว / Departed WH3");
     }));
     $("#terminalArrivalBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await api("/api/outbound/load-bay", {

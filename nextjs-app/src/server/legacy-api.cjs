@@ -33,6 +33,7 @@ const flightRisk = require("./flight-risk.cjs");
 const consolSchedule = require("./consol-schedule.cjs");
 const cargoIssuePlan = require("./cargo-issue-plan.cjs");
 const shippingGuards = require("./shipping-guards.cjs");
+const outboundTiming = require("./outbound-timing.cjs");
 const cargoTransfer = require("./cargo-transfer.cjs");
 const cargoTransferPdf = require("./cargo-transfer-pdf.cjs");
 const workflowIntegrity = require("./workflow-integrity.cjs");
@@ -6749,10 +6750,7 @@ async function handleApi(req, res, pathname) {
         };
         Object.assign(job, {
             terminalDestination: terminal,
-            aotVehiclePlate: payload.vehiclePlate || "",
-            aotDriverName: payload.driverName || "",
-            aotVehicleModel: payload.vehicleModel || "",
-            aotVehicleType: payload.vehicleType || "",
+            ...outboundTiming.booking(job, payload),
             aotQueueStatus: payload.approved ? "Approved" : "Booked",
             aotBookedAt: job.aotBookedAt || nowIso(),
             aotApprovedAt: payload.approved ? nowIso() : job.aotApprovedAt,
@@ -6776,7 +6774,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/load-bay") {
         const payload = await parseBody(req);
-        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "Terminal" ]);
+        const actor = requireSessionRole(db, req, payload.phase === 'wh3-load-start' ? [ "Admin", "Executive", "Terminal", "WH3_TeamLeader", "WH_Staff", "Team_Transport" ] : [ "Admin", "Executive", "Terminal" ]);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์บันทึกการโหลดเข้า Terminal" });
         payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
@@ -6790,8 +6788,8 @@ async function handleApi(req, res, pathname) {
         catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         const terminal = normalizeTerminal(job.terminalDestination || payload.terminalDestination || job.destination || "TG");
         const progressedStatuses = [ "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "PackingConsolidation", "ReadyForBilling", "BillingReviewed", "InvoiceDrafted", "InvoiceSent", "Billed" ];
-        const alreadyArrived = Boolean(payload.arrived && (job.terminalArrivedAt || progressedStatuses.includes(job.status)));
-        const alreadyLoaded = Boolean(!payload.arrived && (job.goodsLoadedAt || [ "GoodsLoaded", ...progressedStatuses ].includes(job.status)));
+        const alreadyArrived = Boolean(!payload.phase && payload.arrived && (job.terminalArrivedAt || progressedStatuses.includes(job.status)));
+        const alreadyLoaded = Boolean(!payload.phase && !payload.arrived && (job.goodsLoadedAt || [ "GoodsLoaded", ...progressedStatuses ].includes(job.status)));
         if (alreadyArrived || alreadyLoaded) {
             job.terminalDestination = terminal;
             job.updatedAt = nowIso();
@@ -6802,6 +6800,18 @@ async function handleApi(req, res, pathname) {
                 job: normalizeJob(job),
                 dashboard: buildDashboard(db)
             });
+        }
+        let timing;
+        const milestoneAt = nowIso();
+        try { timing = outboundTiming.prepare(job, payload, milestoneAt); }
+        catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
+        if (payload.phase) {
+            if (!timing.idempotent) {
+                Object.assign(job, timing.patch, { updatedAt: milestoneAt });
+                logActivity(db, { ...payload, activityType: timing.activity });
+                writeDb(db);
+            }
+            return sendJson(res, 200, { ok: true, idempotent: !!timing.idempotent, job: normalizeJob(job), ...mutationDashboard(req, db) });
         }
         if (!payload.arrived && !payload.imageBase64) return sendJson(res, 422, {
             error: "Pre-load vehicle photo is required"
@@ -6816,6 +6826,7 @@ async function handleApi(req, res, pathname) {
         job.status = payload.arrived ? "TerminalArrived" : "GoodsLoaded";
         job.goodsLoadedAt = job.goodsLoadedAt || nowIso();
         job.terminalArrivedAt = payload.arrived ? nowIso() : job.terminalArrivedAt;
+        Object.assign(job, timing.patch);
         job.terminalDestination = terminal;
         job.terminalWorkflowStatus = workflowStatus;
         job.terminalWorkflowEvents ||= [];
