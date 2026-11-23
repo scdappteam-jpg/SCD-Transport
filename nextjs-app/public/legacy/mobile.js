@@ -1105,7 +1105,7 @@ function openReleaseDocumentSheet() {
         card.dataset.houseNumber = job.houseNumber;
         card.innerHTML = `
           <div class="release-document-card-head"><strong>${escapeHtmlMobile(job.houseNumber)}</strong><span class="release-document-status">ยังไม่แนบ</span></div>
-          <small>${escapeHtmlMobile(job.customerName || "-")} · ${escapeHtmlMobile(String(job.pickupReceivedCount || job.pieceCount || "-") + " ชิ้น")}</small>
+          <small>${escapeHtmlMobile(job.customerName || "-")} · ตามใบงาน ${escapeHtmlMobile(mobilePackingSummary([job]))}</small>
           <label>เลขที่ใบตรวจปล่อย (ถ้ามี)</label>
           <input class="release-document-number" autocomplete="off" placeholder="เลขอ้างอิงของ House นี้">
           <label>ภาพหรือไฟล์ใบตรวจปล่อย</label>
@@ -1249,8 +1249,8 @@ function applyDriverJob(houseNumber) {
         summary.hidden = !isGroup;
         if (isGroup) {
             const destinations = Array.from(new Set(selectedJobs.map(item => item.destination || item.routeType || "WH3"))).join(", ");
-            const pieces = selectedJobs.reduce((sum, item) => sum + Number(item.pieceCount || 0), 0);
-            summary.innerHTML = `\n        <strong>กลุ่มงานรับที่เดียวกัน ${selectedJobs.length} งาน</strong>\n        <span>${job.customerName} · ${job.pickupLocation || job.startPlace || "Customer warehouse"}</span>\n        <span>รวม ${pieces || "-"} ชิ้น · ปลายทาง ${destinations}</span>\n      `;
+            const packing = mobilePackingSummary(selectedJobs);
+            summary.innerHTML = `\n        <strong>กลุ่มงานรับที่เดียวกัน ${selectedJobs.length} งาน</strong>\n        <span>${escapeHtmlMobile(job.customerName)} · ${escapeHtmlMobile(job.pickupLocation || job.startPlace || "Customer warehouse")}</span>\n        <span>รวม ${escapeHtmlMobile(packing)} · ปลายทาง ${escapeHtmlMobile(destinations)}</span>\n      `;
         }
     }
     state.cargoLoaded = selectedJobs.every(item => Boolean(item.loadedAt || [ "Loading", "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(item.status)));
@@ -3030,7 +3030,7 @@ function foDriverJobCard(job, index = 0) {
     const receipt = InboundReceipts.house(job);
     const qaLabel = job.qaVerified === true ? "QA อนุมัติแล้ว" : "QA ยังไม่อนุมัติ";
     const receiptLabel = receipt.complete ? "รับคลังครบแล้ว" : receipt.confirmed ? "รับคลังยังไม่ครบ" : "ยังไม่ยืนยันรับคลัง";
-    const pieces = job.pieceCount || job.totalPieces || "-";
+    const pieces = mobilePackingSummary([job]);
     const weight = job.weight || job.grossWeight || "-";
     const bay = job.driverDock?.bayId || "รอเรียก";
     const plate = job.vehiclePlate || currentUser()?.vehiclePlate || "-";

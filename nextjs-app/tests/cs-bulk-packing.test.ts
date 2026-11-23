@@ -2,7 +2,22 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
 const source=readFileSync(new URL('../public/legacy/app.js',import.meta.url),'utf8');
+test('mobile pickup groups, release documents and cards preserve CTN and PLT independently',()=>{
+    const mobile=readFileSync(new URL('../public/legacy/mobile.js',import.meta.url),'utf8');
+    const ctx=vm.createContext({InboundReceipts:require('../src/server/inbound-receipts.cjs')});
+    vm.runInContext(mobile.match(/^function mobilePackingSummary\([\s\S]*?^}/m)![0],ctx);
+    const jobs=[{pieceCount:26,packageCounts:{PLT:26,CTN:32}},{pieceCount:11,packageCounts:{PLT:11,CTN:40}}];
+    const before=JSON.stringify(jobs);
+    ctx.jobs=jobs;
+    assert.match(String(vm.runInContext('mobilePackingSummary(jobs)',ctx)),/72 CTN/);
+    assert.match(String(vm.runInContext('mobilePackingSummary(jobs)',ctx)),/37 PLT/);
+    assert.match(String(vm.runInContext('mobilePackingSummary([jobs[0]])',ctx)),/32 CTN/);
+    assert.equal(vm.runInContext('mobilePackingSummary([{packageType:"Carton",pieceCount:12}])',ctx),'12 CTN');
+    assert.equal(JSON.stringify(jobs),before);
+});
 test('CS bulk prompt and final confirmation preserve mixed CTN and PLT totals rather than legacy pieceCount',async()=>{
     const jobs=[{houseNumber:'SIT1',customerName:'A',pieceCount:26,packageCounts:{PLT:26,CTN:32}},{houseNumber:'SIT2',customerName:'B',pieceCount:12,packageCounts:{CTN:12}},{houseNumber:'SIT3',customerName:'A',pieceCount:11,packageCounts:{PLT:11,CTN:40}},{houseNumber:'SIT4',customerName:'C',pieceCount:1,packageCounts:{PLT:1,CTN:3}}];
     const prompts:string[]=[],confirmations:string[]=[];

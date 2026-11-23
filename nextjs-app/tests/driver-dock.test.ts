@@ -72,6 +72,8 @@ const mobileHtml=fs.readFileSync(new URL('../public/legacy/mobile.html',import.m
 const legacyApi=fs.readFileSync(new URL('../src/server/legacy-api.cjs',import.meta.url),'utf8');
 test('actual Driver job renderer separates ticket, called Dock and storage location',()=>{
  const context=vm.createContext({DriverDock:core,foJobStatusMeta:()=>({th:'รอ Dock',en:'Waiting',tone:'amber'}),InboundReceipts:{house:()=>({})},currentUser:()=>({}),escapeHtmlMobile:(v:unknown)=>String(v),formatBangkokMobile:(v:unknown)=>String(v)});
+ context.InboundReceipts=require('../src/server/inbound-receipts.cjs');
+ vm.runInContext(source.match(/^function mobilePackingSummary\([\s\S]*?^}/m)![0],context);
  vm.runInContext(source.slice(source.indexOf('function foDriverJobCard('),source.indexOf('function foFocusDriverJob(')),context);
  const render=vm.runInContext('foDriverJobCard',context);
  const result=render({...jobs[1],locationId:'STORAGE-01',vehiclePlate:'SIT-ONLY'});
