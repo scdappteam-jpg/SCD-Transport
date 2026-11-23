@@ -749,7 +749,7 @@ async function loadDbFromSupabase() {
 // Render may serve consecutive requests from different warm workers.  Keep
 // their in-memory snapshots cheap to validate on dashboard bootstrap, while
 // retaining the full chunked reload only for a newer shared-state version.
-async function refreshDbIfSharedStateChanged(force = false) {
+async function refreshDbIfSharedStateChanged(force = false, onlyIfChanged = false) {
     if (!supabaseEnabled()) return;
     const now = Date.now();
     if (!force && now - lastSharedStateCheckAt < SUPABASE_STATE_CHECK_INTERVAL_MS) return;
@@ -757,7 +757,7 @@ async function refreshDbIfSharedStateChanged(force = false) {
     try {
         const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=updated_at`, null);
         const sharedUpdatedAt = String(rows?.[0]?.updated_at || "");
-        if (force || (sharedUpdatedAt && sharedUpdatedAt !== dbCacheUpdatedAt)) await loadDbFromSupabase();
+        if ((force && !onlyIfChanged) || (sharedUpdatedAt && sharedUpdatedAt !== dbCacheUpdatedAt)) await loadDbFromSupabase();
     } catch (err) {
         // A transient version check must never take the operational UI down.
         console.warn(`[db] Shared-state version check skipped: ${err.message}`);
@@ -3580,7 +3580,7 @@ async function handleApi(req, res, pathname) {
     let db = readDb();
     if (supabaseEnabled() && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
         await flushSharedStatePersistence();
-        await refreshDbIfSharedStateChanged(true);
+        await refreshDbIfSharedStateChanged(true, true);
         if (!dbCache) return sendJson(res, 503, {error:'กรุณาโหลดข้อมูลล่าสุดก่อนทำรายการใหม่', code:'STATE_WRITE_CONFLICT'});
         db = readDb();
     }

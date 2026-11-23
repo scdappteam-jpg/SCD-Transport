@@ -4,6 +4,16 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const src=readFileSync(new URL('../src/server/legacy-api.cjs',import.meta.url),'utf8');
 const fn=src.slice(src.indexOf('async function loadDbFromSupabase()'),src.indexOf('// Render may serve consecutive requests'));
+const refresh=src.slice(src.indexOf('async function refreshDbIfSharedStateChanged('),src.indexOf('async function persistDbToSupabase('));
+
+test('pre-write version checks bypass throttling but reload chunks only when another writer changed them',async()=>{
+ for(const remote of ['same','new']) {
+  let reads=0,reloads=0;
+  const context=vm.createContext({Date,lastSharedStateCheckAt:Date.now(),SUPABASE_STATE_CHECK_INTERVAL_MS:15000,dbCacheUpdatedAt:'same',supabaseEnabled:()=>true,SUPABASE_STATE_ID:'state',supabaseRequest:async()=>{reads++;return [{updated_at:remote}];},loadDbFromSupabase:async()=>{reloads++;},console:{warn:()=>{}}});
+  vm.runInContext(refresh,context);await vm.runInContext('refreshDbIfSharedStateChanged(true,true)',context);
+  assert.equal(reads,1);assert.equal(reloads,remote==='same'?0:1);
+ }
+});
 test('failed refresh cannot replace personnel and active sessions with a seed or half-loaded snapshot',async()=>{
  for(const failure of ['main','chunks','sessions']){
   const known={users:[{code:'SCD233'}],authSessions:[{userId:'old-session'}]};
