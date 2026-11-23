@@ -718,11 +718,12 @@ async function loadDbFromSupabase() {
     try {
         const rows = await supabaseRequest("GET", `?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=data,updated_at`, null);
         if (Array.isArray(rows) && rows[0]?.data) {
-            dbCache = await loadChunkedState(rows[0].data);
+            const loaded = await loadChunkedState(rows[0].data);
+            await loadAuthSessions(loaded);
+            const coreUserResult = ensureCoreUsers(loaded);
+            ensureDbShape(loaded);
+            dbCache = loaded;
             dbCacheUpdatedAt = String(rows[0].updated_at || "");
-            await loadAuthSessions(dbCache);
-            const coreUserResult = ensureCoreUsers(dbCache);
-            ensureDbShape(dbCache);
             if (coreUserResult?.scdViewerAccessChanged) {
                 scheduleSupabasePersist(dbCache);
                 scheduleAuthSessionPersist(dbCache.authSessions || []);
@@ -737,8 +738,7 @@ async function loadDbFromSupabase() {
         relationalMirror.schedule(dbCache);
         console.log(`[db] Seeded Supabase shared data from bundled/runtime db.json.`);
     } catch (err) {
-        console.error(`[db] Supabase load failed, using local db.json fallback: ${err.message}`);
-        dbCache = null;
+        console.error(`[db] Supabase load failed; keeping last verified shared snapshot: ${err.message}`);
     }
 }
 
@@ -3542,6 +3542,10 @@ async function handleApi(req, res, pathname) {
     // A Render request can be served by a warm worker whose in-memory cache
     // predates a write made by another worker.  A few mutations below refresh
     // this reference before retrying a lookup from the shared source of truth.
+    if(supabaseEnabled()&&!dbCache){
+        await loadDbFromSupabase();
+        if(!dbCache)return sendJson(res,503,{error:'ฐานข้อมูลบุคลากรใช้งานไม่ได้ชั่วคราว กรุณาลองใหม่ ข้อมูลเดิมยังไม่ถูกเปลี่ยนแปลง',code:'SHARED_STATE_UNAVAILABLE'});
+    }
     let db = readDb();
     if ((req.method === "GET" && [ "/api/mobile/bootstrap", "/api/bootstrap" ].includes(pathname)) || pathname === "/api/operations/control") {
         await refreshDbIfSharedStateChanged();
