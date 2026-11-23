@@ -13,4 +13,14 @@ function closeInvoice(db, bill, { nowIso, findJob }) {
     });
     return true;
 }
-module.exports = { closeInvoice };
+// Return the existing successful result on retries, but leave integration-queued
+// invoices retryable when a provider becomes available. Never reopen accounting.
+function emailPlan(bill) {
+    if (bill.status === 'Billed') {
+        const error = new Error('ใบวางบิลปิดเป็น Billed แล้ว ไม่สามารถส่งซ้ำหรือเปลี่ยนสถานะได้');
+        error.statusCode = 409;
+        throw error;
+    }
+    return bill.status === 'Sent' || (bill.status === 'EmailQueued' && bill.emailDeliveryStatus === 'SITOnlyNoExternalDelivery');
+}
+module.exports = { closeInvoice, emailPlan };

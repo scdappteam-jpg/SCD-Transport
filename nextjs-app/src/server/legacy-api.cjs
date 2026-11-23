@@ -1589,7 +1589,7 @@ const WH3_DOCUMENT_LABELS = {
 
 function normalizeTerminal(value) {
     const text = String(value || "").trim().toUpperCase().replace(/[\s_-]/g, "");
-    if (text === "TGINTER" || text === "TGINTERNATIONAL") return "TGINT";
+    if (text === "TGINT" || text === "TGINTER" || text === "TGINTERNATIONAL") return "TGINT";
     if (text === "BFS") return "BFS";
     return "TG";
 }
@@ -6853,6 +6853,7 @@ async function handleApi(req, res, pathname) {
         });
         try { workflowIntegrity.terminal(job, payload, false); }
         catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
+        if (job.weighStartedAt && !job.weighEndedAt) return sendJson(res, 200, { ok: true, idempotent: true, weighStartedAt: job.weighStartedAt });
         const terminal = normalizeTerminal(job.terminalDestination || payload.terminalDestination || job.destination || "TG");
         job.weighStartedAt = nowIso();
         job.unloadingStartedAt = job.unloadingStartedAt || job.weighStartedAt;
@@ -6984,6 +6985,7 @@ async function handleApi(req, res, pathname) {
         let flightJobs;
         try { flightJobs = shippingGuards.loading(db, job, payload); }
         catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
+        if (flightJobs.every(item => item.loadingDetailUploaded && item.terminalClosedAt)) return sendJson(res, 200, { ok: true, idempotent: true, dashboard: buildDashboard(db) });
         if (payload.imageBase64) {
             saveBase64File(db, {
                 houseNumber: job.houseNumber,
@@ -7238,6 +7240,9 @@ async function handleApi(req, res, pathname) {
         if (!bill) return sendJson(res, 404, {
             error: "Invoice not found"
         });
+        try {
+            if (billingClose.emailPlan(bill)) return sendJson(res, 200, { ok: true, idempotent: true, bill, dashboard: buildDashboard(db) });
+        } catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         const emailAttachments = saveBase64Files(db, {
             houseNumber: bill.houseNumber,
             fileType: "InvoiceEmailAttachment",

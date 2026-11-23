@@ -60,6 +60,7 @@ function loading(db, job, payload) {
     const jobs = (db.jobs || []).filter(item => masterKey(item.mawbNumber || item.masterNumber) === master && String(item.flightNo || '').trim() === flight);
     if (payload.expectedHouses && (!Array.isArray(payload.expectedHouses) || payload.expectedHouses.length !== jobs.length || new Set(payload.expectedHouses).size !== jobs.length || jobs.some(item => !payload.expectedHouses.includes(item.houseNumber)))) fail('ชุด House ของ Master เปลี่ยนแล้ว กรุณารีเฟรชก่อนปิดงาน');
     for (const item of jobs) {
+        if (item.invoiceId || ['InvoiceDrafted', 'InvoiceSent', 'Billed'].includes(item.status)) fail(`House ${item.houseNumber} มีเอกสารวางบิลแล้ว ห้ามปิด Terminal ซ้ำ`);
         measured(item);
         if (item.xrayStatus !== 'Passed' || item.requiresRescan || ['XRayHold', 'ReXRayRequired'].includes(item.status)) fail(`House ${item.houseNumber} ยังไม่ผ่าน X-Ray หรือยังมี Hold/Re-X-Ray ค้างอยู่`);
     }

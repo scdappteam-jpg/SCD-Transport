@@ -70,6 +70,35 @@ test('valid same-Flight close still closes all three, while repeated load preser
     r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png'});assert.equal(r.code,200);assert.ok(f.db.jobs.every(j=>j.status==='ReadyForBilling'));
 });
 
+test('repeated Terminal close preserves original close time and creates no extra evidence or audit events',async()=>{
+    const f=route();const p={imageBase64:png,mimeType:'image/png'};await f.call('loading-detail',p);
+    const before=JSON.stringify(f.db),io={...f.io};const r=await f.call('loading-detail',p);
+    assert.equal(r.code,200);assert.equal(r.body.idempotent,true);assert.equal(JSON.stringify(f.db),before);assert.deepEqual(f.io,io);
+});
+
+test('any invoiced House blocks Master close before files writes alerts or mutations',async()=>{
+    for(const status of ['InvoiceDrafted','InvoiceSent','Billed']){
+        const f=route();Object.assign(f.db.jobs[2],{status,invoiceId:'INV-SIT'});const before=structuredClone(f.db);
+        const r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png'});
+        assert.equal(r.code,409);assert.deepEqual(f.db,before);assert.deepEqual(f.io,{writes:0,files:0,logs:0});
+    }
+});
+
+test('canonical TGINT remains TG Inter and all aliases retain the additional checklist',()=>{
+    const ctx=vm.createContext({});vm.runInContext(source.match(/^function normalizeTerminal\([\s\S]*?^}/m)![0],ctx);
+    for(const value of ['TGINT','TG Inter','TG International'])assert.equal(ctx.normalizeTerminal(value),'TGINT');
+    assert.equal(ctx.normalizeTerminal('TG'),'TG');assert.equal(ctx.normalizeTerminal('BFS'),'BFS');
+});
+
+test('retrying an active weighing preserves start timer without a second audit event',async()=>{
+    const start=source.indexOf('    if (req.method === "POST" && pathname === "/api/outbound/weigh-start")');
+    const end=source.indexOf('    if (req.method === "POST" && pathname === "/api/outbound/weight-dimension")',start);
+    const job={houseNumber:'SIT-WEIGH',weighStartedAt:'2026-11-23T01:00:00Z'};let effects=0;
+    const ctx=vm.createContext({req:{method:'POST'},res:{},pathname:'/api/outbound/weigh-start',parseBody:async()=>({houseNumber:job.houseNumber}),readDb:()=>({}),requireSessionRole:()=>({id:'SIT'}),findJob:()=>job,workflowIntegrity:{terminal(){}},sendJson:(_r:unknown,code:number,body:unknown)=>({code,body}),nowIso:()=>{effects++;return 'changed';},writeDb:()=>{effects++;}});
+    const result=await vm.runInContext('(async()=>{'+source.slice(start,end)+'})()',ctx);
+    assert.equal(result.code,200);assert.equal(result.body.idempotent,true);assert.equal(job.weighStartedAt,'2026-11-23T01:00:00Z');assert.equal(effects,0);
+});
+
 test('Master weighing flows into legacy XRay without copying the total into House weights',async()=>{
     const f=route();for(const j of f.db.jobs){delete j.terminalWeight;delete j.terminalDimension;delete j.weighEndedAt;j.status='TerminalArrived';}
     for(const phase of ['start','complete'])operations.apply(operations.prepare(f.db,{action:'terminal',master:'205-86393230',flightNo:'NH850/20',stage:'weigh',phase,...(phase==='complete'?{weight:500,dimension:'Master total only',proof:{base64:png,mimeType:'image/png'}}:{})},{id:'test-terminal',role:'Terminal'}));

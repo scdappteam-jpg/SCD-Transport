@@ -9,6 +9,23 @@ const api=readFileSync(new URL('../src/server/legacy-api.cjs',import.meta.url),'
 const start=api.indexOf('    if (req.method === "POST" && pathname === "/api/billing/mark-billed")');
 const handler=api.slice(start,api.indexOf('    if (req.method === "POST" && pathname === "/api/customers/upsert")',start));
 const INV='INV-SIT',H='SIT-HOUSE',FIRST='2026-10-25T09:41:58.744Z';
+
+test('email retries never reopen Billed while integration-queued delivery remains retryable',()=>{
+ assert.throws(()=>billingClose.emailPlan({status:'Billed'}),{statusCode:409});
+ assert.equal(billingClose.emailPlan({status:'Sent'}),true);
+ assert.equal(billingClose.emailPlan({status:'EmailQueued',emailDeliveryStatus:'SITOnlyNoExternalDelivery'}),true);
+ assert.equal(billingClose.emailPlan({status:'EmailQueued',emailDeliveryStatus:'QueuedForEmailIntegration'}),false);
+ assert.equal(billingClose.emailPlan({status:'Draft'}),false);
+});
+
+test('Billed email route rejects before saving attachments calling provider or mutating jobs',async()=>{
+ const from=api.indexOf('    if (req.method === "POST" && pathname === "/api/billing/send-email")');
+ const db={billing:[{id:INV,status:'Billed',billedDate:FIRST}],jobs:[{houseNumber:H,status:'Billed'}]};
+ let effects=0;const before=JSON.stringify(db);
+ const ctx=vm.createContext({db,billingClose,req:{method:'POST'},res:{},pathname:'/api/billing/send-email',parseBody:async()=>({invoiceId:INV,emailFiles:[{base64:'test'}]}),requireBillingActor:()=>({id:'SIT'}),sessionUser:()=>({}),supabaseEnabled:()=>false,sendJson:(_r:unknown,status:number,body:unknown)=>({status,body}),saveBase64Files:()=>{effects++;return[];},deliverInvoiceEmail:async()=>{effects++;return{};}});
+ const result=await vm.runInContext('(async()=>{'+api.slice(from,start)+'})()',ctx);
+ assert.equal(result.status,409);assert.equal(effects,0);assert.equal(JSON.stringify(db),before);
+});
 function route(status='Draft',role='Billing',refresh=false){
  const db={billing:[{id:INV,houseNumber:H,status,billedDate:status==='Billed'?FIRST:undefined,amount:1000,dueDate:'2026-10-25'}],jobs:[{houseNumber:H,status:status==='Billed'?'Billed':'InvoiceDrafted',readyForBilling:status!=='Billed'}]};
  let writes=0,alerts=0,clock=0,loads=0;
