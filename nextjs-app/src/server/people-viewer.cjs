@@ -310,7 +310,7 @@ function directory(db) {
         .map(user => {
             const key = directoryKey(user);
             const profile = db.hr?.employeeProfiles?.[user.id] || db.hr?.employeeProfiles?.[user.employeeId] || db.hr?.employeeProfiles?.[key] || {};
-            const names = splitName(user.name);
+            const names = user.recoveryPendingDetails && !cleanText(user.name, 200) ? {firstName: '', lastName: ''} : splitName(user.name);
             const identifiers = new Set([user.id, user.employeeId, user.code, key, ...(user.loginAliases || [])].map(value => cleanText(value, 120)).filter(Boolean));
             const edits = (db.hr?.auditLogs || [])
                 .filter(log => log.action === "PeopleDirectoryProfileUpdated" && identifiers.has(cleanText(log.employeeId, 120)))
@@ -323,8 +323,9 @@ function directory(db) {
                 phone: cleanText(user.phone, 80),
                 nickname: cleanText(user.nickname || profile.nickname, 100),
                 photoUrl: cleanText(profile.profilePhotoUrl || profile.photoUrl || user.profilePhotoUrl, 1000),
-                position: cleanText(profile.position || user.role, 120),
-                department: cleanText(profile.department || "ไม่ระบุแผนก", 120),
+                position: cleanText(profile.position || (user.recoveryPendingDetails ? '' : user.role), 120),
+                department: cleanText(profile.department || (user.recoveryPendingDetails ? '' : "ไม่ระบุแผนก"), 120),
+                recoveryPendingDetails: user.recoveryPendingDetails === true,
                 hasBeenEdited: edits.length > 0,
                 lastEditedAt: cleanText(edits[0]?.at, 80),
                 isReviewed: Boolean(profile.directoryReviewedAt),
@@ -418,6 +419,7 @@ function updatePerson(db, { actor, employeeId, changes, photoUrl = "", now = new
     user.phone = cleanText(changes?.phone, 80);
     user.nickname = cleanText(changes?.nickname, 100);
     user.updatedAt = now;
+    if (user.recoveryPendingDetails) user.recoveryPendingDetails = !(firstName && cleanText(changes?.position, 120) && cleanText(changes?.department, 120));
     db.hr ||= {};
     db.hr.employeeProfiles ||= {};
     db.hr.employeeProfiles[profileKey] = {
@@ -455,6 +457,7 @@ function reviewPerson(db, { actor, employeeId, now = new Date().toISOString() })
     const key = cleanText(employeeId, 120);
     const user = (db.users || []).find(item => matchesDirectoryKey(item, key));
     if (!user || user.status === "Inactive" || user.role === "Admin" || (user.role === VIEWER_ROLE && user.isTestAccount === true)) fail(`ไม่พบพนักงานที่ตรวจได้ (ID: ${key || "ไม่ระบุ"})`, 404);
+    if (user.recoveryPendingDetails) fail('กรุณาเติมชื่อ ตำแหน่ง และแผนกก่อนยืนยันการตรวจ', 409);
     const userKey = directoryKey(user);
     db.hr ||= {};
     db.hr.employeeProfiles ||= {};

@@ -89,13 +89,13 @@
     $("grid").innerHTML = visible.length ? visible.map(item => `
       <article class="person card">
         <div class="photo">${item.photoUrl ? `<img src="${esc(item.photoUrl)}" alt="รูปถ่าย ${esc(item.firstName)} ${esc(item.lastName)}"><div class="initials photo-fallback hidden">${esc(initials(item))}</div>` : `<div class="initials">${esc(initials(item))}</div>`}</div>
-        <strong>${esc(item.firstName || "-")} ${esc(item.lastName)}</strong>
+        <strong>${esc(item.firstName || (item.recoveryPendingDetails ? "รอเติมข้อมูล" : "-"))} ${esc(item.lastName)}</strong>
         <span class="meta"><b>${esc(item.employeeCode || item.id)}</b></span>
-        <span>${esc(item.nickname ? `ชื่อเล่น ${item.nickname}` : "ยังไม่ระบุชื่อเล่น")}</span>
+        ${item.recoveryPendingDetails ? '' : `<span>${esc(item.nickname ? `ชื่อเล่น ${item.nickname}` : "ยังไม่ระบุชื่อเล่น")}</span>
         <span class="meta">${esc(item.position || "ยังไม่ระบุตำแหน่ง")} · ${esc(item.department || "ไม่ระบุแผนก")}</span>
-        <span class="meta">${esc(item.phone || "ยังไม่ระบุเบอร์โทร")}</span>
+        <span class="meta">${esc(item.phone || "ยังไม่ระบุเบอร์โทร")}</span>`}
         <div class="status-row"><span class="status-badge ${item.hasBeenEdited ? "edited" : "untouched"}">${item.hasBeenEdited ? "แก้ไขแล้ว" : "ยังไม่เคยแก้ไข"}</span><span class="status-badge ${item.photoUrl ? "photo-ready" : "photo-missing"}">${item.photoUrl ? "มีรูปแล้ว" : "ยังไม่มีรูป"}</span><span class="status-badge ${item.isReviewed ? "reviewed" : "pending-review"}">${item.isReviewed ? "ตรวจเรียบร้อย" : "รอตรวจ"}</span></div>
-        <div class="person-actions"><button class="edit" type="button" data-id="${esc(item.id)}">แก้ไขข้อมูล</button>${item.photoUrl ? `<button class="export" type="button" data-export-id="${esc(item.id)}">ส่งออกรูป</button>` : ""}${item.isReviewed ? `<button class="review done" type="button" disabled>✓ ตรวจแล้ว</button>` : `<button class="review" type="button" data-review-id="${esc(item.id)}">ตรวจเรียบร้อยแล้ว</button>`}</div>
+        <div class="person-actions"><button class="edit" type="button" data-id="${esc(item.id)}">แก้ไขข้อมูล</button>${item.photoUrl ? `<button class="export" type="button" data-export-id="${esc(item.id)}">ส่งออกรูป</button>` : ""}${item.recoveryPendingDetails ? `<button class="review" type="button" disabled>รอเติมข้อมูล</button>` : item.isReviewed ? `<button class="review done" type="button" disabled>✓ ตรวจแล้ว</button>` : `<button class="review" type="button" data-review-id="${esc(item.id)}">ตรวจเรียบร้อยแล้ว</button>`}</div>
       </article>`).join("") : '<div class="card empty">ไม่พบรายชื่อพนักงาน</div>';
     $("grid").querySelectorAll(".photo img").forEach(image => {
       const showFallback = () => {

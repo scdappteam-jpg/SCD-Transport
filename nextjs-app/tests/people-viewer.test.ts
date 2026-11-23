@@ -242,7 +242,7 @@ test("provisions exactly two editable directory accounts without deactivating ex
 test("directory exposes only approved contact and organization fields", () => {
   const items = directory(state());
   assert.equal(items.length, 2);
-  assert.deepEqual(Object.keys(items[0]).sort(), ["department", "employeeCode", "firstName", "hasBeenEdited", "id", "isReviewed", "lastEditedAt", "lastName", "nickname", "phone", "photoUrl", "position", "reviewedAt", "reviewedBy", "reviewerName"]);
+  assert.deepEqual(Object.keys(items[0]).sort(), ["department", "employeeCode", "firstName", "hasBeenEdited", "id", "isReviewed", "lastEditedAt", "lastName", "nickname", "phone", "photoUrl", "position", "recoveryPendingDetails", "reviewedAt", "reviewedBy", "reviewerName"]);
   const somchai = items.find((item: any) => item.lastName === "ใจดี");
   assert.equal(somchai.firstName, "นาย สมชาย");
   assert.equal(somchai.photoUrl, "/storage/profile/u_emp1.jpg");
