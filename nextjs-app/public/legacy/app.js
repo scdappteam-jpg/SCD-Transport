@@ -11904,6 +11904,7 @@ function fbToggleFull() {
 
 /* ══════════ ช่องเทียบท่า (Dock Booking) ══════════ */
 var _dockData = null;
+var _dockRefreshTimer = null;
 
 async function renderDockBoard() {
     var box = $("#view-dock");
@@ -11917,6 +11918,7 @@ async function renderDockBoard() {
         return;
     }
     _renderDockHtml();
+    if(!_dockRefreshTimer)_dockRefreshTimer=setInterval(function(){if(!document.hidden&&new URLSearchParams(location.search).get('view')==='dock')renderDockBoard();},15000);
 }
 
 function dockBayClass(bay) {
@@ -11937,6 +11939,9 @@ function _renderDockHtml() {
         '<div class="dock-kpi amb"><span>รถรอคิว</span><b>' + (s.waiting || 0) + '</b><em>รอจัดช่อง</em></div>' +
         '<div class="dock-kpi pur"><span>เวลารอเฉลี่ย</span><b>' + (s.avgWaitMinutes || 0) + ' น.</b><em>เป้าหมาย 20 นาที</em></div>' +
       '</div>' +
+      '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>เรียกรถเข้าท่าอัตโนมัติ: ' + (d.autoDispatch?.enabled===false?'หยุดอยู่':'เปิดอยู่') + '</h3>' +
+      (['Admin','WH3_TeamLeader'].includes(currentWebUser()?.role)?'<button type="button" class="dock-btn" onclick="dockToggleAuto()">'+(d.autoDispatch?.enabled===false?'เปิดเรียกอัตโนมัติ':'หยุดเรียกอัตโนมัติ')+'</button>':'') +
+      '</div><p>เรียกรถที่ถึง WH3 และมีใบตรวจปล่อยครบ เข้าท่าว่าง D8–D11 ตามคิวเร่งด่วน คนขับยังต้องยืนยันเข้าท่าจริง และเจ้าหน้าที่คืนท่าหลังรถออกแล้ว</p></div>' +
       '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>สถานะช่องเทียบท่า</h3>' +
         '<a class="dock-btn ghost" href="/dock-display" target="_blank" rel="noopener">จอประกาศคิวหน้าคลัง</a>' +
         '<a class="dock-btn ghost" href="/dock-display?scope=sit" target="_blank" rel="noopener">จอคิว SIT</a>' +
@@ -11962,9 +11967,10 @@ function _renderDockHtml() {
               '<span>' + safeHtml(q.vehiclePlate || "ไม่ระบุทะเบียน") + (q.driverName ? " · " + safeHtml(q.driverName) : "") +
               (q.suggestedBayId ? " · แนะนำ " + safeHtml(q.suggestedBayId) : "") + '</span></div>' +
               '<button type="button" class="dock-btn" onclick="dockAssign(\'' + safeHtml(q.houseNumber) + '\')">จัดช่อง</button>' +
+              (['Admin','WH3_TeamLeader'].includes(currentWebUser()?.role)?'<button type="button" class="dock-btn ghost" data-house="'+safeHtml(q.houseNumber)+'" onclick="dockPauseAuto(this.dataset.house,'+!q.autoDispatchPaused+')">'+(q.autoDispatchPaused?'คืนเข้าคิวอัตโนมัติ':'พักคิว')+'</button>':'') +
               '<button type="button" class="dock-btn ghost" onclick="dockRemoveQueue(\'' + safeHtml(q.houseNumber) + '\')">ลบ</button></div>';
           }).join("") : '<div class="empty-state compact"><p>ไม่มีรถรอคิว</p></div>') +
-          '<div class="dock-note">ระบบเสนอช่องอัตโนมัติจากโซนของช่องเก็บปลายทาง เพื่อลดระยะเข็นสินค้า</div></div>' +
+          '<div class="dock-note">คิวพร้อมและมีท่าว่างจะเรียกอัตโนมัติ ท่าที่ยังไม่คืนจะไม่เรียกซ้อน พักคิวรถได้พร้อมระบุเหตุผล</div></div>' +
         '<div class="card"><div class="card-head"><h3>บันทึกล่าสุด</h3></div>' +
           ((_dockData.log || []).length ? "" : '<div class="empty-state compact"><p>ดูประวัติทั้งหมดได้ที่หน้า Timeline ของแต่ละงาน</p></div>') +
           '<div class="dock-note">ทุกการจัดช่อง/ปล่อยท่า ถูกบันทึกใน Timeline ของ House นั้นอัตโนมัติ</div></div>' +
@@ -12091,6 +12097,14 @@ async function dockAssign(house) {
         toast("จัดช่อง " + (_dockData.bay ? _dockData.bay.name : "") + " ให้ " + house + " แล้ว");
     } catch (e) { toast(e.message || "จัดช่องไม่สำเร็จ"); }
 }
+
+async function dockAutoControl(payload){
+    const reason=await scdPrompt({title:'ควบคุมการเรียกรถอัตโนมัติ',label:'เหตุผล',placeholder:'ระบุเหตุผลการปรับคิว'});
+    if(!reason?.trim())return;
+    try{_dockData=await api('/api/dock/bays',{...payload,reason:reason.trim()});state.dockSummary=_dockData.summary;_renderDockHtml();toast('บันทึกการเรียกคิวแล้ว');}catch(e){toast(e.message||'บันทึกไม่สำเร็จ');}
+}
+async function dockToggleAuto(){return dockAutoControl({action:'auto-dispatch',enabled:_dockData?.autoDispatch?.enabled===false});}
+async function dockPauseAuto(houseNumber,paused){return dockAutoControl({action:'pause-auto-queue',houseNumber,paused});}
 
 async function dockRelease(bayId) {
     if (!window.confirm("ยืนยันว่าลงสินค้าเสร็จและรถออกจากช่องจริงแล้ว จึงคืน Dock นี้?")) return;

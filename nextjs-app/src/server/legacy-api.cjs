@@ -50,6 +50,7 @@ const warehouseInbound = require("./warehouse-inbound.cjs");
 const meetingDriver = require("./meeting-driver-policy.cjs");
 const warehouseQuality = require("./warehouse-quality.cjs");
 const dockPlanning = require("./dock-planning.cjs");
+const dockAutoDispatch = require('./dock-auto-dispatch.cjs');
 const dockDisplay = require('./dock-display.cjs');
 const dockVehicleGroup = require('./dock-vehicle-group.cjs');
 const driverDock = require('../../public/legacy/driver-dock-core.js');
@@ -557,6 +558,7 @@ function dockBoard(db) {
             waiting: queue.length,
             avgWaitMinutes: waitMinutes.length ? Math.round(waitMinutes.reduce((a, b) => a + b, 0) / waitMinutes.length) : 0
         },
+        autoDispatch: {enabled:dockAutoDispatch.enabled(db)},
         updatedAt: nowIso()
     };
 }
@@ -944,6 +946,7 @@ function readDb() {
 
 function writeDb(db) {
     refreshFlightSla(db);
+    dockAutoDispatch.dispatch(db);
     if (supabaseEnabled()) {
         ensureCoreUsers(db);
         ensureDbShape(db);
@@ -4637,6 +4640,24 @@ async function handleApi(req, res, pathname) {
         const bays = dockBayList(db);
         const action = String(payload.action || "").toLowerCase();
 
+        if(action==='auto-dispatch'||action==='pause-auto-queue'){
+            if(!['Admin','WH3_TeamLeader'].includes(actor.role))return sendJson(res,403,{error:'เฉพาะ Admin / หัวหน้าคลังเท่านั้นที่ควบคุมการเรียกอัตโนมัติได้'});
+            const reason=String(payload.reason||'').trim();
+            if(!reason)return sendJson(res,422,{error:'กรุณาระบุเหตุผล'});
+            if(action==='auto-dispatch'){
+                if(typeof payload.enabled!=='boolean')return sendJson(res,422,{error:'enabled ต้องเป็น true หรือ false'});
+                db.dock.autoDispatch={enabled:payload.enabled,updatedAt:nowIso(),updatedBy:actor.id,reason};
+            }else{
+                const entry=dockVehicleGroup.entryForHouse(db.dock.queue,payload.houseNumber);
+                if(!entry)return sendJson(res,404,{error:'ไม่พบคิวรถ'});
+                if(typeof payload.paused!=='boolean')return sendJson(res,422,{error:'paused ต้องเป็น true หรือ false'});
+                Object.assign(entry,{autoDispatchPaused:payload.paused,pauseReason:reason});
+            }
+            db.dock.log=[...(db.dock.log||[]),{at:nowIso(),action,houseNumber:payload.houseNumber||'',by:actor.id,enabled:payload.enabled,paused:payload.paused,reason}].slice(-200);
+            writeDb(db);
+            return sendJson(res,200,{ok:true,...dockBoard(db)});
+        }
+
         if (action === 'ensure-inbound') {
             try {
                 const added = dockDisplay.ensureInboundBays(db);
@@ -6034,7 +6055,7 @@ async function handleApi(req, res, pathname) {
             });
             logActivity(db, { ...payload, houseNumber: item.houseNumber, releaseDocumentNumber: document.documentNumber, activityType: "ReleaseDocumentReceived", endTime: releasedAt });
         }
-        if(meetingPolicy.active(db,jobs)){
+        {
             db.dock||={};db.dock.queue||=[];
             const houses=jobs.map(item=>item.houseNumber);
             db.dock.queue=db.dock.queue.filter(entry=>!houses.some(house=>dockVehicleGroup.contains(entry,house)));
