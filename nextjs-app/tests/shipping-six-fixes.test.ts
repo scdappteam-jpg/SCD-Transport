@@ -55,3 +55,13 @@ test('SIT invoice UI explicitly marks test documents while actual billing accoun
   const ctx=vm.createContext({currentWebUser:()=>({id})});vm.runInContext(source,ctx);const opts=vm.runInContext('billingSitOptions()',ctx);assert.equal(opts.testOnly===true,testOnly);if(testOnly)assert.match(opts.billingAddress,/^SIT ONLY/);else assert.equal(Object.keys(opts).length,0);
  }
 });
+
+test('QA distinguishes scanner rate limits and scanner contract failures without exposing arbitrary gateway errors',()=>{
+ const app=readFileSync(new URL('../public/legacy/app.js',import.meta.url),'utf8');
+ const fn=app.match(/^function apiErrorMessage\([\s\S]*?^}/m)![0];const ctx=vm.createContext({});vm.runInContext(fn,ctx);
+ const limited='บริการอ่านบาร์โค้ดจำกัดจำนวนคำขอชั่วคราว กรุณารอแล้วลองใหม่ ยังไม่อนุมัติ QA';
+ ctx.message=limited;assert.equal(vm.runInContext('apiErrorMessage("/api/warehouse/quality/tag",503,{error:message},"")',ctx),limited);
+ const contract='บริการสแกนยังไม่รองรับโหมด Barcode-only สำหรับ QA';ctx.message=contract;
+ assert.equal(vm.runInContext('apiErrorMessage("/api/warehouse/quality/scan",503,{error:message},"")',ctx),contract);
+ assert.doesNotMatch(vm.runInContext('apiErrorMessage("/api/warehouse/quality/tag",502,{error:"private stack"},"")',ctx),/private stack/);
+});

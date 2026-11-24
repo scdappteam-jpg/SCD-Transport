@@ -694,6 +694,7 @@ async function recoverCompletedDesktopRequest(path, payload) {
 function apiErrorMessage(path, status, data, rawText) {
     const serverMessage = data?.error || data?.message || "";
     const text = rawText || data?.raw || "";
+    if (path.startsWith("/api/warehouse/quality/") && /^(บริการอ่านบาร์โค้ด|บริการสแกน)/.test(serverMessage)) return serverMessage;
     if (path === "/api/jobs/cs-confirm" && [502, 503, 504].includes(status)) return "การเชื่อมต่อสะดุดหลังส่งคำขอยืนยันงาน";
     if (status === 502 || /bad gateway/i.test(text)) return "ระบบบันทึกงานขัดข้องชั่วคราว กรุณากดทำรายการซ้ำอีกครั้ง หากรายการถูกบันทึกแล้วระบบจะกู้สถานะให้";
     if (status === 503 || status === 504) return "ระบบปลายทางตอบช้าหรือไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้งในอีกสักครู่";
