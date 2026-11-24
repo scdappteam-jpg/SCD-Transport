@@ -7,12 +7,12 @@ const client=readFileSync(new URL('../public/legacy/people-directory.js',import.
 const load=client.slice(client.indexOf('  async function loadDirectory()'),client.indexOf('  async function signIn()'));
 test('directory keeps its session and displayed people on transient HTTP or network failure',async()=>{
  for(const status of [503,502,429,403,'network',401]) {
-  let removed=0;const elements:Record<string,{textContent:string;classList:{add:()=>void;remove:()=>void}}>={};
+  let removed=0;const elements:Record<string,{textContent:string;classList:{add:()=>void;remove:()=>void;contains:()=>boolean}}>={};
   const known=[{id:'original-person'}];
-  const ctx=vm.createContext({TOKEN_KEY:'token',items:known,sessionStorage:{getItem:()=> 'session',removeItem:()=>removed++},fetch:async()=>{if(status==='network')throw Error('offline');return {ok:false,status};},$:(id:string)=>elements[id]??=( {textContent:'',classList:{add:()=>{},remove:()=>{}}} )});
+  const ctx=vm.createContext({TOKEN_KEY:'token',items:known,sessionStorage:{getItem:()=> 'session',removeItem:()=>removed++},fetch:async()=>{if(status==='network')throw Error('offline');return {ok:false,status};},$:(id:string)=>elements[id]??=( {textContent:'',classList:{add:()=>{},remove:()=>{},contains:()=>false}} )});
   vm.runInContext(load,ctx);assert.equal(await vm.runInContext('loadDirectory()',ctx),false);
   assert.equal(removed,status===401?1:0);assert.equal(ctx.items,known);
-  assert.ok(elements.message.textContent.length>0);
+  assert.ok(elements[status===401?'message':'directoryMessage'].textContent.length>0);
  }
 });
 

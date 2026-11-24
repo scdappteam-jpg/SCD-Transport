@@ -854,7 +854,12 @@ async function refresh() {
                 }
             }
         }
-        if (res.status === 401 || res.status === 403) {
+        if (res.status === 403) {
+            toast("บัญชีนี้ไม่มีสิทธิ์เปิดหน้านี้ ระบบยังเก็บการเข้าสู่ระบบไว้");
+            clearSkeletons();
+            return;
+        }
+        if (res.status === 401) {
             localStorage.removeItem(WEB_AUTH_KEY);
             localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
             const usersResponse = await fetch(apiUrl("/api/auth/users"), {cache:"no-store"});

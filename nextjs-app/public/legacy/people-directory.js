@@ -122,31 +122,54 @@
     $(selectId).value = selected;
   }
 
+  function showSessionRestore(message, retry = false) {
+    $("login").classList.add("hidden");
+    $("changePassword").classList.add("hidden");
+    $("sessionRestore").classList.remove("hidden");
+    $("sessionRestoreMessage").textContent = message;
+    $("retrySession").classList.toggle("hidden", !retry);
+    $("restoreLogout").classList.toggle("hidden", !retry);
+  }
+
   async function loadDirectory() {
     const token = sessionStorage.getItem(TOKEN_KEY);
-    if (!token) return false;
+    if (!token) {
+      $("sessionRestore").classList.add("hidden");
+      $("login").classList.remove("hidden");
+      return false;
+    }
+    if ($("directory").classList.contains("hidden")) showSessionRestore("กำลังกลับเข้าสู่ระบบเดิม…");
+    const failed = () => {
+      const message = "โหลดข้อมูลไม่สำเร็จชั่วคราว ระบบยังเก็บการเข้าสู่ระบบไว้ กรุณาลองอีกครั้ง";
+      $("directoryMessage").textContent = message;
+      if ($("directory").classList.contains("hidden")) showSessionRestore(message, true);
+      return false;
+    };
     let response;
     try {
       response = await fetch("/api/people-directory", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-    } catch (_) {
-      $("directoryMessage").textContent = $("message").textContent = "การเชื่อมต่อขัดข้องชั่วคราว กรุณาลองโหลดข้อมูลอีกครั้ง ระบบยังเก็บการเข้าสู่ระบบไว้";
-      return false;
+    } catch {
+      return failed();
     }
-    if (response.status === 428) { $("login").classList.add("hidden"); $("changePassword").classList.remove("hidden"); return true; }
+    if (response.status === 428) { $("sessionRestore").classList.add("hidden"); $("login").classList.add("hidden"); $("changePassword").classList.remove("hidden"); return true; }
     if (!response.ok) {
       if (response.status === 401) {
+        // A delayed response from an older login must not clear a newer session.
+        if (sessionStorage.getItem(TOKEN_KEY) !== token) return loadDirectory();
         sessionStorage.removeItem(TOKEN_KEY);
+        $("sessionRestore").classList.add("hidden");
         $("directory").classList.add("hidden"); $("login").classList.remove("hidden");
+        $("message").textContent = "การเข้าสู่ระบบหมดอายุ กรุณาเข้าสู่ระบบใหม่";
+        return false;
       }
-      $("directoryMessage").textContent = $("message").textContent = response.status === 401
-        ? "การเข้าสู่ระบบหมดอายุ กรุณาเข้าสู่ระบบใหม่"
-        : "โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง ระบบยังเก็บการเข้าสู่ระบบไว้";
-      return false;
+      return failed();
     }
-    const body = await response.json();
-    items = body.items || [];
+    let body;
+    try { body = await response.json(); } catch { return failed(); }
+    if (!Array.isArray(body.items)) return failed();
+    items = body.items;
     refreshDepartments(); render();
-    $("login").classList.add("hidden"); $("changePassword").classList.add("hidden"); $("directory").classList.remove("hidden");
+    $("sessionRestore").classList.add("hidden"); $("login").classList.add("hidden"); $("changePassword").classList.add("hidden"); $("directory").classList.remove("hidden");
     return true;
   }
 
@@ -282,6 +305,8 @@
     location.reload();
   }
   $("logout").addEventListener("click", logoutDirectory);
+  $("restoreLogout").addEventListener("click", logoutDirectory);
+  $("retrySession").addEventListener("click", loadDirectory);
   const mainSystemButton=document.createElement("button");
   mainSystemButton.type="button";mainSystemButton.className="secondary";mainSystemButton.textContent="เปิดระบบหลักด้วยบัญชีนี้";
   $("logout").before(mainSystemButton);
