@@ -10355,7 +10355,7 @@ function bindEvents() {
     $("#loadBayBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const houseNumber = normalizeHouseBarcode($("#terminalHouse").value);
         if (!houseNumber) throw new Error("กรุณาระบุ House ก่อนโหลดขึ้นรถ");
-        if (!window.confirm(`ยืนยันโหลดเสร็จและออก WH3 สำหรับ House ${houseNumber}?\n\nระบบจะบันทึกเวลาออก WH3 และหลักฐานรูปก่อนออกเดินทาง`)) return;
+        if (!await showWhConfirm(`ยืนยันโหลดเสร็จและออก WH3 สำหรับ House ${houseNumber}?\n\nระบบจะบันทึกเวลาออก WH3 และหลักฐานรูปก่อนออกเดินทาง`)) return;
         const image = await fileToCompressedBase64($("#preLoadPhoto"));
         await api("/api/outbound/load-bay", {
             houseNumber: houseNumber,
@@ -10369,7 +10369,7 @@ function bindEvents() {
     $("#terminalArrivalBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const houseNumber = normalizeHouseBarcode($("#terminalHouse").value);
         if (!houseNumber) throw new Error("กรุณาระบุ House ก่อนยืนยันถึง Terminal");
-        if (!window.confirm(`ยืนยันว่า House ${houseNumber} ถึง Terminal แล้ว?\n\nหลังยืนยัน งานจะเข้าสู่ขั้นชั่งน้ำหนัก / X-Ray / ปิดงานก่อนวางบิล`)) return;
+        if (!await showWhConfirm(`ยืนยันว่า House ${houseNumber} ถึง Terminal แล้ว?\n\nหลังยืนยัน งานจะเข้าสู่ขั้นชั่งน้ำหนัก / X-Ray / ปิดงานก่อนวางบิล`)) return;
         await api("/api/outbound/load-bay", {
             houseNumber: houseNumber,
             userId: "u_driver_01",
@@ -11491,7 +11491,7 @@ async function csBulkConfirmFiltered() {
         value: "BULK-" + new Date().toISOString().slice(0, 10)
     });
     if (!invoiceNo) return;
-    if (!window.confirm(`ยืนยัน CS แบบกลุ่มทั้งหมด ${jobs.length} งาน ด้วยอ้างอิง "${invoiceNo}"?\n\nลูกค้า ${customerCount} ราย · ${packingSummary}\nตัวอย่าง House: ${sampleHouses}${jobs.length > 8 ? "..." : ""}\n\nหลังยืนยัน งานจะหายจากคิวรอ CS และพร้อมเปิดใบ Cargo ทันที`)) return;
+    if (!await showWhConfirm(`ยืนยัน CS แบบกลุ่มทั้งหมด ${jobs.length} งาน ด้วยอ้างอิง "${invoiceNo}"?\n\nลูกค้า ${customerCount} ราย · ${packingSummary}\nตัวอย่าง House: ${sampleHouses}${jobs.length > 8 ? "..." : ""}\n\nหลังยืนยัน งานจะหายจากคิวรอ CS และพร้อมเปิดใบ Cargo ทันที`)) return;
     if (jobs.length >= 50) {
         const typedCount = await scdPrompt({
             title: "ยืนยันจำนวนงานอีกครั้ง",
@@ -12120,7 +12120,7 @@ async function dockToggleAuto(){return dockAutoControl({action:'auto-dispatch',e
 async function dockPauseAuto(houseNumber,paused){return dockAutoControl({action:'pause-auto-queue',houseNumber,paused});}
 
 async function dockRelease(bayId) {
-    if (!window.confirm("ยืนยันว่าลงสินค้าเสร็จและรถออกจากช่องจริงแล้ว จึงคืน Dock นี้?")) return;
+    if (!await showWhConfirm("ยืนยันว่าลงสินค้าเสร็จและรถออกจากช่องจริงแล้ว จึงคืน Dock นี้?")) return;
     try {
         _dockData = await api("/api/dock/release", { bayId: bayId, confirmVehicleDeparted: true });
         state.dockSummary = _dockData.summary;
