@@ -33,6 +33,30 @@ async function loaded(){const d=await arrived();assert.equal((await route(d,'loa
 async function completed(){const d=await loaded();assert.equal((await route(d,'complete',valid())).status,200);return d;}
 const reject=r=>assert.ok(r.status>=400,'Expected rejection, got HTTP '+r.status);
 module.exports=async()=>{
+ await check('เริ่มรอบจาก House เดียวต้องเริ่มทุกจุดรับในรอบรถ แต่ไม่แตะคนขับหรือรอบอื่น',async()=>{
+  const d=fixture(),first=d.jobs[0];first.transportRoundId='SAME-ROUND';
+  const second={...structuredClone(first),houseNumber:'SIM-STOP2',customerName:'Customer B'};
+  const third={...structuredClone(first),houseNumber:'SIM-STOP3',customerName:'Customer C'};
+  const otherDriver={...structuredClone(first),houseNumber:'SIM-OTHER-DRIVER',driverId:'SIM-B'};
+  const otherRound={...structuredClone(first),houseNumber:'SIM-OTHER-ROUND',transportRoundId:'OTHER-ROUND'};
+  d.jobs.push(second,third,otherDriver,otherRound);
+  const untouched=JSON.stringify([otherDriver,otherRound]);
+  const r=await route(d,'route-start');assert.equal(r.status,200);assert.equal(r.body.jobs.length,3);
+  for(const j of [first,second,third]){assert.equal(j.driverRouteStatus,'EnRouteToPickup');assert.equal(j.routeStartedAt,first.routeStartedAt);}
+  assert.equal(JSON.stringify([otherDriver,otherRound]),untouched);
+  assert.equal((await route(d,'checkin',{houseNumbers:[house,'SIM-STOP2']})).status,200);
+  assert.equal(third.driverRouteStatus,'EnRouteToPickup');assert.ok(!third.checkInAt);
+ });
+ await check('เริ่มรอบที่เคยเริ่มบาง House ต้องคงเวลา GPS และ Log เดิม พร้อมเริ่มรายการที่เหลือ',async()=>{
+  const d=fixture(),first=d.jobs[0];first.transportRoundId='PARTIAL-ROUND';
+  assert.equal((await route(d,'route-start')).status,200);
+  const original=structuredClone(first),logs=d.activityLogs.length;
+  const second={...structuredClone(seed),houseNumber:'SIM-LATE',transportRoundId:'PARTIAL-ROUND'};d.jobs.push(second);
+  assert.equal((await route(d,'route-start')).status,200);
+  assert.equal(JSON.stringify(first),JSON.stringify(original));assert.ok(second.routeStartedAt);
+  assert.equal(d.activityLogs.length,logs+1);
+  const count=d.activityLogs.length;assert.equal((await route(d,'route-start')).body.replayed,true);assert.equal(d.activityLogs.length,count);
+ });
  await check('ข้อมูลก่อนเทสตรง House 4840807196, 5 ชิ้น, CS และ Driver A พร้อม ไม่มีรับจริง',()=>{assert.equal(seed.hawbNumber,'4840807196');assert.equal(Number(seed.pieceCount),5);assert.ok(seed.csConfirmed&&seed.cargoIssuedAt&&!seed.routeStartedAt&&!seed.inboundReceipt);});
  await check('Driver B ทำงานของ A ไม่ได้ และไม่เขียนข้อมูล',async()=>{const d=fixture(),before=JSON.stringify(d),r=await route(d,'route-start',{}, {id:'SIM-B',role:'Driver'});assert.equal(r.status,403);assert.equal(JSON.stringify(d),before);});
  await check('ยังไม่ผ่าน CS หรือยังไม่ออกใบต้องเริ่มรอบไม่ได้',async()=>{for(const key of ['csConfirmed','cargoIssuedAt']){const d=fixture();d.jobs[0][key]=false;reject(await route(d,'route-start'));}});

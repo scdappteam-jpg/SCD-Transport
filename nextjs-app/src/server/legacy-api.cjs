@@ -5692,7 +5692,8 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/pickup/route-start") {
         const payload = await parseBody(req);
-        const jobs = findPayloadJobs(db, payload);
+        const requestedJobs = findPayloadJobs(db, payload);
+        const jobs = findPickupArrivalRoundJobs(db, requestedJobs);
         const actor = requirePickupActor(db, req, jobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เริ่มรอบรับสินค้านี้" });
         payload.userId = actor.id;
@@ -5705,6 +5706,9 @@ async function handleApi(req, res, pathname) {
         if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
         const startedAt = nowIso();
         for (const item of jobs) {
+            // A retry can complete an older, partially started round without
+            // rewriting the original start time, GPS or audit event.
+            if (item.routeStartedAt) continue;
             item.driverRouteStatus = "EnRouteToPickup";
             item.routeStartedAt = item.routeStartedAt || startedAt;
             item.routeStartGps = `${Number(payload.gpsLat)},${Number(payload.gpsLong)}`;

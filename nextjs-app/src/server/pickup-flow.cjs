@@ -37,7 +37,7 @@ function prepare(action,jobs,p,normalize){
     const replay=field=>jobs.every(j=>j[field]===fp);
     if(action==='route-start'){
         if(jobs.every(j=>j.driverRouteStatus==='EnRouteToPickup'&&j.routeStartedAt))return {replayed:true};
-        if(jobs.some(j=>j.routeStartedAt||j.checkInAt||j.loadedAt||j.completedAt||j.arrivedWh3At||j.driverRouteStatus&&!['Assigned','Pending'].includes(j.driverRouteStatus)||!['Pending','Assigned'].includes(j.status)))fail('รอบนี้เริ่มหรือผ่านขั้นตอนแล้ว ไม่สามารถเริ่มย้อนซ้ำได้',409);
+        if(jobs.some(j=>j.checkInAt||j.loadedAt||j.completedAt||j.arrivedWh3At||j.routeStartedAt&&j.driverRouteStatus!=='EnRouteToPickup'||!j.routeStartedAt&&j.driverRouteStatus&&!['Assigned','Pending'].includes(j.driverRouteStatus)||!['Pending','Assigned'].includes(j.status)))fail('รอบนี้เริ่มหรือผ่านขั้นตอนแล้ว ไม่สามารถเริ่มย้อนซ้ำได้',409);
     }else if(action==='checkin'){
         if(jobs.every(j=>j.driverRouteStatus==='ArrivedAtPickup'&&j.checkInAt))return {replayed:true};
         if(jobs.some(j=>!j.routeStartedAt||j.driverRouteStatus!=='EnRouteToPickup'))fail('ต้องเริ่มรอบก่อนบันทึกถึงจุดรับ และห้ามย้อนขั้นตอน',409);
