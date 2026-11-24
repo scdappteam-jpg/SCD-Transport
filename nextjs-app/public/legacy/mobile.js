@@ -1062,7 +1062,7 @@ function pickupRoundKeyForMobile(job) {
     return "";
 }
 
-function releaseDocumentRoundJobs() {
+function pickupRoundJobsForMobile() {
     const selected = jobsFromSelection();
     if (!selected.length) return [];
     const keys = new Set(selected.map(pickupRoundKeyForMobile).filter(Boolean));
@@ -1070,7 +1070,11 @@ function releaseDocumentRoundJobs() {
     const expanded = keys.size ? visibleDriverJobs().filter(job =>
         driverIds.has(String(job.driverId || "")) && keys.has(pickupRoundKeyForMobile(job))
     ) : selected;
-    return expanded.filter(job => [ "AwaitingReleaseDocument", "WaitingForDock" ].includes(job.status) || [ "ArrivedWH3", "ReleasedForDock" ].includes(job.driverRouteStatus));
+    return expanded;
+}
+
+function releaseDocumentRoundJobs() {
+    return pickupRoundJobsForMobile().filter(job => [ "AwaitingReleaseDocument", "WaitingForDock" ].includes(job.status) || [ "ArrivedWH3", "ReleasedForDock" ].includes(job.driverRouteStatus));
 }
 
 function updateReleaseDocumentProgress() {
@@ -1151,7 +1155,7 @@ function addPickupItemRow(values = {}) {
     if (!list) return;
     const row = document.createElement("div");
     row.className = "pickup-item-row";
-    row.innerHTML = `\n    <input class="pickup-house" placeholder="House Number" value="${values.houseNumber || ""}">\n    <select class="pickup-destination">\n      <option value="WH3">WH3 เข้าคลัง</option>\n      <option value="TG">TG ส่งออก</option>\n      <option value="TGINT">TGINT ส่งออก</option>\n      <option value="BFS">BFS ส่งออก</option>\n    </select>\n    <input class="pickup-carton" placeholder="Carton/ชิ้น" value="${values.carton || ""}">\n    <button class="remove-row" type="button" aria-label="Remove row">×</button>\n  `;
+    row.innerHTML = `\n    <input class="pickup-house" placeholder="House Number" value="${values.houseNumber || ""}">\n    <select class="pickup-destination">\n      <option value="WH3">WH3 เข้าคลัง</option>\n      <option value="TG">TG ส่งออก</option>\n      <option value="TGINT">TGINT ส่งออก</option>\n      <option value="BFS">BFS ส่งออก</option>\n    </select>\n    <input class="pickup-carton" placeholder="จำนวนรับ (หน่วยหลัก)" value="${values.carton || ""}">\n    <button class="remove-row" type="button" aria-label="Remove row">×</button>\n  `;
     list.appendChild(row);
     row.querySelector(".pickup-destination").value = values.destination || "WH3";
     row.querySelector(".remove-row").addEventListener("click", () => {
@@ -1788,7 +1792,7 @@ function bindEvents() {
         state.cargoLoaded = true;
         $("#loadCargoBtn").classList.add("loaded");
         $("#loadCargoBtn").textContent = "โหลดขึ้นรถแล้ว / Cargo loaded";
-        showMobileActionModal("โหลดสินค้าขึ้นรถแล้ว", `บันทึกปลายทาง ${computedEndPlace()} แล้ว เก็บ Checklist รูปและลายเซ็นครบแล้ว กดจบรับเพื่อเริ่มกลับ WH3`);
+        showMobileActionModal("โหลดสินค้าขึ้นรถแล้ว", `บันทึกปลายทาง ${computedEndPlace()} แล้ว เก็บ Checklist รูปและลายเซ็นครบแล้ว กดจบรับจุดนี้ แล้วตรวจว่ารับครบทุกจุดในรอบรถก่อนกลับ WH3`);
         toast("โหลดสินค้าขึ้นรถแล้ว / Cargo loaded");
     }));
     $("#simulatePickupEvidenceBtn")?.addEventListener("click", () => {
@@ -1830,8 +1834,14 @@ function bindEvents() {
             simulation: simulation
         });
         await refresh();
-        showMobileActionModal("รับสินค้าครบแล้ว", "ระบบเปลี่ยนสถานะเป็น กำลังกลับ WH3 อัตโนมัติ และเริ่มติดตามการเดินทางกลับคลัง");
-        toast("รับสินค้าแล้ว · กำลังกลับ WH3");
+        const remaining = pickupRoundJobsForMobile().filter(job => !job.completedAt);
+        if (remaining.length) {
+            showMobileActionModal("รับสินค้าจุดนี้แล้ว", `ยังเหลือ ${remaining.length} House ในรอบรถนี้ ให้เลือกจุดรับถัดไปและรับให้ครบก่อนยืนยันถึง WH3`);
+            toast(`รับจุดนี้แล้ว · เหลือ ${remaining.length} House ในรอบรถ`);
+        } else {
+            showMobileActionModal("รับสินค้าครบทั้งรอบรถแล้ว", "ครบทุก House ในรอบรถนี้แล้ว ขั้นตอนถัดไปคือเดินทางกลับ WH3 และยืนยันรถถึงคลัง");
+            toast("รับครบทั้งรอบรถแล้ว · กลับ WH3");
+        }
     }));
     $("#arriveWh3Btn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         const gps = await requirePickupGps();
@@ -2919,7 +2929,7 @@ function showConfirmSheet(title, desc, onOk) {
             });
         }, true);
     };
-    gate("completePickupBtn", "ยืนยันรับสินค้าแล้ว?", "ระบบจะบันทึกเวลา รูปถ่าย และลายเซ็น เมื่อรับ House ครบ ระบบจะเปลี่ยนเป็นกำลังกลับ WH3 อัตโนมัติ");
+    gate("completePickupBtn", "ยืนยันรับสินค้าแล้ว?", "ระบบจะบันทึกเวลา รูปถ่าย และลายเซ็น เมื่อรับครบเฉพาะจุดนี้ ให้ทำจุดรับที่เหลือต่อ รถกลับ WH3 ได้หลังรับครบทั้งรอบ");
     gate("loadCargoBtn", "ยืนยันโหลดสินค้าขึ้นรถ?", "ตรวจสินค้าครบตาม checklist และแปะ Sticker (ถ้าเป็นงานพิเศษ) แล้วใช่ไหม");
     gate("arriveWh3Btn", "ยืนยันถึง WH3 แล้ว?", "House ทั้งหมดในรอบจะเปลี่ยนเป็นรอใบตรวจปล่อย");
 })();
