@@ -1,14 +1,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- CommonJS warehouse domain service. */
 const groups=require('./dock-vehicle-group.cjs');
 const planning=require('./dock-planning.cjs');
+const {ready}=require('./dock-readiness.cjs');
 const enabled=db=>db.dock?.autoDispatch?.enabled!==false;
-function ready(db,entry){
-    if(entry.autoDispatchPaused||entry.queueType==='Outbound')return false;
-    const listed=groups.houses(entry),rows=groups.forHouses(db,listed);
-    if(!rows.length||rows.length!==listed.length)return false;
-    if(rows.some(row=>groups.jobs(db,row).some(job=>!listed.includes(job.houseNumber))))return false;
-    return rows.every(job=>job.status==='WaitingForDock'&&!job.csRejected&&job.csConfirmed&&job.cargoIssuedAt&&job.driverId&&job.vehiclePlate&&Number.isFinite(Date.parse(job.arrivedWh3At))&&Number.isFinite(Date.parse(job.releaseDocumentReceivedAt))&&!job.wh3UnloadCompletedAt);
-}
 function dispatch(db,at=new Date().toISOString()){
     if(!enabled(db)||!db.dock?.bays?.length||!db.dock?.queue?.length)return [];
     groups.normalizeQueue(db);

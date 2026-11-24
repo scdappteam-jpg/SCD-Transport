@@ -16,8 +16,9 @@
         const row = overview.byHouse.get(root.InboundReceipts.houseKey(job));
         const masterKey = root.InboundReceipts.masterKey(job);
         const group = authoritativeMasters ? authoritativeMasters.find(group => String(group.master).replace(/[\s-]/g, "").toUpperCase() === masterKey) : overview.masters.get(masterKey);
+        const receivingReady = root.InboundReceipts.receivingReady(job);
         const inputs = Object.keys(row.planned).map(unit => `<label>รับสะสม ${esc(unit)}<input type="number" min="0" step="1" inputmode="numeric" data-receipt-unit="${esc(unit)}" value="${row.confirmed ? row.received[unit] : ""}" placeholder="กรอกยอดนับจริง"></label>`).join("");
-        return house(row) + (editable ? `<section class="receipt-card receipt-form" data-house="${esc(row.houseNumber)}" data-revision="${row.revision}"><strong>ยืนยันยอดรับสะสมของ House นี้</strong><p>กรอกยอดรวมที่รับแล้วทุกครั้ง แยกทุกหน่วย ไม่กรอกเฉพาะยอดเพิ่มของรอบนี้</p><div class="receipt-inputs">${inputs}</div><label>หมายเหตุหรือเหตุผลแก้ยอดลดลง<input data-receipt-reason type="text" maxlength="1000"></label><button type="button" data-receipt-save ${!row.planKnown || row.ambiguous ? "disabled" : ""}>ยืนยันยอดรับจริง</button></section>` : "") + master(group);
+        return house(row) + (editable ? `<section class="receipt-card receipt-form" data-house="${esc(row.houseNumber)}" data-revision="${row.revision}"><strong>ยืนยันยอดรับสะสมของ House นี้</strong>${!receivingReady ? "<p>ต้องลงสินค้า ตรวจเอกสาร และเปิดรับเข้าก่อนยืนยันยอดรับจริง</p>" : ""}<p>กรอกยอดรวมที่รับแล้วทุกครั้ง แยกทุกหน่วย ไม่กรอกเฉพาะยอดเพิ่มของรอบนี้</p><div class="receipt-inputs">${inputs}</div><label>หมายเหตุหรือเหตุผลแก้ยอดลดลง<input data-receipt-reason type="text" maxlength="1000"></label><button type="button" data-receipt-save ${!receivingReady || !row.planKnown || row.ambiguous ? "disabled" : ""}>ยืนยันยอดรับจริง</button></section>` : "") + master(group);
     }
     function payload(container) {
         const form = container.querySelector('.receipt-form');

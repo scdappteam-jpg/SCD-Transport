@@ -8186,11 +8186,7 @@ function billingPeriodLabel(period) {
     return period === "FullMonth" ? "รวมทั้งเดือน" : `รอบ ${period}`;
 }
 
-function billingTripKey(job) {
-    const round = job.transportRoundId || job.billingTripId || job.pickupBatchId || job.batchId;
-    if (round) return `${job.workDate || job.pickupDate || ""}|${round}`;
-    return job.jobId || `${billingJobDate(job)}|${job.vehiclePlate || job.driverId || job.houseNumber}|${job.routeType || job.destination || ""}`;
-}
+function billingTripKey(job) { return TransportRounds.billingKey(job); }
 
 function buildBillingBatchGroups() {
     const dateFrom = $("#batchDateFrom")?.value || "";
@@ -8215,7 +8211,7 @@ function buildBillingBatchGroups() {
             period: period,
             plan: plan,
             jobs: [],
-            trips: []
+            trips: [], unresolvedTrips: []
         });
         grouped.get(key).jobs.push(job);
     });
@@ -8224,6 +8220,7 @@ function buildBillingBatchGroups() {
         const trips = new Map;
         group.jobs.forEach(job => {
             const key = billingTripKey(job);
+            if (!key) { group.unresolvedTrips.push(job.houseNumber); return; }
             if (!trips.has(key)) trips.set(key, {
                 key: key,
                 jobs: [],
@@ -8233,6 +8230,7 @@ function buildBillingBatchGroups() {
             trip.jobs.push(job);
             trip.amount = Math.max(trip.amount, Number(job.amount || 0));
         });
+        group.tripCountKnown = group.unresolvedTrips.length === 0;
         group.trips = [ ...trips.values() ];
         group.amount = group.trips.reduce((sum, trip) => sum + trip.amount, 0);
         group.reviewed = group.jobs.every(job => job.billingReviewStatus === "Reviewed" || [ "BillingReviewed", "InvoiceDrafted" ].includes(job.status));
@@ -8247,7 +8245,7 @@ function renderBillingBatchBuilder() {
     state.billingBatchGroups = buildBillingBatchGroups();
     if (!state.billingBatchGroups.some(group => group.id === state.selectedBillingBatchId)) state.selectedBillingBatchId = "";
     $("#billingBatchCount").textContent = `${state.billingBatchGroups.length} ${localizeText("กลุ่ม / groups")}`;
-    $("#billingBatchGroupList").innerHTML = state.billingBatchGroups.length ? state.billingBatchGroups.map(group => `\n    <button class="billing-batch-card ${group.id === state.selectedBillingBatchId ? "active" : ""}" type="button" data-batch-id="${group.id}">\n      <span>${group.period === "FullMonth" ? "เดือน" : group.period}</span>\n      <span><strong>${group.customerName}</strong><small>${group.month} · ${billingPlanLabel(group.plan)}</small></span>\n      <span class="billing-batch-stat"><small>เที่ยว</small><strong>${group.trips.length}</strong></span>\n      <span class="billing-batch-stat"><small>House</small><strong>${group.jobs.length}</strong></span>\n      <span class="billing-batch-stat"><small>ยอด</small><strong>${money(group.amount)}</strong></span>\n    </button>`).join("") : `<div class="empty-state">ไม่พบงานพร้อมวางบิลในตัวกรองนี้</div>`;
+    $("#billingBatchGroupList").innerHTML = state.billingBatchGroups.length ? state.billingBatchGroups.map(group => `\n    <button class="billing-batch-card ${group.id === state.selectedBillingBatchId ? "active" : ""}" type="button" data-batch-id="${group.id}">\n      <span>${group.period === "FullMonth" ? "เดือน" : group.period}</span>\n      <span><strong>${group.customerName}</strong><small>${group.month} · ${billingPlanLabel(group.plan)}</small></span>\n      <span class="billing-batch-stat"><small>เที่ยว</small><strong>${group.tripCountKnown ? group.trips.length : "รอผูกรอบ"}</strong></span>\n      <span class="billing-batch-stat"><small>House</small><strong>${group.jobs.length}</strong></span>\n      <span class="billing-batch-stat"><small>ยอด</small><strong>${money(group.amount)}</strong></span>\n    </button>`).join("") : `<div class="empty-state">ไม่พบงานพร้อมวางบิลในตัวกรองนี้</div>`;
     renderBillingBatchPreview();
 }
 
@@ -8265,7 +8263,8 @@ function renderBillingBatchPreview() {
         preview.innerHTML = `<div class="empty-state">เลือกกลุ่มเพื่อ Preview</div>`;
         return;
     }
-    preview.innerHTML = `\n    <h3>${group.customerName}</h3><p>${group.month} · ${billingPeriodLabel(group.period)} · ${billingPlanLabel(group.plan)}</p>\n    <dl><dt>จำนวนเที่ยว</dt><dd>${group.trips.length}</dd><dt>จำนวน House</dt><dd>${group.jobs.length}</dd><dt>เอกสาร</dt><dd>${group.reviewed ? "พร้อม" : "รอตรวจ"}</dd><dt>ยอดรวม</dt><dd>${money(group.amount)} บาท</dd></dl>\n    <label>ปรับยอดรวม (ถ้าจำเป็น)<input id="billingBatchAmount" type="number" min="0" value="${group.amount}"></label>\n    <div class="batch-house-list">${group.jobs.map(job => `<span>${job.houseNumber}</span>`).join("")}</div>`;
+    $("#generateBillingBatchBtn").disabled = !group.tripCountKnown;
+    preview.innerHTML = `\n    <h3>${group.customerName}</h3>${!group.tripCountKnown ? `<p role="alert">ยังมี ${group.unresolvedTrips.length} House ไม่ผูกรอบรถ กรุณาตรวจแผนก่อนสร้าง Draft</p>` : ""}<p>${group.month} · ${billingPeriodLabel(group.period)} · ${billingPlanLabel(group.plan)}</p>\n    <dl><dt>จำนวนเที่ยว</dt><dd>${group.tripCountKnown ? group.trips.length : "รอผูกรอบรถ"}</dd><dt>จำนวน House</dt><dd>${group.jobs.length}</dd><dt>เอกสาร</dt><dd>${group.reviewed ? "พร้อม" : "รอตรวจ"}</dd><dt>ยอดรวม</dt><dd>${money(group.amount)} บาท</dd></dl>\n    <label>ปรับยอดรวม (ถ้าจำเป็น)<input id="billingBatchAmount" type="number" min="0" value="${group.amount}"></label>\n    <div class="batch-house-list">${group.jobs.map(job => `<span>${job.houseNumber}</span>`).join("")}</div>`;
 }
 
 function exportSelectedBillingBatch() {
@@ -10019,12 +10018,12 @@ function bindEvents() {
     $("#generateBillingBatchBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
         const group = selectedBillingBatch();
         if (!group) throw new Error("กรุณาเลือกกลุ่มวางบิล");
+        if (!group.tripCountKnown) throw new Error("ยังมี House ไม่ผูกรอบรถ ห้ามนับจำนวน House เป็นจำนวนเที่ยว กรุณาให้ Transport ตรวจรอบก่อน");
         const data = await api("/api/billing/generate-batch", {
             houseNumbers: group.jobs.map(job => job.houseNumber),
             billingMonth: group.month,
             billingPeriod: group.period,
             billingPlan: group.plan,
-            tripCount: group.trips.length,
             amount: Number($("#billingBatchAmount")?.value || group.amount)
         });
         state.dashboard = data.dashboard;

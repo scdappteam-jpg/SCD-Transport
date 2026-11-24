@@ -67,11 +67,14 @@ function billing(db,jobs,payload,documentStatus,{batch=false}={}) {
     if(batch)tripCount(jobs,payload);
 }
 function tripCount(jobs,payload){
+    const rounds=jobs.map(require('../../public/legacy/transport-round-core.js').billingKey);
+    const known=rounds.every(Boolean), inferred=new Set(rounds).size;
     if(payload.tripCount!=null&&String(payload.tripCount).trim()!==''){
-        const count=Number(payload.tripCount);if(!Number.isSafeInteger(count)||count<1)fail('จำนวนรอบรถต้องเป็นจำนวนเต็มมากกว่าศูนย์',422);return count;
+        const count=Number(payload.tripCount);if(!Number.isSafeInteger(count)||count<1)fail('จำนวนรอบรถต้องเป็นจำนวนเต็มมากกว่าศูนย์',422);
+        if(known&&count!==inferred)fail('จำนวนเที่ยวไม่ตรงกับรหัสรอบรถ กรุณารีเฟรช Preview ก่อนสร้าง Draft',422);
+        return count;
     }
-    const rounds=jobs.map(job=>job.transportRoundId||job.billingTripId||job.pickupBatchId||job.batchId);
     if(rounds.some(round=>!round))fail('กรุณาผูกรหัสรอบรถหรือยืนยันจำนวนรอบก่อนออกบิลรวม ห้ามนับ House เป็นรอบรถ',422);
-    return new Set(rounds.map((round,i)=>`${jobs[i].workDate||jobs[i].pickupDate||''}|${round}`)).size;
+    return inferred;
 }
 module.exports={inbound,selection,rejectCs,terminal,billing,tripCount};

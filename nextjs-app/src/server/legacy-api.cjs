@@ -2001,17 +2001,7 @@ function findPayloadJobs(db, payload) {
     return jobs.length && jobs.every(Boolean) ? jobs : [];
 }
 
-function pickupRoundKey(job) {
-    const explicit = job?.transportRoundId || job?.pickupBatchId || job?.batchId;
-    if (explicit) return `explicit:${explicit}`;
-    if (job?.driverId && job?.vehiclePlate && job?.routeStartedAt) {
-        const startedAt = new Date(job.routeStartedAt);
-        if (Number.isFinite(startedAt.getTime())) {
-            return `driver-start:${job.driverId}|${job.vehiclePlate}|${startedAt.toISOString()}`;
-        }
-    }
-    return "";
-}
+function pickupRoundKey(job) { return require("../../public/legacy/transport-round-core.js").identity(job).id; }
 
 function findPickupArrivalRoundJobs(db, requestedJobs) {
     if (!requestedJobs.length) return [];
@@ -5035,8 +5025,8 @@ async function handleApi(req, res, pathname) {
         }
         const vehiclePlate=payload.vehiclePlate||existingBay?.vehiclePlate||entry?.vehiclePlate||job?.vehiclePlate||'';
         try{dockVehicleGroup.assertVehicleAvailable(db,vehiclePlate,bay.id);}catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
-        if (meetingPolicy.active(db,[job])) {
-            try {dockPlanning.assignment(meetingPolicy.scoped(db),job,entry||{},bay);} catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
+        if (!existingBay) {
+            try {dockPlanning.assignment(db,job,entry||{},bay);} catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
         }
         dockDisplay.ensureTickets(db);
         const assignedAt=existingBay?.assignedAt||nowIso();
@@ -6224,30 +6214,13 @@ async function handleApi(req, res, pathname) {
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์สแกนตรวจซ้ำขาเข้า" });
         payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
-        const locKey = String(payload.locationId || "").trim();
-        const location = db.locations.find(item => item.id === locKey);
-        const wmLocs = warehouseMapLocations(db);
-        const wmLocation = location ? null : wmLocs.find(l =>
-            String(l.code || "").toLowerCase() === locKey.toLowerCase() || String(l.id) === locKey);
-        if (!job) return sendJson(res, 404, {
-            error: "House number not found"
-        });
-        if (!location && !wmLocation) return sendJson(res, 404, {
-            error: `ไม่พบ Location "${locKey}" — ใช้รหัสช่องจากแผนที่คลัง เช่น A-01, B-03, 1-05`
-        });
-        if (location && location.status === "Occupied" && location.currentHouseId !== job.houseNumber) {
-            return sendJson(res, 409, {
-                error: `Location ${location.id} is already occupied`
-            });
-        }
-        if (wmLocation) {
-            const occupiedByOther = (wmLocation.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
-            if (occupiedByOther.length) {
-                return sendJson(res, 409, {
-                    error: `ช่อง ${wmLocation.code || wmLocation.id} ถูกล็อคโดย House ${occupiedByOther[0].houseNumber} อยู่แล้ว — เลือกช่องอื่นหรือย้ายของเดิมก่อน`
-                });
-            }
-        }
+        if (!job) return sendJson(res,404,{error:"House number not found"});
+        let target;
+        try { target=warehouseInbound.validateLocation(db,job,payload); }
+        catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
+        const location=db.locations.includes(target)?target:null;
+        const wmLocation=location?null:target;
+        const wmLocs=warehouseMapLocations(db);
         const isWd = /wd|western digital/i.test(job.customerName || "");
         if (isWd && (!Array.isArray(payload.wdChecklist) || payload.wdChecklist.length < 4)) {
             return sendJson(res, 422, {
@@ -6324,30 +6297,13 @@ async function handleApi(req, res, pathname) {
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ย้ายตำแหน่งคลัง" });
         payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
-        const moveKey = String(payload.newLocationId || "").trim();
-        const newLocation = db.locations.find(item => item.id === moveKey);
-        const wmLocsMove = warehouseMapLocations(db);
-        const newWmLocation = newLocation ? null : wmLocsMove.find(l =>
-            String(l.code || "").toLowerCase() === moveKey.toLowerCase() || String(l.id) === moveKey);
-        if (!job) return sendJson(res, 404, {
-            error: "House number not found"
-        });
-        if (!newLocation && !newWmLocation) return sendJson(res, 404, {
-            error: `ไม่พบ Location "${moveKey}" — ใช้รหัสช่องจากแผนที่คลัง เช่น A-01`
-        });
-        if (newLocation && newLocation.status === "Occupied" && newLocation.currentHouseId !== job.houseNumber) {
-            return sendJson(res, 409, {
-                error: `Location ${newLocation.id} is already occupied`
-            });
-        }
-        if (newWmLocation) {
-            const occupiedByOtherMove = (newWmLocation.occupiedBy || []).filter(o => o.houseNumber !== job.houseNumber);
-            if (occupiedByOtherMove.length) {
-                return sendJson(res, 409, {
-                    error: `ช่อง ${newWmLocation.code || newWmLocation.id} ถูกล็อคโดย House ${occupiedByOtherMove[0].houseNumber} อยู่แล้ว`
-                });
-            }
-        }
+        if (!job) return sendJson(res,404,{error:"House number not found"});
+        let target;
+        try { target=warehouseInbound.validateLocation(db,job,payload); }
+        catch(error){return sendJson(res,error.statusCode||409,{error:error.message});}
+        const newLocation=db.locations.includes(target)?target:null;
+        const newWmLocation=newLocation?null:target;
+        const wmLocsMove=warehouseMapLocations(db);
         const previousLocationId = job.locationId || "";
         const previousLocation = db.locations.find(item => item.id === previousLocationId);
         if (previousLocation && previousLocation.currentHouseId === job.houseNumber) {

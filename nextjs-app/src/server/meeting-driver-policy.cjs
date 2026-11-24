@@ -32,7 +32,8 @@ function pickupEvidence(p) {
 function preflight(db,path,p,actor,at=new Date().toISOString()) {
     const selected=policy.jobs(db,p);
     if (!db.meetingSafety?.enabled && selected.some(j=>policy.active(db,[j])) && !policy.active(db,selected)) fail('ห้ามรวมชุด SIT ที่เปิดกติกากับงานอื่นในคำขอเดียวกัน',409);
-    if (!policy.active(db,selected)) return;
+    const cargoPath=path.startsWith('/api/pickup/')||path.startsWith('/api/dock/')||path==='/api/operations/control';
+    if (!policy.active(db,selected) && !cargoPath) return;
     if (path.startsWith('/api/dock/')) {
         const job=db.jobs.find(j=>j.houseNumber===p.houseNumber);
         if (['/api/dock/queue','/api/dock/assign'].includes(path)&&!job) fail('ไม่พบงานสำหรับเข้าคิว Dock',404);

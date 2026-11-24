@@ -5,7 +5,7 @@ const require=createRequire(import.meta.url);
 const {ensureInboundBays,ensureTickets,board}=require('../src/server/dock-display.cjs');
 const planning=require('../src/server/dock-planning.cjs');
 const actor={role:'Admin'};
-type Fixture={jobs:{houseNumber:string;status:string;vehiclePlate:string;invoiceNo?:string}[];meetingSafety:{geofencingEnabled:boolean};dock:{bays:{id:string;name:string;status:string;note:string;queueNumber?:number}[];queue:{id:string;houseNumber:string;createdAt:string;queueNumber?:number}[]}};
+type Fixture={jobs:{houseNumber:string;status:string;vehiclePlate:string;invoiceNo?:string;csConfirmed?:boolean;cargoIssuedAt?:string;arrivedWh3At?:string;releaseDocumentReceivedAt?:string;driverId?:string}[];meetingSafety:{geofencingEnabled:boolean};dock:{bays:{id:string;name:string;status:string;note:string;queueNumber?:number}[];queue:{id:string;houseNumber:string;createdAt:string;queueNumber?:number}[]}};
 const fixture=():Fixture=>({jobs:[{houseNumber:'4840001',status:'WaitingForDock',vehiclePlate:'REAL-1',invoiceNo:'private'},{houseNumber:'SIT-TEST',status:'WaitingForDock',vehiclePlate:'SIT-ONLY'}],meetingSafety:{geofencingEnabled:false},dock:{bays:[{id:'D8',name:'Custom8',status:'Closed',note:'keep'}],queue:[{id:'q1',houseNumber:'4840001',createdAt:'2026-10-28T01:00:00Z'},{id:'q2',houseNumber:'SIT-TEST',createdAt:'2026-10-28T02:00:00Z'}]}});
 test('inbound setup adds canonical D9–11 idempotently and preserves existing settings',()=>{
  const db=fixture(),existing=structuredClone(db.dock.bays[0]);
@@ -44,14 +44,14 @@ test('called rows use actual assigned dock and retain ticket; live masks SIT hou
 });
 test('finished inbound queues remain in history but do not block active flight priority',()=>{
  const db=fixture();db.jobs[0].status='Billed';db.jobs[1].status='ReadyForBilling';
- db.jobs.push({houseNumber:'SIT-ACTIVE',status:'WaitingForDock',vehiclePlate:'SIT',invoiceNo:''});
+ db.jobs.push({csConfirmed:true,cargoIssuedAt:'2026-10-28T00:00:00Z',arrivedWh3At:'2026-10-28T00:00:00Z',releaseDocumentReceivedAt:'2026-10-28T00:00:00Z',driverId:'SIT-DRIVER',houseNumber:'SIT-ACTIVE',status:'WaitingForDock',vehiclePlate:'SIT',invoiceNo:''});
  db.dock.queue.push({id:'q3',houseNumber:'SIT-ACTIVE',createdAt:'2026-10-28T03:00:00Z'});
  assert.deepEqual(planning.queue(db).map((r:{houseNumber:string})=>r.houseNumber),['SIT-ACTIVE']);
  assert.doesNotThrow(()=>planning.assignment(db,db.jobs[2],db.dock.queue[2],{id:'D9'}));
  assert.equal(db.dock.queue.length,3);
 });
 test('active urgent flights still prevent calling later inbound first',()=>{
- const db=fixture();Object.assign(db.jobs[0],{cargoCutoffAt:'2026-10-28T01:00:00Z'});Object.assign(db.jobs[1],{cargoCutoffAt:'2026-10-28T02:00:00Z'});
+ const db=fixture();db.jobs.forEach((j,i)=>Object.assign(j,{status:'WaitingForDock',csConfirmed:true,cargoIssuedAt:'2026-10-28T00:00:00Z',arrivedWh3At:'2026-10-28T00:00:00Z',releaseDocumentReceivedAt:'2026-10-28T00:00:00Z',driverId:'SIT-DR-'+i,vehiclePlate:'SIT-'+i}));Object.assign(db.jobs[0],{cargoCutoffAt:'2026-10-28T01:00:00Z'});Object.assign(db.jobs[1],{cargoCutoffAt:'2026-10-28T02:00:00Z'});
  assert.throws(()=>planning.assignment(db,db.jobs[1],db.dock.queue[1],{id:'D9'}),/Flight/);
  assert.throws(()=>planning.assignment(db,db.jobs[0],db.dock.queue[0],{id:'D7'}),/ประเภท/);
 });

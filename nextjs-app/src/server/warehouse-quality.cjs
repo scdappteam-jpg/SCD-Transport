@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- server-only domain service */
 const crypto = require('node:crypto');
-const policy = require('./meeting-policy.cjs');
 const inbound = require('./warehouse-inbound.cjs');
 const references = require('../../public/legacy/shipment-references.js');
 const movementPaths = new Set(['/api/inbound/twin-scan','/api/inbound/move-location','/api/warehouse/location/assign','/api/warehouse/location/release','/api/outbound/picking','/api/outbound/return','/api/outbound/load-bay','/api/outbound/transfer-form','/api/outbound/loading-detail']);
@@ -92,8 +91,9 @@ function movementJobs(db,path,p) {
 function enforceMovement(db,path,p) {
     for (const job of movementJobs(db,path,p)) {
         inbound.assertNotHeld(job);
-        if (!(inboundPutawayPaths.has(path) || policy.active(db,[job]) || job.qaRequired)) continue;
+        // Core cargo gates must not depend on a rollout flag or a client flag.
         assertApproved(job);
+        if (!inboundPutawayPaths.has(path) && path !== '/api/warehouse/location/release') require('./inbound-receipts.cjs').assertReceiptComplete(job);
         if(inboundPutawayPaths.has(path))inbound.assertPutaway(db,job,p);
         if ((p.trackType && p.trackType!==(job.trackType||'Single')) || (p.stickerColor && p.stickerColor!==(job.inboundStickerColor||''))) fail('ข้อมูลแท็กเปลี่ยน ต้องลงทะเบียนและสแกน QA ใหม่ก่อนย้าย');
     }

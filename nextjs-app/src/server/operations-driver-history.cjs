@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- shared server-only CommonJS domain service */
 // Read-only compatibility projection. Never backfill timestamps or mutate jobs.
 const labels = {
     RouteStarted: 'เริ่มรอบรับสินค้า', CheckIn: 'ถึงจุดรับสินค้า', Loading: 'โหลดสินค้าขึ้นรถ',
@@ -29,14 +30,5 @@ function events(job, byHouse) {
         seen.add(key); return true;
     }).sort((a,b) => String(a.at).localeCompare(String(b.at)));
 }
-function round(job) {
-    const explicit = job.transportRoundId || job.pickupBatchId || job.batchId;
-    if (explicit) return {id:explicit, source:'explicit'};
-    // Legacy route-start writes one exact timestamp to all Houses in that request.
-    // Do not group by date/plate alone or guess a trip from House count.
-    if (job.driverId && job.vehiclePlate && validTime(job.routeStartedAt)) return {
-        id:JSON.stringify(['driver-start',job.driverId,job.vehiclePlate,new Date(job.routeStartedAt).toISOString()]), source:'driver-start'
-    };
-    return {id:'',source:''};
-}
+const round = require('../../public/legacy/transport-round-core.js').identity;
 module.exports = {index, events, round};

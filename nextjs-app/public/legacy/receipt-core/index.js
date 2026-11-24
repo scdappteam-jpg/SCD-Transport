@@ -81,7 +81,15 @@
         return { byHouse, masters };
     }
     const closeConfirmed = (job, payload) => Boolean(payload?.requestId && job.inboundCloseRequestId === payload.requestId && job.inboundClosedAt && job.inboundClosedRevision === job.inboundReceipt?.revision && house(job).complete);
-    const api = { planned, house, canonical, overview, houseKey, masterKey, valid, closeConfirmed };
+    function receivingReady(job) {
+        const validTime=v=>v&&Number.isFinite(Date.parse(v));
+        if(job.status==="Cancelled"||job.csRejected)return false;
+        if(![job.arrivedWh3At,job.inboundOpenedAt,...job.shipmentSource!=="CustomerDirect"?[job.wh3UnloadCompletedAt]:[]].every(validTime)||!["Found","Missing"].includes(job.inboundDocStatus))return false;
+        if(job.shipmentSource!=="CustomerDirect"&&!validTime(job.releaseDocumentReceivedAt))return false;
+        if(job.inboundDocStatus==="Missing"&&job.inboundEiConfirmedAt!==job.inboundOpenedAt)return false;
+        return [job.arrivedWh3At,job.inboundDocumentCheckedAt,job.shipmentSource!=="CustomerDirect"&&job.releaseDocumentReceivedAt].filter(Boolean).every(v=>validTime(v)&&Date.parse(job.inboundOpenedAt)>=Date.parse(v));
+    }
+    const api = { receivingReady, planned, house, canonical, overview, houseKey, masterKey, valid, closeConfirmed };
     if (typeof module !== "undefined" && module.exports) module.exports = api;
     else root.InboundReceipts = api;
 })(typeof window !== "undefined" ? window : globalThis);

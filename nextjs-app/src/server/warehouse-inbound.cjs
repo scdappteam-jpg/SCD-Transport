@@ -34,9 +34,11 @@ function validateLocation(db,job,p){
     if(zone?.capacityUnit==='Volume'&&Number(p.volumeCbm||0)<=0)fail('โซนนี้ต้องระบุปริมาตรจัดเก็บมากกว่าศูนย์',422);
     const level=p.level===undefined?1:Number(p.level);
     if(!Number.isSafeInteger(level)||level<1||(loc.maxLevels&&level>loc.maxLevels))fail('ระดับ Location ไม่ถูกต้อง',422);
-    if(loc.status==='Occupied'&&loc.currentHouseId!==job.houseNumber)fail('Location มี House อื่นอยู่');
     const other=(loc.occupiedBy||[]).filter(o=>o.houseNumber!==job.houseNumber);
-    if(zone?.storageMode!=='Flexible'&&other.some(o=>o.level==null||o.level===level))fail('ระดับ Location ถูกใช้งานแล้ว');
+    const flexible=zone?.storageMode==='Flexible';
+    if(loc.status==='Occupied'&&loc.currentHouseId&&loc.currentHouseId!==job.houseNumber&&(!flexible||!other.some(o=>o.houseNumber===loc.currentHouseId)))fail('Location มี House อื่นอยู่');
+    if(!flexible&&other.length)fail('Location มี House อื่นอยู่');
+    if(flexible&&other.length&&!['maxPallets','maxBoxes','maxAreaSqm','maxVolumeCbm'].some(k=>Number(loc[k])>0||Number(zone?.[k])>0))fail('ต้องกำหนดความจุ Flexible ก่อนจัดเก็บร่วมกับ House อื่น');
     for(const [field,max] of [['pallets','maxPallets'],['boxes','maxBoxes'],['areaSqm','maxAreaSqm'],['volumeCbm','maxVolumeCbm']]){
         const value=Number(p[field]??0);
         if(!Number.isFinite(value)||value<0||(['pallets','boxes'].includes(field)&&!Number.isSafeInteger(value)))fail('จำนวนจัดเก็บต้องเป็นค่าที่ไม่ติดลบและถูกหน่วย',422);
