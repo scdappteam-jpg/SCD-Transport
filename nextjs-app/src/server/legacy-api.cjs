@@ -37,6 +37,7 @@ const cargoIssuePlan = require("./cargo-issue-plan.cjs");
 const shippingGuards = require("./shipping-guards.cjs");
 const outboundTiming = require("./outbound-timing.cjs");
 const shippingPresentation = require("./shipping-presentation.cjs");
+const xlsxXml = require("./xlsx-xml.cjs");
 const cargoTransfer = require("./cargo-transfer.cjs");
 const cargoTransferPdf = require("./cargo-transfer-pdf.cjs");
 const workflowIntegrity = require("./workflow-integrity.cjs");
@@ -2414,7 +2415,7 @@ function parseXlsxRows(buf) {
         const extraLen = buf.readUInt16LE(e.lho + 28);
         const start = e.lho + 30 + nameLen + extraLen;
         const data = buf.slice(start, start + e.csize);
-        return e.method === 0 ? data.toString("utf8") : zlib.inflateRawSync(data).toString("utf8");
+        return xlsxXml.normalize(e.method === 0 ? data.toString("utf8") : zlib.inflateRawSync(data).toString("utf8"));
     };
     const shared = [];
     const ssXml = readEntry("xl/sharedStrings.xml");
