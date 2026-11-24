@@ -5961,6 +5961,7 @@ function openWhZoneEdit(zoneId) {
         sw.classList.toggle("selected", sw.dataset.color === zone.color);
     });
     m.style.display = "";
+    m.setAttribute("aria-hidden", "false");
     m.classList.add("show");
 }
 
@@ -10637,6 +10638,7 @@ function bindEvents() {
         const el = document.getElementById(id);
         if (!el) return;
         el.classList.remove("show");
+        el.setAttribute("aria-hidden", "true");
         el.style.display = "";
     }
     $("#whZoneEditClose")?.addEventListener("click", () => closeWhModal("whZoneEditModal"));
