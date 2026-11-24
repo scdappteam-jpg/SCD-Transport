@@ -9,6 +9,21 @@ if (!helper) throw new Error('pickupWorkflowStep helper not found');
 const context = vm.createContext({});
 vm.runInContext(helper, context);
 
+test('Driver attendance restores an open shift through GET so checkout remains available after navigation', async () => {
+    const load = mobile.match(/async function loadAttendanceStatus\(\) \{[\s\S]*?\n\}/)?.[0];
+    assert.ok(load);
+    const shift = {userId:'sit-driver',checkInTime:'2026-11-24T08:43:39Z',checkOutTime:null};
+    const state: {currentRecord: unknown} = {currentRecord:null};
+    let rendered: unknown;
+    const ctx=vm.createContext({currentUser:()=>({id:'sit-driver'}),attState:state,
+        api:async (path:string,_body:unknown,method:string)=>{assert.equal(path,'/api/attendance/today');assert.equal(method,'GET');return {records:[shift]};},
+        renderAttendanceStatus:(record:unknown)=>{rendered=record;}});
+    vm.runInContext(load,ctx);
+    await vm.runInContext('loadAttendanceStatus()',ctx);
+    assert.equal(state.currentRecord,shift);
+    assert.equal(rendered,shift);
+});
+
 test('returning WH3 jobs open the actionable final pickup step', () => {
     assert.equal(vm.runInContext('pickupWorkflowStep({driverRouteStatus:"ReturningWH3"})', context), 4);
     assert.equal(vm.runInContext('pickupWorkflowStep({status:"AwaitingReleaseDocument"})', context), 4);

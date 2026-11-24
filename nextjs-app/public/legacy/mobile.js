@@ -2309,7 +2309,7 @@ async function loadAttendanceStatus() {
     const user = currentUser();
     if (!user) return;
     try {
-        const res = await api("/api/attendance/today");
+        const res = await api("/api/attendance/today", undefined, "GET");
         const record = (res.records || []).find(r => r.userId === user.id && !r.checkOutTime);
         attState.currentRecord = record || null;
         renderAttendanceStatus(record);
