@@ -3,12 +3,13 @@ import {useState} from 'react';
 import Link from 'next/link';
 import {operationsRequest,operationsProof} from '@/services/operations-control';
 import './operations-control.css';
+import {confirmOperation} from '@/services/operation-confirm';
 type MergeRow={onhand:string;hawb:string;eligible:boolean;reasons:string[];packageCounts:Record<string,number>;fingerprint:string};
 type Review={rows:MergeRow[];evidence:unknown[]};
 export function CargoImport(){
  const [file,setFile]=useState<File|null>(null),[master,setMaster]=useState(''),[message,setMessage]=useState('เลือกไฟล์และตรวจขอบเขตก่อนนำเข้า'),[busy,setBusy]=useState(false),[review,setReview]=useState<Review|null>(null),[checked,setChecked]=useState(false);
  async function importFile(){
-  if(!file||!window.confirm(`นำเข้าไฟล์งาน ${file.name}\nตรวจว่าเป็นไฟล์และจำนวนงานที่ต้องการก่อนยืนยัน`))return;
+  if(!file||!await confirmOperation(`นำเข้าไฟล์งาน ${file.name}\nตรวจว่าเป็นไฟล์และจำนวนงานที่ต้องการก่อนยืนยัน`))return;
   setBusy(true);try{const data=await operationsProof(file);if(!data)throw Error('กรุณาเลือกไฟล์');const r=await operationsRequest<{kind:string;imported:number;newJobs:number;changedJobs:number}>('/api/admin/import-xlsx',{fileName:file.name,fileBase64:data.base64});setMessage(`นำเข้า ${r.kind} สำเร็จ ${r.imported} รายการ · ใหม่ ${r.newJobs} · อัปเดต ${r.changedJobs}`);setReview(null);}catch(e){setMessage((e as Error).message);}finally{setBusy(false);}
  }
  async function preview(){setBusy(true);setReview(null);setChecked(false);try{const r=await operationsRequest<Review>('/api/admin/shipment-merges/preview',{master});setReview(r);setMessage(`พบ ${r.rows.length} คู่จาก Master ที่เลือก กรุณาตรวจเลขและหน่วยก่อนเชื่อม`);}catch(e){setMessage((e as Error).message);}finally{setBusy(false);}}

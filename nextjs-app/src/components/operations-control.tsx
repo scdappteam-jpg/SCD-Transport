@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {operationsRequest,operationsProof} from '@/services/operations-control';
 import './operations-control.css';
+import {confirmOperation} from '@/services/operation-confirm';
 const fmt=(v:number|null)=>v===null?'ยังไม่ยืนยัน':v.toLocaleString('th-TH',{maximumFractionDigits:2});
 const time=(s:string|null)=>s?new Date(s).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'ยังไม่บันทึก';
 const counts=(r:Record<string,number>|null)=>r?Object.entries(r).map(([u,n])=>`${n} ${u}`).join(' / ')||'ยังไม่มีแผน':'ยังไม่ยืนยัน';
@@ -23,7 +24,7 @@ export function OperationsControl(){
   useEffect(()=>{const timer=setTimeout(()=>void load(),350);return()=>clearTimeout(timer);},[load]);
   const run=async(label:string,payload:Record<string,unknown>,path='/api/operations/control')=>{
     const selected=[...new Set(houses.split(/[\n,]+/).map(v=>v.trim()).filter(Boolean))];
-    if(!window.confirm(`${label}\nบันทึกข้อมูลจริง ${payload.action==='terminal'?`Master ${master} Flight ${flight}`:selected.join(', ')}\nกรุณาตรวจเลขและข้อมูลหน้างานก่อนยืนยัน`))return;
+    if(!await confirmOperation(`${label}\nบันทึกข้อมูลจริง ${payload.action==='terminal'?`Master ${master} Flight ${flight}`:selected.join(', ')}\nกรุณาตรวจเลขและข้อมูลหน้างานก่อนยืนยัน`))return;
     setBusy(true);try{const file=await operationsProof(proof);const product=payload.event==='door-close'?await operationsProof(productProof):undefined;const signed=payload.event==='door-close'?await operationsProof(signedProof):undefined;const r=await operationsRequest<{affected?:string[]}>(path,{houseNumbers:selected,houseNumber:selected[0],channel,reportedBy,note,...payload,...(payload.action==='terminal'?{expectedHouses:masterRows.map(r=>r.houseNumber)}:{}),...(file?{proof:file}:{}),...(product?{productProof:product}:{}),...(signed?{signedProof:signed}:{})});const refreshed=await load();setProof(null);setProductProof(null);setSignedProof(null);setFileVersion(v=>v+1);if(proofInput.current)proofInput.current.value="";setMessage(`${label} สำเร็จ${r.affected?' '+r.affected.join(', '):''}${refreshed?'':' แต่ยังโหลดข้อมูลใหม่ไม่สำเร็จ กรุณากดรีเฟรช'}`);}catch(e){setMessage((e as Error).message);}finally{setBusy(false);}
   };
   const role=data?.actor.role||'',canTransport=['Admin','Executive','Team_Transport'].includes(role),canTerminal=['Admin','Executive','Terminal'].includes(role),canBilling=['Admin','Executive','Billing'].includes(role),canCs=['Admin','Executive','CS'].includes(role);
