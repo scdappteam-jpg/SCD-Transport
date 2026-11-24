@@ -88,7 +88,7 @@
     renderKpis();
     $("grid").innerHTML = visible.length ? visible.map(item => `
       <article class="person card">
-        <div class="photo">${item.photoUrl ? `<img src="${esc(item.photoUrl)}" alt="รูปถ่าย ${esc(item.firstName)} ${esc(item.lastName)}"><div class="initials photo-fallback hidden">${esc(initials(item))}</div>` : `<div class="initials">${esc(initials(item))}</div>`}</div>
+        <div class="photo">${item.photoUrl ? `<img src="${esc(window.SCDPersonnelPhotos.previewUrl(item.photoUrl))}" data-original-source="${esc(item.photoUrl)}" loading="lazy" decoding="async" width="120" height="120" alt="รูปถ่าย ${esc(item.firstName)} ${esc(item.lastName)}"><div class="initials photo-fallback hidden">${esc(initials(item))}</div>` : `<div class="initials">${esc(initials(item))}</div>`}</div>
         <strong>${esc(item.firstName || (item.recoveryPendingDetails ? "รอเติมข้อมูล" : "-"))} ${esc(item.lastName)}</strong>
         <span class="meta"><b>${esc(item.employeeCode || item.id)}</b></span>
         ${item.recoveryPendingDetails ? '' : `<span>${esc(item.nickname ? `ชื่อเล่น ${item.nickname}` : "ยังไม่ระบุชื่อเล่น")}</span>
@@ -99,10 +99,11 @@
       </article>`).join("") : '<div class="card empty">ไม่พบรายชื่อพนักงาน</div>';
     $("grid").querySelectorAll(".photo img").forEach(image => {
       const showFallback = () => {
+        if (window.SCDPersonnelPhotos.retryOriginal(image)) return;
         image.classList.add("hidden");
         image.nextElementSibling?.classList.remove("hidden");
       };
-      image.addEventListener("error", showFallback, { once: true });
+      image.addEventListener("error", showFallback);
       if (image.complete && image.naturalWidth === 0) showFallback();
     });
   }

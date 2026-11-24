@@ -139,8 +139,8 @@ test("directory read and update force a shared-state refresh before resolving em
   const getRoute = api.slice(api.indexOf('if (req.method === "GET" && pathname === "/api/people-directory")'), api.indexOf('if (req.method === "POST" && pathname === "/api/people-directory/update")'));
   const updateRoute = api.slice(api.indexOf('if (req.method === "POST" && pathname === "/api/people-directory/update")'), api.indexOf('if (req.method === "POST" && pathname === "/api/people-viewers/provision")'));
   assert.match(getRoute, /await refreshDbIfSharedStateChanged\(true\);\s*db = readDb\(\);/);
-  assert.match(getRoute, /pathname === "\/api\/people-directory\/create"[\s\S]*await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
-  assert.match(updateRoute, /await refreshDbIfSharedStateChanged\(true\);\s*const currentDb = readDb\(\);/);
+  assert.match(getRoute, /pathname === "\/api\/people-directory\/create"[\s\S]*await refreshDbIfSharedStateChanged\(true, true\);\s*const currentDb = readDb\(\);/);
+  assert.match(updateRoute, /await refreshDbIfSharedStateChanged\(true, true\);\s*const currentDb = readDb\(\);/);
   assert.match(api, /peopleViewerPaths = new Set\(\[[\s\S]*"\/api\/people-directory"[\s\S]*"\/api\/mobile\/bootstrap"[\s\S]*"\/api\/attendance\/checkin"[\s\S]*"\/api\/attendance\/checkout"/);
   assert.match(api, /viewer\.role === peopleViewer\.VIEWER_ROLE \? publicUsers\(db\)\.filter\(user => user\.id === viewer\.id\) : publicUsers\(db\)/);
 });

@@ -6996,7 +6996,7 @@ function renderStaffDetail(user) {
     state.selectedStaffId = user.id;
     const avatar = $("#staffDetailAvatar");
     if (user.photoUrl) {
-        avatar.innerHTML = `<img src="${safeHtml(user.photoUrl)}" alt="รูป ${safeHtml(user.name || "พนักงาน")}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" onerror="this.remove();this.parentElement.textContent='${safeHtml((user.name || "-")[0].toUpperCase())}'">`;
+        avatar.innerHTML = `<img src="${safeHtml(window.SCDPersonnelPhotos.previewUrl(user.photoUrl))}" data-original-source="${safeHtml(user.photoUrl)}" loading="lazy" decoding="async" alt="รูป ${safeHtml(user.name || "พนักงาน")}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" data-initial="${safeHtml((user.name || "-")[0])}" onerror="if(!window.SCDPersonnelPhotos.retryOriginal(this)){const p=this.parentElement;p.textContent=this.dataset.initial;}">`;
     } else {
         avatar.textContent = (user.name || "-")[0].toUpperCase();
     }
@@ -7031,7 +7031,7 @@ function renderStaff() {
     $("#staffTable").innerHTML = visibleUsers.map((staff, index) => {
         const stat = staffStat(staff.id);
         const code = staff.code || `EMP${String(index + 1).padStart(3, "0")}`;
-        const avatar = staff.photoUrl ? `<span class="mini-avatar personnel-photo" style="overflow:hidden"><img src="${safeHtml(staff.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.remove();this.parentElement.textContent='${safeHtml((staff.name || "-")[0])}'"></span>` : `<span class="mini-avatar">${safeHtml((staff.name || "-")[0])}</span>`;
+        const avatar = staff.photoUrl ? `<span class="mini-avatar personnel-photo" style="overflow:hidden"><img src="${safeHtml(window.SCDPersonnelPhotos.previewUrl(staff.photoUrl))}" data-original-source="${safeHtml(staff.photoUrl)}" loading="lazy" decoding="async" alt="" style="width:100%;height:100%;object-fit:cover" data-initial="${safeHtml((staff.name || "-")[0])}" onerror="if(!window.SCDPersonnelPhotos.retryOriginal(this)){const p=this.parentElement;p.textContent=this.dataset.initial;}"></span>` : `<span class="mini-avatar">${safeHtml((staff.name || "-")[0])}</span>`;
         return `\n    <tr>\n      <td><strong>${safeHtml(code)}</strong></td>\n      <td>${avatar}<strong>${safeHtml(staff.name)}</strong>${staff.nickname ? `<small>ชื่อเล่น ${safeHtml(staff.nickname)}</small>` : ""}</td>\n      <td>${safeHtml(staff.position || "-")}</td>\n      <td><span class="pill inbound">${safeHtml(staff.department || "ไม่ระบุแผนก")}</span></td>\n      <td>${safeHtml(staff.phone || "-")}</td>\n      <td>${stat.totalJobs}</td>\n      <td>${stat.completedJobs}</td>\n      <td><button class="staff-row-action" type="button" data-staff-id="${safeHtml(staff.id)}" title="ดูข้อมูล"><i data-lucide="eye"></i></button></td>\n    </tr>\n  `;
     }).join("");
     const selected = users.find(user => user.id === state.selectedStaffId) || users[0];

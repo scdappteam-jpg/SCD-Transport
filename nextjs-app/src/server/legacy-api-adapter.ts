@@ -1,5 +1,6 @@
 import { Readable } from "node:stream";
 import { storageResponse } from "./storage-response";
+import { createApiRequestScheduler } from "./api-request-scheduler";
 
 type LegacyRequest = Readable & {
   headers: Record<string, string>;
@@ -16,6 +17,8 @@ type LegacyResponse = {
 };
 
 type LegacyApiModule = {
+  handlesIndependentRead: (method: string, pathname: string) => boolean;
+  handleIndependentRead: (request: LegacyRequest, response: LegacyResponse, pathname: string) => Promise<void>;
   serveStatic: (request: unknown, response: unknown, pathname: string) => Promise<void>;
   handleApi: (request: LegacyRequest, response: LegacyResponse, pathname: string) => Promise<void>;
   loadDbFromSupabase: () => Promise<void>;
@@ -32,7 +35,8 @@ const noEvidenceMutationPaths = new Set([
   "/api/inbound/twin-scan",
   "/api/inbound/move-location",
   "/api/warehouse/location/assign",
-  "/api/warehouse/location/release"
+  "/api/warehouse/location/release",
+  "/api/people-directory/review"
 ]);
 
 async function loadLegacyApi(): Promise<LegacyApiModule> {
@@ -63,12 +67,12 @@ export async function handleLegacyStorageRequest(request: Request, pathname: str
   return storageResponse(request, pathname, legacyApi.serveStatic);
 }
 
-let apiRequestQueue: Promise<unknown> = Promise.resolve();
+const scheduleApiRequest = createApiRequestScheduler();
 
-export function handleLegacyApiRequest(request: Request, pathname: string): Promise<Response> {
-  const result = apiRequestQueue.catch(() => {}).then(() => handleSerializedLegacyApiRequest(request, pathname));
-  apiRequestQueue = result.catch(() => {});
-  return result;
+export async function handleLegacyApiRequest(request: Request, pathname: string): Promise<Response> {
+  const apiModule = await loadLegacyApi();
+  const independent = request.method === "OPTIONS" || apiModule.handlesIndependentRead(request.method, pathname);
+  return scheduleApiRequest(independent, () => handleSerializedLegacyApiRequest(request, pathname));
 }
 
 async function handleSerializedLegacyApiRequest(request: Request, pathname: string): Promise<Response> {
@@ -84,7 +88,8 @@ async function handleSerializedLegacyApiRequest(request: Request, pathname: stri
   }
 
   const legacyApi = await loadLegacyApi();
-  await initializeLegacyApi(legacyApi);
+  const independent = legacyApi.handlesIndependentRead(request.method, pathname);
+  if (!independent) await initializeLegacyApi(legacyApi);
 
   const body = request.method === "GET" || request.method === "HEAD"
     ? Buffer.alloc(0)
@@ -97,6 +102,7 @@ async function handleSerializedLegacyApiRequest(request: Request, pathname: stri
   let status = 200;
   const headers = new Headers();
   headers.set("X-SCD-State-Protection", "versioned-20261123");
+  headers.set("X-SCD-Personnel-Read", independent ? "isolated-20261124" : "workflow");
   const chunks: Buffer[] = [];
   const output: LegacyResponse = {
     headersSent: false,
@@ -120,7 +126,8 @@ async function handleSerializedLegacyApiRequest(request: Request, pathname: stri
   };
 
   try {
-    await legacyApi.handleApi(input, output, pathname);
+    if (independent) await legacyApi.handleIndependentRead(input, output, pathname);
+    else await legacyApi.handleApi(input, output, pathname);
   } catch (error) {
     console.error("Legacy API request failed", { pathname, error });
     return Response.json({

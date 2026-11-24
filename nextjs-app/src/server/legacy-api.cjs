@@ -2,6 +2,7 @@ const invoiceDocument = require('./invoice-document.cjs');
 const billingClose = require('./billing-close.cjs');
 const stateHttp = require('./state-http.cjs');
 const stateCommit = require('./state-commit.cjs');
+const personnelRead = require('./personnel-read.cjs');
 const supabaseServiceAuth = require('./supabase-service-auth.cjs');
 const meetingPolicy=require('./meeting-policy.cjs');
 const hrSecurity = require('./hr-security.cjs');
@@ -729,7 +730,6 @@ async function loadDbFromSupabase() {
                 scheduleSupabasePersist(dbCache);
                 scheduleAuthSessionPersist(dbCache.authSessions || []);
             }
-            relationalMirror.schedule(dbCache);
             console.log(`[db] Loaded shared data from Supabase (${SUPABASE_STATE_TABLE}/${SUPABASE_STATE_ID}).`);
             return;
         }
@@ -3851,7 +3851,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/people-directory/create") {
         const payload = await parseBody(req);
-        await refreshDbIfSharedStateChanged(true);
+        await refreshDbIfSharedStateChanged(true, true);
         const currentDb = readDb();
         const actor = sessionUser(currentDb, req);
         try {
@@ -3866,7 +3866,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/people-directory/update") {
         const payload = await parseBody(req);
-        await refreshDbIfSharedStateChanged(true);
+        await refreshDbIfSharedStateChanged(true, true);
         const currentDb = readDb();
         const actor = sessionUser(currentDb, req);
         try {
@@ -3880,7 +3880,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/people-directory/review") {
         const payload = await parseBody(req);
-        await refreshDbIfSharedStateChanged(true);
+        await refreshDbIfSharedStateChanged(true, true);
         const currentDb = readDb();
         const actor = sessionUser(currentDb, req);
         try {
@@ -9877,7 +9877,15 @@ if (require.main === module) {
     });
 }
 
+const independentPersonnelReader = personnelRead.createPersonnelReader({
+    shared: supabaseEnabled, request: supabaseRequest, stateId: SUPABASE_STATE_ID,
+    readLocal: readDbFromFile, actorFor: sessionUser, directory: peopleViewer.directory,
+    loginUsers, exportZip: exportPeopleDirectoryZip, sendJson,
+});
+
 module.exports = {
+    handlesIndependentRead: independentPersonnelReader.handles,
+    handleIndependentRead: independentPersonnelReader.handle,
     flushAttachmentStorage: () => durableAttachments.flush(),
     handleApi: handleApi,
     mirrorHealth: mirrorHealth,
