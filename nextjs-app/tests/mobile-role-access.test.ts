@@ -50,7 +50,7 @@ test('all provisioned roles have explicit mobile access; unknown roles get no op
   for (const role of attendanceOnly) assert.deepEqual(tabs(role), ['attendance'], role);
   for (const role of ['Admin', 'Executive']) assert.deepEqual(tabs(role), ['pickup', 'inbound', 'outbound', 'billing', 'attendance'], role);
   assert.deepEqual(tabs('Driver'), ['pickup', 'attendance']);
-  for (const role of ['WH_Staff', 'WH3_TeamLeader']) assert.deepEqual(tabs(role), ['inbound', 'attendance'], role);
+  for (const role of ['WH_Staff', 'WH3_TeamLeader']) assert.deepEqual(tabs(role), ['inbound', 'outbound', 'attendance'], role);
   assert.deepEqual(tabs('Team_Transport'), ['inbound', 'outbound', 'attendance']);
   for (const role of ['EI_Customer', 'Check_House', 'Terminal']) assert.deepEqual(tabs(role), ['outbound'], role);
   assert.deepEqual(tabs('Billing'), ['billing']);

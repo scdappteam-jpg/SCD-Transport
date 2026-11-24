@@ -3,6 +3,7 @@ const {PDFDocument} = require('pdfkit');
 const path = require('node:path');
 const fs = require('node:fs');
 const ctf = require('../../public/legacy/ctf-core/index.js');
+const quality = require('./warehouse-quality.cjs');
 
 function fail(message, statusCode=422) {throw Object.assign(new Error(message),{statusCode});}
 function select(db, houses, findJob) {
@@ -10,7 +11,9 @@ function select(db, houses, findJob) {
     const selected=[...new Set(houses.map(h=>h.trim()))], jobs=selected.map(h=>findJob(db,h));
     if(jobs.some(j=>!j))fail('ไม่พบ House ในระบบ',404);
     if(jobs.some(j=>!j.cargoTransferIssuedAt))fail('ต้องออกใบ Cargo Transfer ให้เรียบร้อยก่อนดาวน์โหลด PDF',409);
-    const models=ctf.models({rows:jobs,jobs});
+    // Raw persisted jobs keep revision-aware approvals, not the normalized UI flag.
+    const projected=jobs.map(job=>({...job,qaVerified:quality.approved(job)}));
+    const models=ctf.models({rows:projected,jobs:projected});
     if(models.some(m=>m.partial||m.missing))fail('กรุณาเลือก House ให้ครบทุกงานในแต่ละใบก่อนดาวน์โหลด PDF',409);
     return models;
 }

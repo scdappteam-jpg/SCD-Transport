@@ -36,6 +36,7 @@ const consolSchedule = require("./consol-schedule.cjs");
 const cargoIssuePlan = require("./cargo-issue-plan.cjs");
 const shippingGuards = require("./shipping-guards.cjs");
 const outboundTiming = require("./outbound-timing.cjs");
+const shippingPresentation = require("./shipping-presentation.cjs");
 const cargoTransfer = require("./cargo-transfer.cjs");
 const cargoTransferPdf = require("./cargo-transfer-pdf.cjs");
 const workflowIntegrity = require("./workflow-integrity.cjs");
@@ -529,6 +530,7 @@ function dockBoard(db) {
             ...bay,
             customerName: job ? job.customerName : "",
             pieceCount: groupedJobs.reduce((sum,item)=>sum+(Number(item.pieceCount)||0),0) || (job ? job.pieceCount : ""),
+            packageCounts: shippingPresentation.packageCounts(groupedJobs),
             houseCount: groupedJobs.length,
             locationId: job ? job.locationId : "",
             flightNo: job ? job.flightNo : ""
@@ -541,6 +543,7 @@ function dockBoard(db) {
             position: item.position || index + 1,
             customerName: job ? job.customerName : item.customerName || "",
             pieceCount: job ? job.pieceCount : item.pieceCount || "",
+            packageCounts: shippingPresentation.packageCounts(dockVehicleGroup.forHouses(db,dockVehicleGroup.houses(item))),
             suggestedBayId: (dockSuggestBay(db, job) || {}).id || ""
         };
     });
@@ -1931,8 +1934,8 @@ function buildMobileDashboard(db, viewer) {
         // WaitingRelease/WaitingDock/Unloading were never emitted by the
         // current Driver → WH3 flow, so Warehouse users could not find a job
         // after the driver received the release document.
-        WH_Staff: job => [ "ReturningWH3", "ArrivedWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status),
-        WH3_TeamLeader: job => [ "ReturningWH3", "ArrivedWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound" ].includes(job.status),
+        WH_Staff: job => [ "ReturningWH3", "ArrivedWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved" ].includes(job.status),
+        WH3_TeamLeader: job => [ "ReturningWH3", "ArrivedWH3", "AwaitingReleaseDocument", "WaitingForDock", "ReceivedAtWH3", "DocumentChecked", "PendingEI", "InboundOpened", "HouseIdentified", "Stored", "ReadyForTerminal", "Inbound", "OutboundLocated", "OutboundPicking", "EIApproved", "AOTQueueBooked", "AOTQueueApproved" ].includes(job.status),
         Team_Transport: job => ![ "Billed", "Completed", "Cancelled" ].includes(job.status),
         EI_Customer: job => [ "ReadyForTerminal", "OutboundLocated", "OutboundPicking", "OutboundConfirmed", "EIApprovalPending", "EIApproved", "AOTQueueBooked", "AOTQueueApproved" ].includes(job.status),
         Check_House: job => [ "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "XRayHold", "ReXRayRequired", "PackingConsolidation", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
@@ -3523,7 +3526,7 @@ function generateCargoFormHtml(job, items = []) {
 }
 
 function generateBatchInvoiceHtml(db, bill, jobs, customer) {
-    const rows = jobs.map((job, index) => `\n    <tr>\n      <td>${index + 1}</td>\n      <td>${escapeHtml(job.houseNumber)}</td>\n      <td>${escapeHtml(job.pickupDate || formatBangkok(job.flightTime))}</td>\n      <td>${escapeHtml(job.routeType || job.destination || "-")}</td>\n      <td>${escapeHtml(job.pieceCount || "-")}</td>\n      <td>${escapeHtml(job.vehiclePlate || "-")}</td>\n    </tr>`).join("");
+    const rows = jobs.map((job, index) => `\n    <tr>\n      <td>${index + 1}</td>\n      <td>${escapeHtml(job.houseNumber)}</td>\n      <td>${escapeHtml(job.pickupDate || formatBangkok(job.flightTime))}</td>\n      <td>${escapeHtml(job.routeType || job.destination || "-")}</td>\n      <td>${escapeHtml(shippingPresentation.quantity(job))}</td>\n      <td>${escapeHtml(job.vehiclePlate || "-")}</td>\n    </tr>`).join("");
     const invoiceHtml = `<!doctype html>\n<html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(bill.id)}</title>\n<style>\n@page{size:A4 portrait;margin:12mm}body{font-family:"TH Sarabun New",Arial,sans-serif;margin:0;color:#17201d;font-size:18px}\nheader{display:flex;justify-content:space-between;border-bottom:2px solid #17314f;padding-bottom:10px}h1{margin:0;color:#17314f}.meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:18px 0}.meta div{border-bottom:1px solid #d8e0e8;padding:5px 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #9baaba;padding:6px;text-align:left}th{background:#edf4fb}.total{text-align:right;font-size:24px;font-weight:700;margin-top:16px}footer{margin-top:24px;color:#65758b}\n</style></head><body>\n<header><div><strong>SmartLogistics</strong><div>ใบวางบิลแบบรวม / Batch Invoice</div></div><div><h1>${bill.testOnly ? "SIT ONLY — TEST INVOICE (NOT FOR PAYMENT)" : "INVOICE"}</h1><strong>${escapeHtml(bill.id)}</strong></div></header>\n<section class="meta">\n<div><strong>ลูกค้า:</strong> ${escapeHtml(customer?.name || bill.customerName)}</div><div><strong>Tax ID:</strong> ${escapeHtml(customer?.taxId || "-")}</div>\n<div><strong>ที่อยู่:</strong> ${escapeHtml(bill.billingAddress || customer?.address || "-")}</div>\n<div><strong>รอบ:</strong> ${escapeHtml(bill.billingMonth)} / ${escapeHtml(bill.billingPeriod)}</div><div><strong>Credit:</strong> ${escapeHtml(customer?.creditTerm || 0)} วัน</div>\n<div><strong>ประเภท:</strong> ${escapeHtml(bill.billingPlan)}</div><div><strong>จำนวน:</strong> ${bill.tripCount} เที่ยว / ${jobs.length} House</div>\n</section>\n<table><thead><tr><th>#</th><th>HAWB / House</th><th>วันที่</th><th>เส้นทาง</th><th>จำนวน</th><th>ทะเบียนรถ</th></tr></thead><tbody>${rows}</tbody></table>\n<p class="total">ยอดรวม ${Number(bill.amount || 0).toLocaleString("th-TH")} บาท</p>\n<footer>Due: ${escapeHtml(formatBangkok(bill.dueDate))} · Billing email: ${escapeHtml(bill.billingEmail || "-")}</footer>\n</body></html>`;
     const filename = `${bill.id}.html`;
     fs.writeFileSync(path.join(INVOICE_DIR, filename), invoiceHtml, "utf8");
@@ -4046,10 +4049,13 @@ async function handleApi(req, res, pathname) {
                 writeDb(db);
                 return sendJson(res, 200, { ok: true, restored: payload.archiveId });
             }
+            const masterReview = pathname.endsWith("/preview") && payload.master !== undefined;
+            if (masterReview) payload.evidence = shippingPresentation.sourceLinks(db, payload.master);
             if (!Array.isArray(payload.evidence) || payload.evidence.length > 1000) return sendJson(res, 400, { error: "Quantity source evidence required" });
             if (pathname.endsWith("/preview")) {
-                const rows = planShipmentMerges(db, payload.evidence);
-                return sendJson(res, 200, { ok: true, rows, eligible: rows.filter(row => row.eligible).length, held: rows.filter(row => !row.eligible).length });
+                const selected = new Set(payload.evidence.map(row => row.onhand));
+                const rows = planShipmentMerges(db, payload.evidence).filter(row => !masterReview || selected.has(row.onhand));
+                return sendJson(res, 200, { ok: true, rows, evidence: payload.evidence, eligible: rows.filter(row => row.eligible).length, held: rows.filter(row => !row.eligible).length });
             }
             if (!Array.isArray(payload.selection) || !payload.selection.length || payload.selection.length > 500) return sendJson(res, 400, { error: "Reviewed selection required" });
             const merged = applyShipmentMerges(db, payload.evidence, payload.selection, actor.id);
@@ -6973,6 +6979,7 @@ async function handleApi(req, res, pathname) {
         });
         try { shippingGuards.xray(job, payload); }
         catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
+        Object.assign(job, outboundTiming.xray(job, payload, nowIso()));
         job.xrayStatus = payload.hold ? "Hold" : payload.passed ? "Passed" : "Failed";
         job.requiresRescan = Boolean(payload.requiresRescan);
         job.status = job.xrayStatus === "Passed" ? "XRayPassed" : payload.hold ? "XRayHold" : "ReXRayRequired";
@@ -8723,19 +8730,9 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "GET" && pathname === "/api/jobs/cs-history") {
         const db2 = readDb();
-        const jobs = (db2.jobs || []).filter(j => j.csConfirmed && j.csConfirmedAt).sort((a, b) => String(b.csConfirmedAt).localeCompare(String(a.csConfirmedAt))).slice(0, 500).map(j => ({
-            houseNumber: j.houseNumber,
-            customerName: j.customerName || "",
-            csInvoiceNo: j.csInvoiceNo || "",
-            csConfirmedBy: j.csConfirmedBy || "",
-            csContactName: j.csContactName || "",
-            csContactPhone: j.csContactPhone || j.pickupPhone || j.tel || "",
-            csConfirmedAt: j.csConfirmedAt,
-            timeLabel: formatBangkok(j.csConfirmedAt),
-            pieceCount: j.pieceCount || "",
-            pickupDate: j.pickupDate || "",
-            status: j.status
-        }));
+        const jobs = (db2.jobs || []).filter(j => j.csConfirmed && j.csConfirmedAt)
+            .sort((a, b) => String(b.csConfirmedAt).localeCompare(String(a.csConfirmedAt))).slice(0, 500)
+            .map(j => ({...shippingPresentation.csHistory(j), timeLabel: formatBangkok(j.csConfirmedAt)}));
         return sendJson(res, 200, {
             ok: true,
             jobs: jobs

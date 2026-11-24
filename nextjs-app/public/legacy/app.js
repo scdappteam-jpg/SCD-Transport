@@ -301,8 +301,8 @@ function allowedWebViews(role) {
     if (role === "Employee") return ["dashboard","hr"];
     if (role === "People_Viewer") return [];
     if (role === "Driver") return [ "dashboard", "driver-time-log", "contacts", "hr", "flight-board", "dock" ];
-    if (role === "WH_Staff") return [ "dashboard", "wh-inbound", "wh-quality", "wh-reservations", "contacts", "hr", "flight-board", "dock" ];
-    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
+    if (role === "WH_Staff") return [ "dashboard", "wh-inbound", "wh-quality", "outbound-open", "wh-reservations", "contacts", "hr", "flight-board", "dock" ];
+    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-inbound", "wh-quality", "outbound-open", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
     if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "flight-board", "dock", "service" ];
     if (role === "EI_Customer") return [ "dashboard", "orders" ];
     if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-inbound", "wh-quality", "orders", "alerts", "contacts" ];
@@ -8361,7 +8361,14 @@ function billingAttachmentFiles(invoice, files) {
     });
 }
 
+function billingSitOptions() {
+    return String(currentWebUser()?.id || '').startsWith('sit-role-') ? {testOnly:true,billingAddress:'SIT ONLY - Full Loop UI test; NOT FOR PAYMENT'} : {};
+}
+
 function renderBillingContext(preserveCustomerInputs = false) {
+    const sitNotice = $("#billingSitNotice");
+    if (sitNotice) sitNotice.hidden = !billingSitOptions().testOnly;
+
     updateBillingCloseButton();
     const job = billingSelectedJob();
     const customer = billingCustomerForJob(job);
@@ -10020,6 +10027,7 @@ function bindEvents() {
         if (!group) throw new Error("กรุณาเลือกกลุ่มวางบิล");
         if (!group.tripCountKnown) throw new Error("ยังมี House ไม่ผูกรอบรถ ห้ามนับจำนวน House เป็นจำนวนเที่ยว กรุณาให้ Transport ตรวจรอบก่อน");
         const data = await api("/api/billing/generate-batch", {
+            ...billingSitOptions(),
             houseNumbers: group.jobs.map(job => job.houseNumber),
             billingMonth: group.month,
             billingPeriod: group.period,
@@ -10461,6 +10469,7 @@ function bindEvents() {
     }));
     $("#generateBillBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const data = await api("/api/billing/generate", {
+            ...billingSitOptions(),
             houseNumber: $("#billingHouse").value.trim()
         });
         state.dashboard = data.dashboard;
@@ -11955,7 +11964,7 @@ function _renderDockHtml() {
             var label = cls === "busy" ? "กำลังใช้งาน" : cls === "closed" ? "ปิดใช้งาน" : cls === "soon" ? "จองแล้ว" : "ว่าง";
             return '<div class="dock-bay ' + cls + '"><div class="dock-bay-h"><b>' + safeHtml(bay.name) + '</b><span>' + label + '</span></div>' +
               (bay.houseNumber
-                ? '<div class="dock-bay-b"><b>' + safeHtml(bay.houseNumber) + '</b><span>' + safeHtml(bay.customerName || "-") + ' · ' + safeHtml(bay.pieceCount || "-") + ' ชิ้น</span>' +
+                ? '<div class="dock-bay-b"><b>' + safeHtml(bay.houseNumber) + '</b><span>' + safeHtml(bay.customerName || "-") + ' · ' + safeHtml(jobPackingLabel(bay)) + ' · ' + safeHtml(bay.houseCount || 1) + ' House</span>' +
                   '<em>' + safeHtml(bay.vehiclePlate || "-") + (bay.driverName ? " · " + safeHtml(bay.driverName) : "") + '</em>' +
                   (bay.locationId ? '<em>ช่องเก็บปลายทาง ' + safeHtml(bay.locationId) + '</em>' : "") + '</div>' +
                   '<button type="button" class="dock-btn" onclick="dockRelease(\'' + bay.id + '\')">ปล่อยท่า</button>'

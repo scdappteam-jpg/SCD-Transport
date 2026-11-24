@@ -23,4 +23,14 @@ function prepare(job, payload, at) {
     if (payload.arrived) return { patch: { cargoReceivedAt: job.cargoReceivedAt || at, terminalArrivedAt: job.terminalArrivedAt || at, driverRouteStatus: 'TerminalArrived' } };
     return { patch: { releasedWh3At: job.releasedWh3At || at, goodsLoadedAt: job.goodsLoadedAt || at, driverRouteStatus: 'EnRouteToTerminal' } };
 }
-module.exports = { booking, prepare };
+function xray(job, payload, at) {
+    const repeat=Boolean(job.requiresRescan || job.xrayStatus==='Hold' || job.status==='ReXRayRequired');
+    const started=repeat?'reXrayStartedAt':'xrayStartedAt';
+    const completed=repeat?'reXrayCompletedAt':'xrayCompletedAt';
+    const patch={[completed]:at};
+    // A result confirms completion only. Never invent a start when none was recorded.
+    if (job[started]) patch[started]=job[started];
+    if(repeat) patch.xrayCompletedAt=job.xrayCompletedAt || null;
+    return patch;
+}
+module.exports = { booking, prepare, xray };
