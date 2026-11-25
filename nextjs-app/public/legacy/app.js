@@ -322,25 +322,26 @@ function fieldOpsRoleAccess(role) {
 }
 
 function allowedWebViews(role) {
+    const operations = ["Admin","Executive","Team_Transport","Terminal","CS","Billing"].includes(role) ? ["operations-control"] : [];
     if (role === "Employee") return ["dashboard","hr"];
     if (role === "People_Viewer") return [];
     if (role === "Driver") return [ "dashboard", "driver-time-log", "contacts", "hr", "flight-board", "dock" ];
     if (role === "WH_Staff") return [ "dashboard", "mobile", "wh-inbound", "wh-quality", "outbound-open", "wh-reservations", "contacts", "hr", "flight-board", "dock" ];
     if (role === "WH3_TeamLeader") return [ "dashboard", "mobile", "orders", "warehouse", "wh-inbound", "wh-quality", "outbound-open", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
-    if (role === "Team_Transport") return [ "dashboard", "mobile", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "flight-board", "dock", "service" ];
+    if (role === "Team_Transport") return [ "dashboard", "mobile", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "flight-board", "dock", "service" , ...operations];
     if (role === "EI_Customer") return [ "dashboard", "orders", "mobile" ];
     if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-inbound", "wh-quality", "orders", "alerts", "contacts" ];
     if (role === "Tagging_Staff") return [ "dashboard", "wh-quality" ];
-    if (role === "Terminal") return [ "dashboard", "mobile", "orders", "alerts", "contacts", "flight-board", "dock" ];
+    if (role === "Terminal") return [ "dashboard", "mobile", "orders", "alerts", "contacts", "flight-board", "dock" , ...operations];
     // Billing works in the Field Ops workspace, but only the Billing panel is
     // exposed below.  Without this entry, the account can see its KPI cards
     // but has no UI path to review, draft, send, or close an invoice.
-    if (role === "Billing") return [ "dashboard", "orders", "mobile", "cargo-history", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "service" ];
+    if (role === "Billing") return [ "dashboard", "orders", "mobile", "cargo-history", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "service" , ...operations];
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
-    if (role === "CS") return [ "dashboard", "orders", "cs-queue", "contacts" ];
-    if (role === "Executive") return [ "dashboard", "mobile", "orders", "alerts", "cargo-history", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
-    return [ "dashboard", "orders", "calendar", "staff", "contacts", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
+    if (role === "CS") return [ "dashboard", "orders", "cs-queue", "contacts" , ...operations];
+    if (role === "Executive") return [ "dashboard", "mobile", "orders", "alerts", "cargo-history", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "contacts", "hr", "flight-board", "dock", "service" , ...operations];
+    return [ "dashboard", "orders", "calendar", "staff", "contacts", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" , ...operations];
 }
 
 function applyWebRoleVisibility() {
@@ -348,6 +349,8 @@ function applyWebRoleVisibility() {
     const user = currentWebUser();
     if (!user) return;
     const allowed = allowedWebViews(user.role);
+    if (!allowed.includes("operations-control")) window.OperationsWorkspace?.clear();
+    $$('[data-view="operations-control"]').forEach(button => button.hidden = !allowed.includes("operations-control"));
     const alertBell = $("#alertBell");
     if (alertBell) alertBell.hidden = !allowed.includes("alerts");
     $$(".nav-item, .side-link").forEach(button => {
@@ -413,6 +416,7 @@ function renderWebSessionUser() {
 }
 
 function renderWebLogin() {
+    if (!isWebAuthenticated()) window.OperationsWorkspace?.clear();
     renderWebLoginUsers();
     $("#loginScreen")?.classList.toggle("hidden", isWebAuthenticated());
     renderWebSessionUser();
@@ -562,6 +566,7 @@ function assetUrl(path) {
 }
 
 const pageCopy = {
+    "operations-control": {breadcrumb:"ปฏิบัติการ / Operations",title:"Transport · Terminal · วางบิล"},
     dashboard: {
         breadcrumb: "ภาพรวม / Executive",
         title: "Executive Dashboard"
@@ -1160,6 +1165,7 @@ function setView(view) {
     $("#breadcrumb").textContent = pageCopy[view].breadcrumb;
     $("#pageTitle").textContent = pageCopy[view].title;
     applyLanguage();
+    if (view === "operations-control") window.OperationsWorkspace?.open(currentWebUser()?.id);
     if (view === "warehouse") renderWarehouseMap();
     if (view === "wh-status") renderWarehouseStatus();
     if (view === "wh-reservations") WarehouseReservationsPage.render();

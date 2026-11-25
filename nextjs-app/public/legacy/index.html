@@ -19,7 +19,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=20261121-live-person-search&amp;outbound=20261125-role-visibility">
+    <link rel="stylesheet" href="styles.css?v=20261121-live-person-search&amp;outbound=20261125-role-visibility&amp;workspace=20261125">
     <link rel="stylesheet" href="fleet-demo.css?v=20260829">
     <link rel="stylesheet" href="mobile-layout.css?v=20260822e">
     <style>[hidden]{display:none !important}#alertBell[hidden]{display:none!important}</style>
@@ -145,6 +145,7 @@
             <i data-lucide="map" aria-hidden="true"></i>
             <b>แผนที่คลัง WH3</b>
           </button>
+          <button class="nav-item" type="button" data-view="operations-control"><i data-lucide="workflow" aria-hidden="true"></i><b>Transport · Terminal · วางบิล</b></button>
           <button class="nav-item" type="button" data-view="wh-inbound"><b>WH · รับลงรถเข้าคลัง</b></button>
           <button class="nav-item" type="button" data-view="wh-quality"><b>WH · สแกนแท็กและ QA</b></button>
           <button class="nav-item" type="button" data-view="driver-time-log"><b>Driver Time Log</b></button>
@@ -247,7 +248,7 @@
             <button id="globalScanBtn" type="button" title="สแกนบาร์โค้ดเพื่อค้นหา" style="min-height:38px;padding:0 14px;border:1.5px solid #dbe3ef;border-radius:10px;background:#fff;font-size:13px;font-weight:700;color:#0b4ea2;cursor:pointer;white-space:nowrap">สแกน</button>
             <div id="systemClock" class="system-clock"></div>
             <a class="ghost-link" href="mobile.html">Mobile App</a>
-            <a class="ghost-link" href="/operations-control">Transport · Terminal · วางบิล</a>
+            <button class="ghost-link" type="button" data-view="operations-control">Transport · Terminal · วางบิล</button>
                 <a href="/cargo-import" class="topbar-icon" title="นำเข้าและเชื่อมไฟล์งาน">นำเข้าไฟล์งาน</a>
             <button id="languageToggle" class="ghost-button" type="button">TH / EN</button>
             <button class="icon-button bell-button" id="alertBell" type="button" data-view="alerts" aria-label="Notifications / การแจ้งเตือน">
@@ -1561,6 +1562,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
 
 
 
+          <section class="page" id="view-operations-control" data-page="operations-control"><p id="operationsWorkspaceLoading" role="status">กำลังเปิดพื้นที่ปฏิบัติงาน...</p><iframe id="operationsWorkspaceFrame" title="พื้นที่ปฏิบัติงาน Transport Terminal และวางบิล" style="display:block;width:100%;height:800px;border:0"></iframe></section>
           <section class="page" id="view-wh-inbound" data-page="wh-inbound"><div class="card" id="warehouseInboundPage"></div></section>
           <section class="page" id="view-wh-quality" data-page="wh-quality"><div class="panel"><h2>สแกนแท็กและ QA</h2><div id="warehouseQualityPage"></div></div></section>
           <section class="page" id="view-meeting-settings" data-page="meeting-settings"><div class="panel"><h2>กติกาคลังและ Driver</h2><div id="meetingSettingsPage"></div></div></section>
@@ -2680,6 +2682,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="meeting-workflows-ui.js?v=20261028-inbound"></script>
     <script src="ctf-core/index.js?v=20261125-confirmed-units"></script>
     <script src="personnel-photo-preview.js?v=20261124"></script>
-    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261124&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge"></script>
+    <script src="operations-workspace.js?v=20261125-unified"></script>
+    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261124&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125"></script>
   </body>
 </html>

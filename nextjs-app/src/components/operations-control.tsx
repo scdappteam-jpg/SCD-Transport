@@ -8,13 +8,21 @@ const fmt=(v:number|null)=>v===null?'ยังไม่ยืนยัน':v.toL
 const time=(s:string|null)=>s?new Date(s).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'ยังไม่บันทึก';
 const counts=(r:Record<string,number>|null)=>r?Object.entries(r).map(([u,n])=>`${n} ${u}`).join(' / ')||'ยังไม่มีแผน':'ยังไม่ยืนยัน';
 function download(name:string,content:string,type='text/html;charset=utf-8'){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-export function OperationsControl(){
+export function OperationsControl({embedded=false,initialFilters={}}:{embedded?:boolean;initialFilters?:Record<string,string>}){
+  const contentRef=useRef<HTMLElement>(null);
+  useEffect(()=>{
+    if(!embedded||window.parent===window||!contentRef.current)return;
+    const content=contentRef.current;
+    const update=()=>window.parent.postMessage({type:'scd-operations-size',height:Math.ceil(content.getBoundingClientRect().height)+24},window.location.origin);
+    const observer=new ResizeObserver(update);observer.observe(content);update();
+    return()=>observer.disconnect();
+  },[embedded]);
   const latestRequest=useRef(0);
   const [fileVersion,setFileVersion]=useState(0);
   const proofInput=useRef<HTMLInputElement>(null);
   const [data,setData]=useState<OperationsSummary|null>(null),[message,setMessage]=useState('กำลังอ่านข้อมูล'),[busy,setBusy]=useState(false),[tab,setTab]=useState('');
-  const [dateBasis,setDateBasis]=useState('pickup');
-  const [from,setFrom]=useState(''),[to,setTo]=useState(''),[query,setQuery]=useState(''),[period,setPeriod]=useState('day');
+  const [dateBasis,setDateBasis]=useState(initialFilters.dateBasis||'pickup');
+  const [from,setFrom]=useState(initialFilters.from||''),[to,setTo]=useState(initialFilters.to||''),[query,setQuery]=useState(initialFilters.query||''),[period,setPeriod]=useState(initialFilters.period||'day');
   const [houses,setHouses]=useState(''),[driverId,setDriverId]=useState(''),[plate,setPlate]=useState(''),[vehicleType,setVehicleType]=useState(''),[planDate,setPlanDate]=useState(''),[round,setRound]=useState('');
   const [channel,setChannel]=useState('App'),[reportedBy,setReportedBy]=useState(''),[note,setNote]=useState(''),[proof,setProof]=useState<File|null>(null);
   const [productProof,setProductProof]=useState<File|null>(null),[signedProof,setSignedProof]=useState<File|null>(null);
@@ -33,8 +41,8 @@ export function OperationsControl(){
   const rows=data?.rows||[];
   const exportRows=()=>{const columns=['houseNumber','onhandNumber','master','flight','customerName','pickupDate','workDate','planDate','driverName','phone','plate','vehicleType','status','pickupMinutes','dispatchMinutes','amount','cost'] as const;const csv=[columns.join(','),...rows.map(r=>columns.map(k=>'"'+String(r[k]??'').replaceAll('"','""').replace(/^[=+@-]/,"'")+'"').join(','))].join('\r\n');download('operations-export.csv','\ufeff'+csv,'text/csv;charset=utf-8');};
   const slip=async()=>{try{const r=await operationsRequest<{html:string}>('/api/operations/control?'+new URLSearchParams({document:'weigh-slip',master,flightNo:flight}));download(`weigh-${master}.html`,r.html);}catch(e){setMessage((e as Error).message);}};
-  return <main className="ops-control">
-    <header><div><p>S.C.D. TRANSPORT</p><h1>ควบคุม Transport Terminal และวางบิล</h1><p>แผนงานและหลักฐานจริง แยก House Master และรอบรถ</p></div><Link prefetch={false} href="/legacy/index.html?view=mobile">กลับระบบเดิม / เข้าสู่ระบบ</Link></header>
+  return <main ref={contentRef} className={`ops-control${embedded?' ops-control-embedded':''}`}>
+    {!embedded&&<header><div><p>S.C.D. TRANSPORT</p><h1>ควบคุม Transport Terminal และวางบิล</h1><p>แผนงานและหลักฐานจริง แยก House Master และรอบรถ</p></div><Link prefetch={false} href="/legacy/index.html?view=operations-control">กลับระบบหลัก / เข้าสู่ระบบ</Link></header>}
     <section className="ops-filters"><label>ฐานวันที่<select value={dateBasis} onChange={e=>setDateBasis(e.target.value)}><option value="pickup">วันรับสินค้า</option><option value="work">วันงานเดิม</option></select></label><label>ตั้งแต่<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>ถึง<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><label>ค้นหาเลข ลูกค้า ทะเบียน<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Onhand / Master / House"/></label><label>สรุปกราฟ<select value={period} onChange={e=>setPeriod(e.target.value)}><option value="day">รายวัน</option><option value="month">รายเดือน</option><option value="year">รายปี</option></select></label><button disabled={busy} onClick={()=>void load()}>รีเฟรช</button><button onClick={exportRows}>ดาวน์โหลดข้อมูลครบทุกแถว</button></section>
     <p className="ops-message" role="status" aria-live="polite">{message}</p>
     {data&&<><div className="ops-context"><strong>{data.actor.name} · {role}</strong><p>{data.scope}</p></div><nav aria-label="ส่วนงาน">{[['transport','Transport'],['terminal','Terminal'],['billing','วางบิล']].filter(([id])=>id!=='billing'||canBilling).map(([id,label])=><button key={id} aria-pressed={activeTab===id} onClick={()=>setTab(id)}>{label}</button>)}</nav>

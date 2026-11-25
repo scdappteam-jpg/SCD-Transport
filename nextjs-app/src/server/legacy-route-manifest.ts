@@ -1,5 +1,6 @@
 export const legacyViewRoutes = {
   dashboard: "dashboard",
+  "operations-control": "operations-control",
   orders: "orders",
   calendar: "calendar",
   staff: "staff",
