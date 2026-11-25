@@ -1518,6 +1518,7 @@ function updateTerminalRequirements() {
 }
 
 function bindEvents() {
+    $('#terminalDestination')?.addEventListener('change', updateTerminalRequirements);
     $$(".action-card").forEach(button => button.addEventListener("click", () => showTab(button.dataset.mobileTab)));
     $$("[data-operation-target]").forEach(button => {
         button.addEventListener("click", () => showOperation(button.dataset.operationTarget));
