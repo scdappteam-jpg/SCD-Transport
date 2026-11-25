@@ -1729,10 +1729,10 @@ function jobCargoData(job) {
         customer: job.customerName,
         rows: rows,
         pickupDate: job.pickupDate || toDateInput(job.flightTime),
-        pickupTime: job.readyTime ? new Date(job.readyTime).toLocaleTimeString("th-TH", {
+        pickupTime: job.pickupTime || (job.readyTime ? new Date(job.readyTime).toLocaleTimeString("th-TH", {
             hour: "2-digit",
             minute: "2-digit"
-        }) : "",
+        }) : ""),
         pickupLocation: job.pickupLocation,
         contact: (job.csContactName || job.contactPerson || job.contact),
         tel: (job.csContactPhone || job.pickupPhone || job.tel),
@@ -3975,8 +3975,9 @@ async function groupWizardNextOrIssue() {
         driverName: page.driver.name || "", vehiclePlate: page.driver.vehiclePlate || "",
         jobs: page.jobs.map(job => ({ houseNumber: job.houseNumber, updatedAt: job.updatedAt || "" }))
     }));
-    if (JSON.stringify(state.groupWizard.issuePlan?.pages) !== JSON.stringify(planPages)) {
-        state.groupWizard.issuePlan = { requestId: crypto.randomUUID(), pages: planPages };
+    const cargoHeader = { ...meta };
+    if (JSON.stringify(state.groupWizard.issuePlan?.pages) !== JSON.stringify(planPages) || JSON.stringify(state.groupWizard.issuePlan?.cargoHeader) !== JSON.stringify(cargoHeader)) {
+        state.groupWizard.issuePlan = { requestId: crypto.randomUUID(), pages: planPages, cargoHeader };
     }
     const data = await api("/api/admin/cargo-issue-plan", state.groupWizard.issuePlan);
     if (!data.ok || data.pageCount !== pages.length || data.jobs?.length !== jobs.length) throw new Error("ผลออกใบไม่ตรงแผน กรุณาโหลดข้อมูลตรวจสอบก่อนทำต่อ");
@@ -6381,14 +6382,14 @@ function cargoDataFromJobs(jobs, driver = null) {
             tel: job.pickupPhone || ""
         })),
         pickupDate: first.pickupDate || toDateInput(first.flightTime) || dateInputValue(new Date),
-        pickupTime: "",
+        pickupTime: first.pickupTime || "",
         pickupLocation: first.pickupLocation || "",
         contact: first.contactPerson || "",
         tel: first.pickupPhone || "",
         booking: first.booking || first.bookingNo || "",
         invoiceNo: first.invoiceNo || "",
         driverName: driver?.name || first.driverName || $("#adminDriverName")?.value || "",
-        vehiclePlate: driver?.vehiclePlate || first.vehiclePlate || $("#adminVehiclePlate")?.value || "",
+        vehiclePlate: driver ? driver.vehiclePlate || "" : first.vehiclePlate || $("#adminVehiclePlate")?.value || "",
         pieceCount: jobs.reduce((sum, job) => sum + Number(job.pieceCount || 0), 0) || "",
         packageType: first.packageType || "Carton",
         dest: first.destAirport || first.destinationCity || first.flightNo || "",

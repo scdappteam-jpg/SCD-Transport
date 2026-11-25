@@ -54,6 +54,37 @@ test('each page is limited to five Houses and same driver may span multiple page
     assert.equal(issue.apply(db, payload, 'admin').pageCount, 2);
     assert.equal(new Set(db.jobs.map(j => j['batchId'])).size, 1);
 });
+
+test('header edits survive issuance and history without changing quantities; changed replay is refused', () => {
+    const db = fixture();
+    const payload = { ...plan(db), cargoHeader: { pickupDate: '2026-11-24', pickupTime: '15:00', contact: 'SIT Contact', tel: '020000000' } };
+    const before = structuredClone(db);
+    issue.apply(db, payload, 'admin', { preview: true });
+    assert.deepEqual(db, before);
+    issue.apply(db, payload, 'admin');
+    for (const [i, job] of db.jobs.entries()) {
+        assert.equal(job.pickupDate, '2026-11-24');
+        assert.equal(job.pickupTime, '15:00');
+        assert.deepEqual(job.cargoPickupHeader, payload.cargoHeader);
+        assert.deepEqual(job.packageCounts, before.jobs[i].packageCounts);
+        assert.deepEqual((job.cargoIssueHistory?.[0] as {cargoHeader: unknown}).cargoHeader, payload.cargoHeader);
+    }
+    assert.equal(issue.apply(db, payload, 'admin').replayed, true);
+    assert.throws(() => issue.apply(db, {...payload, cargoHeader: {...payload.cargoHeader, pickupTime:'16:00'}}, 'admin'), /คำขอเดิม/);
+    for (const date of ['2026-02-30', '', '2026-13-01']) {
+        const other = fixture(), saved = structuredClone(other);
+        assert.throws(() => issue.apply(other, {...plan(other),cargoHeader:{pickupDate:date}}, 'admin'), /วันที่/);
+        assert.deepEqual(other, saved);
+    }
+});
+
+test('selected driver with no registered plate cannot inherit an unrelated form plate', () => {
+    const context=vm.createContext({$:()=>({value:'UNRELATED-PLATE'}),toDateInput:()=>'',dateInputValue:()=>''});
+    vm.runInContext(cut('function cargoDataFromJobs(', 'function manualGroupDriver('),context);
+    const result=vm.runInContext("cargoDataFromJobs([{houseNumber:'SIT-H1',vehiclePlate:'OLD-PLATE'}],{name:'SIT Driver',vehiclePlate:''})",context);
+    assert.equal(result.vehiclePlate,'');
+    assert.equal(result.driverName,'SIT Driver');
+});
 test('actual wizard submits one atomic plan and prints exactly the same A/B pages as Preview', async () => {
     const db = fixture(), calls: unknown[] = [], forms: unknown[][] = [];
     const state = { users: db.users, dashboard: { jobs: db.jobs }, selectedManualHouses: [], groupWizard: { open: true, step: 3, mode: 'auto', jobs: db.jobs, selectedHouses: db.jobs.map(j => j.houseNumber), driverId: 'A', laneDrivers: ['A', 'B'], jobLaneMap: { H1: 0, H2: 1, H3: 1 }, meta: {} } };

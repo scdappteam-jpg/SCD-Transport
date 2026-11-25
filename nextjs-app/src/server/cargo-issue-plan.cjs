@@ -7,7 +7,19 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
     if (!/^[a-zA-Z0-9-]{8,100}$/.test(requestId)) fail("คำขอออกใบไม่ถูกต้อง");
     const pages = payload.pages;
     if (!Array.isArray(pages) || !pages.length || pages.length > 300) fail("กรุณาตรวจจำนวนหน้า Preview");
-    const fingerprint = createHash("sha256").update(JSON.stringify({ actorId, pages })).digest("hex");
+    const cargoHeader = payload.cargoHeader === undefined ? undefined : {};
+    if (cargoHeader) {
+        if (!payload.cargoHeader || typeof payload.cargoHeader !== "object" || Array.isArray(payload.cargoHeader)) fail("ข้อมูลหัวใบ Cargo ไม่ถูกต้อง");
+        for (const key of ["contact", "tel", "pickupDate", "pickupTime"]) {
+            if (!Object.hasOwn(payload.cargoHeader, key)) continue;
+            const value = payload.cargoHeader[key];
+            if (typeof value !== "string" || value.length > 200) fail("ข้อมูลหัวใบ Cargo ไม่ถูกต้อง");
+            cargoHeader[key] = value.trim();
+        }
+        if (cargoHeader.pickupDate !== undefined && (!/^\d{4}-\d{2}-\d{2}$/.test(cargoHeader.pickupDate) || !Number.isFinite(Date.parse(cargoHeader.pickupDate)) || new Date(cargoHeader.pickupDate).toISOString().slice(0, 10) !== cargoHeader.pickupDate)) fail("วันที่รับสินค้าไม่ถูกต้อง");
+        if (cargoHeader.pickupTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(cargoHeader.pickupTime)) fail("เวลารับสินค้าไม่ถูกต้อง");
+    }
+    const fingerprint = createHash("sha256").update(JSON.stringify({ actorId, pages, cargoHeader })).digest("hex");
     const seen = new Set(), assignments = [];
     for (const page of pages) {
         const driver = (db.users || []).find(user => user.id === page.driverId && ["Driver", "WH_Staff", "Admin"].includes(user.role) && user.status !== "Inactive");
@@ -41,7 +53,13 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
             batchId: `BATCH-${requestId}-${driver.id}`, cargoIssuedAt: now, updatedAt: now,
             cargoIssueRequestId: requestId, cargoIssueFingerprint: fingerprint
         });
-        target.cargoIssueHistory = [...Array.isArray(target.cargoIssueHistory) ? target.cargoIssueHistory : [], { requestId, driverId: driver.id, vehiclePlate: driver.vehiclePlate || "", issuedAt: now, issuedBy: actorId, batchId: target.batchId }];
+        if (cargoHeader) {
+            target.cargoPickupHeader = { ...cargoHeader };
+            for (const [key, field] of Object.entries({contact:"contactPerson",tel:"pickupPhone",pickupDate:"pickupDate",pickupTime:"pickupTime"})) {
+                if (Object.hasOwn(cargoHeader, key)) target[field] = cargoHeader[key];
+            }
+        }
+        target.cargoIssueHistory = [...Array.isArray(target.cargoIssueHistory) ? target.cargoIssueHistory : [], { requestId, driverId: driver.id, vehiclePlate: driver.vehiclePlate || "", issuedAt: now, issuedBy: actorId, batchId: target.batchId, ...(cargoHeader ? { cargoHeader: { ...cargoHeader } } : {}) }];
         return target;
     });
     return { jobs, pageCount: pages.length, replayed: false, preview, persisted: !preview };
