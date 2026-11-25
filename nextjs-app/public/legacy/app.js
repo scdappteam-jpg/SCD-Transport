@@ -668,6 +668,9 @@ function localizeText(text) {
     const right = text.slice(splitAt + 3);
     const leftHasThai = /[\u0E00-\u0E7F]/.test(left);
     const rightHasThai = /[\u0E00-\u0E7F]/.test(right);
+    // A slash also separates package units, references, dates and warnings.
+    // Only a pair of different-language labels is a translation candidate.
+    if (leftHasThai === rightHasThai) return text;
     if (state.lang === "th") return leftHasThai || !rightHasThai ? left : right;
     return !leftHasThai || rightHasThai ? left : right;
 }
@@ -694,6 +697,7 @@ function applyLanguage(root = document.body) {
         acceptNode(node) {
             const parent = node.parentElement;
             if (!parent) return NodeFilter.FILTER_REJECT;
+            if (parent.closest('.ctf-sheet, [data-i18n-skip]')) return NodeFilter.FILTER_REJECT;
             if ([ "SCRIPT", "STYLE", "TEXTAREA" ].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
             return node.nodeValue.includes(" / ") || i18nOriginalText.has(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
         }
@@ -705,6 +709,7 @@ function applyLanguage(root = document.body) {
         node.nodeValue = localizeText(i18nOriginalText.get(node));
     });
     $$("[placeholder], [title], [aria-label]").forEach(element => {
+        if (element.closest('.ctf-sheet, [data-i18n-skip]')) return;
         [ "placeholder", "title", "aria-label" ].forEach(attr => {
             if (!element.hasAttribute(attr)) return;
             const key = `i18nOriginal${attr.replace(/-./g, match => match[1].toUpperCase())}`;
