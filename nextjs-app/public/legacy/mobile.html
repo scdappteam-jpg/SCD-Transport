@@ -276,7 +276,7 @@
           <button id="completePickupBtn" type="button">ยืนยันรับสินค้าแล้ว</button>
         </div>
         <div id="driverReturnActions" class="guided-workflow-details" hidden>
-          <div class="flow-notice soft-note"><strong>รับ House ครบแล้ว</strong><span>ระบบเปลี่ยนสถานะเป็นกำลังกลับ WH3 อัตโนมัติ</span></div>
+          <div class="flow-notice soft-note"><strong id="pickupRoundTitle">กำลังตรวจความครบของรอบรถ</strong><span id="pickupRoundMessage">ต้องรับครบทุกจุดและทุก House ก่อนกลับ WH3</span></div>
           <button id="arriveWh3Btn" type="button">ถึง WH3 แล้ว</button>
           <button id="releaseDocumentBtn" type="button" class="soft">ได้รับใบตรวจปล่อยแล้ว</button>
         </div>
@@ -885,7 +885,7 @@
     <script src="inbound-receipt-ui.js?v=3-preview-labels&amp;cargo=20261124"></script>
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
   <script src="driver-dock-core.js?v=20261031-one-vehicle-one-dock-confirmed-reconcile"></script>
-  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=3&amp;dispatch=20261125-branch"></script>
+  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=3&amp;dispatch=20261125-round-completion"></script>
   </body>
 </html>
 

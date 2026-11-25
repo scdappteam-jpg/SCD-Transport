@@ -792,13 +792,16 @@ function pickupWorkflowStep(job) {
 
 function renderPickupDriverActions() {
     const jobs = jobsFromSelection();
+    const remaining = pickupRoundJobsForMobile().filter(job => !job.completedAt);
     const routeStatus = jobs[0]?.driverRouteStatus || "";
     const allPickedUp = jobs.length && jobs.every(job => [ "PickedUp", "ReturningWH3", "AwaitingReleaseDocument", "WaitingForDock" ].includes(job.status));
     const returnActions = $("#driverReturnActions");
     if (returnActions) returnActions.hidden = !allPickedUp;
+    if ($('#pickupRoundTitle')) $('#pickupRoundTitle').textContent = remaining.length ? `รับจุดนี้แล้ว ยังเหลือ ${remaining.length} House ในรอบรถ` : 'รับครบทั้งรอบรถแล้ว';
+    if ($('#pickupRoundMessage')) $('#pickupRoundMessage').textContent = remaining.length ? 'เลือกจุดรับถัดไปและรับให้ครบก่อนกลับ WH3' : routeStatus === 'ArrivedWH3' ? 'ถึง WH3 แล้ว แนบใบตรวจปล่อยให้ครบทุก House' : routeStatus === 'ReleasedForDock' ? 'รอเข้าท่าและลงสินค้าครบก่อนจบงานคนขับ' : 'กลับ WH3 แล้วจึงกดยืนยันรถถึงคลัง';
     if ($("#startPickupRouteBtn")) $("#startPickupRouteBtn").disabled = !jobs.length || [ "EnRouteToPickup", "ArrivedAtPickup", "Loading", "ReturningWH3", "ArrivedWH3", "ReleasedForDock" ].includes(routeStatus);
     if ($("#checkInBtn")) $("#checkInBtn").disabled = !jobs.length || routeStatus !== "EnRouteToPickup";
-    if ($("#arriveWh3Btn")) $("#arriveWh3Btn").disabled = routeStatus !== "ReturningWH3";
+    if ($("#arriveWh3Btn")) $("#arriveWh3Btn").disabled = remaining.length > 0 || routeStatus !== "ReturningWH3";
     if ($("#releaseDocumentBtn")) $("#releaseDocumentBtn").disabled = routeStatus !== "ArrivedWH3";
 }
 
