@@ -297,17 +297,41 @@ function currentWebUser() {
     return (state.users || []).find(user => user.id === userId) || null;
 }
 
+function fieldOpsRoleAccess(role) {
+    const sections = {
+        Team_Transport: ['transfer', 'queue'],
+        WH_Staff: ['find', 'pick', 'queue'],
+        WH3_TeamLeader: ['transfer', 'find', 'pick', 'queue'],
+        EI_Customer: ['pick'],
+        Terminal: ['transfer', 'queue', 'terminal', 'close'],
+        Executive: ['transfer', 'find', 'pick', 'queue', 'terminal', 'close'],
+    }[role];
+    if (!sections) return null;
+    const prepare = ['Executive', 'WH3_TeamLeader', 'Team_Transport'].includes(role);
+    const warehouse = ['Executive', 'WH3_TeamLeader', 'WH_Staff'].includes(role);
+    const terminal = ['Executive', 'Terminal'].includes(role);
+    return {panel:'Terminal', sections:sections.map(name=>'web-outbound-'+name), actions:{
+        issueTransferBtn:prepare, confirmTransferReturnBtn:prepare,
+        saveTransferDetailsBtn:prepare || role === 'Terminal',
+        locateGoodsBtn:warehouse, pickingBtn:warehouse,
+        eiApproveBtn:role === 'Executive' || role === 'EI_Customer',
+        aotBookingBtn:prepare, aotApproveBtn:role === 'Executive',
+        wh3LoadStartBtn:warehouse || terminal || role === 'Team_Transport',
+        loadBayBtn:terminal, terminalQueueReceivedBtn:terminal, terminalArrivalBtn:terminal,
+    }};
+}
+
 function allowedWebViews(role) {
     if (role === "Employee") return ["dashboard","hr"];
     if (role === "People_Viewer") return [];
     if (role === "Driver") return [ "dashboard", "driver-time-log", "contacts", "hr", "flight-board", "dock" ];
-    if (role === "WH_Staff") return [ "dashboard", "wh-inbound", "wh-quality", "outbound-open", "wh-reservations", "contacts", "hr", "flight-board", "dock" ];
-    if (role === "WH3_TeamLeader") return [ "dashboard", "orders", "warehouse", "wh-inbound", "wh-quality", "outbound-open", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
-    if (role === "Team_Transport") return [ "dashboard", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "flight-board", "dock", "service" ];
-    if (role === "EI_Customer") return [ "dashboard", "orders" ];
+    if (role === "WH_Staff") return [ "dashboard", "mobile", "wh-inbound", "wh-quality", "outbound-open", "wh-reservations", "contacts", "hr", "flight-board", "dock" ];
+    if (role === "WH3_TeamLeader") return [ "dashboard", "mobile", "orders", "warehouse", "wh-inbound", "wh-quality", "outbound-open", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
+    if (role === "Team_Transport") return [ "dashboard", "mobile", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "flight-board", "dock", "service" ];
+    if (role === "EI_Customer") return [ "dashboard", "orders", "mobile" ];
     if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-inbound", "wh-quality", "orders", "alerts", "contacts" ];
     if (role === "Tagging_Staff") return [ "dashboard", "wh-quality" ];
-    if (role === "Terminal") return [ "dashboard", "orders", "alerts", "contacts", "flight-board", "dock" ];
+    if (role === "Terminal") return [ "dashboard", "mobile", "orders", "alerts", "contacts", "flight-board", "dock" ];
     // Billing works in the Field Ops workspace, but only the Billing panel is
     // exposed below.  Without this entry, the account can see its KPI cards
     // but has no UI path to review, draft, send, or close an invoice.
@@ -315,7 +339,7 @@ function allowedWebViews(role) {
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
     if (role === "CS") return [ "dashboard", "orders", "cs-queue", "contacts" ];
-    if (role === "Executive") return [ "dashboard", "orders", "alerts", "cargo-history", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
+    if (role === "Executive") return [ "dashboard", "mobile", "orders", "alerts", "cargo-history", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
     return [ "dashboard", "orders", "calendar", "staff", "contacts", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" ];
 }
 
@@ -339,12 +363,31 @@ function applyWebRoleVisibility() {
         label.hidden = !hasVisible;
     });
     const isAdmin = user.role === "Admin";
+    const access = fieldOpsRoleAccess(user.role);
     $$(".ops-main-card").forEach(button => {
-        button.hidden = !isAdmin && button.dataset.roleTarget !== user.role;
+        button.hidden = !isAdmin && button.dataset.roleTarget !== (access?.panel || user.role);
     });
     $$("[data-role-panel]").forEach(panel => {
-        panel.hidden = !isAdmin && panel.dataset.rolePanel !== user.role;
+        panel.hidden = !isAdmin && panel.dataset.rolePanel !== (access?.panel || user.role);
     });
+    $$('#terminalPanel [data-ops-target]').forEach(button => {
+        button.hidden = Boolean(access && !access.sections.includes(button.dataset.opsTarget));
+    });
+    $$('#terminalPanel [data-ops-section]').forEach(section => {
+        section.hidden = Boolean(access && !access.sections.includes(section.dataset.opsSection));
+    });
+    $$('#terminalPanel [data-open-outbound]').forEach(button => {
+        button.hidden = Boolean(access && !access.sections.includes(button.dataset.openOutbound));
+    });
+    for (const [id, permitted] of Object.entries(fieldOpsRoleAccess('Executive').actions)) {
+        const button = $('#'+id);
+        if (button) button.hidden = Boolean(access && !access.actions[id]) || !access && !isAdmin && !permitted;
+    }
+    if (access) {
+        showRolePanel(access.panel);
+        const active = $('#terminalPanel [data-ops-section].active');
+        if (!active || active.hidden) showOpsSection(access.sections[0]);
+    }
     if (user.role === "Billing") showRolePanel("Billing");
     if (!allowed.includes(state.currentView)) {
         setView(allowed[0] || "dashboard");
