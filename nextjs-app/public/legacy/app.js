@@ -310,7 +310,7 @@ function fieldOpsRoleAccess(role) {
     const prepare = ['Executive', 'WH3_TeamLeader', 'Team_Transport'].includes(role);
     const warehouse = ['Executive', 'WH3_TeamLeader', 'WH_Staff'].includes(role);
     const terminal = ['Executive', 'Terminal'].includes(role);
-    return {panel:'Terminal', sections:sections.map(name=>'web-outbound-'+name), actions:{
+    return {panel:'Terminal', panels:['WH_Staff','WH3_TeamLeader','Executive'].includes(role) ? ['WH_Staff','Terminal'] : ['Terminal'], sections:sections.map(name=>'web-outbound-'+name), actions:{
         issueTransferBtn:prepare, confirmTransferReturnBtn:prepare,
         saveTransferDetailsBtn:prepare || role === 'Terminal',
         locateGoodsBtn:warehouse, pickingBtn:warehouse,
@@ -365,10 +365,10 @@ function applyWebRoleVisibility() {
     const isAdmin = user.role === "Admin";
     const access = fieldOpsRoleAccess(user.role);
     $$(".ops-main-card").forEach(button => {
-        button.hidden = !isAdmin && button.dataset.roleTarget !== (access?.panel || user.role);
+        button.hidden = !isAdmin && !(access?.panels || [user.role]).includes(button.dataset.roleTarget);
     });
     $$("[data-role-panel]").forEach(panel => {
-        panel.hidden = !isAdmin && panel.dataset.rolePanel !== (access?.panel || user.role);
+        panel.hidden = !isAdmin && !(access?.panels || [user.role]).includes(panel.dataset.rolePanel);
     });
     $$('#terminalPanel [data-ops-target]').forEach(button => {
         button.hidden = Boolean(access && !access.sections.includes(button.dataset.opsTarget));
@@ -384,7 +384,8 @@ function applyWebRoleVisibility() {
         if (button) button.hidden = Boolean(access && !access.actions[id]) || !access && !isAdmin && !permitted;
     }
     if (access) {
-        showRolePanel(access.panel);
+        const selected = $('[data-role-panel].active:not([hidden])');
+        if (!selected || !access.panels.includes(selected.dataset.rolePanel)) showRolePanel(access.panel);
         const active = $('#terminalPanel [data-ops-section].active');
         if (!active || active.hidden) showOpsSection(access.sections[0]);
     }

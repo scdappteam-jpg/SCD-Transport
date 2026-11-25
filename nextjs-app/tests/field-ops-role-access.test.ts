@@ -24,6 +24,9 @@ test('Transport preparation WH pick EI approval Terminal execution and Executive
     assert.equal(access('Team_Transport').actions.aotApproveBtn,false);
     assert.equal(access('WH_Staff').actions.pickingBtn,true);
     assert.equal(access('WH_Staff').actions.eiApproveBtn,false);
+    assert.deepEqual(Array.from(access('WH_Staff').panels),['WH_Staff','Terminal']);
+    assert.deepEqual(Array.from(access('WH3_TeamLeader').panels),['WH_Staff','Terminal']);
+    assert.deepEqual(Array.from(access('EI_Customer').panels),['Terminal']);
     assert.equal(access('EI_Customer').actions.eiApproveBtn,true);
     assert.equal(access('EI_Customer').actions.pickingBtn,false);
     assert.equal(access('Terminal').actions.issueTransferBtn,false);
