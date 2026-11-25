@@ -9213,7 +9213,7 @@ async function doLpImport() {
             obOpenState.flightKey = null;
             obOpenRenderFlightGroups();
             obOpenRenderHistory();
-            renderLpFlightSummaryCards(lpCurrentPlan);
+            await renderLoadPlan();
         }
     } catch (err) {
         toast("เกิดข้อผิดพลาด: " + err.message);
