@@ -1478,6 +1478,18 @@ async function runAction(button, task) {
     }
 }
 
+function mobileAirportTiming(job, now = Date.now()) {
+    const due = Date.parse(job.effectiveAirportDueAt || "");
+    if (!Number.isFinite(due)) return {risk: "", label: "ยังไม่ทราบกำหนดถึงสนามบิน"};
+    const arrived = Date.parse(job.terminalArrivedAt || job.cargoReceivedAt || "");
+    if (Number.isFinite(arrived)) return arrived > due
+        ? {risk: "Breached", label: "ถึงสนามบินหลังกำหนด"}
+        : {risk: "", label: "ถึงสนามบินตามกำหนด"};
+    if (now > due) return {risk: "Breached", label: "เลยกำหนดถึงสนามบิน"};
+    const risk = job.flightRiskStatus || "";
+    return {risk, label: ["DueToday", "Warning", "Urgent", "Critical", "Breached"].includes(risk) ? risk : "ยังไม่ถึงกำหนด"};
+}
+
 function updateTerminalRequirements() {
     const job = findAnyJob(terminalHouseValue());
     const terminal = ($("#terminalDestination")?.value || job?.terminalDestination || job?.destination || "TG").toUpperCase();
@@ -1507,10 +1519,11 @@ function updateTerminalRequirements() {
         renderOutboundStepTrackers();
         return;
     }
-    const flightRisk = job.flightRiskStatus || "";
+    const airportTiming = mobileAirportTiming(job);
+    const flightRisk = airportTiming.risk;
     const riskActive = [ "DueToday", "Warning", "Urgent", "Critical", "Breached" ].includes(flightRisk);
     info.className = riskActive || job.redFlag ? "soft-note warning" : "soft-note ok";
-    info.innerHTML = `\n    <strong>${job.houseNumber} / ${job.status}</strong>\n    <span>Flight ${job.flightNo || "-"} · ต้องถึงสนามบินก่อน ${job.effectiveAirportDueAt ? formatBangkokMobile(job.effectiveAirportDueAt) : "ยังคำนวณไม่ได้"} · ${riskActive ? `${flightRisk}${job.mustNotMissFlight ? " · C/K NO-MISS" : ""}` : "อยู่ในเวลา"}</span>\n  `;
+    info.innerHTML = `\n    <strong>${job.houseNumber} / ${job.status}</strong>\n    <span>Flight ${job.flightNo || "-"} · ต้องถึงสนามบินก่อน ${job.effectiveAirportDueAt ? formatBangkokMobile(job.effectiveAirportDueAt) : "ยังคำนวณไม่ได้"} · ${escapeHtmlMobile(airportTiming.label)}${riskActive && job.mustNotMissFlight ? " · C/K NO-MISS" : ""}</span>\n  `;
     if (locationInfo) {
         const found = Boolean(job.outboundFoundAt);
         const hasLocation = Boolean(job.locationId);
