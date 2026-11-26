@@ -26,6 +26,7 @@
     <style>[hidden]{display:none !important}#alertBell[hidden]{display:none!important}</style>
     <script src="lucide.min.js"></script>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
+    <link rel="stylesheet" href="system-ui.css?v=20261126">
   </head>
   <body>
     <a class="skip-link" href="#mainContent">ข้ามไปที่เนื้อหาหลัก</a>
@@ -237,20 +238,22 @@
         <header class="topbar">
           <button id="mobileMenuBtn" class="mobile-menu-button" type="button" aria-label="Open menu" aria-expanded="false"><i data-lucide="menu" aria-hidden="true"></i></button>
           <button id="sidebarCollapseBtn" class="sidebar-collapse-button" type="button" aria-label="Toggle menu" aria-expanded="true"><i data-lucide="panel-left-close" aria-hidden="true"></i></button>
-          <div>
+          <div class="topbar-title">
             <p id="breadcrumb">ภาพรวม / Executive</p>
             <h1 id="pageTitle">Executive Dashboard</h1>
           </div>
           <div class="top-actions">
             <label class="search-box" aria-label="Search">
-              <span>⌕</span>
+              <i data-lucide="search" aria-hidden="true"></i>
               <input id="globalSearch" placeholder="ค้นหา AWB หรือ Order... / Search AWB or Orders...">
             </label>
-            <button id="globalScanBtn" type="button" title="สแกนบาร์โค้ดเพื่อค้นหา" style="min-height:38px;padding:0 14px;border:1.5px solid #dbe3ef;border-radius:10px;background:#fff;font-size:13px;font-weight:700;color:#0b4ea2;cursor:pointer;white-space:nowrap">สแกน</button>
+            <button id="globalScanBtn" class="scan-button" type="button" title="สแกนบาร์โค้ดเพื่อค้นหา" aria-label="สแกนบาร์โค้ดเพื่อค้นหา"><i data-lucide="scan-line" aria-hidden="true"></i><span>สแกน</span></button>
             <div id="systemClock" class="system-clock"></div>
-            <a class="ghost-link" href="mobile.html">Mobile App</a>
-            <button class="ghost-link" type="button" data-view="operations-control">Transport · Terminal · วางบิล</button>
-                <a href="/cargo-import" class="topbar-icon" title="นำเข้าและเชื่อมไฟล์งาน">นำเข้าไฟล์งาน</a>
+            <nav class="top-links" aria-label="ทางลัด">
+              <a class="ghost-link" href="mobile.html" title="Mobile App"><i data-lucide="smartphone" aria-hidden="true"></i><span>Mobile App</span></a>
+              <button class="ghost-link" type="button" data-view="operations-control" title="Transport · Terminal · วางบิล"><i data-lucide="workflow" aria-hidden="true"></i><span>Transport · Terminal · วางบิล</span></button>
+              <a href="/cargo-import" class="ghost-link topbar-icon" title="นำเข้าและเชื่อมไฟล์งาน"><i data-lucide="file-up" aria-hidden="true"></i><span>นำเข้าไฟล์งาน</span></a>
+            </nav>
             <button id="languageToggle" class="ghost-button" type="button">TH / EN</button>
             <button class="icon-button bell-button" id="alertBell" type="button" data-view="alerts" aria-label="Notifications / การแจ้งเตือน">
               <i data-lucide="bell" aria-hidden="true"></i>
