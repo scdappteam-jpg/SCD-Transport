@@ -23,6 +23,14 @@ test('scoped reset archives full originals and leaves personnel other jobs inven
 });
 test('any update after backup blocks reset without partial mutations',()=>{const db=fixture(),record=backup(db);db.jobs[0].pieceCount=999;const before=JSON.stringify(db);assert.throws(()=>m.apply(db,actor,record.id,'RESET:'+m.MASTER,at),/เปลี่ยน/);assert.equal(JSON.stringify(db),before);});
 test('reset retains shipment inputs and Terminal destination for CS to verify again',()=>{const d=fixture();Object.assign(d.jobs[0],{terminalDestination:'TGINT',contact:'SIT Contact',tel:'0000000000',shippingDoc:'source-document'});const r=backup(d);m.apply(d,actor,r.id,'RESET:'+m.MASTER,at);assert.equal(d.jobs[0].terminalDestination,'TGINT');assert.equal(d.jobs[0].contact,'SIT Contact');assert.equal(d.jobs[0].invoiceNo,'SIT');assert.equal(d.jobs[0].csConfirmed,false);});
+test('reset survives schema normalization and only repairs automatic plan reapproval before any user progress',()=>{
+ const d=fixture(),r=backup(d);m.apply(d,actor,r.id,'RESET:'+m.MASTER,at);
+ const source=readFileSync(new URL('../src/server/legacy-api.cjs',import.meta.url),'utf8');const condition=source.match(/if \((!job.approvalStatus[^\n]+)\) \{/)![1];
+ const context=vm.createContext({job:d.jobs[0],result:false});vm.runInContext('result=('+condition+')',context);assert.equal(context.result,false);
+ for(const j of d.jobs.slice(0,6))Object.assign(j,{csConfirmed:true,approvalStatus:'ConfirmedByPlan',csApprovalRequired:false,evidenceRequired:false,planDate:'2026-11-26',planMatched:true,manualExtra:false,afterFinalRound:false,flightRiskStatus:'Breached',minutesToAirportDue:-30});
+ assert.equal(m.apply(d,actor,r.id,'RESET:'+m.MASTER,at).repaired,true);assert.equal(d.jobs[0].csConfirmed,false);assert.equal(d.jobs[0].mustReturnWh3,true);assert.equal(d.jobs[0].doorClosedPhotoRequired,true);
+ d.jobs[0].csConfirmed=true;d.jobs[0].csConfirmedAt=at;assert.throws(()=>m.apply(d,actor,r.id,'RESET:'+m.MASTER,at),/ทำรายการ/);
+});
 test('non-SIT invoices, mixed invoice scope, shared rounds and occupied locations fail closed',()=>{
  const cases=[(d:ReturnType<typeof fixture>)=>{d.billing[0].testOnly=false;},(d:ReturnType<typeof fixture>)=>{d.billing[0].houseNumbers=[...m.HOUSES,'OTHER'];},(d:ReturnType<typeof fixture>)=>{d.jobs.at(-1)!.transportRoundId='test-round';},(d:ReturnType<typeof fixture>)=>{d.warehouseMap.locations[0].currentHouseId=m.HOUSES[0];}];
  for(const change of cases){const d=fixture();change(d);const before=JSON.stringify(d);assert.throws(()=>m.prepare(d,actor));assert.equal(JSON.stringify(d),before);}

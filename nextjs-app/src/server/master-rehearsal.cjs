@@ -67,13 +67,28 @@ function archive(db,actor,expectedHash,files,at){
 }
 function resetJob(j,id,at){
  const base=Object.fromEntries(keys.filter(k=>j[k]!==undefined).map(k=>[k,clone(j[k])]));
- return {...base,status:'Pending',csConfirmed:false,csApprovalRequired:true,approvalStatus:'PendingCSApproval',manualExtra:true,evidenceRequired:true,evidenceChannel:'SIT',evidenceNote:'SIT rehearsal reset; original workflow retained in archive '+id,driverId:'',driverName:'',vehiclePlate:'',readyForBilling:false,workflowRehearsalId:id,workflowResetAt:at,updatedAt:at};
+ return {...base,status:'Pending',csConfirmed:false,csApprovalRequired:true,approvalStatus:'PendingCSApproval',manualExtra:true,planMatched:false,mustReturnWh3:true,routePolicy:'ReturnWH3BeforeTerminal',doorClosedPhotoRequired:true,evidenceRequired:true,evidenceChannel:'SIT',evidenceNote:'SIT rehearsal reset; original workflow retained in archive '+id,driverId:'',driverName:'',vehiclePlate:'',readyForBilling:false,workflowRehearsalId:id,workflowResetAt:at,updatedAt:at};
+}
+const derivedKeys=new Set(['planDate','planRound','planSource','planMatched','manualExtra','afterFinalRound','csConfirmed','approvalStatus','csApprovalRequired','evidenceRequired','mustReturnWh3','routePolicy','doorClosedPhotoRequired','flightNumberDigits','slaProfile','slaHoursBeforeFlight','mustNotMissFlight','effectiveAirportDueAt','wh3DueAt','minutesToAirportDue','flightRiskStatus','flightRiskReason','flightRiskAlertKey']);
+const stable=jobs=>jobs.map(j=>Object.fromEntries(Object.entries(j).filter(([k])=>!derivedKeys.has(k))));
+function pristineReset(db,record){
+ const jobs=selected(db);
+ if(jobs.some(j=>j.csConfirmed&&(j.approvalStatus!=='ConfirmedByPlan'||j.csConfirmedAt)))return false;
+ if((db.attachments||[]).some(related))return false;
+ return hash(stable(jobs))===hash(stable(record.snapshot.jobs.map(j=>resetJob(j,record.id,record.resetAt))));
 }
 function apply(db,actor,id,confirm,at){
  if(actor?.role!=='Admin')throw Object.assign(new Error('Admin required'),{statusCode:403});
  const record=(db.masterRehearsalArchives||[]).find(r=>r.id===id&&r.master===MASTER);
  if(!record||confirm!=='RESET:'+MASTER)fail('ต้องมี Backup และยืนยันเลข Master ให้ตรง');
- if(record.status==='Reset')return {replayed:true,archiveId:id,houseNumbers:HOUSES};
+ if(record.status==='Reset'){
+  if(hash(selected(db))===record.resetJobsHash)return {replayed:true,archiveId:id,houseNumbers:HOUSES};
+  if(!pristineReset(db,record))fail('มีการทำรายการหลังรีเซ็ตแล้ว ห้ามย้อนทับ');
+  const repaired=record.snapshot.jobs.map(j=>resetJob(j,id,record.resetAt));
+  db.jobs=db.jobs.map(j=>HOUSES.includes(j.houseNumber)?repaired.find(n=>n.houseNumber===j.houseNumber):j);
+  record.resetJobsHash=hash(repaired);record.repairedAt=at;
+  return {repaired:true,archiveId:id,houseNumbers:HOUSES,status:'PendingCSApproval'};
+ }
  if(record.status!=='BackedUp'||hash(scope(db))!==record.sha256)fail('ข้อมูลเปลี่ยนหลังสำรอง ห้ามเขียนทับ กรุณาสำรองใหม่');
  const next=record.snapshot.jobs.map(j=>resetJob(j,id,at));
  // Validate the complete scope before changing anything. Preserve all original
@@ -96,7 +111,7 @@ function restore(db,actor,id,confirm,at){
  if(actor?.role!=='Admin')throw Object.assign(new Error('Admin required'),{statusCode:403});
  const record=(db.masterRehearsalArchives||[]).find(r=>r.id===id&&r.master===MASTER);
  if(!record||confirm!=='RESTORE:'+MASTER||record.status!=='Reset')fail('ไม่พบรอบรีเซ็ตที่กู้คืนได้');
- if(hash(selected(db))!==record.resetJobsHash)fail('เริ่มทำรอบใหม่แล้ว ห้ามกู้ทับข้อมูลล่าสุด');
+ if(!pristineReset(db,record))fail('เริ่มทำรอบใหม่แล้ว ห้ามกู้ทับข้อมูลล่าสุด');
  for(const key of collections){
   if(key==='billing'){
    const originals=record.snapshot.records.billing;
