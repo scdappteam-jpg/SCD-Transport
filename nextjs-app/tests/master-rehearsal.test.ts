@@ -22,6 +22,12 @@ test('scoped reset archives full originals and leaves personnel other jobs inven
  const once=JSON.stringify(db);assert.equal(m.apply(db,actor,record.id,'RESET:'+m.MASTER,at).replayed,true);assert.equal(JSON.stringify(db),once);
 });
 test('any update after backup blocks reset without partial mutations',()=>{const db=fixture(),record=backup(db);db.jobs[0].pieceCount=999;const before=JSON.stringify(db);assert.throws(()=>m.apply(db,actor,record.id,'RESET:'+m.MASTER,at),/เปลี่ยน/);assert.equal(JSON.stringify(db),before);});
+test('recovery tolerates JSONB key reordering but never a changed shipment value',()=>{
+ const d=fixture(),before=structuredClone(d),r=backup(d);m.apply(d,actor,r.id,'RESET:'+m.MASTER,at);
+ const reorder=(v:unknown):unknown=>Array.isArray(v)?v.map(reorder):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).reverse().map(([k,value])=>[k,reorder(value)])):v;
+ d.jobs=reorder(d.jobs) as typeof d.jobs;assert.equal(m.apply(d,actor,r.id,'RESET:'+m.MASTER,at).repaired,true);
+ d.jobs=reorder(d.jobs) as typeof d.jobs;m.restore(d,actor,r.id,'RESTORE:'+m.MASTER,at);assert.deepEqual(d.jobs,before.jobs);
+});
 test('reset retains shipment inputs and Terminal destination for CS to verify again',()=>{const d=fixture();Object.assign(d.jobs[0],{terminalDestination:'TGINT',contact:'SIT Contact',tel:'0000000000',shippingDoc:'source-document'});const r=backup(d);m.apply(d,actor,r.id,'RESET:'+m.MASTER,at);assert.equal(d.jobs[0].terminalDestination,'TGINT');assert.equal(d.jobs[0].contact,'SIT Contact');assert.equal(d.jobs[0].invoiceNo,'SIT');assert.equal(d.jobs[0].csConfirmed,false);});
 test('reset survives schema normalization and only repairs automatic plan reapproval before any user progress',()=>{
  const d=fixture(),r=backup(d);m.apply(d,actor,r.id,'RESET:'+m.MASTER,at);

@@ -70,7 +70,8 @@ function resetJob(j,id,at){
  return {...base,status:'Pending',csConfirmed:false,csApprovalRequired:true,approvalStatus:'PendingCSApproval',manualExtra:true,planMatched:false,mustReturnWh3:true,routePolicy:'ReturnWH3BeforeTerminal',doorClosedPhotoRequired:true,evidenceRequired:true,evidenceChannel:'SIT',evidenceNote:'SIT rehearsal reset; original workflow retained in archive '+id,driverId:'',driverName:'',vehiclePlate:'',readyForBilling:false,workflowRehearsalId:id,workflowResetAt:at,updatedAt:at};
 }
 const derivedKeys=new Set(['planDate','planRound','planSource','planMatched','manualExtra','afterFinalRound','csConfirmed','approvalStatus','csApprovalRequired','evidenceRequired','mustReturnWh3','routePolicy','doorClosedPhotoRequired','flightNumberDigits','slaProfile','slaHoursBeforeFlight','mustNotMissFlight','effectiveAirportDueAt','wh3DueAt','minutesToAirportDue','flightRiskStatus','flightRiskReason','flightRiskAlertKey']);
-const stable=jobs=>jobs.map(j=>Object.fromEntries(Object.entries(j).filter(([k])=>!derivedKeys.has(k))));
+const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a<b?-1:a>b?1:0).map(([k,v])=>[k,canonical(v)])):value;
+const stable=jobs=>jobs.map(j=>canonical(Object.fromEntries(Object.entries(j).filter(([k])=>!derivedKeys.has(k)))));
 function pristineReset(db,record){
  const jobs=selected(db);
  if(jobs.some(j=>j.csConfirmed&&(j.approvalStatus!=='ConfirmedByPlan'||j.csConfirmedAt)))return false;
