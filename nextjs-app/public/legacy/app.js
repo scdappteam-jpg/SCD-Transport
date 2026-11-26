@@ -70,6 +70,7 @@ const state = {
     autoGroupSearch: "",
     groupingTab: "inbound",
     alertSearch: "",
+    alertFilter: "all",
     adminFlowMode: "import",
     activeAutoGroupIndex: null,
     selectedManualHouses: [],
@@ -9946,6 +9947,23 @@ function bindEvents() {
         if (!card) return;
         openAlertDetail(card.dataset.alertId);
     });
+    $("#alertList")?.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const card = event.target.closest(".ak-card.clickable");
+        if (!card || event.target !== card) return;
+        event.preventDefault();
+        card.click();
+    });
+    $("#alertSearch")?.addEventListener("input", event => {
+        state.alertSearch = event.target.value;
+        renderAlerts();
+    });
+    $("#alertFilterBar")?.addEventListener("click", event => {
+        const tab = event.target.closest("[data-alert-filter]");
+        if (!tab) return;
+        state.alertFilter = tab.dataset.alertFilter;
+        renderAlerts();
+    });
     [ "closeAlertDetailModal", "cancelAlertDetailModal" ].forEach(id => $(`#${id}`)?.addEventListener("click", closeAlertDetail));
     $("#alertDetailModal")?.addEventListener("click", event => {
         if (event.target.id === "alertDetailModal") closeAlertDetail();
@@ -11069,21 +11087,53 @@ function renderAlerts() {
         color: "#6b7280",
         bg: "#f8fafc"
     } ];
-    const cols = groups.map(g => {
+    const isBlank = value => !value || String(value).trim() === "-";
+    const relativeTime = value => {
+        const time = value ? new Date(value).getTime() : NaN;
+        if (!Number.isFinite(time)) return "";
+        const minutes = Math.round((Date.now() - time) / 6e4);
+        if (minutes < 1) return "เมื่อสักครู่";
+        if (minutes < 60) return `${minutes} นาทีที่แล้ว`;
+        const hours = Math.round(minutes / 60);
+        if (hours < 24) return `${hours} ชม.ที่แล้ว`;
+        const days = Math.round(hours / 24);
+        return days < 7 ? `${days} วันที่แล้ว` : "";
+    };
+    const filterKey = groups.some(g => g.key === state.alertFilter) ? state.alertFilter : "all";
+    const countFor = key => items.filter(i => i.category === key).length;
+    const filterBar = $("#alertFilterBar");
+    if (filterBar) {
+        const tabs = [ {
+            key: "all",
+            title: "ทั้งหมด",
+            color: "#0f172a",
+            count: items.length
+        }, ...groups.map(g => ({
+            ...g,
+            count: countFor(g.key)
+        })) ];
+        filterBar.innerHTML = tabs.map(t => `<button type="button" class="ak-filter${t.key === filterKey ? " active" : ""}" role="tab" aria-selected="${t.key === filterKey}" data-alert-filter="${t.key}" style="--col-color:${t.color}">\n        <span class="ak-filter-dot"></span><span class="ak-filter-label">${t.title}</span><b class="ak-filter-count">${t.count}</b>\n      </button>`).join("");
+    }
+    target.dataset.filter = filterKey;
+    const visibleGroups = filterKey === "all" ? groups : groups.filter(g => g.key === filterKey);
+    const cols = visibleGroups.map(g => {
         const categoryItems = items.filter(i => i.category === g.key);
         const rows = categoryItems.slice(0, 30);
         const cardsHtml = rows.map(item => {
             const changeTags = (item.changes || []).map(c => `<span class="change-tag">${safeHtml(CHANGE_LABELS[c] || c)}</span>`).join("");
             const actionView = item.category === "not-issued" ? "grouping" : "orders";
             const actionLabel = item.category === "flight-change" ? "ตรวจไฟล์" : item.category === "not-issued" ? "จัดกลุ่ม" : item.category === "issued-review" ? "ตรวจใบ" : "รายละเอียด";
-            return `<article class="ak-card clickable" style="--col-color:${g.color}" data-ak-house="${safeHtml(item.houseNumber || "")}" data-ak-view="${actionView}" role="button" tabindex="0">\n        <div class="ak-card-head">\n          <code class="ak-house">${safeHtml(item.houseNumber || "-")}</code>\n          ${changeTags ? `<div class="ak-tags">${changeTags}</div>` : ""}\n        </div>\n        <p class="ak-customer">${safeHtml(item.customerName || "-")}</p>\n        <p class="ak-msg">${safeHtml(item.message || "")}</p>\n        <div class="ak-footer">\n          <time>${item.createdAt ? new Date(item.createdAt).toLocaleString("th-TH", {
+            const absoluteTime = item.createdAt ? new Date(item.createdAt).toLocaleString("th-TH", {
                 dateStyle: "short",
                 timeStyle: "short"
-            }) : "-"}</time>\n          <div class="ak-actions">\n            <button class="ak-btn-action" type="button"\n                    data-action-view="${actionView}"\n                    data-action-house="${safeHtml(item.houseNumber)}"\n                    style="background:${g.color}">${actionLabel} →</button>\n            <button class="ak-btn-dismiss" type="button"\n                    data-dismiss-id="${safeHtml(item.id)}"\n                    data-dismiss-type="${safeHtml(item.category === "system" ? "system" : "change")}">✓ รับทราบ</button>\n          </div>\n        </div>\n      </article>`;
+            }) : "-";
+            const relTime = relativeTime(item.createdAt);
+            const headLabel = isBlank(item.houseNumber) ? `<span class="ak-kind">${safeHtml(g.title)}</span>` : `<code class="ak-house">${safeHtml(item.houseNumber)}</code>`;
+            return `<article class="ak-card clickable" style="--col-color:${g.color}" data-ak-house="${safeHtml(item.houseNumber || "")}" data-ak-view="${actionView}" role="button" tabindex="0">\n        <div class="ak-card-head">\n          ${headLabel}\n          <time class="ak-time" datetime="${safeHtml(item.createdAt || "")}" title="${safeHtml(absoluteTime)}">${safeHtml(relTime || absoluteTime)}</time>\n        </div>\n        ${isBlank(item.customerName) ? "" : `<p class="ak-customer">${safeHtml(item.customerName)}</p>`}\n        <p class="ak-msg">${safeHtml(item.message || "")}</p>\n        ${changeTags ? `<div class="ak-tags">${changeTags}</div>` : ""}\n        <div class="ak-footer">\n          <div class="ak-actions">\n            <button class="ak-btn-action" type="button"\n                    data-action-view="${actionView}"\n                    data-action-house="${safeHtml(item.houseNumber)}"\n                    style="background:${g.color}">${actionLabel} →</button>\n            <button class="ak-btn-dismiss" type="button"\n                    data-dismiss-id="${safeHtml(item.id)}"\n                    data-dismiss-type="${safeHtml(item.category === "system" ? "system" : "change")}">✓ รับทราบ</button>\n          </div>\n        </div>\n      </article>`;
         }).join("");
-        const emptyHtml = rows.length === 0 ? `<p class="ak-empty">ไม่มีรายการ</p>` : "";
+        const emptyHtml = rows.length === 0 ? `<div class="ak-empty"><span class="ak-empty-icon" aria-hidden="true">✓</span><p>${keyword ? "ไม่พบรายการที่ตรงกับคำค้น" : "ไม่มีรายการค้าง"}</p></div>` : "";
         const moreNote = categoryItems.length > 30 ? `<p class="ak-more">แสดง 30 จาก ${categoryItems.length} รายการ</p>` : "";
-        return `<div class="ak-col" style="--col-color:${g.color};--col-bg:${g.bg}">\n      <div class="ak-col-head">\n        <div class="ak-col-title">\n          <span class="ak-col-dot"></span>\n          <strong>${g.title}</strong>\n        </div>\n        <b class="ak-col-count" style="background:${g.color}">${categoryItems.length}</b>\n      </div>\n      <p class="ak-col-hint">${g.hint}</p>\n      <div class="ak-col-body">\n        ${cardsHtml}${emptyHtml}${moreNote}\n      </div>\n    </div>`;
+        return `<section class="ak-col" data-col="${g.key}" style="--col-color:${g.color};--col-bg:${g.bg}" aria-label="${g.title}">\n      <header class="ak-col-head">\n        <div class="ak-col-title">\n          <span class="ak-col-dot"></span>\n          <strong>${g.title}</strong>\n          <b class="ak-col-count">${categoryItems.length}</b>\n        </div>\n        <p class="ak-col-hint">${g.hint}</p>\n      </header>\n      <div class="ak-col-body">\n        ${cardsHtml}${emptyHtml}${moreNote}\n      </div>\n    </section>`;
     });
     target.innerHTML = cols.join("");
     target.querySelectorAll(".ak-card.clickable").forEach(card => {

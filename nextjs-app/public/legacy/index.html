@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="styles.css?v=20261121-live-person-search&amp;outbound=20261125-role-visibility&amp;workspace=20261125">
     <link rel="stylesheet" href="fleet-demo.css?v=20260829">
     <link rel="stylesheet" href="mobile-layout.css?v=20260822e">
+    <link rel="stylesheet" href="alerts-ui.css?v=20261126">
     <style>[hidden]{display:none !important}#alertBell[hidden]{display:none!important}</style>
     <script src="lucide.min.js"></script>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
@@ -1799,9 +1800,11 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
                   <p>รายการเปลี่ยนแปลงเที่ยวบิน งานใหม่ และเหตุการณ์สำคัญของระบบ</p>
                 </div>
                 <label class="alert-search-inline">
-                  <input id="alertSearch" autocomplete="off" placeholder="ค้นหา House, บริษัท, ประเภท...">
+                  <i data-lucide="search" aria-hidden="true"></i>
+                  <input id="alertSearch" type="search" autocomplete="off" placeholder="ค้นหา House, บริษัท, ข้อความ..." aria-label="ค้นหาแจ้งเตือน">
                 </label>
               </div>
+              <div id="alertFilterBar" class="ak-filter-bar" role="tablist" aria-label="กรองตามประเภท"></div>
               <div id="alertList" class="alerts-kanban"></div>
             </div>
           </section>
@@ -2683,6 +2686,6 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="ctf-core/index.js?v=20261125-confirmed-units"></script>
     <script src="personnel-photo-preview.js?v=20261124"></script>
     <script src="operations-workspace.js?v=20261125-unified"></script>
-    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125"></script>
+    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126"></script>
   </body>
 </html>
