@@ -5,7 +5,7 @@ const HOUSES = Array.from({length:6},(_,i)=>String(4840809294+i));
 const clone = value => JSON.parse(JSON.stringify(value));
 const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const fail = message => {throw Object.assign(new Error(message),{statusCode:409});};
-const keys = ['id','houseNumber','hawbNumber','onhandNumber','mawbNumber','masterNumber','icNumber','customerId','customerName','flightNo','flightTime','destination','destAirport','consigneeName','booking','pieceCount','packageType','packageCounts','weight','volWeight','cbm','cargoType','productType','isLithium','requiresLithiumDocs','dgType','cargoDesc','readyTime','closeTime','cargoCutoffAt','airportDueAt','pickupDate','workDate','pickupLocation','routeType','shipmentSource','createdAt','source','sourceChannel','sourceFile','importedAt','planSource','planRound'];
+const keys = ['id','houseNumber','hawbNumber','onhandNumber','mawbNumber','masterNumber','icNumber','customerId','customerName','invoiceNo','contact','tel','shippingDoc','shipperName','terminalDestination','terminalBranch','airlineCode','flightNo','flightTime','destination','destAirport','consigneeName','booking','pieceCount','packageType','packageCounts','weight','volWeight','cbm','cargoType','productType','isLithium','requiresLithiumDocs','dgType','cargoDesc','readyTime','closeTime','cargoCutoffAt','airportDueAt','pickupDate','workDate','pickupLocation','routeType','shipmentSource','createdAt','source','sourceChannel','sourceFile','importedAt','planSource','planRound'];
 const collections = ['attachments','billing','taskGroups','notifications','serviceRecords'];
 async function backupFiles(snapshot,readEvidence){
  const output=[],registered=snapshot.records.attachments;
