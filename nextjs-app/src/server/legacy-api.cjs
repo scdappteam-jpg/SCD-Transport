@@ -61,6 +61,7 @@ const driverDock = require('../../public/legacy/driver-dock-core.js');
 const driverDockEvents = require('./driver-dock-events.cjs');
 const releaseDocuments = require('./release-documents.cjs');
 const currentFeedPolicy = require('./current-feed-policy.cjs');
+const masterRehearsal = require('./master-rehearsal.cjs');
 
 const PORT = Number(process.env.PORT || 3e3);
 
@@ -980,12 +981,10 @@ function readDb() {
     }
 }
 
-function writeDb(db) {
-    refreshFlightSla(db);
-    dockAutoDispatch.dispatch(db);
+function writeDb(db, { isolatedWorkflow = false } = {}) {
+    if (!isolatedWorkflow) { refreshFlightSla(db); dockAutoDispatch.dispatch(db); }
     if (supabaseEnabled()) {
-        ensureCoreUsers(db);
-        ensureDbShape(db);
+        if (!isolatedWorkflow) { ensureCoreUsers(db); ensureDbShape(db); }
         dbCache = db;
         scheduleSupabasePersist(db);
     }
@@ -4246,6 +4245,52 @@ async function handleApi(req, res, pathname) {
             storageDir: STORAGE_DIR,
             dbFile: DB_FILE
         });
+    }
+    if (pathname === '/api/admin/master-rehearsal' && ['GET','POST'].includes(req.method)) {
+        await refreshDbIfSharedStateChanged(true, true); db=readDb();
+        const actor=sessionUser(db,req);
+        if(actor?.role!=='Admin')return sendJson(res,403,{error:'Admin required'});
+        try {
+            if(req.method==='GET'){
+                const p=masterRehearsal.prepare(db,actor);
+                return sendJson(res,200,{master:p.master,houseNumbers:p.houseNumbers,sha256:p.sha256,attachmentCount:p.snapshot.records.attachments.length,invoices:p.snapshot.records.billing.map(b=>({id:b.id,status:b.status,testOnly:b.testOnly})),jobs:p.snapshot.jobs.map(j=>({houseNumber:j.houseNumber,status:j.status}))});
+            }
+            const p=await parseBody(req);
+            if(p.action==='backup'){
+                const plan=masterRehearsal.prepare(db,actor);
+                if(p.sha256!==plan.sha256)return sendJson(res,409,{error:'ข้อมูลเปลี่ยน กรุณาตรวจใหม่'});
+                const files=[];
+                for(const file of plan.snapshot.records.attachments){
+                    const expected='/storage/'+encodeURIComponent(file.houseNumber)+'/';
+                    if(!file.url?.startsWith(expected)||!/^FILE-[A-Za-z0-9-]+\.(jpg|jpeg|png|webp|pdf)$/.test(file.url.slice(expected.length)))throw new Error('ไม่สามารถตรวจที่มาหลักฐาน '+file.fileId);
+                    const local=path.join(STORAGE_DIR,file.houseNumber,file.url.slice(expected.length));
+                    let bytes;
+                    if(fs.existsSync(local))bytes=fs.readFileSync(local);
+                    else if(SUPABASE_URL&&SUPABASE_KEY){
+                        const key=attachmentStorageService.objectPath(file).split('/').map(encodeURIComponent).join('/');
+                        const response=await fetch(`${SUPABASE_URL}/storage/v1/object/scd-documents/${key}`,{headers:supabaseServiceAuth.serviceHeaders(SUPABASE_KEY),signal:AbortSignal.timeout(30000)});
+                        if(!response.ok)throw new Error('สำรองไฟล์ไม่สำเร็จ '+file.fileId+' ('+response.status+')');
+                        bytes=Buffer.from(await response.arrayBuffer());
+                    }
+                    if(!bytes?.length)throw new Error('ไม่พบหลักฐาน '+file.fileId+' ยังไม่รีเซ็ต');
+                    files.push({fileId:file.fileId,size:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),base64:bytes.toString('base64'),url:file.url,mimeType:file.mimeType});
+                }
+                const record=masterRehearsal.archive(db,actor,p.sha256,files,nowIso());
+                writeDb(db,{isolatedWorkflow:true});
+                return sendJson(res,200,{ok:true,archiveId:record.id,filename:`Master-${plan.master}-before-CS-reset-${record.id}.json`,backup:{...record,files}});
+            }
+            if(p.action==='reset'){
+                const result=masterRehearsal.apply(db,actor,p.archiveId,p.confirm,nowIso());
+                if(!result.replayed){logActivity(db,{userId:actor.id,activityType:'SITMasterResetToCS',detail:JSON.stringify(result)});writeDb(db,{isolatedWorkflow:true});}
+                return sendJson(res,200,{ok:true,...result});
+            }
+            if(p.action==='restore'){
+                const result=masterRehearsal.restore(db,actor,p.archiveId,p.confirm,nowIso());
+                logActivity(db,{userId:actor.id,activityType:'SITMasterResetRestored',detail:JSON.stringify(result)});writeDb(db,{isolatedWorkflow:true});
+                return sendJson(res,200,{ok:true,...result});
+            }
+            return sendJson(res,422,{error:'Unknown operation'});
+        }catch(error){return sendJson(res,error.statusCode||503,{error:error.message});}
     }
     if (req.method === "POST" && pathname === "/api/admin/reset-jobs") {
         const payload = await parseBody(req);
