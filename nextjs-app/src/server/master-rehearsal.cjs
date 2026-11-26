@@ -7,6 +7,23 @@ const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).
 const fail = message => {throw Object.assign(new Error(message),{statusCode:409});};
 const keys = ['id','houseNumber','hawbNumber','onhandNumber','mawbNumber','masterNumber','icNumber','customerId','customerName','flightNo','flightTime','destination','destAirport','consigneeName','booking','pieceCount','packageType','packageCounts','weight','volWeight','cbm','cargoType','productType','isLithium','requiresLithiumDocs','dgType','cargoDesc','readyTime','closeTime','cargoCutoffAt','airportDueAt','pickupDate','workDate','pickupLocation','routeType','shipmentSource','createdAt','source','sourceChannel','sourceFile','importedAt','planSource','planRound'];
 const collections = ['attachments','billing','taskGroups','notifications','serviceRecords'];
+async function backupFiles(snapshot,readEvidence){
+ const output=[],registered=snapshot.records.attachments;
+ for(let start=0;start<registered.length;start+=4){
+  const batch=await Promise.all(registered.slice(start,start+4).map(async file=>{
+   let bytes;
+   if(file.fileType==='InvoiceDocument'){
+    const bill=snapshot.records.billing.find(b=>file.fileId==='INVOICE-DOC-'+b.id&&file.url===`/storage/invoices/${b.id}.html`&&file.houseNumber===b.houseNumber);
+    if(!bill||typeof file.htmlContent!=='string'||!file.htmlContent.length)fail('สำรอง Invoice HTML ไม่สำเร็จ '+file.fileId);
+    bytes=Buffer.from(file.htmlContent,'utf8');
+   }else bytes=await readEvidence(file);
+   if(!bytes?.length)fail('ไม่พบหลักฐาน '+file.fileId+' ยังไม่รีเซ็ต');
+   return {fileId:file.fileId,size:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),base64:bytes.toString('base64'),url:file.url,mimeType:file.mimeType};
+  }));
+  output.push(...batch);
+ }
+ return output;
+}
 function refs(row){
  const result = new Set();
  function walk(v,k='') {
@@ -94,4 +111,4 @@ function restore(db,actor,id,confirm,at){
  record.status='Restored';record.restoredAt=at;record.restoredBy=actor.id;
  return {archiveId:id,master:MASTER,houseNumbers:HOUSES,status:'Restored'};
 }
-module.exports={MASTER,HOUSES,prepare,archive,apply,restore,hash};
+module.exports={MASTER,HOUSES,prepare,archive,apply,restore,hash,backupFiles};

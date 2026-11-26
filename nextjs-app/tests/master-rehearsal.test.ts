@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import crypto from 'node:crypto';
 const require=createRequire(import.meta.url);
 const m=require('../src/server/master-rehearsal.cjs');
 const actor={id:'sit-role-admin',role:'Admin'},at='2026-11-26T06:00:00Z';
@@ -42,4 +43,11 @@ test('isolated persistence does not dispatch other vehicles or normalize personn
  vm.runInContext(source.match(/^function writeDb\([\s\S]*?^}/m)![0],context);
  vm.runInContext('writeDb({jobs:[]},{isolatedWorkflow:true})',context);assert.equal(automatic,0);assert.equal(saves,1);
  vm.runInContext('writeDb({jobs:[]})',context);assert.equal(automatic,4);assert.equal(saves,2);
+});
+test('backup includes original generated Invoice HTML bytes and every evidence file with correct hashes',async()=>{
+ const d=fixture();const p=m.prepare(d,actor);const html='<!doctype html><title>SIT ONLY ใบวางบิล</title>';
+ p.snapshot.records.attachments.push({fileId:'INVOICE-DOC-INV-2026-0004',houseNumber:m.HOUSES[0],fileType:'InvoiceDocument',url:'/storage/invoices/INV-2026-0004.html',htmlContent:html});
+ const files=await m.backupFiles(p.snapshot,async()=>Buffer.from('evidence'));
+ assert.equal(files.length,2);assert.equal(Buffer.from(files[1].base64,'base64').toString('utf8'),html);assert.equal(files[1].sha256,crypto.createHash('sha256').update(Buffer.from(html)).digest('hex'));
+ p.snapshot.records.attachments[1].fileId='INVOICE-DOC-WRONG';await assert.rejects(()=>m.backupFiles(p.snapshot,async()=>Buffer.from('ok')),/Invoice HTML/);
 });

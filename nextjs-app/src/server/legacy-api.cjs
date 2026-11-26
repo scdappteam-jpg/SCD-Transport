@@ -4259,8 +4259,7 @@ async function handleApi(req, res, pathname) {
             if(p.action==='backup'){
                 const plan=masterRehearsal.prepare(db,actor);
                 if(p.sha256!==plan.sha256)return sendJson(res,409,{error:'ข้อมูลเปลี่ยน กรุณาตรวจใหม่'});
-                const files=[];
-                for(const file of plan.snapshot.records.attachments){
+                const files=await masterRehearsal.backupFiles(plan.snapshot,async file=>{
                     const expected='/storage/'+encodeURIComponent(file.houseNumber)+'/';
                     if(!file.url?.startsWith(expected)||!/^FILE-[A-Za-z0-9-]+\.(jpg|jpeg|png|webp|pdf)$/.test(file.url.slice(expected.length)))throw new Error('ไม่สามารถตรวจที่มาหลักฐาน '+file.fileId);
                     const local=path.join(STORAGE_DIR,file.houseNumber,file.url.slice(expected.length));
@@ -4273,8 +4272,8 @@ async function handleApi(req, res, pathname) {
                         bytes=Buffer.from(await response.arrayBuffer());
                     }
                     if(!bytes?.length)throw new Error('ไม่พบหลักฐาน '+file.fileId+' ยังไม่รีเซ็ต');
-                    files.push({fileId:file.fileId,size:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),base64:bytes.toString('base64'),url:file.url,mimeType:file.mimeType});
-                }
+                    return bytes;
+                });
                 const record=masterRehearsal.archive(db,actor,p.sha256,files,nowIso());
                 writeDb(db,{isolatedWorkflow:true});
                 return sendJson(res,200,{ok:true,archiveId:record.id,filename:`Master-${plan.master}-before-CS-reset-${record.id}.json`,backup:{...record,files}});
