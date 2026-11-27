@@ -756,3 +756,85 @@ html.has-open-popup { overflow: hidden; }
 .fb-wrap:fullscreen .fb-empty{font-size:clamp(16px,1.3vw,30px)}
 .fb-wrap:fullscreen .fb-foot b{font-size:clamp(24px,2.1vw,50px)}
 .fb-wrap:fullscreen .fb-foot span,.fb-wrap:fullscreen .fb-ticker{font-size:clamp(12px,.95vw,22px)}
+
+/* =========================================================
+   Dashboard layout (organizeDashboard in app.js)
+   toolbar → role "to-do now" → overview → tabs
+   ========================================================= */
+/* minmax(0,1fr): without it wide children (filters, KPI rows) stretch the column past a phone screen */
+#view-dashboard{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+#view-dashboard .dash-detail,#view-dashboard .dash-panel{grid-template-columns:minmax(0,1fr)}
+#view-dashboard > *{margin:0 !important}
+
+/* date toolbar */
+#view-dashboard .dash-toolbar{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:end;gap:10px 24px;padding:14px 18px !important}
+#view-dashboard .dash-toolbar .filter-title{display:flex;align-items:center;gap:12px;margin:0 !important;align-self:center}
+#view-dashboard .dash-toolbar .filter-title h2{font-size:16px !important;margin:0}
+#view-dashboard .dash-toolbar .filter-title p{font-size:12px;margin:0}
+#view-dashboard .dash-toolbar .filter-count{white-space:nowrap}
+#view-dashboard .dash-toolbar .filter-grid{display:flex !important;flex-wrap:wrap;align-items:flex-end;gap:10px 12px;margin:0 !important}
+#view-dashboard .dash-toolbar .filter-grid > label{display:grid;gap:4px;flex:0 1 170px;min-width:140px;margin:0}
+#view-dashboard .dash-toolbar .filter-grid > label > span{font-size:12px;color:var(--muted,#6c7a92)}
+#view-dashboard .dash-toolbar .filter-grid input,
+#view-dashboard .dash-toolbar .filter-grid select{min-height:40px !important;height:40px}
+#view-dashboard .dash-toolbar .filter-actions{display:flex !important;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 0 auto !important}
+#view-dashboard .dash-toolbar .filter-actions > button,
+#view-dashboard .dash-export > summary{min-height:40px !important;height:40px}
+#view-dashboard #resetDashboardFilters{display:none !important}
+#view-dashboard .dash-quick-range{display:flex;gap:4px;padding:3px;border:1px solid var(--line,#e3eaf3);border-radius:10px;background:var(--page,#f5f8fc)}
+#view-dashboard .dash-chip{min-height:32px !important;height:32px;padding:0 12px !important;border:0 !important;border-radius:8px !important;background:transparent !important;color:var(--ink,#172033) !important;font-size:13px !important;cursor:pointer}
+#view-dashboard .dash-chip:hover{background:var(--surface,#fff) !important}
+#view-dashboard .dash-chip.active{background:var(--surface,#fff) !important;box-shadow:0 1px 3px rgba(16,35,63,.12);color:var(--primary,#0b4ea2) !important;font-weight:600 !important}
+#view-dashboard .dash-export{position:relative}
+#view-dashboard .dash-export > summary{display:inline-flex;align-items:center;gap:6px;padding:0 14px;border:1px solid var(--line,#e3eaf3);border-radius:10px;background:var(--surface,#fff);font-size:13px;cursor:pointer;list-style:none;user-select:none}
+#view-dashboard .dash-export > summary::-webkit-details-marker{display:none}
+#view-dashboard .dash-export > summary::after{content:"▾";font-size:11px;color:var(--muted,#6c7a92)}
+#view-dashboard .dash-export-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;display:grid;gap:4px;min-width:170px;padding:6px;border:1px solid var(--line,#e3eaf3);border-radius:12px;background:var(--surface,#fff);box-shadow:0 12px 32px rgba(16,35,63,.16)}
+#view-dashboard .dash-export-menu > button{justify-content:flex-start !important;width:100%;min-height:38px !important;border:0 !important;background:transparent !important;text-align:left}
+#view-dashboard .dash-export-menu > button:hover{background:var(--page,#f5f8fc) !important}
+@media (max-width:980px){
+  #view-dashboard .dash-toolbar{grid-template-columns:minmax(0,1fr)}
+  #view-dashboard .dash-toolbar .filter-actions{margin:0 !important}
+}
+@media (max-width:640px){
+  #view-dashboard .dash-toolbar .filter-grid > label{flex:1 1 140px}
+  #view-dashboard .dash-quick-range{width:100%;overflow-x:auto}
+  #view-dashboard .dash-export-menu{right:auto;left:0}
+}
+
+/* overview: no more stretched empty block under the KPI tiles */
+#view-dashboard #executiveSummary{align-items:start !important}
+#view-dashboard #executiveSummary .exec-summary-main{min-height:0 !important;height:auto !important}
+
+/* tabs */
+#view-dashboard .dash-detail{display:grid;gap:16px}
+#view-dashboard .dash-tabs{display:flex;gap:4px;padding:4px;border:1px solid var(--line,#e3eaf3);border-radius:14px;background:var(--surface,#fff);overflow-x:auto;scrollbar-width:none;position:sticky;top:76px;z-index:6}
+#view-dashboard .dash-tabs::-webkit-scrollbar{display:none}
+#view-dashboard .dash-tab{flex:0 0 auto;min-height:40px !important;padding:0 18px !important;border:0 !important;border-radius:10px !important;background:transparent !important;color:var(--muted,#6c7a92) !important;font-size:14px !important;font-weight:500 !important;cursor:pointer;white-space:nowrap}
+#view-dashboard .dash-tab:hover{color:var(--ink,#172033) !important;background:var(--page,#f5f8fc) !important}
+#view-dashboard .dash-tab[aria-selected="true"]{background:var(--primary,#0b4ea2) !important;color:#fff !important}
+#view-dashboard .dash-panel{display:grid;gap:18px}
+#view-dashboard .dash-panel[hidden]{display:none !important}
+#view-dashboard .dash-panel > *{margin:0 !important}
+/* inside a tab the numbered section heads are redundant: keep the title and its link, drop the number */
+#view-dashboard .dash-panel .ct-sec-head > span:first-child{display:none}
+@media (max-width:840px){#view-dashboard .dash-tabs{position:static}}
+/* KPI tiles: label was inheriting a 27px size from an older rule, so it wrapped like a heading */
+#view-dashboard .ct-kpi strong{font-size:30px !important;line-height:1.1}
+#view-dashboard .ct-kpi-t b{display:block;font-size:14px !important;font-weight:500 !important;line-height:1.3}
+#view-dashboard .ct-kpi-t em{font-style:normal}
+#view-dashboard .ct-kpi-ic:empty{display:none}
+@media (max-width:640px){
+  #view-dashboard .dash-toolbar .filter-title{flex-wrap:wrap}
+  #view-dashboard .dash-toolbar .filter-count{width:auto !important;flex:0 0 auto;padding:4px 12px !important}
+  #view-dashboard .dash-toolbar .filter-actions{width:100%;min-width:0;box-sizing:border-box}
+  #view-dashboard .dash-toolbar .filter-actions > *{min-width:0;max-width:100%}
+  #view-dashboard .dash-quick-range{flex:1 1 100%}
+  #view-dashboard .dash-quick-range .dash-chip{flex:1 0 auto}
+  #view-dashboard #applyDashboardFilters{flex:1 1 auto}
+}
+@media (max-width:640px){
+  #view-dashboard .dash-quick-range{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}
+  #view-dashboard .dash-quick-range .dash-chip{min-width:0 !important;width:100%;padding:0 4px !important}
+  #view-dashboard .dash-toolbar .filter-count{display:inline-flex !important;width:fit-content !important;min-width:0 !important}
+}
