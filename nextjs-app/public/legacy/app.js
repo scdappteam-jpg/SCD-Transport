@@ -2622,6 +2622,155 @@ function renderRoleHome() {
     loadRoleHomeAttendance();
 }
 
+// ---------------------------------------------------------------------------
+// Dashboard layout: the page had 13 sections stacked (~4,700px) with the date
+// filter halfway down. This moves the EXISTING elements (ids, listeners and
+// renderers untouched) into: date toolbar on top → role "to-do now" strip →
+// overview summary → tabs for the detailed sections. Runs once.
+// ---------------------------------------------------------------------------
+const DASH_TAB_KEY = "scdDashboardTab";
+function organizeDashboard() {
+    const page = $("#view-dashboard");
+    if (!page || page.dataset.organized) return;
+    page.dataset.organized = "1";
+    const pick = sel => page.querySelector(sel);
+    const sectionOf = el => {
+        if (!el) return null;
+        let node = el;
+        while (node && node.parentElement !== page) node = node.parentElement;
+        return node;
+    };
+    const headBefore = node => {
+        const prev = node?.previousElementSibling;
+        return prev && prev.classList.contains("ct-sec-head") ? prev : null;
+    };
+
+    // 1. Date toolbar first: it scopes every number below.
+    const filters = pick(".dashboard-filters");
+    if (filters) {
+        filters.classList.add("dash-toolbar");
+        page.prepend(filters);
+        const actions = filters.querySelector(".filter-actions");
+        const exports = [ "#exportDashboardPdf", "#exportDashboardExcel", "#exportDashboardImage" ].map(id => filters.querySelector(id)).filter(Boolean);
+        if (actions && exports.length) {
+            const menu = document.createElement("details");
+            menu.className = "dash-export";
+            menu.innerHTML = '<summary>ส่งออก</summary><div class="dash-export-menu" role="menu"></div>';
+            const list = menu.querySelector(".dash-export-menu");
+            exports.forEach(btn => { btn.setAttribute("role", "menuitem"); btn.addEventListener("click", () => { menu.open = false; }); list.append(btn); });
+            actions.append(menu);
+        }
+        if (actions) {
+            const quick = document.createElement("div");
+            quick.className = "dash-quick-range";
+            quick.setAttribute("role", "group");
+            quick.setAttribute("aria-label", "ช่วงวันที่ด่วน");
+            quick.innerHTML = [ [ 0, "วันนี้" ], [ 6, "7 วัน" ], [ 9, "10 วัน" ], [ 29, "30 วัน" ] ]
+                .map(([back, label]) => `<button type="button" class="dash-chip" data-days-back="${back}">${label}</button>`).join("");
+            quick.addEventListener("click", event => {
+                const chip = event.target.closest("[data-days-back]");
+                if (!chip) return;
+                const to = new Date();
+                const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - Number(chip.dataset.daysBack));
+                const fromEl = $("#dashboardDateFrom"), toEl = $("#dashboardDateTo");
+                if (fromEl) fromEl.value = dateInputValue(from);
+                if (toEl) toEl.value = dateInputValue(to);
+                $("#applyDashboardFilters")?.click();
+                quick.querySelectorAll(".dash-chip").forEach(b => b.classList.toggle("active", b === chip));
+            });
+            actions.prepend(quick);
+        }
+    }
+
+    // 2. Role strip and summary stay right under the toolbar.
+    const role = $("#roleHomeStrip"), exec = $("#executiveSummary"), risk = $("#flightRiskPanel");
+    if (filters && role) filters.after(role);
+    if (role && exec) role.after(exec);
+    if (exec && risk) exec.after(risk);
+
+    // 3. Everything else goes into tabs.
+    const opsKpi = $("#ctKpiRow"), riskList = sectionOf($("#ctRiskList")), attMap = sectionOf($("#dashAttMap")),
+        bill = sectionOf($("#ctBillChips")), recent = sectionOf(page.querySelector(".table-wrap")),
+        changes = sectionOf($("#importChangeList"));
+    const groups = [
+        [ "ops", "ปฏิบัติการ", [ headBefore(opsKpi), opsKpi, $("#processControlStrip"), pick(".dashboard-grid"), headBefore(riskList), riskList ] ],
+        [ "docs", "เอกสาร · ขาออก", [ pick(".document-matrix-card"), $("#lpDashWidget"), changes ] ],
+        [ "people", "คนและรถ", [ headBefore(attMap), attMap ] ],
+        [ "billing", "การเงิน", [ headBefore(bill), bill ] ],
+        [ "recent", "งานล่าสุด", [ recent ] ],
+    ];
+    const tabs = document.createElement("div");
+    tabs.className = "dash-tabs";
+    tabs.setAttribute("role", "tablist");
+    tabs.setAttribute("aria-label", "รายละเอียดแดชบอร์ด");
+    const panels = [];
+    for (const [key, label, nodes] of groups) {
+        const items = nodes.filter(Boolean);
+        if (!items.length) continue;
+        const panel = document.createElement("section");
+        panel.className = "dash-panel";
+        panel.id = `dashPanel-${key}`;
+        panel.setAttribute("role", "tabpanel");
+        panel.setAttribute("aria-labelledby", `dashTab-${key}`);
+        items.forEach(node => panel.append(node));
+        panels.push(panel);
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "dash-tab";
+        tab.id = `dashTab-${key}`;
+        tab.dataset.dashTab = key;
+        tab.setAttribute("role", "tab");
+        tab.setAttribute("aria-controls", panel.id);
+        tab.textContent = label;
+        tabs.append(tab);
+    }
+    const anchorNode = risk || exec || role;
+    const wrap = document.createElement("div");
+    wrap.className = "dash-detail";
+    wrap.append(tabs, ...panels);
+    if (anchorNode) anchorNode.after(wrap); else page.append(wrap);
+
+    tabs.addEventListener("click", event => {
+        const tab = event.target.closest("[data-dash-tab]");
+        if (tab) showDashboardTab(tab.dataset.dashTab, true);
+    });
+    tabs.addEventListener("keydown", event => {
+        if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+        const list = [ ...tabs.querySelectorAll(".dash-tab:not([hidden])") ];
+        const i = list.indexOf(document.activeElement);
+        if (i < 0) return;
+        const next = list[(i + (event.key === "ArrowRight" ? 1 : list.length - 1)) % list.length];
+        next.focus();
+        showDashboardTab(next.dataset.dashTab, true);
+    });
+    let saved = "ops";
+    try { saved = localStorage.getItem(DASH_TAB_KEY) || "ops"; } catch (e) {}
+    showDashboardTab(saved, false);
+}
+
+function showDashboardTab(key, remember) {
+    const tabs = [ ...document.querySelectorAll("#view-dashboard .dash-tab") ];
+    if (!tabs.length) return;
+    // A tab whose panel holds nothing visible for this role is hidden.
+    tabs.forEach(tab => {
+        const panel = document.getElementById(tab.getAttribute("aria-controls"));
+        const has = panel && [ ...panel.children ].some(child => !child.hidden && child.style.display !== "none");
+        tab.hidden = !has;
+    });
+    const visible = tabs.filter(tab => !tab.hidden);
+    const target = visible.find(tab => tab.dataset.dashTab === key) || visible[0];
+    tabs.forEach(tab => {
+        const on = tab === target;
+        tab.setAttribute("aria-selected", String(on));
+        tab.tabIndex = on ? 0 : -1;
+        const panel = document.getElementById(tab.getAttribute("aria-controls"));
+        if (panel) panel.hidden = !on;
+    });
+    if (remember && target) {
+        try { localStorage.setItem(DASH_TAB_KEY, target.dataset.dashTab); } catch (e) {}
+    }
+}
+
 function renderAll() {
     if (!state.dashboard) return;
     applyWebRoleVisibility();
@@ -2670,6 +2819,9 @@ function renderAll() {
     initializeIcons();
     applyLanguage();
     if (state.currentView === "load-plan") renderLoadPlan();
+    let dashTab = "ops";
+    try { dashTab = localStorage.getItem(DASH_TAB_KEY) || "ops"; } catch (e) {}
+    showDashboardTab(dashTab, false);
 }
 
 function fleetDemoNumber(value) {
@@ -10007,6 +10159,7 @@ function bindEvents() {
             menu.querySelector("summary")?.focus();
         });
     });
+    organizeDashboard();
     $("#alertSearch")?.addEventListener("input", event => {
         state.alertSearch = event.target.value;
         renderAlerts();
