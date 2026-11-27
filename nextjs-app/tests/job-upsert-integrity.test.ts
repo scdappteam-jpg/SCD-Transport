@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
 import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
 const source=readFileSync(new URL('../src/server/legacy-api.cjs',import.meta.url),'utf8');
 function fixture(){
  const db={jobs:[] as Array<Record<string,unknown>>,customers:[{id:'ABC',name:'Unrelated ABC'},{id:'CLIENT',name:'Actual client'}],loadPlans:[] as Array<{rows:Array<Record<string,unknown>>}>};
@@ -25,4 +27,23 @@ test('updating a legacy duplicate ID repairs only that House and its matching pl
 });
 test('unknown explicit customer selection rejects before modifying a shipment',()=>{
  const f=fixture();const before=JSON.stringify(f.db);assert.throws(()=>f.run({houseNumber:'1',customerId:'MISSING'}));assert.equal(JSON.stringify(f.db),before);
+});
+
+test('actual bulk upsert keeps one round across Houses, later pickup edits, Driver readiness and Billing',()=>{
+ const f=fixture();
+ const a=f.run({houseNumber:'SIT-A',customerId:'CLIENT',batchId:'SIT-ROUND-1',driverId:'SIT-DRIVER',vehiclePlate:'SIT-1127',pickupDate:'2026-11-27'});
+ const b=f.run({houseNumber:'SIT-B',customerId:'CLIENT',batchId:'SIT-ROUND-1',driverId:'SIT-DRIVER',vehiclePlate:'SIT-1127',pickupDate:'2026-11-27'});
+ assert.equal(a.batchId,'SIT-ROUND-1');assert.equal(b.batchId,a.batchId);
+ f.run({houseNumber:'SIT-A',completedAt:'irrelevant'});assert.equal(a.batchId,b.batchId);
+ a.completedAt='2026-11-27T06:00:00Z';
+ const mobile=readFileSync(new URL('../public/legacy/mobile.js',import.meta.url),'utf8');
+ const start=mobile.indexOf('function pickupRoundKeyForMobile('),end=mobile.indexOf('function releaseDocumentRoundJobs(',start);
+ const context=vm.createContext({jobsFromSelection:()=>[a],visibleDriverJobs:()=>f.db.jobs});
+ vm.runInContext(mobile.slice(start,end),context);
+ assert.equal(vm.runInContext('pickupRoundJobsForMobile().filter(job=>!job.completedAt).length',context),1);
+ assert.equal(require('../src/server/workflow-integrity.cjs').tripCount([a,b],{}),1);
+ // Another assignment is a separate run; no grouping by number plate alone.
+ const c=f.run({houseNumber:'SIT-C',customerId:'CLIENT',batchId:'SIT-ROUND-2',driverId:'SIT-DRIVER',vehiclePlate:'SIT-1127',pickupDate:'2026-11-27'});
+ assert.notEqual(c.batchId,a.batchId);
+ assert.equal(vm.runInContext('pickupRoundJobsForMobile().length',context),2);
 });

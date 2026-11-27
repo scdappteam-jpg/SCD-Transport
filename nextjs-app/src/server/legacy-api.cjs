@@ -2056,6 +2056,7 @@ function upsertJob(db, payload) {
         driverId: payload.driverId ?? job.driverId ?? "",
         driverName: payload.driverName ?? job.driverName ?? "",
         vehiclePlate: payload.vehiclePlate ?? job.vehiclePlate ?? "",
+        batchId: payload.batchId || job.batchId || "",
         booking: payload.booking || job.booking || "",
         actualCount: payload.actualCount || job.actualCount || "",
         invoiceNo: payload.invoiceNo || job.invoiceNo || "",
