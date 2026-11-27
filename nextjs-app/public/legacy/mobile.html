@@ -23,6 +23,7 @@
     <style>[hidden]{display:none!important}html.mobile-auth-pending .login-card{visibility:hidden}#foPinForm{display:grid;gap:8px}#foPinForm .fo-primary-btn{margin-top:8px}</style>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
     <link rel="stylesheet" href="mobile-header.css?v=20261126">
+    <link rel="stylesheet" href="mobile-screens.css?v=20261127">
   </head>
   <body class="mobile-locked">
     <header class="mobile-header">
@@ -131,27 +132,27 @@
 
       <nav class="action-grid" aria-label="Mobile actions">
         <button class="action-card active" type="button" data-mobile-tab="pickup">
-          <span></span>
+          <span class="action-icon"><i data-lucide="truck" aria-hidden="true"></i></span>
           <b>Pickup</b>
           <small>รับสินค้า / Driver</small>
         </button>
         <button class="action-card" type="button" data-mobile-tab="inbound">
-          <span>⌗</span>
+          <span class="action-icon"><i data-lucide="package-check" aria-hidden="true"></i></span>
           <b>Inbound</b>
           <small>สแกนเข้าคลัง / WH3</small>
         </button>
         <button class="action-card" type="button" data-mobile-tab="outbound">
-          <span></span>
+          <span class="action-icon"><i data-lucide="plane-takeoff" aria-hidden="true"></i></span>
           <b>Outbound</b>
           <small>Terminal / X-Ray</small>
         </button>
         <button class="action-card" type="button" data-mobile-tab="billing">
-          <span>฿</span>
+          <span class="action-icon"><i data-lucide="receipt-text" aria-hidden="true"></i></span>
           <b>Billing</b>
           <small>วางบิล / Invoice</small>
         </button>
         <button class="action-card" type="button" data-mobile-tab="attendance">
-          <span></span>
+          <span class="action-icon"><i data-lucide="clock" aria-hidden="true"></i></span>
           <b>เข้างาน</b>
           <small>Check-in / Check-out</small>
         </button>
@@ -168,7 +169,7 @@
         <label>ใบงาน / Assigned Job</label>
         <input id="driverJobSearch" type="search" placeholder="ค้นหารหัสงาน / House / ลูกค้า เช่น ABC" aria-label="ค้นหาใบงานคนขับ">
         <select id="driverJobSelect"></select>
-        <a href="index.html?view=driver-time-log">Driver Time Log / รายงานเวลาคนขับ</a>
+        <a class="inline-link-button" href="index.html?view=driver-time-log"><i data-lucide="clock" aria-hidden="true"></i><span>Driver Time Log / รายงานเวลาคนขับ</span></a>
         <div id="driverCsHandoff" class="flow-notice" hidden></div>
         <div id="driverGroupSummary" class="group-summary" hidden></div>
         <div id="driverFlowNotice" class="flow-notice">
@@ -887,7 +888,7 @@
     <script src="inbound-receipt-ui.js?v=3-preview-labels&amp;cargo=20261124"></script>
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
   <script src="driver-dock-core.js?v=20261031-one-vehicle-one-dock-confirmed-reconcile"></script>
-  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=3&amp;dispatch=20261125-round-completion&amp;header=20261126"></script>
+  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=3&amp;dispatch=20261125-round-completion&amp;header=20261126&amp;screens=20261127"></script>
   </body>
 </html>
 
