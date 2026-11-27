@@ -1028,6 +1028,18 @@ function updatePickupFlowNotice(job = currentPickupJob()) {
     stickerNotice.querySelector("span").textContent = special ? "กรุณากรอกสี Sticker ก่อนกดโหลดสินค้าขึ้นรถ" : "ถ้าไม่ใช่งานพิเศษ/WD สามารถข้ามสี Sticker ได้";
 }
 
+// A House split over several trucks: this driver carries only their share.
+function renderSplitNotice(jobs) {
+    const box = $("#driverSplitNotice");
+    if (!box) return;
+    const split = (jobs || []).filter(job => Number(job.splitLegCount) > 1);
+    box.hidden = !split.length;
+    box.innerHTML = split.map(job => {
+        const after = job.splitFollowsMainTruck ? `<small>ใบตรวจปล่อยครบแล้ว ลงของพร้อมคันหลักที่ Dock${job.driverRouteStatus === "Available" ? " · ลงของเสร็จแล้ว รถว่าง" : ""}</small>` : `<small>House จะเป็น "รับแล้ว" เมื่อทุกคันรับครบ</small>`;
+        return `<p><b>${escapeHtmlMobile(job.houseNumber)}</b> แบ่ง ${Number(job.splitLegCount)} คัน · คันนี้ (คันที่ ${Number(job.splitLegIndex)}) รับ <b>${escapeHtmlMobile(job.pieceCount)}</b> จาก ${escapeHtmlMobile(job.splitTotalPieceCount)} กล่อง${after}</p>`;
+    }).join("");
+}
+
 function checkedPickupItems() {
     return $$(".pickup-check:checked").map(input => input.value);
 }
@@ -1343,6 +1355,7 @@ function applyDriverJob(houseNumber) {
     }
     $("#driverEndPlace").value = computedEndPlace() || "คำนวณจากปลายทางของแต่ละ House";
     updatePickupFlowNotice(job);
+    renderSplitNotice(selectedJobs);
     renderSimulatedPickupEvidenceControl();
 }
 

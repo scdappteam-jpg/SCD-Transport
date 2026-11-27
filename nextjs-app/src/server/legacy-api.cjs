@@ -48,6 +48,7 @@ const authTestMode = require("./auth-test-mode.cjs");
 const csDispatch = require("./cs-dispatch.cjs");
 const pickupFlow = require("./pickup-flow.cjs");
 const pickupCountCheck = require("./pickup-count-check.cjs");
+const splitLegs = require("./split-legs.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
 const meetingApi = require("./meeting-api.cjs");
@@ -1944,7 +1945,8 @@ function buildMobileDashboard(db, viewer) {
         Terminal: job => [ "AOTQueueApproved", "GoodsLoaded", "TerminalArrived", "WeightDimensionRecorded", "XRayPassed", "XRayHold", "ReXRayRequired", "PackingConsolidation", "OutboundLoading", "AtTerminal", "Weighing", "XRay", "ReadyForBilling" ].includes(job.status),
         Billing: job => job.readyForBilling || [ "PendingBillingReview", "BillingReviewed", "InvoiceDrafted", "InvoiceSent" ].includes(job.status)
     }[role];
-    const jobs = (db.jobs || []).filter(jobsForRole || (() => true)).map(job => driverDock.project(normalizeJob(job),db.dock));
+    const source = role === "Driver" ? splitLegs.workItems(db.jobs).map(splitLegs.plain) : (db.jobs || []);
+    const jobs = source.filter(jobsForRole || (() => true)).map(job => driverDock.project(normalizeJob(job),db.dock));
     const relevantHouses = new Set(jobs.map(job => job.houseNumber));
     const relevantMasters = new Set(jobs.map(job => inboundReceipts.masterKey(job)).filter(Boolean));
     return {
@@ -1999,6 +2001,11 @@ function findJob(db, houseNumber) {
         || db.jobs.find(job => (job.mergedHouseNumbers || []).includes(houseNumber));
 }
 
+// Pickup actions: a split House resolves to the acting driver's truck (leg view).
+function pickupTargets(db, req, payload) {
+    return splitLegs.targets(findPayloadJobs(db, payload), sessionUser(db, req), payload) || [];
+}
+
 function findPayloadJobs(db, payload) {
     const houses = Array.isArray(payload.houseNumbers) && payload.houseNumbers.length ? payload.houseNumbers : [ payload.houseNumber ];
     if (houses.some(house => typeof house !== "string" || !house.trim())) return [];
@@ -2013,7 +2020,8 @@ function findPickupArrivalRoundJobs(db, requestedJobs) {
     const roundKeys = new Set(requestedJobs.map(pickupRoundKey).filter(Boolean));
     if (!roundKeys.size) return requestedJobs;
     const driverIds = new Set(requestedJobs.map(job => String(job.driverId || "")));
-    const expanded = (db.jobs || []).filter(job =>
+    const pool = requestedJobs.some(job => splitLegs.parentOf(job) !== job) ? splitLegs.workItems(db.jobs) : (db.jobs || []);
+    const expanded = pool.filter(job =>
         driverIds.has(String(job.driverId || "")) && roundKeys.has(pickupRoundKey(job))
     );
     return expanded.length ? expanded : requestedJobs;
@@ -5744,7 +5752,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/pickup/route-start") {
         const payload = await parseBody(req);
-        const requestedJobs = findPayloadJobs(db, payload);
+        const requestedJobs = pickupTargets(db, req, payload);
         const jobs = findPickupArrivalRoundJobs(db, requestedJobs);
         const actor = requirePickupActor(db, req, jobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เริ่มรอบรับสินค้านี้" });
@@ -5755,7 +5763,7 @@ async function handleApi(req, res, pathname) {
         let flow;
         try { flow = pickupFlow.prepare("route-start", jobs, payload, normalizePickupItems); }
         catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
-        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(item => normalizeJob(splitLegs.plain(item))), job: normalizeJob(splitLegs.plain(job)) });
         const startedAt = nowIso();
         for (const item of jobs) {
             // A retry can complete an older, partially started round without
@@ -5767,12 +5775,13 @@ async function handleApi(req, res, pathname) {
             item.updatedAt = startedAt;
             logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "RouteStarted", startTime: startedAt });
         }
+        splitLegs.syncTouched(jobs);
         writeDb(db);
-        return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob) });
+        return sendJson(res, 200, { ok: true, jobs: jobs.map(item => normalizeJob(splitLegs.plain(item))) });
     }
     if (req.method === "POST" && pathname === "/api/pickup/checkin") {
         const payload = await parseBody(req);
-        const jobs = findPayloadJobs(db, payload);
+        const jobs = pickupTargets(db, req, payload);
         const actor = requirePickupActor(db, req, jobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์เช็กอินงานนี้" });
         payload.userId = actor.id;
@@ -5786,7 +5795,7 @@ async function handleApi(req, res, pathname) {
         let flow;
         try { flow = pickupFlow.prepare("checkin", jobs, payload, normalizePickupItems); }
         catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
-        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(item => normalizeJob(splitLegs.plain(item))), job: normalizeJob(splitLegs.plain(job)) });
         const checkInAt = payload.startTime || nowIso();
         const logs = [];
         for (const item of jobs) {
@@ -5808,17 +5817,18 @@ async function handleApi(req, res, pathname) {
             item.checkInGps = `${Number(payload.gpsLat)},${Number(payload.gpsLong)}`;
             item.updatedAt = nowIso();
         }
+        splitLegs.syncTouched(jobs);
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
-            job: normalizeJob(job),
-            jobs: jobs.map(normalizeJob),
+            job: normalizeJob(splitLegs.plain(job)),
+            jobs: jobs.map(item => normalizeJob(splitLegs.plain(item))),
             logs: logs
         });
     }
     if (req.method === "POST" && pathname === "/api/pickup/pause") {
         const payload = await parseBody(req);
-        const jobs = findPayloadJobs(db, payload);
+        const jobs = pickupTargets(db, req, payload);
         const actor = requirePickupActor(db, req, jobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์พักรอบงานนี้" });
         payload.userId = actor.id;
@@ -5861,16 +5871,17 @@ async function handleApi(req, res, pathname) {
             }
             item.updatedAt = ts;
         }
+        splitLegs.syncTouched(jobs);
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
             action: action,
-            jobs: jobs.map(normalizeJob)
+            jobs: jobs.map(item => normalizeJob(splitLegs.plain(item)))
         });
     }
     if (req.method === "POST" && pathname === "/api/pickup/load") {
         const payload = await parseBody(req);
-        const jobs = findPayloadJobs(db, payload);
+        const jobs = pickupTargets(db, req, payload);
         const actor = requirePickupActor(db, req, jobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์บันทึกการรับสินค้านี้" });
         payload.userId = actor.id;
@@ -5884,7 +5895,7 @@ async function handleApi(req, res, pathname) {
         let flow;
         try { flow = pickupFlow.prepare("load", jobs, payload, normalizePickupItems); }
         catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
-        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(item => normalizeJob(splitLegs.plain(item))), job: normalizeJob(splitLegs.plain(job)) });
         const checklist = Array.isArray(payload.checklist) ? payload.checklist : [];
         const needsSticker = payload.pickupCase === "SpecialMD" || jobs.some(item => /wd|western digital/i.test(item.customerName || ""));
         if (checklist.length < 10) return sendJson(res, 422, {
@@ -5935,16 +5946,17 @@ async function handleApi(req, res, pathname) {
                 endTime: loadedAt
             });
         }
+        splitLegs.syncTouched(jobs);
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
-            job: normalizeJob(job),
-            jobs: jobs.map(normalizeJob)
+            job: normalizeJob(splitLegs.plain(job)),
+            jobs: jobs.map(item => normalizeJob(splitLegs.plain(item)))
         });
     }
     if (req.method === "POST" && pathname === "/api/pickup/complete") {
         const payload = await parseBody(req);
-        const jobs = findPayloadJobs(db, payload);
+        const jobs = pickupTargets(db, req, payload);
         const actor = requirePickupActor(db, req, jobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ปิดรับสินค้านี้" });
         payload.userId = actor.id;
@@ -5961,7 +5973,7 @@ async function handleApi(req, res, pathname) {
         let flow;
         try { flow = pickupFlow.prepare("complete", jobs, payload, normalizePickupItems); }
         catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
-        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(item => normalizeJob(splitLegs.plain(item))), job: normalizeJob(splitLegs.plain(job)) });
         if (jobs.some(item => !item.checkInAt)) return sendJson(res, 409, {
             error: "Check in before completing pickup"
         });
@@ -6067,17 +6079,18 @@ async function handleApi(req, res, pathname) {
                 updatedAt: nowIso()
             });
         }
+        splitLegs.syncTouched(jobs);
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
-            job: normalizeJob(job),
-            jobs: jobs.map(normalizeJob),
+            job: normalizeJob(splitLegs.plain(job)),
+            jobs: jobs.map(item => normalizeJob(splitLegs.plain(item))),
             image: image
         });
     }
     if (req.method === "POST" && pathname === "/api/pickup/arrive-wh3") {
         const payload = await parseBody(req);
-        const requestedJobs = findPayloadJobs(db, payload);
+        const requestedJobs = pickupTargets(db, req, payload);
         const actor = requirePickupActor(db, req, requestedJobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ยืนยันถึง WH3 สำหรับงานนี้" });
         payload.userId = actor.id;
@@ -6091,7 +6104,7 @@ async function handleApi(req, res, pathname) {
         let flow;
         try { flow = pickupFlow.prepare("arrive-wh3", jobs, payload, normalizePickupItems); }
         catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
-        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(normalizeJob), job: normalizeJob(job) });
+        if (flow.replayed) return sendJson(res, 200, { ok: true, replayed: true, jobs: jobs.map(item => normalizeJob(splitLegs.plain(item))), job: normalizeJob(splitLegs.plain(job)) });
         if (jobs.some(item => ![ "PickedUp", "ReturningWH3" ].includes(item.status))) {
             return sendJson(res, 409, { error: "รับสินค้าให้ครบก่อนยืนยันถึง WH3" });
         }
@@ -6106,12 +6119,13 @@ async function handleApi(req, res, pathname) {
             });
             logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ArrivedWH3", endTime: arrivedAt });
         }
+        splitLegs.syncTouched(jobs);
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
             updatedCount: jobs.length,
             roundHouseNumbers: jobs.map(item => item.houseNumber),
-            jobs: jobs.map(normalizeJob)
+            jobs: jobs.map(item => normalizeJob(splitLegs.plain(item)))
         });
     }
     if (req.method === "POST" && pathname === "/api/pickup/release-document") {
@@ -6158,7 +6172,7 @@ async function handleApi(req, res, pathname) {
             db.dock||={};db.dock.queue||=[];
             const houses=jobs.map(item=>item.houseNumber);
             db.dock.queue=db.dock.queue.filter(entry=>!houses.some(house=>dockVehicleGroup.contains(entry,house)));
-            db.dock.queue.push({id:crypto.randomUUID(),houseNumber:houses[0],houseNumbers:houses,queueType:jobs[0].shipmentSource==="CustomerDirect"?"External":"Inbound",arrivedAt:jobs.map(item=>item.arrivedWh3At).filter(Boolean).sort()[0]||releasedAt,createdAt:releasedAt,createdBy:actor.id,vehiclePlate:jobs[0].vehiclePlate||"",driverName:jobs[0].driverName||""});
+            db.dock.queue.push({id:crypto.randomUUID(),houseNumber:houses[0],houseNumbers:houses,queueType:jobs[0].shipmentSource==="CustomerDirect"?"External":"Inbound",arrivedAt:jobs.map(item=>item.arrivedWh3At).filter(Boolean).sort()[0]||releasedAt,createdAt:releasedAt,createdBy:actor.id,vehiclePlate:jobs[0].vehiclePlate||"",driverName:jobs[0].driverName||"",...(jobs.some(splitLegs.isSplit)?{extraVehiclePlates:[...new Set(jobs.filter(splitLegs.isSplit).flatMap(item=>item.splitLegs.slice(1).map(leg=>leg.vehiclePlate)).filter(Boolean))]}:{})});
             dockDisplay.ensureTickets(db);
         }
         writeDb(db);
