@@ -60,9 +60,9 @@ test('next-trip notice updates every House in the same vehicle round',()=>{
  assert.ok(state.jobs.every((job:any)=>job.nextTripNotice.nextDestination==='Customer B'));
 });
 
-test('Emergency Slot is Admin-only and keeps an audit trail',()=>{
+test('Emergency Slot is limited to Admin, Transport and WH3 lead and keeps an audit trail',()=>{
  const state=db();
- assert.throws(()=>readiness.emergencySlot(state,{id:'LEAD',role:'WH3_TeamLeader'},{houseNumber:'H2',reason:'Flight urgent'},at),/Admin/);
+ assert.throws(()=>readiness.emergencySlot(state,{id:'STAFF',role:'WH_Staff'},{houseNumber:'H2',reason:'Flight urgent'},at),/Admin/);
  readiness.emergencySlot(state,admin,{houseNumber:'H2',reason:'Flight urgent'},at);
  assert.equal(state.dock.queue[0].houseNumber,'H2');
  assert.equal(state.dock.log[0].action,'EmergencySlotInserted');

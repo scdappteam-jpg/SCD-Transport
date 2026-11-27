@@ -49,6 +49,10 @@ const csDispatch = require("./cs-dispatch.cjs");
 const pickupFlow = require("./pickup-flow.cjs");
 const pickupCountCheck = require("./pickup-count-check.cjs");
 const splitLegs = require("./split-legs.cjs");
+const srsAlerts = require("./srs-alerts.cjs");
+const dockLayout = require("./dock-layout.cjs");
+const whGeofence = require("./wh-geofence.cjs");
+const shippingDocStatus = require("./shipping-doc-status.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
 const meetingApi = require("./meeting-api.cjs");
@@ -448,60 +452,12 @@ function serviceSummary(rows) {
     };
 }
 
-const DEFAULT_DOCK_BAYS = [ {
-    id: "D1",
-    name: "ท่า 1",
-    zone: "A",
-    status: "Available",
-    note: ""
-}, {
-    id: "D2",
-    name: "ท่า 2",
-    zone: "A",
-    status: "Available",
-    note: ""
-}, {
-    id: "D3",
-    name: "ท่า 3",
-    zone: "A",
-    status: "Available",
-    note: ""
-}, {
-    id: "D4",
-    name: "ท่า 4",
-    zone: "B",
-    status: "Available",
-    note: ""
-}, {
-    id: "D5",
-    name: "ท่า 5",
-    zone: "B",
-    status: "Available",
-    note: ""
-}, {
-    id: "D6",
-    name: "ท่า 6",
-    zone: "B",
-    status: "Available",
-    note: ""
-}, {
-    id: "D7",
-    name: "ท่า 7",
-    zone: "C",
-    status: "Available",
-    note: ""
-}, {
-    id: "D8",
-    name: "ท่า 8",
-    zone: "C",
-    status: "Available",
-    note: ""
-}, ...[9,10,11].map(n=>({id:`D${n}`,name:`ท่า ${n}`,zone:'WH3',status:'Available',note:'Inbound'})) ];
+// Bay layout lives in dock-layout.cjs (8 bays: D1–D5 outbound, D6–D8 inbound).
 
 function dockBayList(db) {
     if (!db.dock || !Array.isArray(db.dock.bays) || !db.dock.bays.length) {
         db.dock ||= {};
-        db.dock.bays = DEFAULT_DOCK_BAYS.map(bay => ({ ...bay }));
+        db.dock.bays = dockLayout.defaults();
     }
     return db.dock.bays;
 }
@@ -595,7 +551,7 @@ function ensureDbShape(db) {
     db.serviceRecords ||= [];
     serviceRates(db);
     db.dock ||= {};
-    db.dock.bays ||= DEFAULT_DOCK_BAYS.map(bay => ({ ...bay }));
+    dockLayout.migrate(db);
     db.dock.queue ||= [];
     db.dock.log ||= [];
     db.hr ||= {};
@@ -3969,7 +3925,7 @@ async function handleApi(req, res, pathname) {
             const payload = req.method === 'POST' ? await parseBody(req) : {};
             const actor = sessionUser(db,req);
             const result = await warehouseInbound.handle({db,actor,method:req.method,p:payload,query:Object.fromEntries(new URL(req.url,'http://localhost').searchParams),at:nowIso(),saveFiles:(houseNumber,fileType,files)=>saveBase64Files(db,{houseNumber,fileType,files})});
-            if(result.mutated){logActivity(db,{houseNumber:result.job.houseNumber,userId:actor.id,activityType:result.activity});writeDb(db);}
+            if(result.mutated){logActivity(db,{houseNumber:result.job.houseNumber,userId:actor.id,activityType:result.activity});if(payload.action==='hold'){try{await srsAlerts.holdOpened(db,createAlert,result.job,result.job.inboundHold);}catch(error){console.warn('hold alert failed',error.message);}}writeDb(db);}
             return sendJson(res,200,result);
         } catch(error){return sendJson(res,error.statusCode||503,{error:error.message});}
     }
@@ -3985,6 +3941,7 @@ async function handleApi(req, res, pathname) {
         try {
             const payload = await parseBody(req);
             meetingDriver.preflight(db, pathname, payload, sessionUser(db, req));
+            if (warehouseQuality.movementPaths.has(pathname)) whGeofence.enforce(db, sessionUser(db, req), nowIso());
             warehouseQuality.enforceMovement(db, pathname, payload);
         } catch (error) { return sendJson(res, error.statusCode || 422, {error:error.message}); }
     }
@@ -5047,6 +5004,12 @@ async function handleApi(req, res, pathname) {
         if (dockBayList(db).some(bay => roundHouses.some(house=>dockVehicleGroup.contains(bay,house)))) {
             return sendJson(res, 409, { error: `รถคันนี้กำลังเทียบท่าอยู่แล้ว` });
         }
+        // SRS 4.2.1: an inbound truck joins the dock queue only after the release
+        // document (permit) photo is in for every House on it.
+        const missingPermit = (roundJobs.length ? roundJobs : job ? [ job ] : []).filter(item => item.shipmentSource !== "CustomerDirect" && !item.releaseDocumentReceivedAt);
+        if (payload.queueType !== "Outbound" && missingPermit.length) {
+            return sendJson(res, 409, { error: `ยังไม่มีใบตรวจปล่อย (Permit): ${missingPermit.map(item => item.houseNumber).join(", ")} · อัปโหลดใบตรวจปล่อยก่อนเข้าคิว Dock` });
+        }
         const entry = {
             id: `DQ-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
             houseNumber: houseNumber,
@@ -5750,6 +5713,14 @@ async function handleApi(req, res, pathname) {
             dashboard: buildDashboard(db)
         });
     }
+    if (req.method === "POST" && pathname === "/api/shipping/doc-status") {
+        const payload = await parseBody(req);
+        let jobs;
+        try { jobs = shippingDocStatus.update(db, sessionUser(db, req), payload, nowIso()); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob) });
+    }
     if (req.method === "POST" && pathname === "/api/pickup/route-start") {
         const payload = await parseBody(req);
         const requestedJobs = pickupTargets(db, req, payload);
@@ -6079,6 +6050,7 @@ async function handleApi(req, res, pathname) {
                 updatedAt: nowIso()
             });
         }
+        try { await srsAlerts.leftFactory(db, createAlert, jobs, payload, completedAt); } catch (error) { console.warn("EI step 1 alert failed", error.message); }
         splitLegs.syncTouched(jobs);
         writeDb(db);
         return sendJson(res, 200, {
@@ -6119,6 +6091,7 @@ async function handleApi(req, res, pathname) {
             });
             logActivity(db, { ...payload, houseNumber: item.houseNumber, activityType: "ArrivedWH3", endTime: arrivedAt });
         }
+        try { await srsAlerts.arrivedAirport(db, createAlert, jobs); } catch (error) { console.warn("EI step 2 alert failed", error.message); }
         splitLegs.syncTouched(jobs);
         writeDb(db);
         return sendJson(res, 200, {
@@ -7079,7 +7052,7 @@ async function handleApi(req, res, pathname) {
             endTime: nowIso()
         });
         if (job.requiresRescan) {
-            await createAlert(db, `ต้อง Re-X-Ray: ${job.houseNumber} / Flight ${job.flightNo}`, "danger");
+            await srsAlerts.reXray(db, createAlert, job);
         }
         writeDb(db);
         return sendJson(res, 200, {
@@ -7100,6 +7073,9 @@ async function handleApi(req, res, pathname) {
         try { flightJobs = shippingGuards.loading(db, job, payload); }
         catch (error) { return sendJson(res, error.statusCode || 409, { error: error.message }); }
         if (flightJobs.every(item => item.loadingDetailUploaded && item.terminalClosedAt)) return sendJson(res, 200, { ok: true, idempotent: true, dashboard: buildDashboard(db) });
+        // SRS 4.5.1: Close Complete needs the ULD / pallet number seen in the photo.
+        const uldNumber = String(payload.uldNumber || payload.trayNumber || "").trim().slice(0, 80);
+        if (!uldNumber) return sendJson(res, 422, { error: "กรุณากรอกเลข ULD หรือ Pallet ที่เห็นในรูป ก่อนกด Close Complete" });
         if (payload.imageBase64) {
             saveBase64File(db, {
                 houseNumber: job.houseNumber,
@@ -7144,10 +7120,12 @@ async function handleApi(req, res, pathname) {
             });
             item.status = "ReadyForBilling";
             item.terminalClosedAt = nowIso();
+            item.closeCompleteAt = item.terminalClosedAt;
+            item.uldNumber = uldNumber;
             item.updatedAt = nowIso();
             logActivity(db,{houseNumber:item.houseNumber,userId:actor.id,activityType:'LoadingDetailClosed'});
         }
-        await createAlert(db, `พร้อมวางบิล: Flight ${job.flightNo}`, "info");
+        await createAlert(db, `Close Complete (โหลดเสร็จ) ULD ${uldNumber} · Flight ${job.flightNo} · พร้อมวางบิล`, "info");
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
@@ -8759,6 +8737,13 @@ async function handleApi(req, res, pathname) {
                 job.csConfirmedBy = confirmedBy || "CS";
                 job.csConfirmedAt = now;
                 csDispatch.applyCsDetails(job, payload);
+                if (payload.specialRelease && !job.csInvoiceNo) {
+                    job.invoicePending = true;
+                    job.specialRelease = { reason: payload.specialReleaseReason, by: job.csConfirmedBy, at: now };
+                } else if (job.csInvoiceNo) {
+                    if (job.invoicePending) job.invoiceFilledAt = now;
+                    job.invoicePending = false;
+                }
                 const approvalStatus = job.manualExtra || job.afterFinalRound ? "ManualExtraApproved" : "CSApproved";
                 job.approvalStatus = approvalStatus;
                 job.csApprovalRequired = false;
@@ -8782,6 +8767,7 @@ async function handleApi(req, res, pathname) {
                     to: approvalStatus,
                     channel: job.evidenceChannel,
                     note: job.evidenceNote,
+                    ...(job.invoicePending ? { specialRelease: true, specialReleaseReason: payload.specialReleaseReason } : {}),
                     invoiceNo: job.csInvoiceNo || "",
                     contactName: job.csContactName || "", contactPhone: job.csContactPhone || ""
                 });

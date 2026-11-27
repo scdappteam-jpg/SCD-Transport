@@ -863,3 +863,35 @@ html.has-open-popup { overflow: hidden; }
 .wizard-split-cancel{margin-top:6px;padding:0;border:0;background:none;color:#b42318;font:500 12px Kanit,sans-serif;cursor:pointer;text-decoration:underline}
 .wizard-split-warning{margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#fff4f2;color:#b42318;font-size:13px}
 .wizard-split-btn:focus-visible,.wizard-split-cancel:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+
+/* SRS batch 1: EI document card, job flags, role alert pop-ups, dock emergency */
+.ship-doc-card:not([hidden]){display:grid;gap:8px;margin:12px 0;padding:14px 16px;border:1px solid var(--line,#e3eaf3);border-radius:14px;background:var(--surface,#fff)}
+.ship-doc-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ship-doc-head h3{margin:0;font-size:15px}
+.ship-doc-pill{padding:2px 10px;border-radius:999px;background:#eef2f7;color:#475569;font-size:12px;font-weight:600}
+.ship-doc-pill.doing{background:#fff4e0;color:#9a5b00}
+.ship-doc-pill.done{background:#e6f6ee;color:#0b6b3a}
+.ship-doc-reasons{margin:0;padding-left:18px;font-size:13px;color:#334155}
+.ship-doc-card small{color:#64748b;font-size:12px}
+.ship-doc-form fieldset{display:grid;gap:6px;margin:0;padding:10px 12px;border:1px dashed var(--line,#e3eaf3);border-radius:10px}
+.ship-doc-form legend{padding:0 4px;font-size:12.5px;color:#475569}
+.ship-doc-form label{display:flex;align-items:center;gap:8px;font-size:13px}
+.ship-doc-form input[name="note"]{min-height:36px}
+.ship-doc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.job-flag{font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.02em}
+.job-flag.invoice-pending{background:#fde8e8;color:#b42318}
+.job-flag.job-new{background:#0b4ea2;color:#fff;animation:jobFlagPulse 1.6s ease-in-out 3}
+.job-flag.job-changed{background:#fff1c2;color:#8a5a00}
+@keyframes jobFlagPulse{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.job-flag.job-new{animation:none}}
+#roleAlertPop{position:fixed;right:16px;bottom:16px;z-index:2000;display:grid;gap:10px;width:min(380px,calc(100vw - 32px))}
+.role-alert{padding:12px 14px;border-radius:12px;border-left:4px solid #0b4ea2;background:#fff;box-shadow:0 12px 32px #0f172a2e;font-size:13.5px}
+.role-alert.warning{border-left-color:#d97706}
+.role-alert.danger{border-left-color:#b42318}
+.role-alert strong{display:block;font-size:14px;margin-bottom:2px}
+.role-alert p{margin:0 0 8px;color:#334155;line-height:1.45}
+.role-alert-actions{display:flex;gap:8px;justify-content:flex-end}
+.role-alert-actions button{min-height:32px;padding:0 12px;border:1px solid var(--line,#e3eaf3);border-radius:8px;background:#fff;font:500 13px Kanit,sans-serif;cursor:pointer}
+.role-alert-actions button[data-open-house]{border-color:#0b4ea2;color:#0b4ea2}
+.dock-btn.danger{border-color:#f3b4a8;color:#b42318;background:#fff7f5}
+.dock-emergency-tag{align-self:center;padding:2px 8px;border-radius:999px;background:#b42318;color:#fff;font-size:11px;font-weight:700}

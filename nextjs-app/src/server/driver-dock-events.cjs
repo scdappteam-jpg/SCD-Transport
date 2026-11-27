@@ -15,7 +15,7 @@ function prepare(db,actor,p,at=new Date().toISOString()){
     if(!Number.isFinite(Date.parse(job.arrivedWh3At))||!Number.isFinite(Date.parse(job.releaseDocumentReceivedAt)))fail('ต้องถึง WH3 และรับใบตรวจปล่อยก่อนยืนยันเข้าท่า');
     const bay=(db.dock?.bays||[]).find(b=>dockVehicleGroup.contains(b,job.houseNumber)&&b.status==='Occupied');
     if(!bay||!Number.isFinite(Date.parse(bay.assignedAt))||bay.id!==p.bayId||bay.assignedAt!==p.assignedAt)fail('ช่อง Dock เปลี่ยนแล้วหรือยังไม่ถูกเรียก กรุณารีเฟรช');
-    if(!['D8','D9','D10','D11'].includes(bay.id))fail('ต้องเป็นช่องรับเข้า WH3 D8-D11');
+    if(!require('./dock-layout.cjs').isInboundBayId(bay.id))fail('ต้องเป็นช่องรับเข้า WH3 D6-D8');
     if(!steps.includes(p.event))fail('ขั้นตอน Dock ไม่ถูกต้อง',422);
     if(typeof p.simulation!=='boolean')fail('ระบุประเภทข้อมูลจำลองให้ชัดเจน',422);
     const sit=/^SIT(?:UI)?[-A-Z0-9]/i.test(job.houseNumber);

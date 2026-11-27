@@ -61,17 +61,17 @@ test('four failed scenarios reject in actual routes without files logs writes or
 });
 test('valid close changes only current Flight; references quantities and other Flights stay intact',async()=>{
     const f=route();f.db.jobs[0].flightNo='NH850/21';const before=structuredClone(f.db.jobs);
-    const result=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png'});
+    const result=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png',trayNumber:'SIT-ULD-1'});
     assert.equal(result.code,200);assert.equal(f.db.jobs[0].status,'ReadyForBilling');assert.equal(f.io.files,1);assert.equal(f.io.writes,1);
     assert.deepEqual(f.db.jobs.slice(1),before.slice(1));for(const key of ['houseNumber','onhandNumber','mawbNumber','packageCounts','inboundReceipt','csConfirmed','flightNo'])assert.deepEqual(f.db.jobs[0][key],before[0][key]);
 });
 test('valid same-Flight close still closes all three, while repeated load preserves later status',async()=>{
     const f=route();let r=await f.call('load-bay',{arrived:false});assert.equal(r.body.idempotent,true);assert.equal(f.db.jobs[0].status,'XRayPassed');
-    r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png'});assert.equal(r.code,200);assert.ok(f.db.jobs.every(j=>j.status==='ReadyForBilling'));
+    r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png',trayNumber:'SIT-ULD-1'});assert.equal(r.code,200);assert.ok(f.db.jobs.every(j=>j.status==='ReadyForBilling'));
 });
 
 test('repeated Terminal close preserves original close time and creates no extra evidence or audit events',async()=>{
-    const f=route();const p={imageBase64:png,mimeType:'image/png'};await f.call('loading-detail',p);
+    const f=route();const p={imageBase64:png,mimeType:'image/png',trayNumber:'SIT-ULD-1'};await f.call('loading-detail',p);
     const before=JSON.stringify(f.db),io={...f.io};const r=await f.call('loading-detail',p);
     assert.equal(r.code,200);assert.equal(r.body.idempotent,true);assert.equal(JSON.stringify(f.db),before);assert.deepEqual(f.io,io);
 });
@@ -79,7 +79,7 @@ test('repeated Terminal close preserves original close time and creates no extra
 test('any invoiced House blocks Master close before files writes alerts or mutations',async()=>{
     for(const status of ['InvoiceDrafted','InvoiceSent','Billed']){
         const f=route();Object.assign(f.db.jobs[2],{status,invoiceId:'INV-SIT'});const before=structuredClone(f.db);
-        const r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png'});
+        const r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png',trayNumber:'SIT-ULD-1'});
         assert.equal(r.code,409);assert.deepEqual(f.db,before);assert.deepEqual(f.io,{writes:0,files:0,logs:0});
     }
 });
@@ -113,7 +113,7 @@ test('measurement pairs cannot mix scopes or accept blank zero negative or nonfi
 
 test('legacy close excludes a different Master on the same Flight including unready foreign jobs',async()=>{
     const f=route(),foreign={...structuredClone(f.db.jobs[0]),houseNumber:'OTHER-HOUSE',mawbNumber:'999-99999999',status:'Pending',csConfirmed:false};f.db.jobs.push(foreign);const before=structuredClone(foreign);
-    const r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png'});assert.equal(r.code,200);assert.deepEqual(foreign,before);assert.ok(f.db.jobs.slice(0,3).every(j=>j.status==='ReadyForBilling'));
+    const r=await f.call('loading-detail',{imageBase64:png,mimeType:'image/png',trayNumber:'SIT-ULD-1'});assert.equal(r.code,200);assert.deepEqual(foreign,before);assert.ok(f.db.jobs.slice(0,3).every(j=>j.status==='ReadyForBilling'));
 });
 
 test('missing Master and stale Master Flight or House scope reject before any file or write',async()=>{

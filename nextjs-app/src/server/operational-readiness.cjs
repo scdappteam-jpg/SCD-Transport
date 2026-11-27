@@ -149,7 +149,8 @@ function setNextTrip(db, actor, payload, at) {
 }
 
 function emergencySlot(db, actor, payload, at) {
-    if (!actor || actor.role !== 'Admin') fail('เฉพาะ Admin เท่านั้นที่แทรก Emergency Slot ได้', 403);
+    // SRS 2: Transport admin (and WH3 lead / Admin) may jump the queue with a reason.
+    if (!actor || !['Admin', 'Team_Transport', 'WH3_TeamLeader'].includes(actor.role)) fail('เฉพาะ Admin, ทีมจัดรถ หรือหัวหน้าคลังเท่านั้นที่แทรกคิวฉุกเฉินได้', 403);
     const houseNumber = clean(payload.houseNumber, 100), reason = clean(payload.reason, 500);
     if (!houseNumber || reason.length < 5) fail('ระบุ House และเหตุผลอย่างน้อย 5 ตัวอักษร');
     db.dock ||= {}; db.dock.queue ||= [];

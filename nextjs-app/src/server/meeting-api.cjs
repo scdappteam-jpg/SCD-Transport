@@ -4,6 +4,7 @@ const scanner=require('./barcode-evidence.cjs');
 const logs=require('./driver-time-log.cjs');
 const readiness=require('./operational-readiness.cjs');
 const crypto=require('node:crypto');
+const whGeofence=require('./wh-geofence.cjs');
 const paths=new Set(['/api/warehouse/quality','/api/warehouse/quality/tag','/api/warehouse/quality/scan','/api/warehouse/external-intake','/api/meeting/settings','/api/meeting/readiness','/api/driver/time-log']);
 const fail=(message,statusCode=422)=>{throw Object.assign(new Error(message),{statusCode});};
 function allowed(actor,roles){if(!actor||!roles.includes(actor.role))fail('ไม่มีสิทธิ์ดำเนินการ',403);}
@@ -38,7 +39,7 @@ async function handle({db,actor,path,method,payload:p={},query={},at,scanUrl,sav
         if(p.geofencingEnabled&&(!(db.hr?.checkInLocations||[]).some(l=>l.active!==false)||!db.hr?.settings?.attendance?.enforceAssignedLocations))fail('ตั้งค่าพิกัดจริงและเปิดบังคับจุดเช็คอินใน HR ก่อนเปิด Geofencing');
         const sitHouseNumbers=p.sitHouseNumbers===undefined?(db.meetingSafety?.sitHouseNumbers||[]):p.sitHouseNumbers;
         if(!Array.isArray(sitHouseNumbers)||sitHouseNumbers.length>100||sitHouseNumbers.some(h=>typeof h!=='string'||!/^SIT[-A-Z0-9]/i.test(h)||!db.jobs.some(j=>j.houseNumber===h)))fail('เปิดทดสอบได้เฉพาะเลข SIT ที่มีอยู่ในระบบ ห้ามระบุงานจริง');
-        db.meetingSafety={enabled:p.enabled,geofencingEnabled:p.geofencingEnabled,queueMinutes:p.queueMinutes,sitHouseNumbers:[...new Set(sitHouseNumbers)],updatedAt:at,updatedBy:actor.id};
+        db.meetingSafety={enabled:p.enabled,geofencingEnabled:p.geofencingEnabled,queueMinutes:p.queueMinutes,sitHouseNumbers:[...new Set(sitHouseNumbers)],...whGeofence.readSettings(db,p),updatedAt:at,updatedBy:actor.id};
         db.meetingSafetyHistory=[...db.meetingSafetyHistory||[],{...db.meetingSafety}];
         if(p.enabled){db.dock||={};db.dock.bays||=[];for(let n=7;n<=11;n++)if(!db.dock.bays.some(b=>b.id===`D${n}`))db.dock.bays.push({id:`D${n}`,name:`ท่า ${n}`,zone:'WH3',status:'Available',note:n===7?'Customer Direct':'Inbound'});}
         return {ok:true,policy:db.meetingSafety,mutated:true};
