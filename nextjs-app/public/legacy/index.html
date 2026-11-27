@@ -26,7 +26,7 @@
     <style>[hidden]{display:none !important}#alertBell[hidden]{display:none!important}</style>
     <script src="lucide.min.js"></script>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
-    <link rel="stylesheet" href="system-ui.css?v=20261127c">
+    <link rel="stylesheet" href="system-ui.css?v=20261127e">
   </head>
   <body>
     <a class="skip-link" href="#mainContent">ข้ามไปที่เนื้อหาหลัก</a>
@@ -57,8 +57,8 @@
           <form id="webLoginForm" autocomplete="on" onsubmit="return false;">
           <p>ยินดีต้อนรับกลับ · Welcome back</p>
           <h1>เข้าสู่ระบบ</h1>
-          <label>ผู้ใช้งาน</label>
-          <select id="webLoginUser">
+          <label for="webLoginUser">ผู้ใช้งาน</label>
+          <select id="webLoginUser" autocomplete="username">
             <option value="u_driver_01">คนขับ A / Driver A · คนขับรถ / Driver · 70-1234</option>
             <option value="u_wh_01">พนักงาน WH3 / WH Staff · WH</option>
             <option value="u_terminal_01">Terminal Lead · Terminal</option>
@@ -68,8 +68,11 @@
             <option value="u_driver_02">Driver B / คนขับ B · คนขับรถ / Driver · 71-2234</option>
             <option value="u_driver_03">Driver C / คนขับ C · คนขับรถ / Driver · 72-3345</option>
           </select>
-          <label>รหัสผ่าน</label>
-          <input id="webLoginPassword" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอกรหัสผ่าน">
+          <label for="webLoginPassword">รหัสผ่าน</label>
+          <div class="password-field">
+            <input id="webLoginPassword" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอกรหัสผ่าน">
+            <button type="button" class="password-toggle" data-password-toggle="webLoginPassword" aria-label="แสดงรหัสผ่าน" aria-pressed="false"><i data-lucide="eye" aria-hidden="true"></i></button>
+          </div>
           <button id="webLoginBtn" type="button" style="margin-top:10px">เข้าสู่ระบบ →</button>
           <div id="webLoginMessage" class="login-message" role="status" aria-live="polite"></div>
           </form>
@@ -77,9 +80,9 @@
             <p>เข้าใช้งานครั้งแรก · First sign-in</p>
             <h1>ตั้งรหัส PIN ใหม่</h1>
             <div class="step-note">PIN ตัวเลข 6 หลักนี้ใช้ชุดเดียวกันทั้งระบบงาน ทะเบียนบุคลากร และการลงเวลา</div>
-            <label>PIN ใหม่ 6 หลัก</label>
+            <label for="webNewCredential">PIN ใหม่ 6 หลัก</label>
             <input id="webNewCredential" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" placeholder="กรอกตัวเลข 6 หลัก">
-            <label>ยืนยัน PIN ใหม่</label>
+            <label for="webConfirmCredential">ยืนยัน PIN ใหม่</label>
             <input id="webConfirmCredential" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" placeholder="กรอก PIN ซ้ำอีกครั้ง">
             <button id="webSaveCredentialBtn" type="button" style="margin-top:10px">บันทึก PIN และเข้าสู่ระบบ →</button>
             <div id="webCredentialMessage" class="login-message" role="status" aria-live="polite"></div>
@@ -2708,6 +2711,6 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="ctf-core/index.js?v=20261125-confirmed-units"></script>
     <script src="personnel-photo-preview.js?v=20261124"></script>
     <script src="operations-workspace.js?v=20261125-unified"></script>
-    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126&amp;dash=20261127&amp;work=20261127b"></script>
+    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126&amp;dash=20261127&amp;work=20261127b&amp;popups=20261127c"></script>
   </body>
 </html>

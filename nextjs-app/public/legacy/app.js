@@ -9315,6 +9315,23 @@ function bindEvents() {
             submitWebLogin();
         }
     });
+    $("#webConfirmCredential")?.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            saveWebCredential();
+        }
+    });
+    $$("[data-password-toggle]").forEach(button => button.addEventListener("click", () => {
+        const field = document.getElementById(button.dataset.passwordToggle);
+        if (!field) return;
+        const reveal = field.type === "password";
+        field.type = reveal ? "text" : "password";
+        button.setAttribute("aria-pressed", String(reveal));
+        button.setAttribute("aria-label", reveal ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน");
+        button.innerHTML = `<i data-lucide="${reveal ? "eye-off" : "eye"}" aria-hidden="true"></i>`;
+        if (window.lucide?.createIcons) window.lucide.createIcons();
+        field.focus();
+    }));
     $$("[data-view], [data-view-jump]").forEach(button => {
         button.addEventListener("click", () => {
             setView(button.dataset.view || button.dataset.viewJump);
@@ -13477,3 +13494,97 @@ function enhanceAccessibility(root) {
     });
 })();
 
+
+// ---------------------------------------------------------------------------
+// Shared popup behaviour for every .modal-backdrop (opened by adding .show or
+// setting style.display). Purely additive: existing open/close functions are
+// unchanged; Escape just clicks the popup's own close button so its cleanup runs.
+// - role="dialog" + aria-modal + aria-labelledby when missing
+// - focus moves into the popup on open and returns to the opener on close
+// - Tab / Shift+Tab stay inside the open popup
+// - page behind does not scroll while a popup is open
+// ---------------------------------------------------------------------------
+(function enhanceModals() {
+    const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const CLOSE = '[id^="close"],[id$="Close"],.modal-close,[aria-label="Close"],[aria-label="ปิด"]';
+    const lastFocus = new WeakMap();
+    const isOpen = modal => modal.classList.contains("show") || (modal.style.display !== "" && modal.style.display !== "none");
+    const dialogOf = modal => modal.querySelector('[role="dialog"]') || modal.firstElementChild || modal;
+    const focusables = root => [ ...root.querySelectorAll(FOCUSABLE) ].filter(el => el.offsetParent !== null);
+    const openModals = () => [ ...document.querySelectorAll(".modal-backdrop") ].filter(isOpen);
+
+    function prepare(modal) {
+        const dialog = dialogOf(modal);
+        if (!dialog || dialog === modal) return;
+        if (!dialog.hasAttribute("role")) dialog.setAttribute("role", "dialog");
+        if (!dialog.hasAttribute("aria-modal")) dialog.setAttribute("aria-modal", "true");
+        if (!dialog.hasAttribute("aria-labelledby") && !dialog.hasAttribute("aria-label")) {
+            const heading = dialog.querySelector("h1, h2, h3");
+            if (heading) {
+                if (!heading.id) heading.id = `${modal.id || "modal"}Heading`;
+                dialog.setAttribute("aria-labelledby", heading.id);
+            }
+        }
+        if (!dialog.hasAttribute("tabindex")) dialog.setAttribute("tabindex", "-1");
+    }
+
+    function sync(modal) {
+        const open = isOpen(modal);
+        if (open && !modal.dataset.popupOpen) {
+            modal.dataset.popupOpen = "1";
+            lastFocus.set(modal, document.activeElement);
+            const focusIn = () => {
+                const dialog = dialogOf(modal);
+                if (isOpen(modal) && !dialog.contains(document.activeElement)) dialog.focus?.({ preventScroll: true });
+            };
+            // Second try covers popups that fade in (focus is refused while still invisible)
+            requestAnimationFrame(focusIn);
+            setTimeout(focusIn, 150);
+        } else if (!open && modal.dataset.popupOpen) {
+            delete modal.dataset.popupOpen;
+            const opener = lastFocus.get(modal);
+            if (opener && document.contains(opener) && opener.offsetParent !== null) opener.focus?.({ preventScroll: true });
+        }
+        document.documentElement.classList.toggle("has-open-popup", openModals().length > 0);
+    }
+
+    function init() {
+        const modals = document.querySelectorAll(".modal-backdrop");
+        const observer = new MutationObserver(records => records.forEach(record => sync(record.target)));
+        modals.forEach(modal => {
+            prepare(modal);
+            observer.observe(modal, { attributes: true, attributeFilter: [ "class", "style" ] });
+        });
+        document.addEventListener("keydown", event => {
+            const open = openModals();
+            if (!open.length) return;
+            const modal = open[open.length - 1];
+            if (event.key === "Escape") {
+                const close = [ ...modal.querySelectorAll(CLOSE) ].find(el => el.offsetParent !== null);
+                if (close) {
+                    event.preventDefault();
+                    close.click();
+                }
+                return;
+            }
+            if (event.key !== "Tab") return;
+            const dialog = dialogOf(modal);
+            const items = focusables(dialog);
+            if (!items.length) return;
+            const first = items[0], last = items[items.length - 1];
+            if (!dialog.contains(document.activeElement)) {
+                event.preventDefault();
+                (event.shiftKey ? last : first).focus();
+            } else if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        });
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+    else init();
+})();
