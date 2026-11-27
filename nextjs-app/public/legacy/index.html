@@ -26,7 +26,7 @@
     <style>[hidden]{display:none !important}#alertBell[hidden]{display:none!important}</style>
     <script src="lucide.min.js"></script>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
-    <link rel="stylesheet" href="system-ui.css?v=20261127k">
+    <link rel="stylesheet" href="system-ui.css?v=20261127l">
   </head>
   <body>
     <a class="skip-link" href="#mainContent">ข้ามไปที่เนื้อหาหลัก</a>
@@ -594,6 +594,7 @@
                 </article>
 
                 <div id="orderReceiptSummary"></div>
+                <div id="orderShippingDocs" class="ship-doc-card" hidden></div>
                 <div class="detail-grid">
                   <article class="card timeline-card">
                     <div class="card-head">
@@ -1207,11 +1208,11 @@
                   </div>
                 </div>
                 <div class="ops-section" data-ops-section="web-outbound-close">
-                  <input id="trayNumber" autocomplete="off" placeholder="Tray / Pallet / Lot">
+                  <input id="trayNumber" autocomplete="off" placeholder="เลข ULD หรือ Pallet (ต้องกรอก)" required>
                   <input id="loadingImage" type="file" accept="image/*">
                   <div class="form-actions">
                     <button id="packingBtn" type="button" class="secondary">Packing / Consolidation</button>
-                    <button id="loadingBtn" type="button">อัปโหลด Loading Detail</button>
+                    <button id="loadingBtn" type="button">Close Complete · โหลดเสร็จ</button>
                   </div>
                 </div>
               </section>
@@ -2708,10 +2709,10 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="shipment-references.js?v=3-three-references"></script>
     <script src="warehouse-reservations-page.js?v=2-wh-planning-get"></script>
     <script src="warehouse-inbound-page.js?v=20261031-sit-reset&amp;cargo=20261124"></script>
-    <script src="meeting-workflows-ui.js?v=20261028-inbound&amp;errors=20261127"></script>
+    <script src="meeting-workflows-ui.js?v=20261028-inbound&amp;errors=20261127&amp;geo=20261127"></script>
     <script src="ctf-core/index.js?v=20261125-confirmed-units"></script>
     <script src="personnel-photo-preview.js?v=20261124"></script>
     <script src="operations-workspace.js?v=20261125-unified"></script>
-    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126&amp;dash=20261127&amp;work=20261127b&amp;popups=20261127e&amp;dash2=20261127&amp;fleet=20261127&amp;split=20261127"></script>
+    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126&amp;dash=20261127&amp;work=20261127b&amp;popups=20261127e&amp;dash2=20261127&amp;fleet=20261127&amp;split=20261127&amp;srs1=20261127"></script>
   </body>
 </html>

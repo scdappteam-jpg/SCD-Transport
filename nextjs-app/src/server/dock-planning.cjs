@@ -3,9 +3,10 @@ const timestamp = value => value && Number.isFinite(Date.parse(value)) ? Date.pa
 const groups = require('./dock-vehicle-group.cjs');
 const flightRisk = require('./flight-risk.cjs');
 const {ready} = require('./dock-readiness.cjs');
+const layout = require('./dock-layout.cjs');
 const fail = message => {throw Object.assign(new Error(message),{statusCode:409});};
 function kind(job,entry={}) {return entry.queueType==='Outbound'?'Outbound':job?.shipmentSource==='CustomerDirect'?'External':'Inbound';}
-function bayKind(bay) {const n=Number(String(bay.id).replace(/^D/i,''));return n===7?'External':n>=8&&n<=11?'Inbound':'Outbound';}
+const bayKind = layout.bayKind;
 function isActive(job,entry={}) {
     if(!job)return true; // Preserve unmatched legacy entries for staff review.
     if(['Cancelled','Completed','Rejected','Billed','InvoiceSent'].includes(job.status))return false;
@@ -18,6 +19,9 @@ function queue(db) {
     const entries=(db.dock?.queue||[]).filter(e=>{const list=entryJobs(e);return list.length?list.some(job=>isActive(job,e)):isActive(null,e);}).map(e=>({...e,queueType:kind(jobs.get(e.houseNumber),e)}));
     entries.sort((a,b)=>{
         if (a.queueType!==b.queueType) return a.queueType.localeCompare(b.queueType);
+        // Emergency bypass (with a recorded reason) goes ahead of flight order.
+        if (Boolean(a.emergency)!==Boolean(b.emergency)) return a.emergency?-1:1;
+        if (a.emergency&&b.emergency) return timestamp(a.emergencyAt)-timestamp(b.emergencyAt);
         if (a.queueType===b.queueType && a.queueType!=='External') {
             // Inbound priority uses the exact same WH3 deadline as flight SLA.
             // Outbound retains its terminal cutoff; WH3 receipt is already done.
@@ -33,10 +37,11 @@ function queue(db) {
     const minutes=Number(db.meetingSafety?.queueMinutes)||15;
     return entries.map(e=>{const ahead=seen[e.queueType]||0;seen[e.queueType]=ahead+1;return {...e,position:ahead+1,queueAhead:ahead,estimatedWaitMinutes:ahead*minutes};});
 }
-function suggest(db,job,entry={}) {return (db.dock?.bays||[]).find(b=>b.status==='Available'&&!b.houseNumber&&bayKind(b)===kind(job,entry)) || null;}
+function suggest(db,job,entry={}) {return (db.dock?.bays||[]).find(b=>b.status==='Available'&&!b.houseNumber&&!layout.isRetired(b)&&layout.accepts(b,kind(job,entry))) || null;}
 function assignment(db,job,entry,bay) {
     entry=groups.entryForHouse(db.dock?.queue,job?.houseNumber)||entry;
-    if (bayKind(bay)!==kind(job,entry)) fail('ช่อง Dock ไม่ตรงประเภท: Inbound D8–D11 / Customer Direct D7');
+    if (!layout.accepts(bay,kind(job,entry))) fail('ช่อง Dock ไม่ตรงประเภท: ขาออก D1–D5 · ขาเข้าและลูกค้านำส่ง D6–D8');
+    if (layout.isRetired(bay)) fail('ท่านี้ปิดใช้งานแล้ว ใช้ D1–D8');
     const type=kind(job,entry);
     if(type!=='Outbound'&&!ready(db,entry))fail('รอบรถยังไม่พร้อมเข้าท่า: ตรวจใบตรวจปล่อยทุก House คนขับ ทะเบียน และการพักคิว');
     const eligible=queue(db).filter(e=>e.queueType===type&&(type==='Outbound'||ready(db,e)));

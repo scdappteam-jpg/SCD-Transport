@@ -46,7 +46,15 @@ function validateApproval(db, payload) {
     const missing=houses.filter(h=>!(db.jobs||[]).some(j=>j.houseNumber===h));
     if(missing.length)fail('ไม่พบ House: '+missing.join(', '),404);
     const invoiceNo=String(payload.invoiceNo||'').trim();
+    // Special release (SRS 2): CS may release the truck before the customer's
+    // Invoice exists, with a reason. The House is marked "waiting for Invoice"
+    // and cannot be billed until the Invoice number is filled in.
+    if(!invoiceNo&&payload.specialRelease===true){
+        const reason=String(payload.specialReleaseReason||'').trim();
+        if(reason.length<5)fail('ปล่อยรถกรณีพิเศษต้องระบุเหตุผลอย่างน้อย 5 ตัวอักษร');
+        return {...payload,houseNumbers:houses,invoiceNo:'',specialRelease:true,specialReleaseReason:reason.slice(0,300)};
+    }
     if(!invoiceNo)fail('กรุณากรอกเลข Invoice ก่อน Confirm');
-    return {...payload,houseNumbers:houses,invoiceNo};
+    return {...payload,houseNumbers:houses,invoiceNo,specialRelease:false};
 }
 module.exports = {applyCsDetails, assignment, rowAssignments, validateApproval};

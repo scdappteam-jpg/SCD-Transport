@@ -884,8 +884,9 @@ function clearSkeletons() {
     $$(".metric-card strong").forEach(el => el.classList.remove("skeleton"));
 }
 
-async function refresh() {
-    showSkeletons();
+async function refresh(options) {
+    const quiet = options?.quiet === true;
+    if (!quiet) showSkeletons();
     let data;
     let apiOk = false;
     try {
@@ -945,6 +946,8 @@ async function refresh() {
     }
     if (!data) return;
     state.dashboard = data.dashboard;
+    primeSeenJobs(state.dashboard?.jobs);
+    notifyTargetedAlerts(state.dashboard?.alerts);
     state.customers = data.customers || [];
     state.users = data.users || [];
     renderWebLoginUsers();
@@ -959,6 +962,53 @@ async function refresh() {
     renderAll();
     clearSkeletons();
 }
+
+// Alerts addressed to this user's role (EI 2-step, hold, Re-X-Ray) pop up
+// once per browser. The first load only records the time.
+const SEEN_ALERT_KEY = "scdSeenAlertAt";
+function notifyTargetedAlerts(alerts) {
+    const role = currentWebUser()?.role || "";
+    if (!role) return;
+    let since = "";
+    try { since = localStorage.getItem(SEEN_ALERT_KEY) || ""; } catch (error) {}
+    const latest = (alerts || []).map(alert => alert.createdAt || "").sort().pop() || new Date().toISOString();
+    try { localStorage.setItem(SEEN_ALERT_KEY, latest > since ? latest : since); } catch (error) {}
+    if (!since) return;
+    const fresh = (alerts || []).filter(alert => Array.isArray(alert.audience) && (alert.audience.includes(role) || role === "Executive") && (alert.createdAt || "") > since);
+    if (!fresh.length) return;
+    let host = document.getElementById("roleAlertPop");
+    if (!host) {
+        host = document.createElement("div");
+        host.id = "roleAlertPop";
+        host.setAttribute("role", "alert");
+        host.setAttribute("aria-live", "assertive");
+        document.body.append(host);
+    }
+    fresh.slice(0, 4).forEach(alert => {
+        const card = document.createElement("div");
+        card.className = `role-alert ${alert.severity || "info"}`;
+        card.innerHTML = `<strong>${safeHtml(alert.title || "แจ้งเตือน")}</strong><p>${safeHtml(alert.message)}</p><div class="role-alert-actions">${alert.houseNumber ? `<button type="button" data-open-house="${safeHtml(alert.houseNumber)}">ดูงาน</button>` : ""}<button type="button" data-close-alert>ปิด</button></div>`;
+        card.addEventListener("click", event => {
+            const open = event.target.closest("[data-open-house]");
+            if (open) { state.selectedHouse = open.dataset.openHouse; setView("orders"); renderAll(); card.remove(); }
+            if (event.target.closest("[data-close-alert]")) card.remove();
+        });
+        host.append(card);
+    });
+}
+
+// Auto refresh every minute (SRS 3.3) while the page is visible and the user
+// is not typing or working in a dialog.
+window.setInterval(() => {
+    if (document.hidden || new URLSearchParams(window.location.search).get("demo") === "1") return;
+    let token = "";
+    try { token = localStorage.getItem(WEB_SESSION_TOKEN_KEY) || ""; } catch (error) {}
+    if (!token || !currentWebUser()) return;
+    const active = document.activeElement;
+    if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
+    if (state.groupWizard?.open || document.querySelector(".modal-backdrop.open, .modal-backdrop.show, .modal-backdrop[aria-hidden='false'], dialog[open]")) return;
+    refresh({ quiet: true }).catch(() => {});
+}, 60000);
 
 function toast(message) {
     const el = $("#toast");
@@ -7289,7 +7339,7 @@ function renderOrderCards() {
         let urgentBadge = "";
         if (isReXray) urgentBadge = `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;animation:pulse 1.5s infinite">⚠ RE-XRAY</span>`; else if (isMissed) urgentBadge = `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">✕ เลยเวลาบิน</span>`; else if (isUrgent) urgentBadge = `<span style="background:#fffbeb;color:#d97706;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">⏰ ${Math.floor(diffH)}ชม.${Math.floor(diffH % 1 * 60)}น.</span>`;
         const cardBorder = isReXray || isMissed ? "border-left:3px solid #ef4444" : isUrgent ? "border-left:3px solid #f59e0b" : "";
-        return `<button class="order-card ${job.houseNumber === state.selectedHouse ? "active" : ""}" type="button" data-house="${job.houseNumber}" style="${cardBorder}">\n      <span class="cube" aria-hidden="true"></span>\n      ${jobReferenceFieldsHtml(job, { compact: true })}\n      <small class="receipt-line">${jobReceiptLabel(job)}</small>\n      <small>${job.customerName || "-"} / ${job.flightTimeLabel || "-"}</small>\n      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0">\n        <span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span>\n        ${urgentBadge}\n        ${!job.csConfirmed ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">รอ CS</span>' : ""}\n        ${(state.loadPlan?.rows || []).some(r => r.houseNumber === job.houseNumber) ? '<span style="background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">LP</span>' : ""}\n      </div>\n    </button>`;
+        return `<button class="order-card ${job.houseNumber === state.selectedHouse ? "active" : ""}" type="button" data-house="${job.houseNumber}" style="${cardBorder}">\n      <span class="cube" aria-hidden="true"></span>\n      ${jobReferenceFieldsHtml(job, { compact: true })}\n      <small class="receipt-line">${jobReceiptLabel(job)}</small>\n      <small>${job.customerName || "-"} / ${job.flightTimeLabel || "-"}</small>\n      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0">\n        <span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span>\n        ${urgentBadge}\n        ${!job.csConfirmed ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">รอ CS</span>' : ""}\n        ${job.invoicePending ? '<span class="job-flag invoice-pending" title="ปล่อยรถกรณีพิเศษ ต้องใส่ Invoice ก่อนวางบิล">รอ Invoice</span>' : ""}\n        ${jobChangeBadge(job)}\n        ${(state.loadPlan?.rows || []).some(r => r.houseNumber === job.houseNumber) ? '<span style="background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">LP</span>' : ""}\n      </div>\n    </button>`;
     }).join("");
     if (jobs.length > shown.length) {
         $("#orderCards").insertAdjacentHTML("beforeend",
@@ -9320,9 +9370,83 @@ function renderCargoIssueState(job) {
     button.textContent = issued ? "ดู/พิมพ์ใบ Cargo" : "ออกใบ Cargo";
 }
 
+// Shipping / EI document status (In progress with reasons, or Completed).
+const SHIP_DOC_REASONS = { NoInvoice: "ยังไม่ได้ Invoice จากลูกค้า", CustomerNotConfirmed: "ลูกค้ายังไม่ยืนยันเอกสารหรือใบขน", CustomsFeePending: "รอการชำระค่าธรรมเนียมศุลกากร", ShippingInTransit: "Shipping อยู่ระหว่างเดินทาง", Other: "อื่นๆ" };
+function renderShippingDocs(job) {
+    const box = $("#orderShippingDocs");
+    if (!box) return;
+    const role = currentWebUser()?.role || "";
+    const canEdit = [ "Admin", "Executive", "EI_Customer", "CS" ].includes(role);
+    box.hidden = !job;
+    if (!job) return;
+    const status = job.shippingDocStatus || {};
+    const label = status.state === "Completed" ? `<span class="ship-doc-pill done">เสร็จแล้ว</span>` : status.state === "InProgress" ? `<span class="ship-doc-pill doing">กำลังทำ</span>` : `<span class="ship-doc-pill">ยังไม่เริ่ม</span>`;
+    const reasons = (status.reasons || []).map(code => `<li>${safeHtml(SHIP_DOC_REASONS[code] || code)}${code === "Other" && status.note ? `: ${safeHtml(status.note)}` : ""}</li>`).join("");
+    const when = status.updatedAt ? `<small>อัปเดต ${safeHtml(formatBangkok(status.updatedAt))}${status.updatedByName ? ` · ${safeHtml(status.updatedByName)}` : ""}</small>` : "";
+    box.innerHTML = `<div class="ship-doc-head"><h3>เอกสาร Shipping · EI</h3>${label}</div>${reasons ? `<ul class="ship-doc-reasons">${reasons}</ul>` : ""}${when}
+      ${canEdit ? `<form class="ship-doc-form" data-house="${safeHtml(job.houseNumber)}">
+        <fieldset><legend>สาเหตุที่ยังไม่เสร็จ</legend>
+          ${Object.entries(SHIP_DOC_REASONS).map(([code, text]) => `<label><input type="checkbox" name="reason" value="${code}" ${(status.reasons || []).includes(code) ? "checked" : ""}> ${safeHtml(text)}</label>`).join("")}
+          <input name="note" placeholder="หมายเหตุ (บังคับเมื่อเลือก อื่นๆ)" value="${safeHtml(status.note || "")}">
+        </fieldset>
+        <div class="ship-doc-actions"><button type="submit" name="state" value="InProgress" class="ghost-button">บันทึก: กำลังทำ</button><button type="submit" name="state" value="Completed" class="primary-button">เอกสารเสร็จแล้ว</button></div>
+      </form>` : ""}`;
+}
+
+async function submitShippingDocs(form, docState) {
+    const reasons = [ ...form.querySelectorAll('input[name="reason"]:checked') ].map(input => input.value);
+    const data = await api("/api/shipping/doc-status", { houseNumber: form.dataset.house, state: docState, reasons: docState === "Completed" ? [] : reasons, note: form.querySelector('input[name="note"]').value.trim() });
+    (data.jobs || []).forEach(saved => {
+        const list = state.dashboard?.jobs || [];
+        const i = list.findIndex(job => job.houseNumber === saved.houseNumber);
+        if (i >= 0) list[i] = saved;
+    });
+    toast(docState === "Completed" ? "บันทึก: เอกสาร Shipping เสร็จแล้ว" : "บันทึกสถานะเอกสาร Shipping แล้ว");
+    await refresh();
+}
+
+document.addEventListener("submit", event => {
+    const form = event.target.closest?.(".ship-doc-form");
+    if (!form) return;
+    event.preventDefault();
+    const button = event.submitter;
+    runAction(button, () => submitShippingDocs(form, button?.value || "InProgress"));
+});
+
+// NEW / changed badges (SRS 3.3): per browser, compared with the last time
+// this user opened the House. The first run only records what exists.
+const SEEN_JOBS_KEY = "scdSeenJobs";
+function seenJobs() {
+    try { return JSON.parse(localStorage.getItem(SEEN_JOBS_KEY) || "null"); } catch (error) { return null; }
+}
+function saveSeenJobs(map) {
+    try { localStorage.setItem(SEEN_JOBS_KEY, JSON.stringify(map)); } catch (error) {}
+}
+function primeSeenJobs(jobs) {
+    if (seenJobs()) return;
+    saveSeenJobs(Object.fromEntries((jobs || []).map(job => [ job.houseNumber, job.updatedAt || job.createdAt || "" ])));
+}
+function markJobSeen(job) {
+    if (!job) return;
+    const map = seenJobs() || {};
+    if (map[job.houseNumber] === (job.updatedAt || job.createdAt || "")) return;
+    map[job.houseNumber] = job.updatedAt || job.createdAt || "";
+    saveSeenJobs(map);
+}
+function jobChangeBadge(job) {
+    const map = seenJobs();
+    if (!map) return "";
+    const seen = map[job.houseNumber];
+    const stamp = job.updatedAt || job.createdAt || "";
+    if (seen === undefined) return '<span class="job-flag job-new">NEW</span>';
+    return stamp && stamp > seen ? '<span class="job-flag job-changed">อัปเดต</span>' : "";
+}
+
 function renderTimeline() {
     const job = findJob();
     renderOrderReceipts(job);
+    renderShippingDocs(job);
+    markJobSeen(job);
     if (!job) {
         $("#selectedOrderTitle").textContent = "No order selected";
         $("#selectedOrderReferences").innerHTML = "";
@@ -10952,6 +11076,7 @@ function bindEvents() {
         toast("Packing / Consolidation แล้ว");
     }));
     $("#loadingBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
+        if (!$("#trayNumber").value.trim()) throw new Error("กรุณากรอกเลข ULD หรือ Pallet ก่อนกด Close Complete");
         const image = await fileToCompressedBase64($("#loadingImage"));
         await api("/api/outbound/loading-detail", {
             houseNumber: normalizeHouseBarcode($("#terminalHouse").value),
@@ -12172,10 +12297,21 @@ async function submitCsConfirm(gkey) {
     if (!grp) return;
     const invoiceEl = document.getElementById("csInvoice-" + gkey);
     const invoiceNo = invoiceEl?.value?.trim() || "";
+    let specialReleaseReason = "";
     if (!invoiceNo) {
-        toast("กรุณากรอกเลข Invoice ก่อน Confirm");
-        invoiceEl?.focus();
-        return;
+        // SRS 2: release the truck before the Invoice exists, with a reason.
+        specialReleaseReason = (await scdPrompt({
+            title: "ยังไม่มีเลข Invoice",
+            note: "ปล่อยรถกรณีพิเศษได้ งานจะติดป้าย 'รอ Invoice' และต้องใส่ Invoice ก่อนวางบิล ถ้าไม่ต้องการ กดยกเลิกแล้วกรอก Invoice",
+            label: "เหตุผลที่ปล่อยรถก่อนมี Invoice",
+            okText: "ปล่อยรถกรณีพิเศษ"
+        }) || "").trim();
+        if (!specialReleaseReason) {
+            toast("กรุณากรอกเลข Invoice ก่อน Confirm");
+            invoiceEl?.focus();
+            return;
+        }
+        if (specialReleaseReason.length < 5) return toast("เหตุผลต้องยาวอย่างน้อย 5 ตัวอักษร");
     }
     const checked = Array.from(grp.querySelectorAll(".cs-job-check:checked")).map(el => el.value);
     if (!checked.length) {
@@ -12196,6 +12332,7 @@ async function submitCsConfirm(gkey) {
         const data = await requestCsConfirmation({
                 houseNumbers: checked,
                 invoiceNo: invoiceNo,
+                ...(specialReleaseReason ? { specialRelease: true, specialReleaseReason } : {}),
                 confirmedBy: user?.name || "CS",
                 contactName: contactName,
                 contactPhone: contactPhone,
@@ -12492,7 +12629,7 @@ function _renderDockHtml() {
       '</div>' +
       '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>เรียกรถเข้าท่าอัตโนมัติ: ' + (d.autoDispatch?.enabled===false?'หยุดอยู่':'เปิดอยู่') + '</h3>' +
       (['Admin','WH3_TeamLeader'].includes(currentWebUser()?.role)?'<button type="button" class="dock-btn" onclick="dockToggleAuto()">'+(d.autoDispatch?.enabled===false?'เปิดเรียกอัตโนมัติ':'หยุดเรียกอัตโนมัติ')+'</button>':'') +
-      '</div><p>เรียกรถที่ถึง WH3 และมีใบตรวจปล่อยครบ เข้าท่าว่าง D8–D11 ตามคิวเร่งด่วน คนขับยังต้องยืนยันเข้าท่าจริง และเจ้าหน้าที่คืนท่าหลังรถออกแล้ว</p></div>' +
+      '</div><p>เรียกรถที่ถึง WH3 และมีใบตรวจปล่อยครบ เข้าท่าว่าง D6–D8 ตามคิวเร่งด่วน คนขับยังต้องยืนยันเข้าท่าจริง และเจ้าหน้าที่คืนท่าหลังรถออกแล้ว</p></div>' +
       '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>สถานะช่องเทียบท่า</h3>' +
         '<a class="dock-btn ghost" href="/dock-display" target="_blank" rel="noopener">จอประกาศคิวหน้าคลัง</a>' +
         '<a class="dock-btn ghost" href="/dock-display?scope=sit" target="_blank" rel="noopener">จอคิว SIT</a>' +
@@ -12519,6 +12656,7 @@ function _renderDockHtml() {
               (q.suggestedBayId ? " · แนะนำ " + safeHtml(q.suggestedBayId) : "") + '</span></div>' +
               '<button type="button" class="dock-btn" onclick="dockAssign(\'' + safeHtml(q.houseNumber) + '\')">จัดช่อง</button>' +
               (['Admin','WH3_TeamLeader'].includes(currentWebUser()?.role)?'<button type="button" class="dock-btn ghost" data-house="'+safeHtml(q.houseNumber)+'" onclick="dockPauseAuto(this.dataset.house,'+!q.autoDispatchPaused+')">'+(q.autoDispatchPaused?'คืนเข้าคิวอัตโนมัติ':'พักคิว')+'</button>':'') +
+              (q.emergency ? '<span class="dock-emergency-tag" title="' + safeHtml(q.emergencyReason || "") + '">ฉุกเฉิน</span>' : (['Admin','Team_Transport','WH3_TeamLeader'].includes(currentWebUser()?.role) ? '<button type="button" class="dock-btn danger" data-house="' + safeHtml(q.houseNumber) + '" onclick="dockEmergency(this.dataset.house)">แทรกคิวฉุกเฉิน</button>' : '')) +
               '<button type="button" class="dock-btn ghost" onclick="dockRemoveQueue(\'' + safeHtml(q.houseNumber) + '\')">ลบ</button></div>';
           }).join("") : '<div class="empty-state compact"><p>ไม่มีรถรอคิว</p></div>') +
           '<div class="dock-note">คิวพร้อมและมีท่าว่างจะเรียกอัตโนมัติ ท่าที่ยังไม่คืนจะไม่เรียกซ้อน พักคิวรถได้พร้อมระบุเหตุผล</div></div>' +
@@ -12560,7 +12698,7 @@ function _renderDockConfig() {
       '<span>เพิ่ม ลบ เปลี่ยนชื่อ หรือปิดใช้ชั่วคราวได้ · ช่องที่มีรถเทียบอยู่จะแก้ไม่ได้</span></div>' +
       '<button type="button" class="dock-x" onclick="dockConfigClose()">✕</button></div>' +
       '<div class="dock-cfg-add"><button type="button" class="dock-btn" onclick="dockReconcileVehicleRounds()">รวมรถที่ถูกจัดซ้ำหลายท่า</button><span>รวมเฉพาะรอบรถเดียวกันที่ยังไม่เริ่มลงสินค้า · รายการที่เริ่มงานแล้วจะไม่ถูกย้าย</span></div>' +
-      '<div class="dock-cfg-add"><button type="button" class="dock-btn" onclick="dockSendConfig({action:\'ensure-inbound\'},\'เพิ่มท่า 9–11 แล้ว โดยคงท่าเดิม\')">เพิ่มท่ารับเข้า 9–11</button><span>เพิ่มเฉพาะท่าที่ยังไม่มี ไม่ล้างค่าท่าเดิม</span></div>' +
+      '<div class="dock-cfg-add"><button type="button" class="dock-btn" onclick="dockSendConfig({action:\'ensure-inbound\'},\'เพิ่มท่าขาเข้า 6–8 แล้ว โดยคงท่าเดิม\')">เพิ่มท่ารับเข้า 6–8</button><span>เพิ่มเฉพาะท่าที่ยังไม่มี ไม่ล้างค่าท่าเดิม</span></div>' +
       '<div class="dock-cfg-add"><input id="dockNewName" placeholder="ชื่อช่อง เช่น ท่า 9 / Dock A1">' +
       '<input id="dockNewZone" placeholder="โซน (A/B/C)" maxlength="4">' +
       '<button type="button" class="dock-btn" onclick="dockBayAdd()">+ เพิ่มช่อง</button></div>' +
@@ -12581,6 +12719,26 @@ function _renderDockConfig() {
       '<input id="dockResetCount" type="number" min="1" max="40" value="' + (bays.length || 8) + '">' +
       '<input id="dockResetZones" value="A,B,C" placeholder="โซน คั่นด้วย ,">' +
       '<button type="button" class="dock-btn ghost" onclick="dockBaysReset()">สร้างใหม่</button></div></div>';
+}
+
+// Emergency bypass (SRS 4.2.3): jump the dock queue with a recorded reason.
+const DOCK_EMERGENCY_REASONS = [ "ไฟล์ทด่วน ใกล้ Cut-off", "สินค้าอันตราย ต้องลงก่อน", "ลูกค้าเร่งด่วนพิเศษ", "รถต้องออกไปงานถัดไป" ];
+async function dockEmergency(houseNumber) {
+    const reason = await scdPrompt({
+        title: "แทรกคิวฉุกเฉิน " + houseNumber,
+        note: "ตัวอย่างเหตุผล: " + DOCK_EMERGENCY_REASONS.join(" · ") + " — ทุกครั้งถูกบันทึกเพื่อวิเคราะห์",
+        label: "เหตุผลฉุกเฉิน",
+        value: DOCK_EMERGENCY_REASONS[0],
+        okText: "แทรกคิว"
+    });
+    if (!reason) return;
+    try {
+        await api("/api/meeting/readiness", { action: "emergency-slot", houseNumber: houseNumber, reason: reason.trim() });
+        toast("แทรกคิวฉุกเฉินแล้ว · " + houseNumber);
+        await renderDockBoard();
+    } catch (error) {
+        toast(error.message || "แทรกคิวไม่สำเร็จ");
+    }
 }
 
 async function dockSendConfig(payload, okMsg) {

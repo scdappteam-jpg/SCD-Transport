@@ -545,7 +545,7 @@
           <div class="step-tracker" data-step-key="outbound_close" data-step-name="Loading Detail & Close"></div>
           <p class="step-note">จัดทำ Loading Detail <strong>2 ใบ</strong> · ถ่ายรูป Pallet/Tray/Lot ก่อนอัปโหลด</p>
           <label>Tray / Pallet / Lot Number</label>
-          <input id="trayNumber" autocomplete="off" placeholder="Tray / Pallet / Lot number">
+          <input id="trayNumber" autocomplete="off" placeholder="เลข ULD หรือ Pallet (ต้องกรอก)" required>
           <label>รูปถ่าย Pallet / Tray / Lot (ใช้ยืนยัน Confirm)</label>
           <input id="palletPhoto" type="file" accept="image/*" capture="environment" multiple="multiple">
           <label>Loading Detail ใบที่ 1 (สำเนาเก็บ)</label>
@@ -553,7 +553,7 @@
           <label>Loading Detail ใบที่ 2 (ส่งลูกค้า / EI)</label>
           <input id="loadingImage2" type="file" accept="image/*,application/pdf" capture="environment">
           <button id="packingBtn" type="button" class="soft">Packing / Consolidation</button>
-          <button id="loadingBtn" type="button">อัปโหลด Loading Detail / Close</button>
+          <button id="loadingBtn" type="button">Close Complete · โหลดเสร็จ</button>
         </section>
 
         <section class="inbound-step return-process outbound-workflow-detail" hidden>
@@ -895,7 +895,7 @@
     <script src="inbound-receipt-ui.js?v=3-preview-labels&amp;cargo=20261124"></script>
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
   <script src="driver-dock-core.js?v=20261031-one-vehicle-one-dock-confirmed-reconcile"></script>
-  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=3&amp;dispatch=20261125-round-completion&amp;header=20261126&amp;screens=20261127&amp;count=20261127&amp;split=20261127"></script>
+  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=3&amp;dispatch=20261125-round-completion&amp;header=20261126&amp;screens=20261127&amp;count=20261127&amp;split=20261127&amp;close=20261127"></script>
   </body>
 </html>
 

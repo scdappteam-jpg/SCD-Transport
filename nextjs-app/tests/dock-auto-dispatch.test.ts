@@ -5,7 +5,7 @@ const require=createRequire(import.meta.url),auto=require('../src/server/dock-au
 const at='2026-11-23T09:00:00Z';
 function fixture(){
  const jobs=['A','B','C'].map((houseNumber,i)=>({houseNumber,driverId:'DR'+i,transportRoundId:'R'+i,vehiclePlate:'SIT-'+i,driverName:'SIT',status:'WaitingForDock',csConfirmed:true,cargoIssuedAt:at,arrivedWh3At:at,releaseDocumentReceivedAt:at,flightTime:`2026-11-23T${12+i}:00:00Z`}));
- return {jobs,dock:{autoDispatch:{enabled:true},bays:[{id:'D8',name:'ท่า 8',status:'Available',houseNumber:'',assignedAt:''},{id:'D9',name:'ท่า 9',status:'Closed',houseNumber:'',assignedAt:''}],queue:jobs.map((j,i)=>({id:'Q'+i,houseNumber:j.houseNumber,houseNumbers:[j.houseNumber],queueNumber:i+1,arrivedAt:at,autoDispatchPaused:false}))}};
+ return {jobs,dock:{autoDispatch:{enabled:true},bays:[{id:'D8',name:'ท่า 8',status:'Available',houseNumber:'',assignedAt:''},{id:'D7',name:'ท่า 7',status:'Closed',houseNumber:'',assignedAt:''}],queue:jobs.map((j,i)=>({id:'Q'+i,houseNumber:j.houseNumber,houseNumbers:[j.houseNumber],queueNumber:i+1,arrivedAt:at,autoDispatchPaused:false}))}};
 }
 test('auto calls the earliest ready flight once, without inventing physical arrival or unloading',()=>{
  const db=fixture();db.dock.queue.reverse();
@@ -40,6 +40,6 @@ test('missing arrival, rejected work, absent driver or plate cannot auto dispatc
 });
 test('one plate cannot get a second bay across distinct round identities',()=>{
  const db=fixture();db.dock.bays[1].status='Available';db.jobs[1].vehiclePlate='sit 0';
- assert.deepEqual(auto.dispatch(db,at),[{bayId:'D8',houseNumbers:['A']},{bayId:'D9',houseNumbers:['C']}]);
+ assert.deepEqual(auto.dispatch(db,at),[{bayId:'D8',houseNumbers:['A']},{bayId:'D7',houseNumbers:['C']}]);
  assert.ok(db.dock.queue.some(e=>e.houseNumber==='B'));
 });

@@ -5,15 +5,18 @@ const roles = new Set(['Admin','Executive','Team_Transport','WH_Staff','WH3_Team
 const isSit = house => /^SIT(?:UI)?[-A-Z0-9]/i.test(String(house || ''));
 function ensureInboundBays(db) {
     db.dock ||= {}; db.dock.bays ||= [];
-    // Preflight every name before adding anything. Never reset existing bays.
-    for (const n of [9,10,11]) {
-        const collision=db.dock.bays.find(b=>b.id!==`D${n}` && String(b.name).replace(/\s/g,'')===`ท่า${n}`);
+    // Inbound bays of the 8-bay layout (D6–D8). Preflight every name before
+    // adding anything. Never reset existing bays.
+    const ids=require('./dock-layout.cjs').INBOUND;
+    for (const id of ids) {
+        const n=id.slice(1);
+        const collision=db.dock.bays.find(b=>b.id!==id && String(b.name).replace(/\s/g,'')===`ท่า${n}`);
         if(collision)throw Object.assign(new Error(`ชื่อท่า ${n} มีอยู่ด้วยรหัสอื่น กรุณาตรวจการตั้งค่า`),{statusCode:409});
     }
     const added=[];
-    for(const n of [9,10,11])if(!db.dock.bays.some(b=>b.id===`D${n}`)) {
-        const bay={id:`D${n}`,name:`ท่า ${n}`,zone:'WH3',status:'Available',note:'Inbound'};
-        db.dock.bays.push(bay);added.push(bay.id);
+    for(const id of ids)if(!db.dock.bays.some(b=>b.id===id)) {
+        db.dock.bays.push({id,name:`ท่า ${id.slice(1)}`,zone:'WH3',status:'Available',note:'Inbound'});
+        added.push(id);
     }
     ensureTickets(db);
     return added;

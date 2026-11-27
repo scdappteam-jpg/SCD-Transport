@@ -56,6 +56,7 @@ function billing(db,jobs,payload,documentStatus,{batch=false}={}) {
     for (const job of jobs) {
         if (job.csRejected || job.status==='Cancelled') fail(`House ${job.houseNumber} ถูกพักหรือยกเลิก ต้องตรวจ CS ก่อนวางบิล`);
         if (!job.readyForBilling) fail(`House ${job.houseNumber} ยังไม่พร้อมวางบิล`);
+        if (job.invoicePending || job.specialRelease && !String(job.csInvoiceNo || job.invoiceNo || '').trim()) fail(`House ${job.houseNumber} ปล่อยรถกรณีพิเศษ ยังรอเลข Invoice ให้ CS ใส่ Invoice ก่อนวางบิล`);
         if (job.billingReviewStatus!=='Reviewed') fail(`House ${job.houseNumber} ต้องผ่านการตรวจเอกสารก่อนสร้าง Invoice`);
         if (!documentStatus(db,job).ready) fail(`House ${job.houseNumber} เอกสารวางบิลปัจจุบันไม่ครบ`,422);
         if (job.invoiceId || (db.billing||[]).some(bill=>bill.status!=='Cancelled' && (bill.houseNumbers||[bill.houseNumber]).includes(job.houseNumber))) fail(`House ${job.houseNumber} มี Invoice แล้ว ห้ามสร้างซ้ำ`);

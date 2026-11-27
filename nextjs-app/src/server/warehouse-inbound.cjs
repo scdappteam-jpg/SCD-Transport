@@ -10,7 +10,7 @@ const roles=(actor,list)=>{if(!actor||!list.includes(actor.role))fail('ไม่
 const recorded=v=>typeof v==='string'&&Number.isFinite(Date.parse(v));
 function assertUnloaded(job){
     if(job.shipmentSource==='CustomerDirect')return;
-    const events=(job.driverDockHistory||[]).filter(e=>e.assignedAt===job.dockAssignedAt&&['D8','D9','D10','D11'].includes(e.bayId));
+    const events=(job.driverDockHistory||[]).filter(e=>e.assignedAt===job.dockAssignedAt&&require('./dock-layout.cjs').isInboundBayId(e.bayId));
     const rows=['arrive','unload-start','unload-complete'].map(name=>events.find(e=>e.event===name));
     if(!recorded(job.dockAssignedAt)||rows.some(e=>!e||!recorded(e.at)||e.by!==job.driverId)||new Set(rows.map(e=>e.bayId)).size!==1||rows.some((e,i)=>Date.parse(e.at)<Date.parse(i?rows[i-1].at:job.dockAssignedAt))||Date.parse(rows[0].at)<Date.parse(job.arrivedWh3At)||!rows[2].evidenceFileIds?.length)fail('ต้องยืนยันเข้าท่า เริ่มลง และลงสินค้าเสร็จพร้อมหลักฐานของรอบ Dock ล่าสุดก่อนรับเข้าคลัง');
     if(rows[2].at!==job.wh3UnloadCompletedAt)fail('เวลาลงสินค้าไม่ตรงกับประวัติ Dock กรุณาตรวจผู้รับผิดชอบ');
