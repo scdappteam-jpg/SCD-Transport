@@ -1403,7 +1403,9 @@ function parsePickupLines(text) {
 
 function adminPickupRows() {
     syncAdminPickupRowsText();
-    return parsePickupLines($("#adminPickupItems").value).map(row => {
+    const inputRows = typeof adminRowsFromInputs === "function" ? adminRowsFromInputs() : [];
+    return parsePickupLines($("#adminPickupItems").value).map((row, i) => {
+        if (inputRows[i]?.driverId && inputRows[i].houseNumber === row.houseNumber) row = { ...row, driverId: inputRows[i].driverId };
         const job = (state.dashboard?.jobs || []).find(job => job.houseNumber === row.houseNumber);
         if (!job) return row;
         return {...row, invoiceNo:job.csInvoiceNo || job.invoiceNo || row.invoiceNo || "",
@@ -1411,6 +1413,13 @@ function adminPickupRows() {
             tel:job.csContactPhone || job.pickupPhone || job.tel || row.tel || "",
             dest:job.destAirport || row.dest || "", booking:job.booking || row.booking || ""};
     });
+}
+
+// Row driver: "" follows the batch driver; another driver splits that House
+// onto their own truck and round (one company, several trucks).
+function adminRowDriverOptions(selected = "") {
+    return `<option value="">ใช้คนขับหลักของชุด</option>` + driverUsers().map(user =>
+        `<option value="${escapeAttr(user.id)}" ${user.id === selected ? "selected" : ""}>${escapeAttr(user.name || user.id)}${user.vehiclePlate ? " · " + escapeAttr(user.vehiclePlate) : ""}</option>`).join("");
 }
 
 function escapeAttr(value) {
@@ -1428,7 +1437,7 @@ function addAdminPickupRow(values = {}) {
     if (!list) return;
     const row = document.createElement("div");
     row.className = "admin-job-row";
-    row.innerHTML = `\n    <input class="admin-row-house" placeholder="House Number" value="${escapeAttr(values.houseNumber || values.house)}">\n    <select class="admin-row-destination">\n      <option value="WH3">WH3 (คลัง)</option>\n      <option value="TG">TG Terminal</option>\n      <option value="TGINT">TG Inter Terminal</option>\n      <option value="BFS">BFS Terminal</option>\n    </select>\n    <input class="admin-row-carton" placeholder="Carton" value="${escapeAttr(values.carton)}">\n    <input class="admin-row-date" type="date" value="${escapeAttr(values.pickupDate || $("#adminPickupDate")?.value)}">\n    <button class="edit-admin-row" type="button">แก้ไข</button>\n    <button class="remove-admin-row" type="button" aria-label="Remove row">×</button>\n  `;
+    row.innerHTML = `\n    <input class="admin-row-house" placeholder="House Number" value="${escapeAttr(values.houseNumber || values.house)}">\n    <select class="admin-row-destination">\n      <option value="WH3">WH3 (คลัง)</option>\n      <option value="TG">TG Terminal</option>\n      <option value="TGINT">TG Inter Terminal</option>\n      <option value="BFS">BFS Terminal</option>\n    </select>\n    <input class="admin-row-carton" placeholder="Carton" value="${escapeAttr(values.carton)}">\n    <input class="admin-row-date" type="date" value="${escapeAttr(values.pickupDate || $("#adminPickupDate")?.value)}">\n    <button class="edit-admin-row" type="button">แก้ไข</button>\n    <button class="remove-admin-row" type="button" aria-label="Remove row">×</button>\n    <select class="admin-row-driver" aria-label="คนขับของ House นี้">${adminRowDriverOptions(values.driverId)}</select>\n  `;
     list.appendChild(row);
     row.querySelector(".admin-row-destination").value = values.destination || $("#adminDestination")?.value || "WH3";
     row.querySelector(".edit-admin-row").addEventListener("click", () => openAdminRowModal(row));
@@ -1542,12 +1551,14 @@ function adminRowsFromInputs() {
         const destination = row.querySelector(".admin-row-destination").value;
         const carton = row.querySelector(".admin-row-carton").value.trim();
         const pickupDate = row.querySelector(".admin-row-date").value;
+        const driverId = row.querySelector(".admin-row-driver")?.value || "";
         return house ? {
             house: house,
             houseNumber: house,
             destination: destination,
             carton: carton,
-            pickupDate: pickupDate
+            pickupDate: pickupDate,
+            driverId: driverId
         } : null;
     }).filter(Boolean);
 }
@@ -1718,13 +1729,19 @@ function applyAdminDriver(preserveInputs = false) {
 function updateAdminBatchSummary() {
     const el = $("#adminBatchSummary");
     if (!el) return;
+    // Driver list can arrive after the rows were drawn.
+    if (driverUsers().length) $$("#adminPickupItemRows .admin-row-driver").forEach(select => {
+        if (select.options.length <= 1) select.innerHTML = adminRowDriverOptions(select.value);
+    });
     const rows = adminPickupRows();
     const count = rows.length || ($("#adminHouse").value.trim() ? 1 : 0);
     const driver = $("#adminDriverName").value.trim() || "-";
     const plate = $("#adminVehiclePlate").value.trim() || "-";
     const dates = Array.from(new Set(rows.map(row => row.pickupDate).filter(Boolean)));
     const dateLabel = dates.length > 1 ? `${dates.length} วัน / days` : dates[0] || $("#adminPickupDate").value || "-";
-    el.innerHTML = `<strong>Assign batch</strong><span>${count} งาน / jobs -> ${driver} / ${plate} / ${dateLabel}</span>`;
+    const extra = new Set(rows.map(row => row.driverId).filter(id => id && id !== $("#adminDriverSelect")?.value));
+    const split = extra.size ? ` · แยกรถเพิ่ม ${extra.size} คัน` : "";
+    el.innerHTML = `<strong>Assign batch</strong><span>${count} งาน / jobs -> ${escapeAttr(driver)} / ${escapeAttr(plate)} / ${dateLabel}${split}</span>`;
 }
 
 function jobCargoData(job) {
@@ -3857,6 +3874,7 @@ function wizardSetDriverCount(count) {
         newLanes.push(current[i] || users[i]?.id || users[0]?.id || "");
     }
     state.groupWizard.laneDrivers = newLanes;
+    state.groupWizard.laneVehicles = Array.from({ length: count }, (_, i) => (state.groupWizard.laneVehicles || [])[i] || "");
     state.groupWizard.driverCount = count;
     const jlm = state.groupWizard.jobLaneMap || {};
     Object.keys(jlm).forEach(house => {
@@ -3867,12 +3885,14 @@ function wizardSetDriverCount(count) {
 
 function computeWizardPagesAndDrivers(selectedJobs) {
     const laneDrivers = state.groupWizard.laneDrivers || [ state.groupWizard.driverId ];
+    const laneVehicles = state.groupWizard.mode === "outbound" ? [] : state.groupWizard.laneVehicles || [];
     const jobLaneMap = state.groupWizard.jobLaneMap || {};
     const _hpp = state.groupWizard?.mode === "outbound" ? 15 : HOUSES_PER_PAGE;
     if (laneDrivers.length <= 1) {
         return chunkArray(selectedJobs, _hpp).map(jobs => ({
             jobs: jobs,
-            driverId: laneDrivers[0] || state.groupWizard.driverId
+            driverId: laneDrivers[0] || state.groupWizard.driverId,
+            vehiclePlate: laneVehicles[0] || ""
         }));
     }
     const byLane = laneDrivers.map(() => []);
@@ -3887,14 +3907,55 @@ function computeWizardPagesAndDrivers(selectedJobs) {
         chunkArray(laneJobs, _hpp).forEach(chunk => {
             pages.push({
                 jobs: chunk,
-                driverId: laneDrivers[i]
+                driverId: laneDrivers[i],
+                vehiclePlate: laneVehicles[i] || ""
             });
         });
     });
     return pages.length ? pages : [ {
         jobs: selectedJobs,
-        driverId: laneDrivers[0]
+        driverId: laneDrivers[0],
+        vehiclePlate: laneVehicles[0] || ""
     } ];
+}
+
+// A lane can run on a company fleet vehicle instead of the driver's own one.
+function laneDriverWithPlate(user, plate) {
+    return user && plate ? { ...user, vehiclePlate: plate } : user;
+}
+
+// Spread Houses over the lanes so each truck carries a similar number of pieces
+// (largest House first onto the lightest lane).
+function wizardAutoSplitByPieces() {
+    const jobs = groupWizardSourceJobs();
+    const laneCount = (state.groupWizard.laneDrivers || [ state.groupWizard.driverId ]).length;
+    if (laneCount < 2 || !jobs.length) return;
+    const load = Array.from({ length: laneCount }, () => ({ pieces: 0, count: 0 }));
+    const map = {};
+    [ ...jobs ].sort((a, b) => Number(b.pieceCount || 0) - Number(a.pieceCount || 0)).forEach(job => {
+        let best = 0;
+        load.forEach((lane, i) => {
+            if (lane.pieces < load[best].pieces || lane.pieces === load[best].pieces && lane.count < load[best].count) best = i;
+        });
+        map[job.houseNumber] = best;
+        load[best].pieces += Number(job.pieceCount || 0);
+        load[best].count += 1;
+    });
+    state.groupWizard.jobLaneMap = map;
+    renderGroupWizard();
+}
+
+async function loadWizardFleetPlates() {
+    if (state.fleetPlates) return;
+    state.fleetPlates = [];
+    if (![ "Admin", "Executive", "Team_Transport" ].includes(currentWebUser()?.role)) return;
+    try {
+        const data = await api("/api/fleet/directory", undefined, "GET");
+        state.fleetPlates = (data?.vehicles || []).filter(v => v.plate).map(v => ({ plate: v.plate, vehicleType: v.vehicleType || "" }));
+        if (state.groupWizard?.open && state.groupWizard.step === 2) renderGroupWizard();
+    } catch (error) {
+        state.fleetPlates = null;
+    }
 }
 
 function updateGroupWizardPreview() {
@@ -3927,6 +3988,7 @@ function openGroupWizard({mode: mode = "auto", groupIndex: groupIndex = null, jo
         selectedHouses: mode === "auto" || mode === "outbound" ? jobs.map(job => job.houseNumber) : [],
         driverId: initDriverId,
         laneDrivers: initLaneDrivers,
+        laneVehicles: [],
         driverCount: initCrewCount,
         jobLaneMap: {},
         pageDrivers: {},
@@ -3992,19 +4054,40 @@ function renderGroupWizard() {
             at: i => i < 26 ? String.fromCharCode(65 + i) : "A" + String.fromCharCode(39 + i)
         };
         const MAX_LANES = 30;
+        const laneVehicles = state.groupWizard.laneVehicles || [];
+        const showVehicle = state.groupWizard.mode !== "outbound";
+        if (showVehicle) loadWizardFleetPlates();
+        const fleetPlates = state.fleetPlates || [];
+        const usedPlates = new Map();
+        laneDrivers.forEach((did, i) => {
+            const plate = laneVehicles[i] || users.find(u => u.id === did)?.vehiclePlate || "";
+            if (plate && !usedPlates.has(plate)) usedPlates.set(plate, i);
+        });
+        const totalPiecesAll = sourceJobs.reduce((sum, job) => sum + Number(job.pieceCount || 0), 0);
         const lanes = laneDrivers.map((did, i) => ({
             driverId: did,
+            plate: laneVehicles[i] || "",
             driver: users.find(u => u.id === did),
             index: i,
             color: laneColors.at(i),
             letter: laneNames.at(i),
             jobs: sourceJobs.filter(job => (jobLaneMap[job.houseNumber] ?? 0) === i)
         }));
+        lanes.forEach(lane => { lane.pieces = lane.jobs.reduce((sum, job) => sum + Number(job.pieceCount || 0), 0); });
+        const vehicleSelect = lane => {
+            if (!showVehicle) return "";
+            const own = lane.driver?.vehiclePlate ? `รถประจำ · ${safeHtml(lane.driver.vehiclePlate)}` : "รถประจำคนขับ";
+            const opts = fleetPlates.filter(v => v.plate !== lane.driver?.vehiclePlate).map(v => {
+                const taken = usedPlates.has(v.plate) && usedPlates.get(v.plate) !== lane.index;
+                return `<option value="${safeHtml(v.plate)}" ${v.plate === lane.plate ? "selected" : ""} ${taken ? "disabled" : ""}>${safeHtml(v.plate)}${v.vehicleType ? " · " + safeHtml(v.vehicleType) : ""}${taken ? " (ใช้แล้ว)" : ""}</option>`;
+            }).join("");
+            return `<select class="wizard-lane-vehicle-select" data-lane-index="${lane.index}" aria-label="รถของสาย ${lane.letter}"><option value="">${own}</option>${opts}</select>`;
+        };
         const unassigned = sourceJobs.filter(job => {
             const li = jobLaneMap[job.houseNumber] ?? 0;
             return li < 0 || li >= driverCount;
         });
-        $("#autoGroupDetails").innerHTML = `\n      <section class="wizard-panel wizard-assign-panel">\n        <h3>2. แบ่งงานให้คนขับ</h3>\n        <div class="wizard-driver-count-bar">\n          <span class="wdc-label">เลือกจำนวนคนขับ</span>\n          <div class="wdc-segmented">\n            ${[ 1, 2, 3, 4 ].map(n => `\n              <button class="wdc-seg ${driverCount === n ? "active" : ""}" type="button" data-driver-count="${n}">\n                <strong>${n}</strong><small>คนขับ</small>\n              </button>`).join("")}\n            <div class="wdc-custom ${driverCount > 4 ? "active" : ""}" title="ระบุจำนวนเอง (สูงสุด 30)">\n              <button type="button" class="wdc-stepbtn" data-wdc-step="-1" aria-label="ลดจำนวนคนขับ">−</button>\n              <input id="wdcCustomCount" type="number" min="1" max="30" value="${driverCount}" aria-label="จำนวนคนขับ">\n              <button type="button" class="wdc-stepbtn" data-wdc-step="1" aria-label="เพิ่มจำนวนคนขับ">+</button>\n              <small>คนขับ</small>\n            </div>\n          </div>\n          <div class="wdc-info">\n            <span>${sourceJobs.length} งาน</span>\n            <span>·</span>\n            <span>ออก Cargo ประมาณ ${Math.ceil(sourceJobs.length / 5) + (driverCount > 1 ? " +" : "")} ใบ</span>\n          </div>\n        </div>\n        <div class="wizard-lane-container" id="wizardLaneContainer">\n          ${lanes.map((lane, i) => `\n            <div class="wizard-driver-lane" data-lane-index="${i}"\n                 ondragover="event.preventDefault();event.currentTarget.classList.add('drag-over')"\n                 ondragleave="event.currentTarget.classList.remove('drag-over')"\n                 ondrop="wizardDropJob(event,${i})">\n              <div class="wizard-lane-header" style="border-left:3px solid ${lane.color}">\n                <span class="wizard-lane-badge" style="background:${lane.color}">${lane.letter}</span>\n                <select class="wizard-lane-driver-select" data-lane-index="${i}">\n                  ${users.map(u => `<option value="${safeHtml(u.id)}" ${u.id === lane.driverId ? "selected" : ""}>${safeHtml(u.name)}${u.vehiclePlate ? " · " + u.vehiclePlate : ""}</option>`).join("")}\n                </select>\n                <span class="wizard-lane-count">${lane.jobs.length} งาน</span>\n              </div>\n              <div class="wizard-lane-jobs">\n                ${lane.jobs.map(job => `\n                  <div class="wizard-job-card" draggable="true" data-house="${safeHtml(job.houseNumber)}"\n                       ondragstart="wizardDragStart(event,'${safeHtml(job.houseNumber)}')"\n                       style="border-left:3px solid ${lane.color}">\n                    <strong>${safeHtml(job.houseNumber)}</strong>\n                    <small>${safeHtml(job.pickupDate || "-")} · ${job.pieceCount || 0} ชิ้น</small>\n                  </div>`).join("")}\n                ${lane.jobs.length === 0 ? `<div class="wizard-lane-empty">ลากงานมาวางที่นี่</div>` : ""}\n              </div>\n            </div>`).join("")}\n        </div>\n      </section>`;
+        $("#autoGroupDetails").innerHTML = `\n      <section class="wizard-panel wizard-assign-panel">\n        <h3>2. แบ่งงานให้คนขับ</h3>\n        <div class="wizard-driver-count-bar">\n          <span class="wdc-label">เลือกจำนวนคนขับ</span>\n          <div class="wdc-segmented">\n            ${[ 1, 2, 3, 4 ].map(n => `\n              <button class="wdc-seg ${driverCount === n ? "active" : ""}" type="button" data-driver-count="${n}">\n                <strong>${n}</strong><small>คนขับ</small>\n              </button>`).join("")}\n            <div class="wdc-custom ${driverCount > 4 ? "active" : ""}" title="ระบุจำนวนเอง (สูงสุด 30)">\n              <button type="button" class="wdc-stepbtn" data-wdc-step="-1" aria-label="ลดจำนวนคนขับ">−</button>\n              <input id="wdcCustomCount" type="number" min="1" max="30" value="${driverCount}" aria-label="จำนวนคนขับ">\n              <button type="button" class="wdc-stepbtn" data-wdc-step="1" aria-label="เพิ่มจำนวนคนขับ">+</button>\n              <small>คนขับ</small>\n            </div>\n          </div>\n          <div class="wdc-info">\n            <span>${sourceJobs.length} งาน</span>\n            <span>·</span>\n            <span>ออก Cargo ประมาณ ${Math.ceil(sourceJobs.length / 5) + (driverCount > 1 ? " +" : "")} ใบ</span>\n            <span>·</span>\n            <span>รวม ${totalPiecesAll} ชิ้น</span>\n          </div>\n          ${driverCount > 1 ? `<button type="button" class="wizard-auto-split" data-wizard-auto-split title="วาง House ใหญ่ก่อน ลงสายที่ชิ้นน้อยที่สุด">แบ่งอัตโนมัติตามจำนวนชิ้น</button>` : ""}\n        </div>\n        <div class="wizard-lane-container" id="wizardLaneContainer">\n          ${lanes.map((lane, i) => `\n            <div class="wizard-driver-lane" data-lane-index="${i}"\n                 ondragover="event.preventDefault();event.currentTarget.classList.add('drag-over')"\n                 ondragleave="event.currentTarget.classList.remove('drag-over')"\n                 ondrop="wizardDropJob(event,${i})">\n              <div class="wizard-lane-header" style="border-left:3px solid ${lane.color}">\n                <span class="wizard-lane-badge" style="background:${lane.color}">${lane.letter}</span>\n                <select class="wizard-lane-driver-select" data-lane-index="${i}">\n                  ${users.map(u => `<option value="${safeHtml(u.id)}" ${u.id === lane.driverId ? "selected" : ""}>${safeHtml(u.name)}${u.vehiclePlate ? " · " + u.vehiclePlate : ""}</option>`).join("")}\n                </select>\n                ${vehicleSelect(lane)}\n                <span class="wizard-lane-count">${lane.jobs.length} งาน · ${lane.pieces} ชิ้น</span>\n              </div>\n              <div class="wizard-lane-jobs">\n                ${lane.jobs.map(job => `\n                  <div class="wizard-job-card" draggable="true" data-house="${safeHtml(job.houseNumber)}"\n                       ondragstart="wizardDragStart(event,'${safeHtml(job.houseNumber)}')"\n                       style="border-left:3px solid ${lane.color}">\n                    <strong>${safeHtml(job.houseNumber)}</strong>\n                    <small>${safeHtml(job.pickupDate || "-")} · ${job.pieceCount || 0} ชิ้น</small>\n                  </div>`).join("")}\n                ${lane.jobs.length === 0 ? `<div class="wizard-lane-empty">ลากงานมาวางที่นี่</div>` : ""}\n              </div>\n            </div>`).join("")}\n        </div>\n      </section>`;
     } else if (mode === "outbound") {
         const ctfMeta = state.groupWizard.ctfMeta || {};
         const totalPieces = selectedJobs.reduce((sum, j) => sum + Number(j.pieceCount || j.pieces || 0), 0);
@@ -4132,7 +4215,7 @@ async function groupWizardNextOrIssue() {
         return;
     }
     const pages = computeWizardPagesAndDrivers(jobs).map(page => {
-        const driver = assignableUsers().find(user => user.id === page.driverId);
+        const driver = laneDriverWithPlate(assignableUsers().find(user => user.id === page.driverId), page.vehiclePlate);
         if (!driver) throw new Error("ไม่พบคนขับในแผน กรุณาเลือกใหม่");
         return { jobs: page.jobs.slice(), driver };
     });
@@ -6530,7 +6613,7 @@ function getPageDriver(pageIndex) {
     const computed = state.groupWizard?._computedPages;
     if (computed && computed[pageIndex]) {
         const did = computed[pageIndex].driverId;
-        return users.find(u => u.id === did) || users[0] || null;
+        return laneDriverWithPlate(users.find(u => u.id === did) || users[0] || null, computed[pageIndex].vehiclePlate);
     }
     const pageDriverId = state.groupWizard?.pageDrivers?.[pageIndex];
     const driverId = pageDriverId ?? state.groupWizard?.driverId;
@@ -6811,9 +6894,15 @@ function adminPayloadFromCurrentForm() {
             flightTime: datetimeLocalToIso($("#adminFlightTime").value),
             productType: $("#adminProductType").value,
             routeType: $("#adminRouteType").value,
-            amount: $("#adminAmount").value
+            amount: $("#adminAmount").value,
+            ...(rows.length === 1 && rows[0].driverId && rows[0].driverId !== $("#adminDriverSelect").value ? adminSingleRowDriver(rows[0].driverId) : {})
         }
     };
+}
+
+function adminSingleRowDriver(driverId) {
+    const user = driverUsers().find(item => item.id === driverId);
+    return user ? { driverId: user.id, driverName: user.name || "", vehiclePlate: user.vehiclePlate || "" } : {};
 }
 
 async function issueAdminCargoFromCurrentForm() {
@@ -9943,6 +10032,15 @@ function bindEvents() {
             renderGroupWizard();
             return;
         }
+        const laneVehicleSelect = event.target.closest(".wizard-lane-vehicle-select");
+        if (laneVehicleSelect) {
+            const li = Number(laneVehicleSelect.dataset.laneIndex);
+            const vehicles = [ ...(state.groupWizard.laneVehicles || []) ];
+            vehicles[li] = laneVehicleSelect.value;
+            state.groupWizard.laneVehicles = vehicles;
+            renderGroupWizard();
+            return;
+        }
         const laneDriverSelect = event.target.closest(".wizard-lane-driver-select");
         if (laneDriverSelect) {
             const li = Number(laneDriverSelect.dataset.laneIndex);
@@ -9982,6 +10080,10 @@ function bindEvents() {
         }
     });
     $("#autoGroupDetails")?.addEventListener("click", event => {
+        if (event.target.closest("[data-wizard-auto-split]")) {
+            wizardAutoSplitByPieces();
+            return;
+        }
         const stepBtn = event.target.closest("[data-wdc-step]");
         if (stepBtn) {
             const current = (state.groupWizard.laneDrivers || []).length || 1;

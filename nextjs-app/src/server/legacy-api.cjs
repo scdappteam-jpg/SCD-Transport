@@ -47,6 +47,7 @@ const sharedStateMemory = require("./shared-state-memory.cjs");
 const authTestMode = require("./auth-test-mode.cjs");
 const csDispatch = require("./cs-dispatch.cjs");
 const pickupFlow = require("./pickup-flow.cjs");
+const pickupCountCheck = require("./pickup-count-check.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
 const meetingApi = require("./meeting-api.cjs");
@@ -5480,6 +5481,9 @@ async function handleApi(req, res, pathname) {
         payload.evidenceChannel ||= payload.sourceChannel || "Line/Email";
         payload.manualExtra = payload.planSource !== "LoadPlan";
         const rows = normalizePickupItems(payload.pickupItems || "");
+        let rowDrivers;
+        try { rowDrivers = csDispatch.rowAssignments(db, payload, rows); }
+        catch (error) { return sendJson(res, 400, { error: error.message }); }
         const batchId = payload.batchId || `BATCH-${Date.now()}`;
         const workRows = rows.length ? rows : [ {
             houseNumber: payload.houseNumber,
@@ -5495,9 +5499,11 @@ async function handleApi(req, res, pathname) {
         } ];
         const issuedAt = nowIso();
         const jobs = workRows.filter(row => row.houseNumber).map(row => {
+            const rowDriver = rowDrivers.get(String(row.driverId || "").trim());
             const job = upsertJob(db, {
                 ...payload,
-                batchId: batchId,
+                ...(rowDriver || {}),
+                batchId: rowDriver ? `${batchId}-${rowDriver.driverId}` : batchId,
                 houseNumber: row.houseNumber,
                 pickupDate: row.pickupDate || payload.pickupDate,
                 pieceCount: row.carton || payload.pieceCount,
@@ -5517,7 +5523,7 @@ async function handleApi(req, res, pathname) {
             await createAlert(db, `งานใหม่ ${pendingCsJobs.length} ใบ รอ CS ยืนยันก่อนออกใบ Cargo`, "warning");
         }
         if (jobs.length > pendingCsJobs.length) {
-            await createAlert(db, `Batch assigned and cargo forms ready: ${jobs.length - pendingCsJobs.length} jobs / ${payload.driverName || payload.driverId || "-"}`, "info");
+            await createAlert(db, `Batch assigned and cargo forms ready: ${jobs.length - pendingCsJobs.length} jobs / ${[ payload.driverName || payload.driverId, ...[ ...rowDrivers.values() ].map(d => d.driverName) ].filter(Boolean).join(", ") || "-"}`, "info");
         }
         writeDb(db);
         return sendJson(res, 200, {
@@ -5959,6 +5965,9 @@ async function handleApi(req, res, pathname) {
         if (jobs.some(item => !item.checkInAt)) return sendJson(res, 409, {
             error: "Check in before completing pickup"
         });
+        let countCheck;
+        try { countCheck = pickupCountCheck.check(jobs, normalizePickupItems(payload.pickupItems || ""), payload.countMismatchReason); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
         if (!Array.isArray(payload.productImages) || !payload.productImages.length) {
             return sendJson(res, 422, {
                 error: "At least one product photo is required"
@@ -6039,6 +6048,7 @@ async function handleApi(req, res, pathname) {
                 pickupChecklist: Array.isArray(payload.checklist) ? payload.checklist : item.pickupChecklist,
                 plannedPieceCount: item.plannedPieceCount ?? item.pieceCount,
                 pickupReceivedCount: ownRows[0]?.carton || payload.pieceCount || item.pieceCount,
+                pickupCountMismatch: (() => { const m = countCheck.mismatches.find(x => x.houseNumber === item.houseNumber); return m ? { planned: m.planned, received: m.received, diff: m.diff, reason: countCheck.reason, reportedAt: completedAt } : null; })(),
                 pickupCompletionFingerprint: flow.fingerprint,
                 pickupItems: ownRows.length ? ownRows : normalizePickupItems(item.pickupItems || ""),
                 packageType: payload.packageType || item.packageType,

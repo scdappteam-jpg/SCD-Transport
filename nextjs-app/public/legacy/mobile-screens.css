@@ -233,3 +233,12 @@ body:not(.mobile-locked) #foBottomNav .fo-search-tab > svg { top: -13px !importa
    Readable minimum text size (some labels were 10–11.5px)
    ========================================================= */
 body:not(.mobile-locked) main :is(.badge, .mhr-note, .ez-summary-head span, .mhr-quota span) { font-size: 12px !important; }
+
+/* Pickup: received count differs from plan → reason required */
+.count-mismatch:not([hidden]){display:grid;gap:6px;margin:10px 0;padding:12px 14px;border:1px solid #f5c26b;border-left:4px solid #d97706;border-radius:12px;background:#fff8eb;color:#7a4300}
+.count-mismatch strong{font-size:15px}
+.count-mismatch ul{margin:0;padding-left:18px;font-size:14px;color:#3b2a10}
+.count-mismatch .short{color:#b42318;font-weight:600}
+.count-mismatch .over{color:#0b6b3a;font-weight:600}
+.count-mismatch label{margin-top:4px;font-weight:500}
+.count-mismatch textarea{width:100%;border-color:#f0b453}
