@@ -564,3 +564,105 @@ html, body { overflow-x: clip; }
   min-height: 40px;
   border-radius: 10px;
 }
+
+/* =========================================================
+   Popups (.modal-backdrop)
+   ========================================================= */
+/* styles.css shares `.modal-actions, .modal-head { justify-content:flex-end }`, which pushed
+   every popup title to the right edge. Title left, close button right. */
+.modal-backdrop .modal-head {
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  gap: 12px;
+}
+.modal-backdrop .modal-head > div:first-child { flex: 1 1 auto; min-width: 0; text-align: left; }
+.modal-backdrop .modal-head h2 { margin: 0; overflow-wrap: anywhere; }
+
+/* Close "×" was 13px text inside a 44px button */
+.modal-backdrop .modal-head > :is(button[id^="close"], button[id$="Close"], .icon-button) {
+  flex: 0 0 40px;
+  width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  color: var(--muted, #6c7a92) !important;
+}
+.modal-backdrop .modal-head > :is(button[id^="close"], button[id$="Close"], .icon-button):hover {
+  background: var(--page, #f5f8fc) !important;
+  color: var(--ink, #172033) !important;
+}
+
+/* Tall popups scroll inside themselves instead of running off the screen */
+.modal-backdrop > [role="dialog"] {
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.modal-backdrop > [role="dialog"]:focus { outline: none; }
+.modal-backdrop > [role="dialog"]:focus-visible { outline: 2px solid var(--primary, #0b4ea2); outline-offset: 2px; }
+
+/* Page behind stays still while a popup is open */
+html.has-open-popup { overflow: hidden; }
+
+/* Phones: popups become a bottom sheet with the actions always reachable */
+@media (max-width: 640px) {
+  .modal-backdrop.show { align-items: flex-end !important; padding: 0 !important; }
+  .modal-backdrop.show > [role="dialog"] {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 92vh;
+    max-height: 92dvh;
+    margin: 0 !important;
+    border-radius: 18px 18px 0 0 !important;
+    padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  }
+  .modal-backdrop.show .modal-actions {
+    position: sticky;
+    bottom: calc(-1 * max(16px, env(safe-area-inset-bottom)));
+    margin-bottom: calc(-1 * max(16px, env(safe-area-inset-bottom)));
+    padding: 12px 0 max(16px, env(safe-area-inset-bottom));
+    background: inherit;
+    background-color: var(--surface, #fff);
+    flex-wrap: wrap;
+  }
+  .modal-backdrop.show .modal-actions > button { flex: 1 1 auto; min-height: 44px; }
+}
+
+/* =========================================================
+   Login
+   ========================================================= */
+/* The input keeps its 16px bottom margin on the wrapper so the eye button centres on the field */
+.login-screen .password-field { position: relative; margin-bottom: 16px; }
+.login-screen .password-field > input { width: 100%; margin-bottom: 0 !important; padding-right: 48px !important; }
+.login-screen .password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: var(--muted, #6c7a92) !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+.login-screen .password-toggle:hover { background: rgba(11, 78, 162, .08) !important; color: var(--ink, #172033) !important; }
+.login-screen .password-toggle svg { width: 18px; height: 18px; }
+.login-screen label[for] { cursor: pointer; }
+
+/* Phones: keep the brand short so the sign-in form is on the first screen */
+@media (max-width: 640px) {
+  .login-screen .login-brand .lb-steps,
+  .login-screen .login-brand .lb-foot { display: none !important; }
+}
