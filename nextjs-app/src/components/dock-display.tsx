@@ -34,10 +34,10 @@ export function DockDisplay({scope}:{scope:'live'|'sit'}){
     {scope==='sit'&&<div className={styles.sit}>SIT — ข้อมูลจำลองสำหรับทดสอบ แยกจากงานจริง</div>}
     <div className={styles.meta}>อัปเดตอัตโนมัติทุก 10 วินาที · ล่าสุด {board?new Date(board.updatedAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'—'} · ต้องเรียกผ่านหน้าจัดการคิวก่อนจึงจะแสดงช่อง Dock</div>
     {(error||stale)&&<div role="alert" className={styles.error}>{error||'ข้อมูลเกิน 30 วินาที กรุณาตรวจการเชื่อมต่อ'} <Link prefetch={false} href="/legacy/index.html">เข้าสู่ระบบ</Link></div>}
-    {!board&&!error&&<p role="status">กำลังโหลดคิว…</p>}
-    {board&&!stale&&<><section className={styles.called}><h2>เรียกเข้าช่อง Dock <span>{board.called.length} คัน</span></h2><Rows rows={board.called} called/></section>
-    <section className={styles.waiting}><h2>รอเรียก <span>{board.queue.length} คัน</span></h2><Rows rows={board.queue} called={false}/></section>
-    <section><h2>ช่องเทียบท่า</h2><div className={styles.bays}>{board.bays.map(b=><div key={b.id} className={b.status==='Called'?styles.activeBay:styles.bay}><strong>{b.id}</strong><span>{b.name}</span><small>{b.status==='Called'?'เรียกเข้าแล้ว':b.status==='Available'?'ว่าง':b.status==='Closed'?'ปิด':b.status==='SIT'?'SIT':b.status==='Reserved'?'จอง':'ใช้งานอยู่'}</small></div>)}</div></section></>}
+    {!board&&!error&&<p role="status" className={styles.loading}>กำลังโหลดคิว…</p>}
+    {board&&!stale&&<><div className={styles.lists}><section className={styles.called}><h2>เรียกเข้าช่อง Dock <span>{board.called.length} คัน</span></h2><Rows rows={board.called} called/></section>
+    <section className={styles.waiting}><h2>รอเรียก <span>{board.queue.length} คัน</span></h2><Rows rows={board.queue} called={false}/></section></div>
+    <section className={styles.baysSection}><h2>ช่องเทียบท่า</h2><div className={styles.bays}>{board.bays.map(b=><div key={b.id} className={b.status==='Called'?styles.activeBay:styles.bay}><strong>{b.id}</strong><span>{b.name}</span><small>{b.status==='Called'?'เรียกเข้าแล้ว':b.status==='Available'?'ว่าง':b.status==='Closed'?'ปิด':b.status==='SIT'?'SIT':b.status==='Reserved'?'จอง':'ใช้งานอยู่'}</small></div>)}</div></section></>}
     <footer className={styles.meta}>ช่อง Dock ที่แสดงคือช่องที่เจ้าหน้าที่เรียกเข้า ไม่ใช่การยืนยันตำแหน่งรถจาก GPS · จออ่านอย่างเดียว</footer>
   </main>;
 }
