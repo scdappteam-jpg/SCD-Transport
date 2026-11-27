@@ -503,3 +503,64 @@
    container. body.menu-open { overflow: hidden } (more specific) still locks scroll.
    ========================================================= */
 html, body { overflow-x: clip; }
+
+/* =========================================================
+   Short pages: the workspace filled only its content height, so the dark
+   .app-shell background showed as a navy band under short pages
+   ========================================================= */
+.app-shell > .workspace { min-height: 100vh; min-height: 100dvh; }
+
+/* =========================================================
+   WH · รับลงรถเข้าคลัง — page is rendered by warehouse-inbound-page.js with bare
+   browser controls; give its search row, buttons and SIT tools the app's look
+   ========================================================= */
+.workspace #warehouseInboundPage { display: grid; gap: 12px; }
+.workspace #warehouseInboundPage > h2 { margin: 0; font-size: 18px; }
+.workspace #warehouseInboundPage > p { margin: 0; font-size: 13px; color: var(--muted, #6c7a92); }
+.workspace #warehouseInboundPage #wiSearch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+.workspace #warehouseInboundPage #wiSearch > label {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 280px;
+  font-size: 13px;
+  color: var(--muted, #6c7a92);
+}
+.workspace #warehouseInboundPage button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--primary, #0b4ea2);
+  border-radius: 10px;
+  background: var(--primary, #0b4ea2);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.workspace #warehouseInboundPage button:disabled { opacity: .55; cursor: progress; }
+.workspace #warehouseInboundPage #wiMessage:empty { display: none; }
+.workspace #warehouseInboundPage details {
+  border: 1px dashed #f0b35a;
+  border-radius: 12px;
+  background: #fffaf0;
+  padding: 10px 14px;
+}
+.workspace #warehouseInboundPage details > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #92400e;
+}
+.workspace #warehouseInboundPage details[open] > summary { margin-bottom: 8px; }
+.workspace #warehouseInboundPage label { font-size: 13px; }
+.workspace #warehouseInboundPage input:not([type="checkbox"]):not([type="radio"]),
+.workspace #warehouseInboundPage select {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 10px;
+}

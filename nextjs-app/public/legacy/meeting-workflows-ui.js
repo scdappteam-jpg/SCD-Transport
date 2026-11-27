@@ -8,6 +8,8 @@ window.MeetingWorkflows = (() => {
         })));
     }
     function error(host,err){host.textContent=err.message||'ทำรายการไม่สำเร็จ';}
+    // Whole-page load failures: friendly block with retry (falls back to plain text if app.js helper is absent)
+    function loadError(host,err,title,retry){if(typeof window.loadErrorHtml==='function')host.innerHTML=window.loadErrorHtml(title,err,retry);else error(host,err);}
     async function settings() {
         const host=document.getElementById('meetingSettingsPage');host.textContent='กำลังโหลด…';
         try {
@@ -32,7 +34,7 @@ window.MeetingWorkflows = (() => {
             host.querySelector('#incentiveForm').addEventListener('submit',async e=>{e.preventDefault();const result=await api('/api/meeting/readiness',{action:'incentive-preview',month:new FormData(e.target).get('month')});host.querySelector('#incentiveResult').innerHTML=`<p>ผ่านเกณฑ์ ${result.rows.filter(x=>x.eligible).length}/${result.rows.length} คน · เป็น Preview ยังไม่จ่ายเงินจริง</p>`;});
             host.querySelector('#evaluatePx').addEventListener('click',async()=>{await api('/api/meeting/readiness',{action:'evaluate-px'});await settings();});
             host.querySelectorAll('.readinessAction').forEach(button=>button.addEventListener('click',async()=>{await api('/api/meeting/readiness',{action:button.dataset.action,alertId:button.dataset.alert,status:'Acknowledged'});await settings();}));
-        }catch(err){error(host,err);}
+        }catch(err){loadError(host,err,'โหลดกติกาคลังไม่สำเร็จ','MeetingWorkflows.settings()');}
     }
     async function quality(query='') {
         const host=document.getElementById('warehouseQualityPage');host.textContent='กำลังโหลด…';
@@ -62,7 +64,7 @@ window.MeetingWorkflows = (() => {
                     const result=await api('/api/warehouse/external-intake',p);await quality(result.houseNumber);
                 }catch(err){error(host.querySelector('#qualityStatus'),err);}finally{button.disabled=false;}
             });
-        }catch(err){error(host,err);}
+        }catch(err){loadError(host,err,'โหลดหน้าสแกนแท็กและ QA ไม่สำเร็จ','MeetingWorkflows.quality()');}
     }
     async function driverLog() {
         const host=document.getElementById('driverTimeLogPage');

@@ -5161,7 +5161,7 @@ async function renderWarehouseStatus() {
         const capRes = await fetch(API_BASE + "/api/warehouse/zones/capacity");
         zonesData = (await capRes.json()).zones || [];
     } catch (e) {
-        container.innerHTML = `<div style="padding:20px;color:var(--danger)">โหลดข้อมูลล้มเหลว: ${e.message}</div>`;
+        container.innerHTML = loadErrorHtml("โหลดสถานะคลังไม่สำเร็จ", e, "renderWarehouseStatus()");
         return;
     }
     if (!whMapState.zones?.length) await loadWarehouseMap();
@@ -12388,7 +12388,7 @@ async function loadAttDashData() {
         updateNotifBtn();
     } catch (err) {
         const board = $("#attTaskBoard");
-        if (board) board.innerHTML = `<div style="color:red;padding:20px">โหลดไม่ได้: ${escHtml(err.message)}</div>`;
+        if (board) board.innerHTML = loadErrorHtml("โหลดข้อมูลการเข้างานไม่สำเร็จ", err, "loadAttDashData()");
     }
 }
 
