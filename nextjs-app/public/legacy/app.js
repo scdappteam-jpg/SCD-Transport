@@ -2593,8 +2593,16 @@ function renderRoleHome() {
         return;
     }
     const riskJobs = jobs.filter(isDashboardRiskJob).slice(0, 5);
-    const actionButtons = actions.map(([t, v]) => `<button type="button" onclick="setView('${v}')">${t}</button>`).join("") + (role === "Admin" ? `<button type="button" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa" onclick="adminPurgeOldJobsKeepToday()">ล้างงานเก่า</button><button type="button" style="background:#fee2e2;color:#b91c1c" onclick="adminResetAllJobs()">ล้างงานทั้งหมด</button>` : "");
+    const actionButtons = actions.map(([t, v]) => `<button type="button" onclick="setView('${v}')">${t}</button>`).join("") + (role === "Admin" ? `<details class="rh-admin-tools">
+        <summary><i data-lucide="shield-alert" aria-hidden="true"></i><span>เครื่องมือ Admin</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+        <div class="rh-admin-menu" role="menu">
+          <p>ลบข้อมูลถาวร — ระบบจะถามยืนยันอีกครั้ง</p>
+          <button type="button" role="menuitem" class="rh-danger warn" onclick="this.closest('details').open=false;adminPurgeOldJobsKeepToday()"><b>ล้างงานเก่า</b><small>เหลือเฉพาะงานวันนี้</small></button>
+          <button type="button" role="menuitem" class="rh-danger" onclick="this.closest('details').open=false;adminResetAllJobs()"><b>ล้างงานทั้งหมด</b><small>ลบใบงานทุกใบเพื่อเริ่มใหม่</small></button>
+        </div>
+      </details>` : "");
     box.innerHTML = `\n    <section class="role-home card">\n      <div class="rh-head">\n        <div>\n          <strong>สวัสดี ${safeHtml(user.name || "")}</strong>\n          <span>${safeHtml(ROLE_LABEL_TH[role] || role)} · สิ่งที่ต้องโฟกัสตอนนี้ · เฉพาะช่วงวันที่เลือก</span>\n        </div>\n        ${actionButtons ? `<div class="rh-actions">${actionButtons}</div>` : ""}\n      </div>\n      <div class="rh-cards">\n        ${cards.map(c => `\n          <button type="button" class="rh-card ${c.c}" onclick="setView('${c.v}')">\n            <strong>${c.n}</strong><span>${c.t}</span>\n          </button>`).join("")}\n      </div>\n      ${role === "Admin" || role === "Executive" || role === "WH3_TeamLeader" || role === "Team_Transport" ? `<div class="rh-staff-strip" id="rhStaffStrip"></div>` : ""}\n      ${riskJobs.length && (role === "Admin" || role === "Executive" || role === "Terminal") ? `\n        <div class="rh-risk">\n          <span class="rh-risk-title">ต้องจัดการด่วน</span>\n          ${riskJobs.map(j => `\n            <button type="button" class="rh-risk-item" onclick="setView('orders')">\n              <b>${safeHtml(j.houseNumber)}</b>\n              <span>${safeHtml(j.customerName || "-")}</span>\n              <em>${j.redFlag ? "เสี่ยงตกไฟลท์ &lt;4 ชม." : statusLabelTh(j.status)}</em>\n            </button>`).join("")}\n        </div>` : ""}\n    </section>`;
+    if (window.lucide?.createIcons) window.lucide.createIcons();
     loadRoleHomeAttendance();
 }
 
@@ -9953,6 +9961,18 @@ function bindEvents() {
         if (!card || event.target !== card) return;
         event.preventDefault();
         card.click();
+    });
+    document.addEventListener("click", event => {
+        document.querySelectorAll("details.rh-admin-tools[open]").forEach(menu => {
+            if (!menu.contains(event.target)) menu.open = false;
+        });
+    });
+    document.addEventListener("keydown", event => {
+        if (event.key !== "Escape") return;
+        document.querySelectorAll("details.rh-admin-tools[open]").forEach(menu => {
+            menu.open = false;
+            menu.querySelector("summary")?.focus();
+        });
     });
     $("#alertSearch")?.addEventListener("input", event => {
         state.alertSearch = event.target.value;

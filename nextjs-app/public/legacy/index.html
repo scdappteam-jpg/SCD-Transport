@@ -26,7 +26,7 @@
     <style>[hidden]{display:none !important}#alertBell[hidden]{display:none!important}</style>
     <script src="lucide.min.js"></script>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
-    <link rel="stylesheet" href="system-ui.css?v=20261126">
+    <link rel="stylesheet" href="system-ui.css?v=20261127">
   </head>
   <body>
     <a class="skip-link" href="#mainContent">ข้ามไปที่เนื้อหาหลัก</a>
@@ -125,8 +125,12 @@
             <b>แจ้งเตือน</b>
             <span class="nav-badge" id="sidebarAlertBadge" hidden>0</span>
           </button>
+          <button class="nav-item" type="button" data-view="flight-board">
+            <i data-lucide="monitor-play" aria-hidden="true"></i>
+            <b>บอร์ดไฟลท์ด่วน</b>
+          </button>
 
-          <div class="nav-group-label">ปฏิบัติการ · Operations</div>
+          <div class="nav-group-label">งานขนส่ง · Transport</div>
           <button class="nav-item" type="button" data-view="orders">
             <i data-lucide="package-search" aria-hidden="true"></i>
             <b>ติดตามงาน</b>
@@ -143,15 +147,32 @@
             <i data-lucide="layers" aria-hidden="true"></i>
             <b>จัดกลุ่มงาน</b>
           </button>
+          <button class="nav-item" type="button" data-view="operations-control">
+            <i data-lucide="workflow" aria-hidden="true"></i>
+            <b>Transport · Terminal · วางบิล</b>
+          </button>
+          <button class="nav-item" type="button" data-view="driver-time-log">
+            <i data-lucide="timer" aria-hidden="true"></i>
+            <b>Driver Time Log</b>
+          </button>
+          <button class="nav-item" type="button" data-view="fleet-demo" id="navFleetDemo" hidden>
+            <i data-lucide="map-pinned" aria-hidden="true"></i>
+            <b>GPS รถ · Demo</b>
+          </button>
+
+          <div class="nav-group-label">คลังสินค้า · Warehouse WH3</div>
           <button class="nav-item" type="button" data-view="warehouse">
             <i data-lucide="map" aria-hidden="true"></i>
             <b>แผนที่คลัง WH3</b>
           </button>
-          <button class="nav-item" type="button" data-view="operations-control"><i data-lucide="workflow" aria-hidden="true"></i><b>Transport · Terminal · วางบิล</b></button>
-          <button class="nav-item" type="button" data-view="wh-inbound"><b>WH · รับลงรถเข้าคลัง</b></button>
-          <button class="nav-item" type="button" data-view="wh-quality"><b>WH · สแกนแท็กและ QA</b></button>
-          <button class="nav-item" type="button" data-view="driver-time-log"><b>Driver Time Log</b></button>
-          <button class="nav-item" type="button" data-view="meeting-settings"><b>กติกาคลังและ Driver</b></button>
+          <button class="nav-item" type="button" data-view="wh-inbound">
+            <i data-lucide="package-plus" aria-hidden="true"></i>
+            <b>WH · รับลงรถเข้าคลัง</b>
+          </button>
+          <button class="nav-item" type="button" data-view="wh-quality">
+            <i data-lucide="scan-barcode" aria-hidden="true"></i>
+            <b>WH · สแกนแท็กและ QA</b>
+          </button>
           <button class="nav-item" type="button" data-view="wh-reservations">
             <i data-lucide="calendar-plus" aria-hidden="true"></i>
             <b>WH · จองพื้นที่ล่วงหน้า</b>
@@ -160,10 +181,16 @@
             <i data-lucide="boxes" aria-hidden="true"></i>
             <b>สถานะคลัง</b>
           </button>
-          <button class="nav-item" type="button" data-view="fleet-demo" id="navFleetDemo" hidden>
-            <i data-lucide="map-pinned" aria-hidden="true"></i>
-            <b>GPS รถ · Demo</b>
+          <button class="nav-item" type="button" data-view="dock">
+            <i data-lucide="parking-square" aria-hidden="true"></i>
+            <b>ช่องเทียบท่า</b>
           </button>
+          <button class="nav-item" type="button" data-view="meeting-settings">
+            <i data-lucide="list-checks" aria-hidden="true"></i>
+            <b>กติกาคลังและ Driver</b>
+          </button>
+
+          <div class="nav-group-label">ขาออก · Outbound</div>
           <button class="nav-item" type="button" data-view="load-plan">
             <i data-lucide="plane-takeoff" aria-hidden="true"></i>
             <b>ขาออก · Load Plan</b>
@@ -174,6 +201,10 @@
           </button>
 
           <div class="nav-group-label">การเงิน · Commercial</div>
+          <button class="nav-item" type="button" data-view="service">
+            <i data-lucide="receipt-text" aria-hidden="true"></i>
+            <b>งานบริการ/วางบิล</b>
+          </button>
           <button class="nav-item" type="button" data-view="cargo-history">
             <i data-lucide="history" aria-hidden="true"></i>
             <b>ประวัติใบ Cargo</b>
@@ -182,19 +213,7 @@
           <div class="nav-group-label">ทีมงาน · People</div>
           <button class="nav-item" type="button" data-view="attendance">
             <i data-lucide="user-check" aria-hidden="true"></i>
-            <span>การเข้างาน</span>
-          </button>
-          <button class="nav-item" type="button" data-view="flight-board">
-            <i data-lucide="monitor-play" aria-hidden="true"></i>
-            <b>บอร์ดไฟลท์ด่วน</b>
-          </button>
-          <button class="nav-item" type="button" data-view="dock">
-            <i data-lucide="parking-square" aria-hidden="true"></i>
-            <b>ช่องเทียบท่า</b>
-          </button>
-          <button class="nav-item" type="button" data-view="service">
-            <i data-lucide="receipt-text" aria-hidden="true"></i>
-            <b>งานบริการ/วางบิล</b>
+            <b>การเข้างาน</b>
           </button>
           <button class="nav-item" type="button" data-view="staff">
             <i data-lucide="users" aria-hidden="true"></i>
@@ -2689,6 +2708,6 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="ctf-core/index.js?v=20261125-confirmed-units"></script>
     <script src="personnel-photo-preview.js?v=20261124"></script>
     <script src="operations-workspace.js?v=20261125-unified"></script>
-    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126"></script>
+    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126&amp;dash=20261127"></script>
   </body>
 </html>
