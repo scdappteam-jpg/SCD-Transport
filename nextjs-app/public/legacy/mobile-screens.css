@@ -1,0 +1,235 @@
+/* mobile.html — screen-level polish (signed-in app).
+   Loaded after mobile.css / mobile-header.css. Scoped to body:not(.mobile-locked)
+   so the sign-in screen is untouched. */
+
+/* =========================================================
+   Work tab chooser (Pickup / Inbound / Outbound / Billing / เข้างาน)
+   ========================================================= */
+/* No display override here: mobile.js hides the grid with an inline display:none off the Work tab */
+body:not(.mobile-locked) .action-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+/* :not([hidden]) — role-restricted cards carry [hidden] and must stay hidden */
+body:not(.mobile-locked) .action-grid > .action-card:not([hidden]) {
+  display: grid !important;
+  grid-template-columns: 40px minmax(0, 1fr) !important;
+  grid-template-rows: auto auto;
+  column-gap: 10px !important;
+  row-gap: 0 !important;
+  align-items: center !important;
+  justify-items: start !important;
+  min-height: 64px !important;
+  padding: 10px 12px !important;
+  text-align: left !important;
+}
+/* Odd card out (5th) spans the full row instead of sitting alone */
+body:not(.mobile-locked) .action-grid > .action-card:not([hidden]):last-child:nth-child(odd) { grid-column: 1 / -1; }
+body:not(.mobile-locked) .action-card > .action-icon {
+  grid-row: 1 / span 2;
+  display: grid !important;
+  place-items: center;
+  width: 40px !important;
+  height: 40px !important;
+  margin: 0 !important;
+  border-radius: 12px;
+  background: #eaf2ff;
+  color: #0b4ea2;
+  font-size: 0 !important;
+}
+body:not(.mobile-locked) .action-card > .action-icon svg { width: 22px; height: 22px; }
+body:not(.mobile-locked) .action-card > b {
+  grid-column: 2;
+  margin: 0 !important;
+  font-size: 15px !important;
+  line-height: 1.25 !important;
+}
+body:not(.mobile-locked) .action-card > small {
+  grid-column: 2;
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+body:not(.mobile-locked) .action-card > b { white-space: nowrap !important; word-break: normal !important; overflow-wrap: normal !important; }
+@media (max-width: 360px) {
+  body:not(.mobile-locked) .action-grid > .action-card:not([hidden]) {
+    grid-template-columns: 32px minmax(0, 1fr) !important;
+    column-gap: 8px !important;
+    padding: 10px !important;
+  }
+  body:not(.mobile-locked) .action-card > .action-icon { width: 32px !important; height: 32px !important; border-radius: 10px; }
+  body:not(.mobile-locked) .action-card > .action-icon svg { width: 18px; height: 18px; }
+  body:not(.mobile-locked) .action-card > b { font-size: 14px !important; }
+}
+body:not(.mobile-locked) .action-card.active > .action-icon { background: #0b4ea2; color: #fff; }
+
+/* =========================================================
+   Home — queue summary tiles: the empty icon squares become small status dots
+   ========================================================= */
+body:not(.mobile-locked) .ez-summary-tiles > button:not([hidden]) {
+  display: grid !important;
+  grid-template-columns: auto 1fr !important;
+  grid-template-rows: auto auto;
+  align-items: center !important;
+  justify-items: start !important;
+  column-gap: 8px !important;
+  row-gap: 2px !important;
+  text-align: left !important;
+  padding: 12px 14px !important;
+}
+body:not(.mobile-locked) .ez-summary-tiles > button > span {
+  grid-row: 1;
+  grid-column: 1;
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 0 !important;
+  color: transparent !important;
+}
+body:not(.mobile-locked) .ez-summary-tiles > button > b {
+  grid-row: 1;
+  grid-column: 2;
+  font-size: 26px !important;
+  line-height: 1.1 !important;
+}
+body:not(.mobile-locked) .ez-summary-tiles > button > small {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  font-size: 13px !important;
+  line-height: 1.3 !important;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   Home — timeline: empty icon circles become a connected dot rail
+   ========================================================= */
+body:not(.mobile-locked) .fo-tl-row:not([hidden]) {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: 14px 44px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 44px;
+}
+body:not(.mobile-locked) .fo-tl-row > span {
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 2px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: #0b4ea2 !important;
+  box-shadow: 0 0 0 3px #eaf2ff;
+  font-size: 0 !important;
+  z-index: 1;
+}
+body:not(.mobile-locked) .fo-tl-row:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  height: 100%;
+  width: 2px;
+  background: #e3eaf3;
+}
+body:not(.mobile-locked) .fo-tl-row > em {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-style: normal;
+}
+
+/* =========================================================
+   Outbound / flow steps: number inline with the title, not on its own line
+   ========================================================= */
+body:not(.mobile-locked) .flow-summary-item:not([hidden]) {
+  display: grid !important;
+  grid-template-columns: 32px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 12px 14px !important;
+}
+body:not(.mobile-locked) .flow-summary-item > span {
+  display: grid !important;
+  place-items: center;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+body:not(.mobile-locked) .flow-summary-item > div { min-width: 0; }
+body:not(.mobile-locked) .flow-summary-item strong { display: block; line-height: 1.3 !important; }
+
+/* =========================================================
+   Pickup form spacing + Driver Time Log link as a real button
+   ========================================================= */
+body:not(.mobile-locked) #driverJobSearch { margin-bottom: 8px !important; }
+body:not(.mobile-locked) .inline-link-button:not([hidden]) {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  margin: 10px 0 4px;
+  padding: 0 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #fff;
+  color: #0b4ea2 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+}
+body:not(.mobile-locked) .inline-link-button svg { width: 16px; height: 16px; flex: 0 0 16px; }
+
+/* =========================================================
+   File picker (เอกสาร): style the native control instead of the browser default
+   ========================================================= */
+body:not(.mobile-locked) input[type="file"] {
+  display: block;
+  width: 100% !important;
+  min-height: 52px !important;
+  padding: 8px !important;
+  border: 1.5px dashed #b9c7dc !important;
+  border-radius: 12px !important;
+  background: #f7f9fc !important;
+  color: #4a5872 !important;
+  font-size: 13px !important;
+  cursor: pointer;
+}
+body:not(.mobile-locked) input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #0b4ea2;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* =========================================================
+   Bottom nav: centre scan button — keep its label on the same line as the others
+   ========================================================= */
+body:not(.mobile-locked) #foBottomNav .fo-search-tab { transform: none !important; }
+body:not(.mobile-locked) #foBottomNav .fo-search-tab::before { top: -28px !important; }
+body:not(.mobile-locked) #foBottomNav .fo-search-tab > svg { top: -13px !important; }
+
+/* =========================================================
+   Readable minimum text size (some labels were 10–11.5px)
+   ========================================================= */
+body:not(.mobile-locked) main :is(.badge, .mhr-note, .ez-summary-head span, .mhr-quota span) { font-size: 12px !important; }

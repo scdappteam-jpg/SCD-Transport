@@ -499,6 +499,15 @@ function driverUsers() {
     return mobileUsers().filter(user => user.role === "Driver");
 }
 
+// First letter of each word; skips Thai leading vowels (เ แ โ ใ ไ) so "แอดมิน" → "อ", not "แ".
+function nameInitials(name) {
+    const letters = String(name || "?").trim().split(/\s+/).map(word => {
+        const chars = [ ...word ];
+        return chars.find(ch => !/[\u0E40-\u0E44]/.test(ch)) || chars[0] || "";
+    });
+    return letters.join("").slice(0, 2).toUpperCase() || "?";
+}
+
 function currentUser() {
     return mobileUsers().find(user => user.id === state.currentUserId) || mobileUsers()[0];
 }
@@ -3087,7 +3096,7 @@ function foDriverJobCard(job, index = 0) {
     const riskActive = [ "DueToday", "Warning", "Urgent", "Critical", "Breached" ].includes(flightRisk);
     const flightRiskLine = (riskActive ? `<div class="ez-flight-risk ${[ "Critical", "Breached" ].includes(flightRisk) ? "danger" : ""}">${escapeHtmlMobile(flightRisk)}${job.mustNotMissFlight ? " · C/K NO-MISS" : ""}<br><small>ถึงสนามบินก่อน ${escapeHtmlMobile(formatBangkokMobile(job.effectiveAirportDueAt || ""))}</small></div>` : "") + (job.nextTripNotice ? `<div class="soft-note ok"><b>งานถัดไปของรอบรถ</b><br>${escapeHtmlMobile(job.nextTripNotice.nextDestination)}${job.nextTripNotice.expectedAt ? ` · ${escapeHtmlMobile(formatBangkokMobile(job.nextTripNotice.expectedAt))}` : ""}${job.nextTripNotice.note ? `<br><small>${escapeHtmlMobile(job.nextTripNotice.note)}</small>` : ""}</div>` : "");
     const houseToken = encodeURIComponent(job.houseNumber || "");
-    return `\n    <article class="ez-driver-job" data-house="${escapeHtmlMobile(job.houseNumber || "")}">\n      <div class="ez-job-strip">\n        <span class="ez-direction">${direction}</span>\n        <div class="ez-job-title">\n          <small>หมายเลขใบขนสินค้า</small>\n          <strong>${escapeHtmlMobile(job.houseNumber || "-")}</strong>\n        </div>\n        <span class="ez-status-pill ${meta.tone}">${escapeHtmlMobile(meta.th)}<em>${escapeHtmlMobile(meta.en)}</em></span>\n      </div>\n      <div class="ez-job-airline">\n        <span>Booking Airline</span>\n        <b>${escapeHtmlMobile(job.flightNo || "TBC")}</b>\n        <small>${qaLabel}</small>\n        <small>${receiptLabel}</small>\n      </div>\n      ${flightRiskLine}\n      <dl class="ez-job-details">\n        <div><dt>คลังสินค้า</dt><dd>${escapeHtmlMobile(job.terminalDestination || job.destination || "-")}</dd></div>\n        <div><dt>เข้าพื้นที่คลังก่อนเวลา</dt><dd class="${job.redFlag ? "danger" : ""}">${escapeHtmlMobile(flightDate)}</dd></div>\n        <div><dt>อัปเดตล่าสุด</dt><dd>${escapeHtmlMobile(formatBangkokMobile(job.updatedAt || job.createdAt || ""))}</dd></div>\n        <div><dt>ทะเบียนรถ</dt><dd>${escapeHtmlMobile(plate)}</dd></div>\n        <div><dt>เลขคิวหน้าคลัง</dt><dd>${DriverDock.ticket(job.driverDock?.queueNumber)}</dd></div>\n        <div><dt>Dock ที่เรียกเข้า</dt><dd>${escapeHtmlMobile(bay)}</dd></div>\n        <div><dt>${job.locationReleasedAt ? "ตำแหน่งก่อน Pick (ปล่อยแล้ว)" : "ช่องจัดเก็บสินค้า"}</dt><dd>${escapeHtmlMobile(job.locationId || job.slotNo || "รอระบุ")}</dd></div>\n        <div><dt>จำนวนหีบห่อทั้งหมด</dt><dd>${escapeHtmlMobile(String(pieces))}</dd></div>\n        <div><dt>น้ำหนักรวมหีบห่อ</dt><dd>${escapeHtmlMobile(String(weight))}</dd></div>\n        <div><dt>ประเภทสินค้า</dt><dd>${escapeHtmlMobile(job.productType || "-")}</dd></div>\n      </dl>\n      <div class="ez-job-actions">\n        <button type="button" onclick="foFocusDriverJob('${houseToken}')">ดูรายละเอียดงาน</button>\n        ${isRejected ? `<button type="button" class="requeue" onclick="foOpenRequeue('${houseToken}')">รีคิว / Re-Queue</button>` : ""}\n      </div>\n    </article>`;
+    return `\n    <article class="ez-driver-job" data-house="${escapeHtmlMobile(job.houseNumber || "")}">\n      <div class="ez-job-strip">\n        <span class="ez-direction">${direction}</span>\n        <div class="ez-job-title">\n          <small>หมายเลขใบขนสินค้า</small>\n          <strong>${escapeHtmlMobile(job.houseNumber || "-")}</strong>\n        </div>\n        <span class="ez-status-pill ${meta.tone}">${escapeHtmlMobile(meta.th)}${meta.en && meta.en !== meta.th ? `<em>${escapeHtmlMobile(meta.en)}</em>` : ""}</span>\n      </div>\n      <div class="ez-job-airline">\n        <span>Booking Airline</span>\n        <b>${escapeHtmlMobile(job.flightNo || "TBC")}</b>\n        <small>${qaLabel}</small>\n        <small>${receiptLabel}</small>\n      </div>\n      ${flightRiskLine}\n      <dl class="ez-job-details">\n        <div><dt>คลังสินค้า</dt><dd>${escapeHtmlMobile(job.terminalDestination || job.destination || "-")}</dd></div>\n        <div><dt>เข้าพื้นที่คลังก่อนเวลา</dt><dd class="${job.redFlag ? "danger" : ""}">${escapeHtmlMobile(flightDate)}</dd></div>\n        <div><dt>อัปเดตล่าสุด</dt><dd>${escapeHtmlMobile(formatBangkokMobile(job.updatedAt || job.createdAt || ""))}</dd></div>\n        <div><dt>ทะเบียนรถ</dt><dd>${escapeHtmlMobile(plate)}</dd></div>\n        <div><dt>เลขคิวหน้าคลัง</dt><dd>${DriverDock.ticket(job.driverDock?.queueNumber)}</dd></div>\n        <div><dt>Dock ที่เรียกเข้า</dt><dd>${escapeHtmlMobile(bay)}</dd></div>\n        <div><dt>${job.locationReleasedAt ? "ตำแหน่งก่อน Pick (ปล่อยแล้ว)" : "ช่องจัดเก็บสินค้า"}</dt><dd>${escapeHtmlMobile(job.locationId || job.slotNo || "รอระบุ")}</dd></div>\n        <div><dt>จำนวนหีบห่อทั้งหมด</dt><dd>${escapeHtmlMobile(String(pieces))}</dd></div>\n        <div><dt>น้ำหนักรวมหีบห่อ</dt><dd>${escapeHtmlMobile(String(weight))}</dd></div>\n        <div><dt>ประเภทสินค้า</dt><dd>${escapeHtmlMobile(job.productType || "-")}</dd></div>\n      </dl>\n      <div class="ez-job-actions">\n        <button type="button" onclick="foFocusDriverJob('${houseToken}')">ดูรายละเอียดงาน</button>\n        ${isRejected ? `<button type="button" class="requeue" onclick="foOpenRequeue('${houseToken}')">รีคิว / Re-Queue</button>` : ""}\n      </div>\n    </article>`;
 }
 
 function foFocusDriverJob(houseToken) {
@@ -3410,7 +3419,7 @@ async function renderMMap(force) {
     });
     map.innerHTML = `<div class="fo-map-grid"></div>` + points.map((p, i) => {
         const pos = project(p);
-        const initials = (p.rec.userName || "?").split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase();
+        const initials = nameInitials(p.rec.userName);
         return `<button type="button" class="fo-map-pin ${p.type} ${p.rec.taskGroupId ? "" : "untagged"}"\n      style="left:${pos.x.toFixed(1)}%;top:${pos.y.toFixed(1)}%" onclick="foOpenMapSheet(${i})">\n      <span>${p.type === "out" ? "OUT" : initials}</span></button>`;
     }).join("");
     foState._mapPoints = points;
@@ -3648,7 +3657,7 @@ async function renderMProfile() {
     const user = currentUser();
     const card = $("#foProfileCard");
     if (card && user) {
-        const initials = (user.name || "?").split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase();
+        const initials = nameInitials(user.name);
         card.innerHTML = `\n      <div class="fo-avatar">${initials}</div>\n      <div class="fo-profile-info">\n        <strong>${user.name || "-"}</strong>\n        <span>${user.role || "-"}${user.vehiclePlate ? ` · ทะเบียน ${user.vehiclePlate}` : ""}</span>\n        <small>ID: ${user.id}</small>\n      </div>`;
     }
     const hist = $("#foAttHistory");
