@@ -1,0 +1,114 @@
+{
+  "clips": 20,
+  "screenshots": 59,
+  "localLinksOK": true,
+  "videos": [
+    {
+      "clip": "clips/01-SIT004.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/02-SIT003.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/03-SIT004.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/04-SIT005.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/05-SIT007.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/06-SIT008.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/07-SIT009.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/08-SIT006.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/09-SIT007.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/10-SIT011.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/11-SIT007.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/12-SIT004.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/13-SIT001.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/14-SIT007.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/15-SIT012.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/16-SIT010.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/17-SIT012.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/18-SIT004.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/19-SIT013.mp4",
+      "decodeOK": true,
+      "error": ""
+    },
+    {
+      "clip": "clips/20-SIT013.mp4",
+      "decodeOK": true,
+      "error": ""
+    }
+  ],
+  "master": "000-27112703",
+  "invoice": "INV-2026-0006",
+  "final": "Billed",
+  "tripCount": 1,
+  "houseCount": 2,
+  "personnelModified": false,
+  "realJobsModified": false
+}

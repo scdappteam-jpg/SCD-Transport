@@ -1,0 +1,422 @@
+[
+  {
+    "number": 1,
+    "role": "Transport",
+    "user": "SIT004",
+    "title": "นำเข้า Consol SIT",
+    "start": "13:58:39",
+    "end": "13:59:00",
+    "duration": 21,
+    "description": "นำเข้าไฟล์ผ่านระบบ: Master 000-27112703 และ 2 House",
+    "image": "01-imported.jpg",
+    "clip": "clips/01-SIT004.mp4",
+    "caption": "captions/01-SIT004.vtt",
+    "bytes": 244144,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        0,
+        21
+      ]
+    ]
+  },
+  {
+    "number": 2,
+    "role": "CS",
+    "user": "SIT003",
+    "title": "อนุมัติ CS",
+    "start": "13:59:00",
+    "end": "13:59:34",
+    "duration": 34,
+    "description": "ค้นหา SIT แล้วอนุมัติทั้ง 2 House",
+    "image": "02-cs-approved.jpg",
+    "clip": "clips/02-SIT003.mp4",
+    "caption": "captions/02-SIT003.vtt",
+    "bytes": 372043,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        21,
+        34
+      ]
+    ]
+  },
+  {
+    "number": 3,
+    "role": "Transport",
+    "user": "SIT004",
+    "title": "ออก Cargo รอบเดียว",
+    "start": "13:59:34",
+    "end": "13:59:58",
+    "duration": 24,
+    "description": "วันรับส่วนหัวตรงทั้งสองแถว และเก็บรหัสรอบรถเดียวกัน",
+    "image": "04-cargo-issued.jpg",
+    "clip": "clips/03-SIT004.mp4",
+    "caption": "captions/03-SIT004.vtt",
+    "bytes": 514771,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        55,
+        24
+      ]
+    ]
+  },
+  {
+    "number": 4,
+    "role": "Driver",
+    "user": "SIT005",
+    "title": "รับครบทั้งรอบ ถึง WH3 และลงสินค้า",
+    "start": "13:59:58",
+    "end": "14:03:35",
+    "duration": 217,
+    "description": "2 House จุดรับเดียว ใบปล่อยต้องครบ 2/2 แล้วเข้าท่า D9 คิวเดียว",
+    "image": "14-unloaded-both-houses.jpg",
+    "clip": "clips/04-SIT005.mp4",
+    "caption": "captions/04-SIT005.vtt",
+    "bytes": 1688492,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        79,
+        217
+      ]
+    ]
+  },
+  {
+    "number": 5,
+    "role": "WH Staff",
+    "user": "SIT007",
+    "title": "เปิดรับเข้า WH3 ทั้ง Master",
+    "start": "14:03:35",
+    "end": "14:05:30",
+    "duration": 115,
+    "description": "ตรวจเอกสาร สแกน House ตรวจสภาพ และรับจริงรวม 2 CTN",
+    "image": "17-wh-master-receipt-complete.jpg",
+    "clip": "clips/05-SIT007.mp4",
+    "caption": "captions/05-SIT007.vtt",
+    "bytes": 1276540,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        296,
+        115
+      ]
+    ]
+  },
+  {
+    "number": 6,
+    "role": "Tagging",
+    "user": "SIT008",
+    "title": "ติดแท็กสอง House",
+    "start": "14:05:30",
+    "end": "14:06:30",
+    "duration": 60,
+    "description": "ใช้ภาพบาร์โค้ด SIT และบันทึกผู้ติดแท็ก revision 1",
+    "image": "19-tagged-a2.jpg",
+    "clip": "clips/06-SIT008.mp4",
+    "caption": "captions/06-SIT008.vtt",
+    "bytes": 390994,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        411,
+        60
+      ]
+    ]
+  },
+  {
+    "number": 7,
+    "role": "QA",
+    "user": "SIT009",
+    "title": "ตรวจ QA คนละบัญชี",
+    "start": "14:06:30",
+    "end": "14:07:06",
+    "duration": 36,
+    "description": "อัปโหลดภาพตรวจใหม่คนละไฟล์กับแท็ก QA ผ่านทั้งสอง House",
+    "image": "21-qa-both-passed.jpg",
+    "clip": "clips/07-SIT009.mp4",
+    "caption": "captions/07-SIT009.vtt",
+    "bytes": 436836,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        471,
+        36
+      ]
+    ]
+  },
+  {
+    "number": 8,
+    "role": "WH Leader",
+    "user": "SIT006",
+    "title": "จัดเก็บ ปิดรับเข้า คืนท่า",
+    "start": "14:07:06",
+    "end": "14:09:20",
+    "duration": 134,
+    "description": "จัดเก็บใน Location ว่างสองจุด ปิดรับเข้าและคืนท่า D9 ครั้งเดียว",
+    "image": "25-inbound-complete-dock-returned.jpg",
+    "clip": "clips/08-SIT006.mp4",
+    "caption": "captions/08-SIT006.vtt",
+    "bytes": 1344546,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        507,
+        134
+      ]
+    ]
+  },
+  {
+    "number": 9,
+    "role": "WH Staff",
+    "user": "SIT007",
+    "title": "Locate และ Pick ขาออก",
+    "start": "14:09:20",
+    "end": "14:11:13",
+    "duration": 113,
+    "description": "ค้นหาและ Pick ทั้งสอง House พื้นที่จัดเก็บเดิมถูกปล่อย",
+    "image": "28-picked-both.jpg",
+    "clip": "clips/09-SIT007.mp4",
+    "caption": "captions/09-SIT007.vtt",
+    "bytes": 660918,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        641,
+        113
+      ]
+    ]
+  },
+  {
+    "number": 10,
+    "role": "EI",
+    "user": "SIT011",
+    "title": "อนุมัติ EI",
+    "start": "14:11:13",
+    "end": "14:12:38",
+    "duration": 85,
+    "description": "แนบหลักฐาน SIT และอนุมัติ EI แยก House",
+    "image": "30-ei-approved-both.jpg",
+    "clip": "clips/10-SIT011.mp4",
+    "caption": "captions/10-SIT011.vtt",
+    "bytes": 427694,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        754,
+        85
+      ]
+    ]
+  },
+  {
+    "number": 11,
+    "role": "WH Staff",
+    "user": "SIT007",
+    "title": "ตรวจเอกสารก่อนออก WH3",
+    "start": "14:12:38",
+    "end": "14:14:10",
+    "duration": 92,
+    "description": "ตรวจ General/TG ของทั้งสอง House ก่อนจัดขนออก",
+    "image": "32-wh3-documents-both.jpg",
+    "clip": "clips/11-SIT007.mp4",
+    "caption": "captions/11-SIT007.vtt",
+    "bytes": 550227,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        839,
+        92
+      ]
+    ]
+  },
+  {
+    "number": 12,
+    "role": "Transport",
+    "user": "SIT004",
+    "title": "Cargo Transfer และจอง AOT",
+    "start": "14:14:10",
+    "end": "14:15:58",
+    "duration": 108,
+    "description": "ออกใบจริงรวมสอง House และจอง AOT ผ่านระบบ",
+    "image": "36-aot-booked-both.jpg",
+    "clip": "clips/12-SIT004.mp4",
+    "caption": "captions/12-SIT004.vtt",
+    "bytes": 848165,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        931,
+        108
+      ]
+    ]
+  },
+  {
+    "number": 13,
+    "role": "Admin",
+    "user": "SIT001",
+    "title": "อนุมัติ AOT",
+    "start": "14:15:58",
+    "end": "14:16:28",
+    "duration": 30,
+    "description": "อนุมัติ AOT ตามหน้าที่ ไม่ได้ทำโหลดแทน WH Staff",
+    "image": "38-aot-approved-both.jpg",
+    "clip": "clips/13-SIT001.mp4",
+    "caption": "captions/13-SIT001.vtt",
+    "bytes": 235404,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        1039,
+        30
+      ]
+    ]
+  },
+  {
+    "number": 14,
+    "role": "WH Staff",
+    "user": "SIT007",
+    "title": "เริ่มและจบโหลดได้เอง — B02 ผ่าน",
+    "start": "14:16:28",
+    "end": "14:18:16",
+    "duration": 108,
+    "description": "WH Staff จบโหลดได้ครบทั้งสอง House ไม่ใช้ Admin ทำแทน",
+    "image": "41-whstaff-load-finished-both-pass.jpg",
+    "clip": "clips/14-SIT007.mp4",
+    "caption": "captions/14-SIT007.vtt",
+    "bytes": 557685,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        1069,
+        108
+      ]
+    ]
+  },
+  {
+    "number": 15,
+    "role": "Terminal",
+    "user": "SIT012",
+    "title": "รับคิวและถึง Terminal",
+    "start": "14:18:16",
+    "end": "14:19:15",
+    "duration": 59,
+    "description": "เห็น GoodsLoaded ทั้งคู่ บันทึกคิวและมาถึง Terminal",
+    "image": "45-terminal-arrived-both.jpg",
+    "clip": "clips/15-SIT012.mp4",
+    "caption": "captions/15-SIT012.vtt",
+    "bytes": 424507,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        1177,
+        59
+      ]
+    ]
+  },
+  {
+    "number": 16,
+    "role": "Check House",
+    "user": "SIT010",
+    "title": "ตรวจเอกสาร Terminal — B03 ผ่าน",
+    "start": "14:19:15",
+    "end": "14:20:50",
+    "duration": 95,
+    "description": "Check House ตรวจและบันทึกเอกสารสำเร็จเองทั้งสอง House",
+    "image": "47-checkhouse-documents-both-pass.jpg",
+    "clip": "clips/16-SIT010.mp4",
+    "caption": "captions/16-SIT010.vtt",
+    "bytes": 435131,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        1236,
+        95
+      ]
+    ]
+  },
+  {
+    "number": 17,
+    "role": "Terminal",
+    "user": "SIT012",
+    "title": "ชั่ง วัด X-ray และ Loading Detail",
+    "start": "14:20:50",
+    "end": "14:23:35",
+    "duration": 165,
+    "description": "รอจบลงสินค้าก่อนกรอก 5 kg และ 20×20×20; X-ray ผ่านทั้งคู่",
+    "image": "53-master-ready-for-billing.jpg",
+    "clip": "clips/17-SIT012.mp4",
+    "caption": "captions/17-SIT012.vtt",
+    "bytes": 961430,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        1331,
+        165
+      ]
+    ]
+  },
+  {
+    "number": 18,
+    "role": "Transport",
+    "user": "SIT004",
+    "title": "รับ Cargo Transfer คืน",
+    "start": "14:23:35",
+    "end": "14:24:05",
+    "duration": 30,
+    "description": "แนบหลักฐานคืนใบ Cargo Transfer ผ่านหน้าระบบ",
+    "image": "54-cargo-transfer-returned.jpg",
+    "clip": "clips/18-SIT004.mp4",
+    "caption": "captions/18-SIT004.vtt",
+    "bytes": 457644,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        1496,
+        30
+      ]
+    ]
+  },
+  {
+    "number": 19,
+    "role": "Billing",
+    "user": "SIT013",
+    "title": "1 รอบรถ สอง House และ Draft",
+    "start": "14:24:05",
+    "end": "14:27:10",
+    "duration": 185,
+    "description": "ตรวจเอกสาร สร้าง INV-2026-0006 ยอด SIT 2000 บาท; 1 เที่ยว / 2 House",
+    "image": "56-invoice-draft.jpg",
+    "clip": "clips/19-SIT013.mp4",
+    "caption": "captions/19-SIT013.vtt",
+    "bytes": 916304,
+    "segments": [
+      [
+        "2026-11-27 13-58-39.mp4",
+        1526,
+        185
+      ]
+    ]
+  },
+  {
+    "number": 20,
+    "role": "Billing",
+    "user": "SIT013",
+    "title": "ตรวจผล Billed และเวลาปิดจริง",
+    "start": "14:29:26",
+    "end": "14:29:32",
+    "duration": 6,
+    "description": "ผล Billed ปิดครั้งแรก 14:27:38; คลิปนี้ตรวจผลภายหลัง ไม่ใช่คลิกปิดครั้งแรก",
+    "image": "59-billed-timestamp.jpg",
+    "clip": "clips/20-SIT013.mp4",
+    "caption": "captions/20-SIT013.vtt",
+    "bytes": 110284,
+    "segments": [
+      [
+        "2026-11-27 14-29-26.mp4",
+        0,
+        6
+      ]
+    ]
+  }
+]
