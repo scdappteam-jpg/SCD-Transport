@@ -902,3 +902,41 @@ html.has-open-popup { overflow: hidden; }
 .partial-unload-form fieldset label{display:flex;align-items:center;gap:8px}
 .partial-unload-form fieldset small{color:#64748b}
 .lithium-card{border-left:4px solid #d97706}
+
+/* Shipping · EI page */
+.ei-page{display:grid;gap:14px}
+.ei-alerts{display:grid;gap:8px}
+.ei-alert{display:grid;gap:2px;padding:10px 14px;border-radius:12px;border-left:4px solid #0b4ea2;background:var(--surface,#fff);border-top:1px solid var(--line,#e3eaf3);border-right:1px solid var(--line,#e3eaf3);border-bottom:1px solid var(--line,#e3eaf3);font-size:13px}
+.ei-alert.warning{border-left-color:#d97706}.ei-alert.danger{border-left-color:#b42318}
+.ei-alert small{color:#64748b}
+.ei-toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.ei-toolbar input{flex:1 1 260px;min-height:42px}
+.ei-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.ei-tab{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid var(--line,#e3eaf3);border-radius:999px;background:var(--surface,#fff);font:500 14px Kanit,sans-serif;cursor:pointer;color:var(--ink,#172033)}
+.ei-tab b{min-width:24px;padding:1px 7px;border-radius:999px;background:#eef2f7;font-size:12px;text-align:center}
+.ei-tab[aria-selected="true"]{background:#0b4ea2;border-color:#0b4ea2;color:#fff}
+.ei-tab[aria-selected="true"] b{background:#ffffff33;color:#fff}
+.ei-tab:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+.ei-tab-hint{margin:-4px 0 0;color:#64748b;font-size:13px}
+.ei-bulk{display:grid;gap:8px;padding:12px 14px;border:1px dashed #bcd3f2;border-radius:12px;background:#f3f8ff}
+.ei-bulk-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ei-bulk fieldset{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0;padding:8px 10px;border:1px solid var(--line,#e3eaf3);border-radius:10px;background:#fff}
+.ei-bulk legend{font-size:12.5px;color:#475569;padding:0 4px}
+.ei-bulk label{display:flex;align-items:center;gap:6px;font-size:13px}
+.ei-bulk input[name="note"]{flex:1 1 100%;min-height:36px}
+.ei-list{display:grid;gap:8px}
+.ei-row{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line,#e3eaf3);border-radius:12px;background:var(--surface,#fff)}
+.ei-row.selectable{cursor:pointer;justify-content:flex-start}
+.ei-row.selectable input{margin-top:4px;width:18px;height:18px}
+.ei-row-body{display:grid;gap:4px;flex:1 1 320px;min-width:0}
+.ei-row-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ei-row-head strong{font-size:15px}
+.ei-row-meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:#475569}
+.ei-row-note{margin:0;font-size:13px;color:#8a5a00}
+.ei-row-actions{display:flex;gap:8px;align-items:center}
+.ei-row .ghost-button.danger{color:#b42318;border-color:#f3b4a8}
+.ei-permit-files{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.ei-permit-files img{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line,#e3eaf3)}
+.ei-outbound-form{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.ei-outbound-form label{display:grid;gap:4px;font-size:13px}
+@media (max-width:640px){.ei-tab{flex:1 1 calc(50% - 6px);justify-content:space-between}.ei-row-actions{width:100%}.ei-row-actions button{flex:1}}

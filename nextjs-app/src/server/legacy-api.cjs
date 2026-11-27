@@ -54,6 +54,7 @@ const dockLayout = require("./dock-layout.cjs");
 const whGeofence = require("./wh-geofence.cjs");
 const lithiumControl = require("./lithium-control.cjs");
 const partialUnload = require("./partial-unload.cjs");
+const eiShipping = require("./ei-shipping.cjs");
 const shippingDocStatus = require("./shipping-doc-status.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
@@ -5733,6 +5734,26 @@ async function handleApi(req, res, pathname) {
         logActivity(db, { houseNumber: job.houseNumber, userId: job.lithiumConsoleConfirmedBy, activityType: "LithiumConsoleConfirmed" });
         writeDb(db);
         return sendJson(res, 200, { ok: true, job: normalizeJob(job) });
+    }
+    if (req.method === "GET" && pathname === "/api/shipping/queue") {
+        try { return sendJson(res, 200, eiShipping.queue(db, sessionUser(db, req))); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+    }
+    if (req.method === "POST" && pathname === "/api/shipping/permit-review") {
+        const payload = await parseBody(req);
+        let jobs;
+        try { jobs = eiShipping.reviewPermit(db, sessionUser(db, req), payload, nowIso()); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        for (const job of jobs) logActivity(db, { houseNumber: job.houseNumber, userId: job.permitReview.by, activityType: job.permitReview.state === "Approved" ? "PermitApprovedByEI" : "PermitRejectedByEI", note: job.permitReview.reason });
+        // Not a dock gate (team decision): a rejection tells the WH3 lead to decide on a hold.
+        if (jobs[0].permitReview.state === "Rejected") {
+            try {
+                await srsAlerts.notify(db, createAlert, { kind: "Permit-Rejected", title: "EI ตีกลับใบตรวจปล่อย", severity: "danger", roles: ["WH3_TeamLeader", "Admin", "EI_Customer"], houseNumber: jobs[0].houseNumber,
+                    message: `EI ตีกลับใบตรวจปล่อย House ${jobs.map(job => job.houseNumber).join(", ")} · ${jobs[0].permitReview.reason} · หัวหน้าคลังพิจารณาพักสินค้า` });
+            } catch (error) { console.warn("permit reject alert failed", error.message); }
+        }
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob) });
     }
     if (req.method === "POST" && pathname === "/api/shipping/doc-status") {
         const payload = await parseBody(req);
