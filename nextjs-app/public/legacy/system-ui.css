@@ -764,7 +764,8 @@ html.has-open-popup { overflow: hidden; }
    toolbar → role "to-do now" → overview → tabs
    ========================================================= */
 /* minmax(0,1fr): without it wide children (filters, KPI rows) stretch the column past a phone screen */
-#view-dashboard{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+#view-dashboard.active{display:grid;}
+#view-dashboard{grid-template-columns:minmax(0,1fr);gap:18px}
 #view-dashboard .dash-detail,#view-dashboard .dash-panel{grid-template-columns:minmax(0,1fr)}
 #view-dashboard > *{margin:0 !important}
 
