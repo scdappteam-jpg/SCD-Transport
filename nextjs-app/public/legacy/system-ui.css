@@ -395,3 +395,111 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* =========================================================
+   Job lists (ติดตามงาน, คิวงาน Transport): compact references
+   House number first and prominent; Onhand/Master on one muted line
+   ========================================================= */
+.workspace .shipment-reference-fields.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.workspace .shipment-reference-fields.compact .ref-house {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: var(--ink, #172033);
+  font-variant-numeric: tabular-nums;
+}
+.workspace .shipment-reference-fields.compact .ref-others {
+  font-size: 12px;
+  color: var(--muted, #6c7a92);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.workspace .shipment-reference-fields.compact .ref-others.is-empty { font-style: italic; opacity: .8; }
+
+/* The "□" box on each job card carried no meaning: drop it and use a single column */
+.workspace .order-card > .cube:empty { display: none !important; }
+.workspace .order-card:has(> .cube:empty) { grid-template-columns: minmax(0, 1fr) !important; row-gap: 4px; }
+.workspace .order-card:has(> .cube:empty) > * { grid-column: 1 / -1 !important; }
+
+/* Filter tiles: odd last tile spans the row instead of sitting alone */
+.workspace .order-filter-cards > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+/* =========================================================
+   Load errors — plain message, retry, details tucked away
+   ========================================================= */
+.workspace .load-error {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin: 20px;
+  padding: 18px 20px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+.workspace .load-error strong { font-size: 15px; }
+.workspace .load-error p { margin: 0; font-size: 13px; color: #991b1b; }
+.workspace .load-error .load-error-retry {
+  min-height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #b91c1c;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.workspace .load-error details { font-size: 12px; color: #991b1b; }
+.workspace .load-error summary { cursor: pointer; }
+.workspace .load-error code { display: block; margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
+
+/* =========================================================
+   เปิดใบงาน — House rows fit their column (edit/remove were off-screen)
+   ========================================================= */
+.workspace #adminPickupItemRows .admin-job-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto auto !important;
+  grid-template-areas:
+    "house house dest dest"
+    "carton date edit remove";
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.workspace #adminPickupItemRows .admin-job-row > * { min-width: 0 !important; width: 100% !important; }
+.workspace #adminPickupItemRows .admin-row-house { grid-area: house; }
+.workspace #adminPickupItemRows .admin-row-destination { grid-area: dest; }
+.workspace #adminPickupItemRows .admin-row-carton { grid-area: carton; }
+.workspace #adminPickupItemRows .admin-row-date { grid-area: date; }
+.workspace #adminPickupItemRows .edit-admin-row { grid-area: edit; width: auto !important; }
+.workspace #adminPickupItemRows .remove-admin-row { grid-area: remove; width: auto !important; }
+.workspace #adminPickupItemRows .admin-job-row + .admin-job-row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line, #e3eaf3);
+}
+
+/* Cargo preview stays in view while filling the long form */
+@media (min-width: 1101px) {
+  .workspace #view-admin .admin-layout > .preview-panel {
+    align-self: start;
+    position: sticky;
+    top: 84px;
+    max-height: calc(100vh - 100px);
+  }
+}
+
+/* =========================================================
+   Sticky fix: mobile-layout.css sets html, body { overflow-x: hidden }, which turns
+   <body> into the scroll container for position:sticky while the page actually scrolls
+   on the window — so the top bar (and the Cargo preview) scrolled away instead of
+   sticking. `clip` hides sideways overflow the same way without creating a scroll
+   container. body.menu-open { overflow: hidden } (more specific) still locks scroll.
+   ========================================================= */
+html, body { overflow-x: clip; }
