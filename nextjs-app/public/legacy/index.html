@@ -26,7 +26,7 @@
     <style>[hidden]{display:none !important}#alertBell[hidden]{display:none!important}</style>
     <script src="lucide.min.js"></script>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
-    <link rel="stylesheet" href="system-ui.css?v=20261127e">
+    <link rel="stylesheet" href="system-ui.css?v=20261127f">
   </head>
   <body>
     <a class="skip-link" href="#mainContent">ข้ามไปที่เนื้อหาหลัก</a>
@@ -2386,7 +2386,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
       </section>
     </div>
 
-    <div id="cargoTransferModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.75);z-index:9000;flex-direction:column">
+    <div id="cargoTransferModal" data-popup role="dialog" aria-modal="true" aria-label="Cargo Transfer Form" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.75);z-index:9000;flex-direction:column">
 
       <div style="background:linear-gradient(135deg,#0f766e,#0d9488);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
         <div style="display:flex;align-items:center;gap:12px">
@@ -2400,7 +2400,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
           <button id="ctfPrintBtn" style="padding:10px 22px;background:#fff;color:#0f766e;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px">
             พิมพ์
           </button>
-          <button onclick="document.getElementById('cargoTransferModal').style.display='none'" style="padding:10px 18px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer">✕ ปิด</button>
+          <button type="button" data-popup-close aria-label="ปิด Cargo Transfer Form" onclick="document.getElementById('cargoTransferModal').style.display='none'" style="padding:10px 18px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer">✕ ปิด</button>
         </div>
       </div>
 
@@ -2527,7 +2527,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
         </div>
 
 
-        <div id="whConfirmModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,15,30,0.65);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+        <div id="whConfirmModal" data-popup style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,15,30,0.65);backdrop-filter:blur(4px);align-items:center;justify-content:center">
           <div style="background:var(--surface,#fff);border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.3);width:min(420px,92vw);overflow:hidden;border:1px solid var(--line,#e2e8f0)">
             <div style="padding:20px 24px 12px;border-bottom:1px solid var(--line,#e2e8f0)">
               <span style="font-weight:700;font-size:16px;color:var(--text,#0f172a)">ยืนยัน / Confirm</span>
@@ -2536,7 +2536,7 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
               <p id="whConfirmMsg" style="margin:0;font-size:14px;line-height:1.6;color:var(--text,#0f172a)"></p>
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;padding:12px 24px 20px">
-              <button id="whConfirmCancel" style="padding:0 20px;height:40px;border-radius:8px;border:1.5px solid #2563eb;background:#fff;color:#2563eb;font-size:14px;font-weight:600;cursor:pointer">ยกเลิก</button>
+              <button id="whConfirmCancel" data-popup-close style="padding:0 20px;height:40px;border-radius:8px;border:1.5px solid #2563eb;background:#fff;color:#2563eb;font-size:14px;font-weight:600;cursor:pointer">ยกเลิก</button>
               <button id="whConfirmOk" style="padding:0 20px;height:40px;border-radius:8px;border:1.5px solid #dc2626;background:#dc2626;color:#fff;font-size:14px;font-weight:600;cursor:pointer">ยืนยัน / ตกลง</button>
             </div>
           </div>
@@ -2671,22 +2671,22 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
 
 
 
-  <div id="obMoveModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9800;align-items:center;justify-content:center">
+  <div id="obMoveModal" data-popup style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9800;align-items:center;justify-content:center">
     <div style="background:#fff;border-radius:14px;padding:20px 22px;width:320px;max-height:75vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)">
       <h3 id="obMoveJobLabel" style="margin:0 0 14px;font-size:15px;font-weight:700;color:#1e293b">ย้ายงาน</h3>
       <div id="obMoveOptions" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;padding:4px 0"></div>
-      <button type="button" onclick="document.getElementById('obMoveModal').style.display='none'" style="margin-top:12px;width:100%;padding:9px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;cursor:pointer;font-size:13px">
+      <button type="button" data-popup-close onclick="document.getElementById('obMoveModal').style.display='none'" style="margin-top:12px;width:100%;padding:9px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;cursor:pointer;font-size:13px">
         ยกเลิก
       </button>
     </div>
   </div>
 
 
-  <div id="lpPreviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9900;align-items:center;justify-content:center">
+  <div id="lpPreviewModal" data-popup style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9900;align-items:center;justify-content:center">
     <div style="background:#fff;border-radius:14px;width:min(680px,96vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.22)">
       <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">
         <strong style="font-size:15px">ตรวจสอบก่อน Import Load Plan</strong>
-        <button onclick="document.getElementById('lpPreviewModal').style.display='none'" style="border:none;background:none;font-size:20px;cursor:pointer;color:#64748b">×</button>
+        <button type="button" data-popup-close aria-label="ปิด" onclick="document.getElementById('lpPreviewModal').style.display='none'" style="border:none;background:none;font-size:20px;cursor:pointer;color:#64748b">×</button>
       </div>
       <div id="lpPreviewModalBody" style="padding:18px 20px;overflow-y:auto;flex:1"></div>
       <div style="padding:14px 20px;border-top:1px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end">
@@ -2711,6 +2711,6 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="ctf-core/index.js?v=20261125-confirmed-units"></script>
     <script src="personnel-photo-preview.js?v=20261124"></script>
     <script src="operations-workspace.js?v=20261125-unified"></script>
-    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126&amp;dash=20261127&amp;work=20261127b&amp;popups=20261127c"></script>
+    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126&amp;dash=20261127&amp;work=20261127b&amp;popups=20261127e"></script>
   </body>
 </html>

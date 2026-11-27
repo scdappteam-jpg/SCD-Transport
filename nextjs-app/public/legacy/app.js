@@ -13506,16 +13506,18 @@ function enhanceAccessibility(root) {
 // ---------------------------------------------------------------------------
 (function enhanceModals() {
     const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
-    const CLOSE = '[id^="close"],[id$="Close"],.modal-close,[aria-label="Close"],[aria-label="ปิด"]';
+    const CLOSE = '[data-popup-close],[id^="close"],[id$="Close"],.modal-close,[aria-label="Close"],[aria-label="ปิด"]';
+    const POPUPS = ".modal-backdrop, [data-popup]";
     const lastFocus = new WeakMap();
     const isOpen = modal => modal.classList.contains("show") || (modal.style.display !== "" && modal.style.display !== "none");
-    const dialogOf = modal => modal.querySelector('[role="dialog"]') || modal.firstElementChild || modal;
+    const dialogOf = modal => (modal.matches('[role="dialog"]') ? modal : null) || modal.querySelector('[role="dialog"]') || modal.firstElementChild || modal;
     const focusables = root => [ ...root.querySelectorAll(FOCUSABLE) ].filter(el => el.offsetParent !== null);
-    const openModals = () => [ ...document.querySelectorAll(".modal-backdrop") ].filter(isOpen);
+    const openModals = () => [ ...document.querySelectorAll(POPUPS) ].filter(isOpen);
 
     function prepare(modal) {
         const dialog = dialogOf(modal);
-        if (!dialog || dialog === modal) return;
+        // A popup may itself be the dialog (role on the root); otherwise skip roots without an inner box
+        if (!dialog || (dialog === modal && !modal.matches('[role="dialog"]'))) return;
         if (!dialog.hasAttribute("role")) dialog.setAttribute("role", "dialog");
         if (!dialog.hasAttribute("aria-modal")) dialog.setAttribute("aria-modal", "true");
         if (!dialog.hasAttribute("aria-labelledby") && !dialog.hasAttribute("aria-label")) {
@@ -13549,7 +13551,7 @@ function enhanceAccessibility(root) {
     }
 
     function init() {
-        const modals = document.querySelectorAll(".modal-backdrop");
+        const modals = document.querySelectorAll(POPUPS);
         const observer = new MutationObserver(records => records.forEach(record => sync(record.target)));
         modals.forEach(modal => {
             prepare(modal);
