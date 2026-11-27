@@ -51,6 +51,7 @@ function prepare(db,p,actor,at=new Date().toISOString()){
         if(!driver||!text(p.vehiclePlate)||!text(p.vehicleType))fail('กรุณาเลือกคนขับ ทะเบียน และประเภทรถให้ครบ');
         if(!/^\d{4}-\d{2}-\d{2}$/.test(text(p.planDate))||dateKey(p.planDate)!==p.planDate)fail('วันที่แผนไม่ถูกต้อง');
         if(jobs.some(j=>j.routeStartedAt||j.goodsLoadedAt||j.completedAt))fail('งานเริ่มปฏิบัติแล้ว ต้องตรวจแผนก่อนเปลี่ยนรถ',409);
+        if(jobs.some(j=>Array.isArray(j.splitLegs)&&j.splitLegs.length>1))fail('House นี้แบ่งหลายคันแล้ว ต้องเปลี่ยนรถผ่านการออกใบใหม่',409);
         const roundId=text(p.roundId)||`OP-${crypto.randomUUID()}`;
         return auditPlan(jobs,jobs.map(()=>({driverId:driver.id,driverName:driver.name,vehiclePlate:text(p.vehiclePlate),vehicleType:text(p.vehicleType),pickupDate:p.planDate,workDate:p.planDate,transportRoundId:roundId,transportPlannedAt:at})),actor,p,at);
     }
@@ -65,6 +66,8 @@ function prepare(db,p,actor,at=new Date().toISOString()){
         if(event==='door-close'){evidence(p.productProof,'ภาพสินค้า');evidence(p.signedProof,'ใบรับสินค้าลงชื่อ');}
         for(const j of jobs){
             if(!j.csConfirmed||j.csRejected||j.status==='Cancelled'||!j.cargoIssuedAt)fail(`House ${j.houseNumber} ต้องผ่าน CS และเปิดใบงานก่อน`,409);
+            // A split House runs per truck in the driver app; WH3-side steps stay House-level.
+            if(Array.isArray(j.splitLegs)&&j.splitLegs.length>1&&['start','arrive','door-close','wh3-arrive'].includes(event))fail(`House ${j.houseNumber} แบ่ง ${j.splitLegs.length} คัน ต้องบันทึกขั้นตอนรถผ่านแอปคนขับแต่ละคัน`,409);
             const patch={};
             if(event==='start'){if(j.routeStartedAt)fail('เริ่มรอบแล้ว',409);if(!j.driverId||!j.vehiclePlate)fail('ยังไม่มีคนขับหรือทะเบียนรถ',409);Object.assign(patch,{routeStartedAt:at,driverRouteStatus:'EnRouteToPickup'});}
             if(event==='arrive'){if(!j.routeStartedAt||j.arrivedAtPickupAt)fail('ต้องเริ่มรอบและยังไม่บันทึกถึงลูกค้า',409);Object.assign(patch,{arrivedAtPickupAt:at,checkInAt:at,status:'ArrivedAtPickup',driverRouteStatus:'ArrivedAtPickup'});}

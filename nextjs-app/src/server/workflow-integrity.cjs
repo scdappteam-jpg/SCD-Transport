@@ -67,7 +67,8 @@ function billing(db,jobs,payload,documentStatus,{batch=false}={}) {
     if(batch)tripCount(jobs,payload);
 }
 function tripCount(jobs,payload){
-    const rounds=jobs.map(require('../../public/legacy/transport-round-core.js').billingKey);
+    // A split House is one trip per truck.
+    const rounds=jobs.flatMap(require('./split-legs.cjs').billingTrips).map(require('../../public/legacy/transport-round-core.js').billingKey);
     const known=rounds.every(Boolean), inferred=new Set(rounds).size;
     if(payload.tripCount!=null&&String(payload.tripCount).trim()!==''){
         const count=Number(payload.tripCount);if(!Number.isSafeInteger(count)||count<1)fail('จำนวนรอบรถต้องเป็นจำนวนเต็มมากกว่าศูนย์',422);

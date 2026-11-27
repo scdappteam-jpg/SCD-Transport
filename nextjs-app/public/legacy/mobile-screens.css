@@ -242,3 +242,8 @@ body:not(.mobile-locked) main :is(.badge, .mhr-note, .ez-summary-head span, .mhr
 .count-mismatch .over{color:#0b6b3a;font-weight:600}
 .count-mismatch label{margin-top:4px;font-weight:500}
 .count-mismatch textarea{width:100%;border-color:#f0b453}
+
+/* Split House: this truck's share */
+.split-notice:not([hidden]){display:grid;gap:6px;margin:8px 0;padding:10px 12px;border:1px solid #bcd3f2;border-left:4px solid #0b4ea2;border-radius:12px;background:#eef4fb;color:#14213a}
+.split-notice p{margin:0;font-size:14px;line-height:1.45}
+.split-notice small{display:block;color:#475569;font-size:12.5px}

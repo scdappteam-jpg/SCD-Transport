@@ -1,5 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { createHash } = require("node:crypto");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const splitLegs = require("./split-legs.cjs");
 
 function apply(db, payload, actorId, { preview = false, now = new Date().toISOString() } = {}) {
     const fail = message => { throw new Error(message); };
@@ -20,7 +22,7 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
         if (cargoHeader.pickupTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(cargoHeader.pickupTime)) fail("เวลารับสินค้าไม่ถูกต้อง");
     }
     const fingerprint = createHash("sha256").update(JSON.stringify({ actorId, pages, cargoHeader })).digest("hex");
-    const seen = new Set(), assignments = [], plateDriver = new Map(), driverPlate = new Map();
+    const seen = new Map(), assignments = [], plateDriver = new Map(), driverPlate = new Map();
     const activeFleetPlates = new Set((db.fleetVehicles || []).filter(v => v && v.status !== "Inactive" && v.plate).map(v => String(v.plate)));
     for (const page of pages) {
         const driver = (db.users || []).find(user => user.id === page.driverId && ["Driver", "WH_Staff", "Admin"].includes(user.role) && user.status !== "Inactive");
@@ -34,19 +36,42 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
         if (plate) plateDriver.set(plate, driver.id);
         driverPlate.set(driver.id, plate);
         if (!Array.isArray(page.jobs) || !page.jobs.length || page.jobs.length > 5) fail("ใบ Cargo ขาเข้าต้องมี 1 ถึง 5 House");
+        const onPage = new Set();
         for (const expected of page.jobs) {
             const house = String(expected.houseNumber || "");
-            if (seen.has(house)) fail("พบ House ซ้ำในแผน");
-            seen.add(house);
+            if (onPage.has(house)) fail("พบ House ซ้ำในแผน");
+            onPage.add(house);
             const job = (db.jobs || []).find(item => item.houseNumber === house);
             if (!job) fail(`ไม่พบ House ${house}`);
-            assignments.push({ job, expected, driver, plate });
+            const pieces = expected.splitPieces === undefined ? null : Number(expected.splitPieces);
+            if (pieces !== null && (!Number.isSafeInteger(pieces) || pieces <= 0)) fail(`จำนวนกล่องที่แบ่งของ House ${house} ต้องเป็นจำนวนเต็มมากกว่า 0`);
+            assignments.push({ job, expected, driver, plate, pieces, batchId: `BATCH-${requestId}-${driver.id}` });
+            if (!seen.has(house)) seen.set(house, []);
+            seen.get(house).push(assignments[assignments.length - 1]);
         }
+    }
+    // One House on several trucks: every share names its cartons, the shares add
+    // up to the House plan, and each truck has a different driver.
+    for (const [house, shares] of seen) {
+        if (shares.length === 1) {
+            if (shares[0].pieces !== null) fail(`House ${house} ระบุจำนวนแบ่งแต่มีรถคันเดียว`);
+            continue;
+        }
+        if (shares.some(share => share.pieces === null)) fail("พบ House ซ้ำในแผน");
+        if (shares.length > 10) fail(`House ${house} แบ่งได้ไม่เกิน 10 คัน`);
+        if (new Set(shares.map(share => share.driver.id)).size !== shares.length) fail(`House ${house} แบ่งให้คนขับคนเดียวกันซ้ำ`);
+        const total = Number(shares[0].job.pieceCount);
+        const sum = shares.reduce((acc, share) => acc + share.pieces, 0);
+        if (!Number.isFinite(total) || total <= 0) fail(`House ${house} ไม่มีจำนวนกล่องตามแผน จึงแบ่งหลายคันไม่ได้`);
+        if (sum !== total) fail(`House ${house} แบ่งรวม ${sum} กล่อง ไม่เท่าแผน ${total} กล่อง`);
     }
     const prior = (db.jobs || []).filter(job => job.cargoIssueRequestId === requestId);
     if (prior.length) {
-        if (prior.length !== assignments.length || assignments.some(({ job, driver, plate }) => (job.vehiclePlate || "") !== plate || job.cargoIssueRequestId !== requestId || job.cargoIssueFingerprint !== fingerprint || job.driverId !== driver.id || !job.cargoIssuedAt)) fail("คำขอเดิมเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่");
-        return { jobs: assignments.map(({ job }) => job), pageCount: pages.length, replayed: true, preview, persisted: !preview };
+        const sameTruck = ({ job, driver, plate }) => splitLegs.isSplit(job)
+            ? job.splitLegs.some(leg => leg.driverId === driver.id && (leg.vehiclePlate || "") === plate)
+            : (job.vehiclePlate || "") === plate && job.driverId === driver.id;
+        if (prior.length !== seen.size || assignments.some(item => !sameTruck(item) || item.job.cargoIssueRequestId !== requestId || item.job.cargoIssueFingerprint !== fingerprint || !item.job.cargoIssuedAt)) fail("คำขอเดิมเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่");
+        return { jobs: [...seen.values()].map(shares => shares[0].job), pageCount: pages.length, replayed: true, preview, persisted: !preview };
     }
     // Validate every House before changing any of them.
     for (const { job, expected } of assignments) {
@@ -54,7 +79,8 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
         if (job.cargoIssuedAt) fail(`House ${job.houseNumber} ออกใบแล้ว กรุณาโหลดข้อมูลใหม่`);
         if (String(job.updatedAt || "") !== String(expected.updatedAt || "")) fail(`House ${job.houseNumber} มีข้อมูลใหม่ กรุณาตรวจ Preview อีกครั้ง`);
     }
-    const jobs = assignments.map(({ job, driver, plate }) => {
+    const jobs = [...seen.values()].map(shares => {
+        const { job, driver, plate } = shares[0];
         const target = preview ? structuredClone(job) : job;
         Object.assign(target, {
             driverId: driver.id, driverName: driver.name || "", vehiclePlate: plate,
@@ -67,7 +93,11 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
                 if (Object.hasOwn(cargoHeader, key)) target[field] = cargoHeader[key];
             }
         }
-        target.cargoIssueHistory = [...Array.isArray(target.cargoIssueHistory) ? target.cargoIssueHistory : [], { requestId, driverId: driver.id, vehiclePlate: plate, issuedAt: now, issuedBy: actorId, batchId: target.batchId, ...(cargoHeader ? { cargoHeader: { ...cargoHeader } } : {}) }];
+        if (shares.length > 1) {
+            target.splitLegs = splitLegs.buildLegs(target, shares.map(share => ({ driver: share.driver, plate: share.plate, pieces: share.pieces, batchId: share.batchId })), now);
+            splitLegs.syncHouse(target);
+        }
+        target.cargoIssueHistory = [...Array.isArray(target.cargoIssueHistory) ? target.cargoIssueHistory : [], { requestId, driverId: driver.id, vehiclePlate: plate, issuedAt: now, issuedBy: actorId, batchId: target.batchId, ...(cargoHeader ? { cargoHeader: { ...cargoHeader } } : {}), ...(shares.length > 1 ? { splitLegs: target.splitLegs.map(leg => ({ legId: leg.legId, driverId: leg.driverId, vehiclePlate: leg.vehiclePlate, pieceCount: leg.pieceCount, batchId: leg.batchId })) } : {}) }];
         return target;
     });
     return { jobs, pageCount: pages.length, replayed: false, preview, persisted: !preview };

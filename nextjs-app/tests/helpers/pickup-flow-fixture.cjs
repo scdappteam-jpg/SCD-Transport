@@ -19,11 +19,11 @@ function signatureImage(blank=false){
 let minute=0;
 async function route(db,name,p={},who=actor){
  const pathname='/api/pickup/'+name,a=source.indexOf(`    if (req.method === "POST" && pathname === "${pathname}")`),b=source.indexOf('\n    if (req.method ===',a+12),io={writes:0,files:0};assert.ok(a>=0&&b>a);
- const payload={houseNumber:house,houseNumbers:[house],gpsLat:13.1,gpsLong:100.1,...p}; // SIM coordinates: copies only.
+ const payload={houseNumber:p.houseNumber||house,houseNumbers:p.houseNumbers||[p.houseNumber||house],gpsLat:13.1,gpsLong:100.1,...p}; // SIM coordinates: copies only.
  const at=new Date(Date.parse('2026-10-24T09:00:00Z')+(minute++)*60000).toISOString();
  const save=(_db,args)=>{if(!args.base64&&!args.files?.length)return null;io.files++;const row={houseNumber:args.houseNumber,fileType:args.fileType,simulated:true};db.attachments.push(row);return row;};
- const c=vm.createContext({require:require('node:module').createRequire(path.join(server,'legacy-api.cjs')),db,req:{method:'POST'},res:{},pathname,crypto,Date,Buffer,parseBody:async()=>payload,requireSessionRole:(_db,_req,roles)=>who&&roles.includes(who.role)?who:null,findJob:(_db,h)=>_db.jobs.find(j=>[j.houseNumber,j.hawbNumber].includes(h)),nowIso:()=>at,writeDb:()=>io.writes++,normalizeJob:j=>j,sendJson:(_r,status,body)=>({status,body}),operationsControl,pickupFlow,pickupCountCheck:require(path.join(server,'pickup-count-check.cjs')),meetingPolicy:require(path.join(server,'meeting-policy.cjs')),saveBase64Files:save,saveBase64File:save});
- for(const name of ['findPayloadJobs','pickupRoundKey','findPickupArrivalRoundJobs','pickupDispatchIsReady','requirePickupActor','normalizePickupItems','logActivity','findOpenActivity'])vm.runInContext(fn(name),c);
+ const c=vm.createContext({require:require('node:module').createRequire(path.join(server,'legacy-api.cjs')),db,req:{method:'POST'},res:{},pathname,crypto,Date,Buffer,parseBody:async()=>payload,requireSessionRole:(_db,_req,roles)=>who&&roles.includes(who.role)?who:null,findJob:(_db,h)=>_db.jobs.find(j=>[j.houseNumber,j.hawbNumber].includes(h)),nowIso:()=>at,writeDb:()=>io.writes++,normalizeJob:j=>j,sendJson:(_r,status,body)=>({status,body}),operationsControl,pickupFlow,pickupCountCheck:require(path.join(server,'pickup-count-check.cjs')),splitLegs:require(path.join(server,'split-legs.cjs')),sessionUser:()=>who,meetingPolicy:require(path.join(server,'meeting-policy.cjs')),saveBase64Files:save,saveBase64File:save});
+ for(const name of ['pickupTargets','findPayloadJobs','pickupRoundKey','findPickupArrivalRoundJobs','pickupDispatchIsReady','requirePickupActor','normalizePickupItems','logActivity','findOpenActivity'])vm.runInContext(fn(name),c);
  return {...await vm.runInContext(`(async()=>{${source.slice(a,b)}})()`,c),io};
 }
 async function check(name,run){try{await run();cases.push({name,result:'PASS'});}catch(e){cases.push({name,result:'FAIL',detail:e.message});}}
@@ -106,3 +106,4 @@ module.exports=async()=>{
  const result={scope:'SIMULATION ONLY on an isolated copy of House 4840807196; every GPS, photo, signature, checklist, inspector and event time here is synthetic. No network or production writes.',cases,summary:{pass:cases.filter(c=>c.result==='PASS').length,fail:cases.filter(c=>c.result==='FAIL').length,total:cases.length},snapshots};
  return result;
 };
+module.exports.route=route;module.exports.valid=valid;

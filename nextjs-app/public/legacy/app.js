@@ -3896,7 +3896,15 @@ function computeWizardPagesAndDrivers(selectedJobs) {
         }));
     }
     const byLane = laneDrivers.map(() => []);
+    const splits = state.groupWizard.mode === "outbound" ? {} : state.groupWizard.jobSplits || {};
     selectedJobs.forEach(job => {
+        const shares = splits[job.houseNumber];
+        if (Array.isArray(shares) && shares.filter(n => Number(n) > 0).length > 1) {
+            shares.forEach((n, lane) => {
+                if (Number(n) > 0 && lane < laneDrivers.length) byLane[lane].push({ ...job, pieceCount: Number(n), splitPieces: Number(n), splitOf: Number(job.pieceCount || 0) });
+            });
+            return;
+        }
         const li = jobLaneMap[job.houseNumber] ?? 0;
         const idx = Math.min(li, laneDrivers.length - 1);
         byLane[idx].push(job);
@@ -3932,7 +3940,11 @@ function wizardAutoSplitByPieces() {
     if (laneCount < 2 || !jobs.length) return;
     const load = Array.from({ length: laneCount }, () => ({ pieces: 0, count: 0 }));
     const map = {};
-    [ ...jobs ].sort((a, b) => Number(b.pieceCount || 0) - Number(a.pieceCount || 0)).forEach(job => {
+    const splitSet = new Set(wizardSplitHouses());
+    jobs.filter(job => splitSet.has(job.houseNumber)).forEach(job => {
+        (state.groupWizard.jobSplits[job.houseNumber] || []).forEach((n, i) => { if (i < laneCount) load[i].pieces += Number(n) || 0; });
+    });
+    [ ...jobs ].filter(job => !splitSet.has(job.houseNumber)).sort((a, b) => Number(b.pieceCount || 0) - Number(a.pieceCount || 0)).forEach(job => {
         let best = 0;
         load.forEach((lane, i) => {
             if (lane.pieces < load[best].pieces || lane.pieces === load[best].pieces && lane.count < load[best].count) best = i;
@@ -3943,6 +3955,44 @@ function wizardAutoSplitByPieces() {
     });
     state.groupWizard.jobLaneMap = map;
     renderGroupWizard();
+}
+
+// Split one House over several lanes (trucks). Shares are cartons per lane and
+// must add up to the House plan before the wizard can continue.
+function wizardSplitHouses() {
+    const splits = state.groupWizard.jobSplits || {};
+    return Object.keys(splits).filter(house => Array.isArray(splits[house]));
+}
+
+function wizardStartSplit(house) {
+    const job = groupWizardSourceJobs().find(item => item.houseNumber === house);
+    const laneCount = (state.groupWizard.laneDrivers || [ state.groupWizard.driverId ]).length;
+    if (!job || laneCount < 2) return;
+    const total = Number(job.pieceCount || 0);
+    const from = Math.min(state.groupWizard.jobLaneMap?.[house] ?? 0, laneCount - 1);
+    const to = from === 0 ? 1 : 0;
+    const shares = Array.from({ length: laneCount }, () => 0);
+    shares[from] = Math.ceil(total / 2);
+    shares[to] = total - shares[from];
+    state.groupWizard.jobSplits = { ...(state.groupWizard.jobSplits || {}), [house]: shares };
+    renderGroupWizard();
+}
+
+function wizardSplitProblems() {
+    const splits = state.groupWizard.jobSplits || {};
+    const laneCount = (state.groupWizard.laneDrivers || [ state.groupWizard.driverId ]).length;
+    const selected = new Set(groupWizardSelectedJobs().map(job => job.houseNumber));
+    return wizardSplitHouses().filter(house => selected.has(house)).map(house => {
+        const job = groupWizardSourceJobs().find(item => item.houseNumber === house);
+        const shares = splits[house].slice(0, laneCount).map(n => Number(n) || 0);
+        const sum = shares.reduce((a, b) => a + b, 0), total = Number(job?.pieceCount || 0);
+        if (shares.filter(n => n > 0).length < 2) return `${house} ต้องแบ่งอย่างน้อย 2 คัน`;
+        if (shares.some(n => n < 0 || !Number.isInteger(n))) return `${house} จำนวนกล่องต้องเป็นจำนวนเต็ม`;
+        if (sum !== total) return `${house} แบ่งรวม ${sum} จาก ${total} กล่อง`;
+        const drivers = (state.groupWizard.laneDrivers || []).filter((_, i) => shares[i] > 0);
+        if (new Set(drivers).size !== drivers.length) return `${house} ต้องแบ่งให้คนขับต่างคนกัน`;
+        return "";
+    }).filter(Boolean);
 }
 
 async function loadWizardFleetPlates() {
@@ -3989,6 +4039,7 @@ function openGroupWizard({mode: mode = "auto", groupIndex: groupIndex = null, jo
         driverId: initDriverId,
         laneDrivers: initLaneDrivers,
         laneVehicles: [],
+        jobSplits: {},
         driverCount: initCrewCount,
         jobLaneMap: {},
         pageDrivers: {},
@@ -4064,6 +4115,8 @@ function renderGroupWizard() {
             if (plate && !usedPlates.has(plate)) usedPlates.set(plate, i);
         });
         const totalPiecesAll = sourceJobs.reduce((sum, job) => sum + Number(job.pieceCount || 0), 0);
+        const splitMap = showVehicle ? state.groupWizard.jobSplits || {} : {};
+        const splitProblems = showVehicle ? wizardSplitProblems() : [];
         const lanes = laneDrivers.map((did, i) => ({
             driverId: did,
             plate: laneVehicles[i] || "",
@@ -4071,9 +4124,23 @@ function renderGroupWizard() {
             index: i,
             color: laneColors.at(i),
             letter: laneNames.at(i),
-            jobs: sourceJobs.filter(job => (jobLaneMap[job.houseNumber] ?? 0) === i)
+            jobs: sourceJobs.filter(job => !splitMap[job.houseNumber] && (jobLaneMap[job.houseNumber] ?? 0) === i),
+            splitJobs: sourceJobs.filter(job => splitMap[job.houseNumber])
         }));
-        lanes.forEach(lane => { lane.pieces = lane.jobs.reduce((sum, job) => sum + Number(job.pieceCount || 0), 0); });
+        lanes.forEach(lane => {
+            lane.pieces = lane.jobs.reduce((sum, job) => sum + Number(job.pieceCount || 0), 0)
+                + lane.splitJobs.reduce((sum, job) => sum + (Number(splitMap[job.houseNumber]?.[lane.index]) || 0), 0);
+            lane.count = lane.jobs.length + lane.splitJobs.filter(job => Number(splitMap[job.houseNumber]?.[lane.index]) > 0).length;
+        });
+        const splitCard = (lane, job) => {
+            const total = Number(job.pieceCount || 0), shares = splitMap[job.houseNumber] || [];
+            const sum = shares.slice(0, driverCount).reduce((a, b) => a + (Number(b) || 0), 0);
+            return `<div class="wizard-job-card wizard-split-card ${sum !== total ? "invalid" : ""}" style="border-left:3px solid ${lane.color}">
+                <strong>${safeHtml(job.houseNumber)} <em class="wizard-split-tag">แบ่งคัน</em></strong>
+                <label class="wizard-split-row"><input type="number" min="0" step="1" inputmode="numeric" class="wizard-split-input" data-split-input="${safeHtml(job.houseNumber)}" data-lane-index="${lane.index}" value="${Number(shares[lane.index]) || 0}" aria-label="จำนวนกล่อง ${safeHtml(job.houseNumber)} บนสาย ${lane.letter}"><span>จาก ${total} กล่อง · รวม ${sum}</span></label>
+                ${lane.index === 0 ? `<button type="button" class="wizard-split-cancel" data-split-cancel="${safeHtml(job.houseNumber)}">ยกเลิกแบ่ง</button>` : ""}
+            </div>`;
+        };
         const vehicleSelect = lane => {
             if (!showVehicle) return "";
             const own = lane.driver?.vehiclePlate ? `รถประจำ · ${safeHtml(lane.driver.vehiclePlate)}` : "รถประจำคนขับ";
@@ -4087,7 +4154,7 @@ function renderGroupWizard() {
             const li = jobLaneMap[job.houseNumber] ?? 0;
             return li < 0 || li >= driverCount;
         });
-        $("#autoGroupDetails").innerHTML = `\n      <section class="wizard-panel wizard-assign-panel">\n        <h3>2. แบ่งงานให้คนขับ</h3>\n        <div class="wizard-driver-count-bar">\n          <span class="wdc-label">เลือกจำนวนคนขับ</span>\n          <div class="wdc-segmented">\n            ${[ 1, 2, 3, 4 ].map(n => `\n              <button class="wdc-seg ${driverCount === n ? "active" : ""}" type="button" data-driver-count="${n}">\n                <strong>${n}</strong><small>คนขับ</small>\n              </button>`).join("")}\n            <div class="wdc-custom ${driverCount > 4 ? "active" : ""}" title="ระบุจำนวนเอง (สูงสุด 30)">\n              <button type="button" class="wdc-stepbtn" data-wdc-step="-1" aria-label="ลดจำนวนคนขับ">−</button>\n              <input id="wdcCustomCount" type="number" min="1" max="30" value="${driverCount}" aria-label="จำนวนคนขับ">\n              <button type="button" class="wdc-stepbtn" data-wdc-step="1" aria-label="เพิ่มจำนวนคนขับ">+</button>\n              <small>คนขับ</small>\n            </div>\n          </div>\n          <div class="wdc-info">\n            <span>${sourceJobs.length} งาน</span>\n            <span>·</span>\n            <span>ออก Cargo ประมาณ ${Math.ceil(sourceJobs.length / 5) + (driverCount > 1 ? " +" : "")} ใบ</span>\n            <span>·</span>\n            <span>รวม ${totalPiecesAll} ชิ้น</span>\n          </div>\n          ${driverCount > 1 ? `<button type="button" class="wizard-auto-split" data-wizard-auto-split title="วาง House ใหญ่ก่อน ลงสายที่ชิ้นน้อยที่สุด">แบ่งอัตโนมัติตามจำนวนชิ้น</button>` : ""}\n        </div>\n        <div class="wizard-lane-container" id="wizardLaneContainer">\n          ${lanes.map((lane, i) => `\n            <div class="wizard-driver-lane" data-lane-index="${i}"\n                 ondragover="event.preventDefault();event.currentTarget.classList.add('drag-over')"\n                 ondragleave="event.currentTarget.classList.remove('drag-over')"\n                 ondrop="wizardDropJob(event,${i})">\n              <div class="wizard-lane-header" style="border-left:3px solid ${lane.color}">\n                <span class="wizard-lane-badge" style="background:${lane.color}">${lane.letter}</span>\n                <select class="wizard-lane-driver-select" data-lane-index="${i}">\n                  ${users.map(u => `<option value="${safeHtml(u.id)}" ${u.id === lane.driverId ? "selected" : ""}>${safeHtml(u.name)}${u.vehiclePlate ? " · " + u.vehiclePlate : ""}</option>`).join("")}\n                </select>\n                ${vehicleSelect(lane)}\n                <span class="wizard-lane-count">${lane.jobs.length} งาน · ${lane.pieces} ชิ้น</span>\n              </div>\n              <div class="wizard-lane-jobs">\n                ${lane.jobs.map(job => `\n                  <div class="wizard-job-card" draggable="true" data-house="${safeHtml(job.houseNumber)}"\n                       ondragstart="wizardDragStart(event,'${safeHtml(job.houseNumber)}')"\n                       style="border-left:3px solid ${lane.color}">\n                    <strong>${safeHtml(job.houseNumber)}</strong>\n                    <small>${safeHtml(job.pickupDate || "-")} · ${job.pieceCount || 0} ชิ้น</small>\n                  </div>`).join("")}\n                ${lane.jobs.length === 0 ? `<div class="wizard-lane-empty">ลากงานมาวางที่นี่</div>` : ""}\n              </div>\n            </div>`).join("")}\n        </div>\n      </section>`;
+        $("#autoGroupDetails").innerHTML = `\n      <section class="wizard-panel wizard-assign-panel">\n        <h3>2. แบ่งงานให้คนขับ</h3>\n        <div class="wizard-driver-count-bar">\n          <span class="wdc-label">เลือกจำนวนคนขับ</span>\n          <div class="wdc-segmented">\n            ${[ 1, 2, 3, 4 ].map(n => `\n              <button class="wdc-seg ${driverCount === n ? "active" : ""}" type="button" data-driver-count="${n}">\n                <strong>${n}</strong><small>คนขับ</small>\n              </button>`).join("")}\n            <div class="wdc-custom ${driverCount > 4 ? "active" : ""}" title="ระบุจำนวนเอง (สูงสุด 30)">\n              <button type="button" class="wdc-stepbtn" data-wdc-step="-1" aria-label="ลดจำนวนคนขับ">−</button>\n              <input id="wdcCustomCount" type="number" min="1" max="30" value="${driverCount}" aria-label="จำนวนคนขับ">\n              <button type="button" class="wdc-stepbtn" data-wdc-step="1" aria-label="เพิ่มจำนวนคนขับ">+</button>\n              <small>คนขับ</small>\n            </div>\n          </div>\n          <div class="wdc-info">\n            <span>${sourceJobs.length} งาน</span>\n            <span>·</span>\n            <span>ออก Cargo ประมาณ ${Math.ceil(sourceJobs.length / 5) + (driverCount > 1 ? " +" : "")} ใบ</span>\n            <span>·</span>\n            <span>รวม ${totalPiecesAll} ชิ้น</span>\n          </div>\n          ${driverCount > 1 ? `<button type="button" class="wizard-auto-split" data-wizard-auto-split title="วาง House ใหญ่ก่อน ลงสายที่ชิ้นน้อยที่สุด">แบ่งอัตโนมัติตามจำนวนชิ้น</button>` : ""}\n        </div>\n        ${splitProblems.length ? `<p class="wizard-split-warning" role="alert">ตรวจการแบ่งคัน: ${splitProblems.map(safeHtml).join(" · ")}</p>` : ""}\n        <div class="wizard-lane-container" id="wizardLaneContainer">\n          ${lanes.map((lane, i) => `\n            <div class="wizard-driver-lane" data-lane-index="${i}"\n                 ondragover="event.preventDefault();event.currentTarget.classList.add('drag-over')"\n                 ondragleave="event.currentTarget.classList.remove('drag-over')"\n                 ondrop="wizardDropJob(event,${i})">\n              <div class="wizard-lane-header" style="border-left:3px solid ${lane.color}">\n                <span class="wizard-lane-badge" style="background:${lane.color}">${lane.letter}</span>\n                <select class="wizard-lane-driver-select" data-lane-index="${i}">\n                  ${users.map(u => `<option value="${safeHtml(u.id)}" ${u.id === lane.driverId ? "selected" : ""}>${safeHtml(u.name)}${u.vehiclePlate ? " · " + u.vehiclePlate : ""}</option>`).join("")}\n                </select>\n                ${vehicleSelect(lane)}\n                <span class="wizard-lane-count">${lane.count} งาน · ${lane.pieces} ชิ้น</span>\n              </div>\n              <div class="wizard-lane-jobs">\n                ${lane.jobs.map(job => `\n                  <div class="wizard-job-card" draggable="true" data-house="${safeHtml(job.houseNumber)}"\n                       ondragstart="wizardDragStart(event,'${safeHtml(job.houseNumber)}')"\n                       style="border-left:3px solid ${lane.color}">\n                    <strong>${safeHtml(job.houseNumber)}</strong>\n                    <small>${safeHtml(job.pickupDate || "-")} · ${job.pieceCount || 0} ชิ้น</small>${showVehicle && driverCount > 1 && Number(job.pieceCount) > 1 ? `<button type="button" class="wizard-split-btn" data-split-house="${safeHtml(job.houseNumber)}">แบ่งหลายคัน</button>` : ""}\n                  </div>`).join("")}${lane.splitJobs.map(job => splitCard(lane, job)).join("")}\n                ${lane.count === 0 && !lane.splitJobs.length ? `<div class="wizard-lane-empty">ลากงานมาวางที่นี่</div>` : ""}\n              </div>\n            </div>`).join("")}\n        </div>\n      </section>`;
     } else if (mode === "outbound") {
         const ctfMeta = state.groupWizard.ctfMeta || {};
         const totalPieces = selectedJobs.reduce((sum, j) => sum + Number(j.pieceCount || j.pieces || 0), 0);
@@ -4178,6 +4245,7 @@ async function groupWizardNextOrIssue() {
     if (state.groupWizard.step < 3) {
         if (state.groupWizard.step === 1 && !groupWizardSelectedJobs().length) throw new Error("กรุณาเลือกงานอย่างน้อย 1 รายการ");
         if (state.groupWizard.step === 2 && !groupWizardSelectedJobs().length) throw new Error("กรุณาเลือก House อย่างน้อย 1 งาน");
+        if (state.groupWizard.step === 2 && wizardSplitProblems().length) throw new Error(`ตรวจการแบ่งคันก่อน: ${wizardSplitProblems().join(" · ")}`);
         state.groupWizard.step += 1;
         renderGroupWizard();
         updateGroupWizardPreview();
@@ -4233,7 +4301,7 @@ async function groupWizardNextOrIssue() {
     const planPages = pages.map(page => ({
         driverId: page.driver.id,
         driverName: page.driver.name || "", vehiclePlate: page.driver.vehiclePlate || "",
-        jobs: page.jobs.map(job => ({ houseNumber: job.houseNumber, updatedAt: job.updatedAt || "" }))
+        jobs: page.jobs.map(job => ({ houseNumber: job.houseNumber, updatedAt: job.updatedAt || "", ...(job.splitPieces ? { splitPieces: job.splitPieces } : {}) }))
     }));
     const cargoHeader = { ...meta };
     if (JSON.stringify(state.groupWizard.issuePlan?.pages) !== JSON.stringify(planPages) || JSON.stringify(state.groupWizard.issuePlan?.cargoHeader) !== JSON.stringify(cargoHeader)) {
@@ -4242,7 +4310,9 @@ async function groupWizardNextOrIssue() {
     const data = await api("/api/admin/cargo-issue-plan", state.groupWizard.issuePlan);
     if (!data.ok || data.pageCount !== pages.length || data.jobs?.length !== jobs.length) throw new Error("ผลออกใบไม่ตรงแผน กรุณาโหลดข้อมูลตรวจสอบก่อนทำต่อ");
     const createdJobs = data.jobs;
-    if (pages.some(page => page.jobs.some(job => !createdJobs.some(saved => saved.houseNumber === job.houseNumber && saved.driverId === page.driver.id && (saved.vehiclePlate || "") === (page.driver.vehiclePlate || ""))))) throw new Error("คนขับหรือทะเบียนในผลบันทึกไม่ตรง Preview กรุณาโหลดข้อมูลตรวจสอบ");
+    if (pages.some(page => page.jobs.some(job => !createdJobs.some(saved => saved.houseNumber === job.houseNumber && (Array.isArray(saved.splitLegs) && saved.splitLegs.length > 1
+        ? saved.splitLegs.some(leg => leg.driverId === page.driver.id && (leg.vehiclePlate || "") === (page.driver.vehiclePlate || "") && Number(leg.pieceCount) === Number(job.splitPieces))
+        : saved.driverId === page.driver.id && (saved.vehiclePlate || "") === (page.driver.vehiclePlate || "")))))) throw new Error("คนขับหรือทะเบียนในผลบันทึกไม่ตรง Preview กรุณาโหลดข้อมูลตรวจสอบ");
     if (data.dashboard) state.dashboard = data.dashboard;
     state.selectedManualHouses = state.selectedManualHouses.filter(house => !createdJobs.some(job => job.houseNumber === house));
     printMultipleCargoForms(forms);
@@ -8512,6 +8582,14 @@ function billingPeriodLabel(period) {
 
 function billingTripKey(job) { return TransportRounds.billingKey(job); }
 
+// A House split over several trucks bills one trip per truck.
+function billingTruckRecords(job) {
+    if (!Array.isArray(job.splitLegs) || job.splitLegs.length < 2) return [ job ];
+    return job.splitLegs.map(leg => ({ ...job, transportRoundId: leg.transportRoundId, pickupBatchId: leg.pickupBatchId, batchId: leg.batchId,
+        driverId: leg.driverId, driverName: leg.driverName, vehiclePlate: leg.vehiclePlate, routeStartedAt: leg.routeStartedAt, splitLegId: leg.legId,
+        pieceCount: leg.pickupReceivedCount || leg.pieceCount }));
+}
+
 function buildBillingBatchGroups() {
     const dateFrom = $("#batchDateFrom")?.value || "";
     const dateTo = $("#batchDateTo")?.value || "";
@@ -8542,7 +8620,8 @@ function buildBillingBatchGroups() {
     const groups = [ ...grouped.values() ];
     groups.forEach(group => {
         const trips = new Map;
-        group.jobs.forEach(job => {
+        group.truckRecords = group.jobs.flatMap(billingTruckRecords);
+        group.truckRecords.forEach(job => {
             const key = billingTripKey(job);
             if (!key) { group.unresolvedTrips.push(job.houseNumber); return; }
             if (!trips.has(key)) trips.set(key, {
@@ -8595,7 +8674,7 @@ function exportSelectedBillingBatch() {
     const group = selectedBillingBatch();
     if (!group) return;
     const headers = [ "DATE", "HAWB", "SHIPPER", "PLACE LOAD", "CTN", "WEIGHT KGS.", "ทะเบียนรถ", "ประเภทรถ", "เที่ยว", "ค่าบริการ" ];
-    const rows = group.jobs.map(job => {
+    const rows = (group.truckRecords || group.jobs).map(job => {
         const trip = group.trips.find(item => item.jobs.includes(job));
         const firstInTrip = trip?.jobs[0] === job;
         return [ billingJobDate(job), job.houseNumber, job.customerName, job.routeType || job.destination || "", job.pieceCount || "", job.terminalWeight || job.weight || "", job.vehiclePlate || "", job.vehicleType || "", trip?.key || "", firstInTrip ? trip.amount : 0 ];
@@ -10032,6 +10111,15 @@ function bindEvents() {
             renderGroupWizard();
             return;
         }
+        const splitInput = event.target.closest("[data-split-input]");
+        if (splitInput) {
+            const house = splitInput.dataset.splitInput, lane = Number(splitInput.dataset.laneIndex);
+            const shares = [ ...(state.groupWizard.jobSplits?.[house] || []) ];
+            shares[lane] = Math.max(0, Math.floor(Number(splitInput.value) || 0));
+            state.groupWizard.jobSplits = { ...(state.groupWizard.jobSplits || {}), [house]: shares };
+            renderGroupWizard();
+            return;
+        }
         const laneVehicleSelect = event.target.closest(".wizard-lane-vehicle-select");
         if (laneVehicleSelect) {
             const li = Number(laneVehicleSelect.dataset.laneIndex);
@@ -10080,6 +10168,16 @@ function bindEvents() {
         }
     });
     $("#autoGroupDetails")?.addEventListener("click", event => {
+        const splitBtn = event.target.closest("[data-split-house]");
+        if (splitBtn) { wizardStartSplit(splitBtn.dataset.splitHouse); return; }
+        const splitCancel = event.target.closest("[data-split-cancel]");
+        if (splitCancel) {
+            const splits = { ...(state.groupWizard.jobSplits || {}) };
+            delete splits[splitCancel.dataset.splitCancel];
+            state.groupWizard.jobSplits = splits;
+            renderGroupWizard();
+            return;
+        }
         if (event.target.closest("[data-wizard-auto-split]")) {
             wizardAutoSplitByPieces();
             return;
