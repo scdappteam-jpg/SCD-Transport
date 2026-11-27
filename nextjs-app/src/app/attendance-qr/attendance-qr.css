@@ -1,0 +1,31 @@
+@import url("https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap");
+/* Attendance QR display: QR sized from the viewport (vmin) so it stays scannable on a wall screen,
+   steps beside it on wide screens and below it on phones / portrait screens. */
+.aq-screen{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:clamp(16px,3vmin,48px);background:#eef4fb;color:#14213a;font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif}
+.aq-card{width:min(100%,1280px);display:grid;gap:clamp(14px,2.4vmin,32px);padding:clamp(20px,4vmin,56px);border-radius:28px;background:#fff;box-shadow:0 18px 55px #143d7724}
+.aq-head{display:flex;align-items:center;gap:clamp(12px,2vmin,24px)}
+.aq-mark{display:grid;place-items:center;flex:0 0 auto;width:clamp(48px,7vmin,84px);aspect-ratio:1;border-radius:18px;background:#0b4ea2;color:#fff;font-weight:700;font-size:clamp(14px,2vmin,24px)}
+.aq-eyebrow{margin:0;font-size:clamp(12px,1.6vmin,18px);letter-spacing:.12em;color:#0b4ea2;font-weight:500}
+.aq-head h1{margin:2px 0 0;font-size:clamp(24px,4.6vmin,56px);font-weight:600;line-height:1.2}
+.aq-body{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(20px,4vmin,56px);align-items:center}
+.aq-qr{padding:clamp(10px,1.6vmin,20px);border:1px solid #dbe6f3;border-radius:22px;background:#fff;line-height:0}
+.aq-qr svg{width:min(58vmin,520px);height:auto;display:block}
+.aq-steps{list-style:none;counter-reset:s;margin:0;padding:0;display:grid;gap:clamp(12px,2.6vmin,28px)}
+.aq-steps li{counter-increment:s;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:16px;align-items:start}
+.aq-steps li::before{content:counter(s);grid-row:span 2;display:grid;place-items:center;width:clamp(36px,5.6vmin,64px);aspect-ratio:1;border-radius:50%;background:#e7effb;color:#0b4ea2;font-weight:700;font-size:clamp(18px,3vmin,32px)}
+.aq-steps b{font-size:clamp(18px,3.2vmin,38px);font-weight:600;line-height:1.25}
+.aq-steps span{font-size:clamp(14px,2vmin,24px);color:#5d6b84}
+.aq-note{margin:0;font-size:clamp(13px,1.8vmin,20px);color:#475569}
+.aq-url{margin:0;word-break:break-all;color:#64748b;font-size:clamp(12px,1.5vmin,17px)}
+.aq-print{justify-self:start;min-height:48px;padding:0 24px;border:0;border-radius:12px;color:#fff;background:#0b4ea2;font:600 16px Kanit,sans-serif;cursor:pointer}
+.aq-print:focus-visible{outline:3px solid #f59e0b;outline-offset:3px}
+@media (max-width:760px),(orientation:portrait){
+  .aq-body{grid-template-columns:minmax(0,1fr);justify-items:center}
+  .aq-qr svg{width:min(78vw,62vh,520px)}
+}
+@media print{
+  .aq-screen{background:#fff;min-height:auto;padding:0}
+  .aq-card{box-shadow:none;width:100%}
+  .aq-print{display:none}
+  .aq-qr svg{width:120mm}
+}

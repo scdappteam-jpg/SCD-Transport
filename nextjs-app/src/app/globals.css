@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -20,7 +21,15 @@ body {
   background:
     radial-gradient(circle at 88% 5%, rgba(38, 99, 235, 0.1), transparent 25rem),
     var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Kanit matches the legacy web and mobile app */
+  font-family: Kanit, "Leelawadee UI", Tahoma, Arial, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 button,

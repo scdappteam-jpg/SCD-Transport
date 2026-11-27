@@ -1,1 +1,45 @@
-.screen{min-height:100vh;background:#091323;color:#f0f6ff;padding:clamp(16px,2.5vw,44px);font-family:Tahoma,Arial,sans-serif}.header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.header p{color:#8bb8d9;margin:0 0 6px;letter-spacing:.08em}.header h1{font-size:clamp(26px,3vw,46px);margin:0}.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.tools button,.tools a{background:#1d3451;color:white;border:1px solid #466887;padding:10px 15px;border-radius:8px;text-decoration:none;font:inherit;cursor:pointer}.tools button:disabled{opacity:.6}.tools span{color:#9cd3ff}.sit{background:#ffc857;color:#191d25;padding:12px 18px;font-size:22px;font-weight:bold;margin:22px 0 0;border-radius:8px}.meta{color:#afc3d9;margin:18px 0;font-size:14px;line-height:1.8}.error{background:#7f2433;padding:20px;border-radius:9px;font-size:22px}.error a{color:white;text-decoration:underline}.screen section{margin-top:26px}.screen h2{font-size:24px;margin:0 0 12px}.screen h2 span{font-size:16px;font-weight:normal;margin-left:12px;color:#bbd0e8}.scroll{overflow-x:auto;border-radius:12px;border:1px solid #38516d}.screen table{border-collapse:collapse;width:100%;min-width:620px;text-align:left}.screen th{background:#142942;color:#b4d0ec;font-size:16px;padding:14px 20px}.screen td{padding:18px 20px;font-size:clamp(20px,2.2vw,34px);border-bottom:1px solid #31455e}.screen td.house{font-size:clamp(18px,1.6vw,27px);overflow-wrap:anywhere;max-width:600px}.house small{display:block;margin-top:3px;color:#9fb3c9;font-size:.58em;font-weight:700}.called .scroll{border-color:#3fba98}.called td.dock{font-size:clamp(32px,4vw,62px);color:#6dffcd;font-weight:bold}.ticket{font-weight:bold;color:#ffd579;white-space:nowrap}.dock{white-space:nowrap}.empty{padding:22px;color:#b3c5d8;font-size:22px;margin:0}.bays{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px}.bay,.activeBay{padding:14px;border:1px solid #47617d;border-radius:10px;display:flex;flex-direction:column;gap:6px;background:#14253b}.activeBay{background:#164d43;border-color:#6dffcd}.bay strong,.activeBay strong{font-size:25px}.bay small,.activeBay small{color:#c2d7eb}.screen a:focus-visible,.screen button:focus-visible{outline:3px solid #ffd579;outline-offset:3px}
+@import url("https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap");
+/* Wall-TV queue board (WH3). Sized in vw/vh so it reads from across the yard and fills the screen:
+   header · status line · two columns (called | waiting) · bay strip · footer. */
+.screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:clamp(10px,1.4vh,22px);background:#091323;color:#f0f6ff;padding:clamp(16px,2.2vw,48px);font-family:Kanit,"Leelawadee UI",Tahoma,Arial,sans-serif}
+.header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.header p{color:#8bb8d9;margin:0 0 4px;letter-spacing:.1em;font-size:clamp(12px,.9vw,18px)}
+.header h1{font-size:clamp(28px,3.2vw,64px);font-weight:600;line-height:1.15;margin:0}
+.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;opacity:.75}
+.tools:hover,.tools:focus-within{opacity:1}
+.tools button,.tools a{background:#1d3451;color:white;border:1px solid #466887;padding:10px 16px;border-radius:10px;text-decoration:none;font:inherit;font-size:clamp(14px,.85vw,17px);cursor:pointer}
+.tools button:disabled{opacity:.6}
+.tools span{color:#9cd3ff;font-size:clamp(14px,.85vw,17px)}
+.sit{background:#ffc857;color:#191d25;padding:12px 18px;font-size:clamp(18px,1.3vw,26px);font-weight:700;border-radius:10px}
+.meta{color:#afc3d9;margin:0;font-size:clamp(13px,.85vw,17px);line-height:1.7}
+.loading{font-size:clamp(22px,2vw,40px);color:#bcd2ea;margin:auto;text-align:center}
+.error{background:#7f2433;padding:clamp(16px,1.4vw,28px);border-radius:12px;font-size:clamp(18px,1.5vw,30px)}
+.error a{color:white;text-decoration:underline}
+.screen section{margin:0;min-width:0}
+.screen h2{display:flex;align-items:baseline;gap:12px;font-size:clamp(20px,1.7vw,36px);font-weight:600;margin:0 0 clamp(8px,1vh,16px)}
+.screen h2 span{font-size:.62em;font-weight:500;color:#0b1d33;background:#bcd2ea;border-radius:999px;padding:2px 12px}
+.called h2 span{background:#6dffcd}
+/* two columns on wide screens; stacked on narrow */
+.lists{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(14px,1.6vw,32px);align-items:start}
+@media (max-width:1100px){.lists{grid-template-columns:minmax(0,1fr)}}
+.scroll{overflow-x:auto;border-radius:14px;border:1px solid #38516d;background:#0e1c30}
+.screen table{border-collapse:collapse;width:100%;text-align:left}
+.screen th{background:#142942;color:#b4d0ec;font-size:clamp(14px,1vw,20px);font-weight:500;padding:clamp(10px,1vh,16px) clamp(12px,1vw,20px);white-space:nowrap}
+.screen td{padding:clamp(12px,1.4vh,22px) clamp(12px,1vw,20px);font-size:clamp(20px,1.8vw,40px);border-bottom:1px solid #31455e;font-variant-numeric:tabular-nums}
+.screen tr:last-child td{border-bottom:0}
+.screen td.house{font-size:clamp(16px,1.3vw,28px);overflow-wrap:anywhere;max-width:34vw}
+.house small{display:block;margin-top:3px;color:#9fb3c9;font-size:.62em;font-weight:500}
+.called .scroll{border-color:#3fba98}
+.called td.dock{font-size:clamp(30px,3.4vw,76px);color:#6dffcd;font-weight:700;line-height:1}
+.ticket{font-weight:700;color:#ffd579;white-space:nowrap}
+.dock{white-space:nowrap}
+.empty{padding:clamp(18px,2vh,32px) 20px;color:#b3c5d8;font-size:clamp(18px,1.4vw,30px);margin:0;text-align:center}
+.baysSection{margin-top:auto}
+.bays{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:clamp(8px,.7vw,14px)}
+.bay,.activeBay{padding:clamp(10px,1.1vh,18px) clamp(10px,.8vw,16px);border:1px solid #47617d;border-radius:12px;display:flex;flex-direction:column;gap:4px;background:#14253b}
+.activeBay{background:#164d43;border-color:#6dffcd;box-shadow:0 0 0 2px #6dffcd55}
+.bay strong,.activeBay strong{font-size:clamp(22px,1.9vw,40px);font-weight:700;line-height:1.1}
+.bay span,.activeBay span{font-size:clamp(12px,.8vw,16px);color:#c2d7eb}
+.bay small,.activeBay small{font-size:clamp(13px,.95vw,19px);font-weight:600;color:#e3eefa}
+.activeBay small{color:#6dffcd}
+.screen a:focus-visible,.screen button:focus-visible{outline:3px solid #ffd579;outline-offset:3px}
