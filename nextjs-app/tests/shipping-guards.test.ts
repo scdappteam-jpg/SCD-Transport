@@ -16,11 +16,11 @@ function fixture(): Job[] {
         receipts.receiveCounts(j,{counts:j.packageCounts,expectedRevision:0,requestId:`shipping-fixture-${i}`},'test');return j;
     });
 }
-function route(jobs=fixture()) {
+function route(jobs=fixture(), role='Terminal') {
     const start=source.indexOf('    if (req.method === "POST" && pathname === "/api/outbound/load-bay")');
     const end=source.indexOf('    if (req.method === "POST" && pathname === "/api/billing/review-batch")',start);
     const db={jobs,attachments:[] as unknown[],alerts:[] as string[]},io={writes:0,files:0,logs:0};
-    const ctx=vm.createContext({outboundTiming:require("../src/server/outbound-timing.cjs"),db,payload:{},pathname:'',req:{method:'POST'},res:{},shippingGuards:guards,parseBody:async()=>ctx.payload,requireSessionRole:()=>({id:'test'}),findJob:(d:typeof db,h:string)=>d.jobs.find(j=>j.houseNumber===h),sendJson:(_r:unknown,code:number,body:unknown)=>({code,body}),normalizeTerminal:()=> 'TG',TERMINAL_PROFILES:{TG:{}},normalizeJob:(j:Job)=>j,buildDashboard:()=>({}),nowIso:()=>new Date().toISOString(),writeDb:()=>io.writes++,logActivity:()=>io.logs++,saveBase64File:()=>{io.files++;db.attachments.push({});},createAlert:async()=>db.alerts.push('test')});
+    const ctx=vm.createContext({outboundActionAccess:require("../src/server/outbound-action-access.cjs"),mutationDashboard:()=>({}),outboundTiming:require("../src/server/outbound-timing.cjs"),db,payload:{},pathname:'',req:{method:'POST'},res:{},shippingGuards:guards,parseBody:async()=>ctx.payload,requireSessionRole:(_db:unknown,_req:unknown,roles:string[])=>roles.includes(role)?{id:'test',role}:null,findJob:(d:typeof db,h:string)=>d.jobs.find(j=>j.houseNumber===h),sendJson:(_r:unknown,code:number,body:unknown)=>({code,body}),normalizeTerminal:()=> 'TG',TERMINAL_PROFILES:{TG:{}},normalizeJob:(j:Job)=>j,buildDashboard:()=>({}),nowIso:()=>new Date().toISOString(),writeDb:()=>io.writes++,logActivity:()=>io.logs++,saveBase64File:()=>{io.files++;db.attachments.push({});},createAlert:async()=>db.alerts.push('test')});
     vm.runInContext(`async function run(){${source.slice(start,end)}}`,ctx);
     return{db,io,call:async(name:string,p:Record<string,unknown>)=>{ctx.pathname=`/api/outbound/${name}`;ctx.payload={houseNumber:jobs[0].houseNumber,...p};return vm.runInContext('run()',ctx);}};
 }
@@ -122,4 +122,17 @@ test('missing Master and stale Master Flight or House scope reject before any fi
 
 test('Master scope normalizes separators and supports masterNumber fallback without changing stored references',()=>{
     const jobs=fixture();jobs[1].mawbNumber='20586393230';delete jobs[2].mawbNumber;jobs[2].masterNumber='205-86393230';const before=structuredClone(jobs);assert.equal(guards.loading({jobs},jobs[0],{imageBase64:png,mimeType:'image/png',expectedHouses:jobs.map(j=>j.houseNumber)}).length,3);assert.deepEqual(jobs,before);
+});
+
+
+test('actual load handler lets WH Staff complete loading but refuses Terminal milestones before any writes',async()=>{
+    const f=route(fixture(),'WH_Staff'),j=f.db.jobs[0];
+    delete j.goodsLoadedAt;delete j.terminalArrivedAt;j.status='AOTQueueApproved';
+    let r=await f.call('load-bay',{phase:'wh3-load-start'});assert.equal(r.code,200);
+    r=await f.call('load-bay',{arrived:false,imageBase64:png,mimeType:'image/png'});
+    assert.equal(r.code,200);assert.equal(j.status,'GoodsLoaded');assert.ok(j.goodsLoadedAt);
+    for(const p of [{phase:'queue'},{arrived:true}]){
+        const before=structuredClone(f.db),io={...f.io};
+        r=await f.call('load-bay',p);assert.equal(r.code,403);assert.equal(JSON.stringify(f.db),JSON.stringify(before));assert.deepEqual(f.io,io);
+    }
 });

@@ -1560,6 +1560,15 @@ function syncAdminPickupRowsText() {
     return target.value;
 }
 
+function applyAdminPickupDateToRows() {
+    const date = $("#adminPickupDate")?.value;
+    if (!date) return;
+    // The header is the bulk pickup-date control. A row may still be edited
+    // individually afterwards; never leave an old Flight date hidden in it.
+    $$("#adminPickupItemRows .admin-row-date").forEach(input => { input.value = date; });
+    syncAdminPickupRowsText();
+}
+
 function setAdminPickupRows(rows = []) {
     const list = $("#adminPickupItemRows");
     if (!list) return;
@@ -10100,6 +10109,7 @@ function bindEvents() {
     }));
     [ "adminPickupDate", "adminCustomer", "adminPickupLocation", "adminDriverName", "adminVehiclePlate", "adminPieceCount", "adminPickupItems", "adminPackageType", "adminDestination", "adminStickerColor" ].forEach(id => {
         $(`#${id}`).addEventListener("input", () => {
+            if (id === "adminPickupDate") applyAdminPickupDateToRows();
             updateAdminBatchSummary();
             renderCargoPreview();
         });

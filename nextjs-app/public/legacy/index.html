@@ -1436,8 +1436,9 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
 
 
                 <div class="form-section-head"><i data-lucide="truck" aria-hidden="true"></i><span>การรับสินค้า / Pickup & Transport</span></div>
-                <label>วันที่รับสินค้า / Pickup Date</label>
-                <input id="adminPickupDate" type="date">
+                <label for="adminPickupDate">วันที่รับสินค้า (ใช้กับทุก House ในใบนี้) / Pickup Date</label>
+                <input id="adminPickupDate" type="date" aria-describedby="adminPickupDateHelp">
+                <small id="adminPickupDateHelp">เปลี่ยนวันที่นี้แล้วทุก House จะใช้วันเดียวกัน หากรับคนละวันให้แก้วันที่ในรายการ House แยก</small>
                 <label>สถานที่รับสินค้า / Pickup Location</label>
                 <input id="adminPickupLocation" autocomplete="off" placeholder="คลังลูกค้า / Customer warehouse">
                 <label>ชื่อคนขับ / Driver Name</label>

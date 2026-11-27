@@ -36,6 +36,7 @@ const consolSchedule = require("./consol-schedule.cjs");
 const cargoIssuePlan = require("./cargo-issue-plan.cjs");
 const shippingGuards = require("./shipping-guards.cjs");
 const outboundTiming = require("./outbound-timing.cjs");
+const outboundActionAccess = require("./outbound-action-access.cjs");
 const shippingPresentation = require("./shipping-presentation.cjs");
 const xlsxXml = require("./xlsx-xml.cjs");
 const cargoTransfer = require("./cargo-transfer.cjs");
@@ -6510,7 +6511,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/validate") {
         const payload = await parseBody(req);
-        const actor = requireSessionRole(db, req, [ "Admin", "Executive", "WH3_TeamLeader", "WH_Staff", "Terminal" ]);
+        const actor = requireSessionRole(db, req, outboundActionAccess.terminalDocumentRoles);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ตรวจเอกสารขาออก" });
         payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
@@ -6850,7 +6851,7 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/outbound/load-bay") {
         const payload = await parseBody(req);
-        const actor = requireSessionRole(db, req, payload.phase === 'wh3-load-start' ? [ "Admin", "Executive", "Terminal", "WH3_TeamLeader", "WH_Staff", "Team_Transport" ] : [ "Admin", "Executive", "Terminal" ]);
+        const actor = requireSessionRole(db, req, outboundActionAccess.loadBayRoles(payload));
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์บันทึกการโหลดเข้า Terminal" });
         payload.userId = actor.id;
         const job = findJob(db, payload.houseNumber);
