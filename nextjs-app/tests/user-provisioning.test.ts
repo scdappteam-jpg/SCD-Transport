@@ -7,7 +7,7 @@ const auth=require('../src/server/attendance-device-auth.cjs');
 const fixture=()=>({users:[] as {id:string,code:string,role:string,isTestAccount?:boolean,passwordHash?:string,pinHash?:string,mustChangePin?:boolean,mustChangePassword?:boolean}[]});
 test('suite creates all roles with matching hashed credentials, first-use change, and no credential reset on replay',()=>{
  const db=fixture(); const result=service.provisionSuite(db,{id:'admin',role:'Admin'},'2026-11-22T00:00:00Z');
- assert.equal(result.length,15);
+ assert.equal(result.length,16);
  for(const row of result){const user=db.users.find(u=>u.code===row.code)!;assert.ok(auth.pinMatches(row.initialPin,user.passwordHash));assert.ok(auth.pinMatches(row.initialPin,user.pinHash));assert.ok(user.mustChangePin&&user.mustChangePassword);}
  const before=JSON.stringify(db);const replay=service.provisionSuite(db,{id:'admin',role:'Admin'},'later');assert.ok(replay.every((r:{initialPin:string|null})=>r.initialPin===null));assert.equal(JSON.stringify(db),before);
 });

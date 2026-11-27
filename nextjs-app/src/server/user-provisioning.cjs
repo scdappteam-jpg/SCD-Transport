@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const crypto = require('node:crypto');
 const auth = require('./attendance-device-auth.cjs');
-const ROLES = ['Admin','Executive','CS','Team_Transport','Driver','WH3_TeamLeader','WH_Staff','Tagging_Staff','QA_Inspector','Check_House','EI_Customer','Terminal','Billing','Employee','People_Viewer'];
+const ROLES = ['Admin','Executive','CS','Team_Transport','Driver','WH3_TeamLeader','WH_Staff','Tagging_Staff','QA_Inspector','Check_House','Console_Office','EI_Customer','Terminal','Billing','Employee','People_Viewer'];
 const fail = (message, statusCode=400) => { throw Object.assign(new Error(message), {statusCode}); };
 function initializeCredential(user, pin, at) {
     auth.validatePin(pin,user);
