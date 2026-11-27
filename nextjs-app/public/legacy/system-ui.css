@@ -666,3 +666,68 @@ html.has-open-popup { overflow: hidden; }
   .login-screen .login-brand .lb-steps,
   .login-screen .login-brand .lb-foot { display: none !important; }
 }
+
+/* =========================================================
+   Calendar on phones: the month grid was 7 × 120px (840px) so only three
+   days showed at once. Fit the whole week; each day shows its date and a
+   job-count badge, and tapping a day opens the existing day popup.
+   ========================================================= */
+@media (max-width: 640px) {
+  .workspace #view-calendar .calendar-weekdays,
+  .workspace #view-calendar #calendarGrid {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 2px !important;
+  }
+  .workspace #view-calendar .calendar-weekdays > * {
+    min-width: 0 !important;
+    padding: 6px 0 !important;
+    font-size: 12px !important;
+    text-align: center;
+  }
+  .workspace #view-calendar .calendar-day {
+    min-width: 0 !important;
+    min-height: 56px !important;
+    padding: 4px 2px !important;
+    cursor: pointer;
+  }
+  .workspace #view-calendar .calendar-day > header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 2px !important;
+  }
+  .workspace #view-calendar .calendar-day time { font-size: 13px !important; }
+  .workspace #view-calendar .calendar-day .calendar-jobs { display: none !important; }
+  .workspace #view-calendar .calendar-day .day-count-badge {
+    max-width: 100%;
+    padding: 1px 4px !important;
+    border-radius: 999px;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .workspace #view-calendar .calendar-day.has-jobs { background: #eef4ff !important; }
+  .workspace #view-calendar .calendar-day.today { box-shadow: inset 0 0 0 2px var(--primary, #0b4ea2) !important; }
+}
+
+/* =========================================================
+   Cargo Transfer Form popup on phones: the 300px form column sat beside
+   the preview; stack form above preview so both are usable.
+   ========================================================= */
+@media (max-width: 760px) {
+  #cargoTransferModal > div:nth-child(2) {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  #cargoTransferModal > div:nth-child(2) > div:first-child {
+    width: 100% !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid #e2e8f0;
+    overflow: visible !important;
+  }
+  #cargoTransferModal > div:first-child { flex-wrap: wrap; gap: 10px; padding: 10px 14px !important; }
+}
