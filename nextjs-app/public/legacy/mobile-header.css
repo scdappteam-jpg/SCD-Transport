@@ -1,0 +1,167 @@
+/* mobile.html — signed-in header bar.
+   Loaded after mobile.css. Older rules there (2-column button grid, 48px buttons,
+   wrapping subtitle, 152px min-height) carry !important and higher specificity,
+   so these selectors repeat body:not(.mobile-locked) + header.mobile-header to win. */
+
+body:not(.mobile-locked) header.mobile-header {
+  position: sticky !important;
+  top: 0;
+  z-index: 20;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  min-height: 60px !important;
+  height: auto !important;
+  padding: max(10px, env(safe-area-inset-top)) 14px 10px !important;
+  border-radius: 0 !important;
+  background: #0b4ea2 !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .08) !important;
+}
+
+/* ---------- Brand + who is signed in ---------- */
+body:not(.mobile-locked) header.mobile-header .mh-brand {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+body:not(.mobile-locked) header.mobile-header .mh-mark {
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  padding: 0 !important;
+  border-radius: 10px;
+  line-height: 1 !important;
+  font-size: 11px !important;
+  letter-spacing: .04em;
+}
+body:not(.mobile-locked) header.mobile-header .mh-name {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+body:not(.mobile-locked) header.mobile-header .mh-name > strong,
+body:not(.mobile-locked) header.mobile-header .mh-name > span,
+body:not(.mobile-locked) header.mobile-header .mh-user {
+  display: block;
+  max-width: none !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow-wrap: normal !important;
+}
+body:not(.mobile-locked) header.mobile-header .mh-name > strong {
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+  color: #fff !important;
+}
+body:not(.mobile-locked) header.mobile-header .mh-name > span {
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  color: rgba(255, 255, 255, .72) !important;
+  opacity: 1 !important;
+}
+body:not(.mobile-locked) header.mobile-header .mh-user {
+  display: flex !important;
+  align-items: baseline;
+  gap: 6px;
+  font-style: normal;
+  line-height: 1.25 !important;
+  color: #fff !important;
+}
+body:not(.mobile-locked) header.mobile-header .mh-user[hidden] { display: none !important; }
+/* Name gives way (ellipsis); role is always fully visible */
+body:not(.mobile-locked) header.mobile-header .mh-user-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  color: #fff !important;
+}
+body:not(.mobile-locked) header.mobile-header .mh-user-role {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .16);
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+  color: #fff !important;
+  white-space: nowrap;
+}
+/* When we know who is signed in, show "mode" over "name · role" instead of the brand
+   (the SCD mark already carries the brand). */
+body:not(.mobile-locked) header.mobile-header .mh-name:has(.mh-user:not([hidden])) > strong { display: none !important; }
+
+/* ---------- Action buttons: one row, equal 40px squares ---------- */
+body:not(.mobile-locked) header.mobile-header .mobile-header-actions {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  max-width: none !important;
+}
+body:not(.mobile-locked) header.mobile-header .mobile-header-actions > button,
+body:not(.mobile-locked) header.mobile-header .mobile-header-actions > a {
+  display: inline-grid !important;
+  place-items: center !important;
+  flex: 0 0 40px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(255, 255, 255, .22) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, .12) !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+}
+body:not(.mobile-locked) header.mobile-header .mobile-header-actions > button:active { background: rgba(255, 255, 255, .24) !important; }
+body:not(.mobile-locked) header.mobile-header .mobile-header-actions > button:focus-visible {
+  outline: 2px solid #fff !important;
+  outline-offset: 2px;
+}
+body:not(.mobile-locked) header.mobile-header .mobile-header-actions > [hidden] { display: none !important; }
+
+body:not(.mobile-locked) header.mobile-header .mobile-header-actions svg {
+  width: 18px;
+  height: 18px;
+}
+/* Logout: icon only; the label stays for screen readers */
+body:not(.mobile-locked) header.mobile-header .mh-logout-label {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+}
+/* Before lucide swaps <i> for an <svg>, keep the label visible as fallback */
+body:not(.mobile-locked) header.mobile-header #attendanceLogoutBtn:not(:has(svg)) .mh-logout-label {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  clip: auto !important;
+  font-size: 10px !important;
+}
+
+/* Very narrow phones: drop the mode line, keep the name */
+@media (max-width: 340px) {
+  body:not(.mobile-locked) header.mobile-header .mh-name:has(.mh-user:not([hidden])) > span { display: none !important; }
+  body:not(.mobile-locked) header.mobile-header .mh-mark { display: none !important; }
+}

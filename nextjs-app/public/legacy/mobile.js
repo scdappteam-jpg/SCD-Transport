@@ -92,6 +92,7 @@ function applyLanguage(root = document.body) {
     });
     const toggle = $("#mobileLanguageToggle");
     if (toggle) toggle.textContent = state.lang === "en" ? "EN" : "TH";
+    if (typeof renderMobileHeaderUser === "function") renderMobileHeaderUser();
 }
 
 function isMobileAuthenticated() {
@@ -122,6 +123,23 @@ function passwordForUser(userId) {
     return AUTH_CONFIG.userPasswords?.[userId] || AUTH_CONFIG.defaultPassword || "1234";
 }
 
+function renderMobileHeaderUser() {
+    const headerUser = $("#mobileHeaderUser");
+    if (!headerUser) return;
+    const user = isMobileAuthenticated() ? mobileUsers().find(item => item.id === state.currentUserId) : null;
+    headerUser.hidden = !user;
+    headerUser.replaceChildren();
+    if (!user) return;
+    const name = document.createElement("b");
+    name.className = "mh-user-name";
+    name.textContent = localizeText(String(user.name || user.code || user.id));
+    const role = document.createElement("small");
+    role.className = "mh-user-role";
+    role.textContent = String(user.role || "").replace(/_/g, " ");
+    headerUser.append(name, role);
+    headerUser.title = `${user.name || user.id} · ${role.textContent}`;
+}
+
 function renderMobileAuthState() {
     const auth = isMobileAuthenticated();
     if (!auth) {
@@ -141,6 +159,7 @@ function renderMobileAuthState() {
     if (logout) logout.hidden = !auth;
     if (headerLogout) headerLogout.hidden = !auth;
     if (attendanceLogout) attendanceLogout.hidden = !auth;
+    renderMobileHeaderUser();
     if (password && !auth) password.value = "";
     if (auth && typeof showMnav === "function" && !document.body.dataset.mnav) {
         setTimeout(() => {
@@ -415,6 +434,7 @@ async function refresh() {
     state.users = data.users || [];
     const signedInUser = state.users.find(user => user.id === state.currentUserId);
     if (signedInUser) localStorage.setItem("smartLogisticsMobileUserProfile", JSON.stringify(signedInUser));
+    renderMobileHeaderUser();
     render();
     updatePickupSafetyButtons();
 }
