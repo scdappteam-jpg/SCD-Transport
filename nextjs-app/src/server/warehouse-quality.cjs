@@ -93,6 +93,8 @@ function enforceMovement(db,path,p) {
         inbound.assertNotHeld(job);
         // Core cargo gates must not depend on a rollout flag or a client flag.
         assertApproved(job);
+        // Lithium: document + Console Office scan before goods leave storage.
+        if (require('./lithium-control.cjs').releasesGoods(path,p)) require('./lithium-control.cjs').assertReleased(db,job);
         if (!inboundPutawayPaths.has(path) && path !== '/api/warehouse/location/release') require('./inbound-receipts.cjs').assertReceiptComplete(job);
         if(inboundPutawayPaths.has(path))inbound.assertPutaway(db,job,p);
         if ((p.trackType && p.trackType!==(job.trackType||'Single')) || (p.stickerColor && p.stickerColor!==(job.inboundStickerColor||''))) fail('ข้อมูลแท็กเปลี่ยน ต้องลงทะเบียนและสแกน QA ใหม่ก่อนย้าย');

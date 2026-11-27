@@ -52,6 +52,8 @@ const splitLegs = require("./split-legs.cjs");
 const srsAlerts = require("./srs-alerts.cjs");
 const dockLayout = require("./dock-layout.cjs");
 const whGeofence = require("./wh-geofence.cjs");
+const lithiumControl = require("./lithium-control.cjs");
+const partialUnload = require("./partial-unload.cjs");
 const shippingDocStatus = require("./shipping-doc-status.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
@@ -5006,7 +5008,7 @@ async function handleApi(req, res, pathname) {
         }
         // SRS 4.2.1: an inbound truck joins the dock queue only after the release
         // document (permit) photo is in for every House on it.
-        const missingPermit = (roundJobs.length ? roundJobs : job ? [ job ] : []).filter(item => item.shipmentSource !== "CustomerDirect" && !item.releaseDocumentReceivedAt);
+        const missingPermit = (roundJobs.length ? roundJobs : job ? [ job ] : []).filter(item => item.shipmentSource !== "CustomerDirect" && !item.releaseDocumentReceivedAt && !item.heldOnTruck);
         if (payload.queueType !== "Outbound" && missingPermit.length) {
             return sendJson(res, 409, { error: `ยังไม่มีใบตรวจปล่อย (Permit): ${missingPermit.map(item => item.houseNumber).join(", ")} · อัปโหลดใบตรวจปล่อยก่อนเข้าคิว Dock` });
         }
@@ -5713,6 +5715,25 @@ async function handleApi(req, res, pathname) {
             dashboard: buildDashboard(db)
         });
     }
+    if (req.method === "POST" && pathname === "/api/dock/partial-unload") {
+        const payload = await parseBody(req);
+        let result;
+        try { result = partialUnload.approve(db, sessionUser(db, req), payload, nowIso(), job => findPickupArrivalRoundJobs(db, [ job ])); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        for (const item of result.jobs) logActivity(db, { houseNumber: item.houseNumber, userId: result.approval.by, activityType: item.heldOnTruck ? "HeldOnTruck" : "PartialUnloadApproved", note: result.approval.reason });
+        await createAlert(db, `หัวหน้าคลังอนุมัติลงของบางส่วน: ค้างบนรถ ${result.approval.held.join(", ")} · ${result.approval.reason}`, "warning");
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, approval: result.approval, jobs: result.jobs.map(normalizeJob) });
+    }
+    if (req.method === "POST" && pathname === "/api/lithium/confirm") {
+        const payload = await parseBody(req);
+        let job;
+        try { job = lithiumControl.confirm(db, sessionUser(db, req), payload, nowIso(), (houseNumber, fileType, files) => saveBase64Files(db, { houseNumber, fileType, files })); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        logActivity(db, { houseNumber: job.houseNumber, userId: job.lithiumConsoleConfirmedBy, activityType: "LithiumConsoleConfirmed" });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, job: normalizeJob(job) });
+    }
     if (req.method === "POST" && pathname === "/api/shipping/doc-status") {
         const payload = await parseBody(req);
         let jobs;
@@ -6107,7 +6128,8 @@ async function handleApi(req, res, pathname) {
         const actor = requirePickupActor(db, req, requestedJobs);
         if (!actor) return sendJson(res, 403, { error: "ไม่มีสิทธิ์รับใบตรวจปล่อยสำหรับงานนี้" });
         payload.userId = actor.id;
-        const jobs = findPickupArrivalRoundJobs(db, requestedJobs);
+        // Houses the WH3 lead approved to stay on the truck are left out of this release.
+        const jobs = partialUnload.releaseScope(findPickupArrivalRoundJobs(db, requestedJobs), requestedJobs);
         if (actor.role === "Driver" && jobs.some(item => String(item.driverId || "") !== actor.id)) {
             return sendJson(res, 403, { error: "ไม่มีสิทธิ์รับใบตรวจปล่อยสำหรับงานนี้" });
         }
@@ -6136,10 +6158,12 @@ async function handleApi(req, res, pathname) {
                 releaseDocumentReceivedAt: releasedAt,
                 releaseDocumentNumber: document.documentNumber,
                 releaseDocumentFileIds: savedFiles.map(file => file.fileId).filter(Boolean),
+                ...(item.heldOnTruck ? { heldOnTruckReleasedAt: releasedAt } : {}),
                 wh3QueuePriorityMinutes: sla.minutesToAirportDue,
                 updatedAt: releasedAt
             });
             logActivity(db, { ...payload, houseNumber: item.houseNumber, releaseDocumentNumber: document.documentNumber, activityType: "ReleaseDocumentReceived", endTime: releasedAt });
+            delete item.heldOnTruck;
         }
         {
             db.dock||={};db.dock.queue||=[];
@@ -6521,12 +6545,13 @@ async function handleApi(req, res, pathname) {
             error: "Lithium document is required"
         });
         if (payload.lithiumDocBase64) {
-            saveBase64File(db, {
+            const lithiumFile = saveBase64File(db, {
                 houseNumber: job.houseNumber,
                 fileType: "LithiumDocument",
                 base64: payload.lithiumDocBase64,
                 mimeType: payload.mimeType || "image/jpeg"
             });
+            job.lithiumDocumentFileIds = [ ...new Set([ ...(job.lithiumDocumentFileIds || []), lithiumFile?.fileId || "attached" ]) ];
         }
         job.documentValidated = true;
         if (Array.isArray(payload.terminalDocChecklist)) {

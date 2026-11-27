@@ -5,7 +5,8 @@ function ready(db, entry) {
     if (!entry || entry.autoDispatchPaused || entry.queueType === 'Outbound') return false;
     const houses = groups.houses(entry), rows = groups.forHouses(db, houses);
     if (!rows.length || rows.length !== houses.length) return false;
-    if (rows.some(row => groups.jobs(db, row).some(job => !houses.includes(job.houseNumber)))) return false;
+    // Houses held on the truck (partial unload) or already unloaded do not block the rest.
+    if (rows.some(row => groups.jobs(db, row).some(job => !houses.includes(job.houseNumber) && !job.heldOnTruck && !job.wh3UnloadCompletedAt))) return false;
     if (new Set(rows.map(row => row.driverId)).size !== 1) return false;
     const plates = new Set(rows.map(row => String(row.vehiclePlate || '').normalize('NFKC').toUpperCase().replace(/[\s-]/g, '')));
     if (plates.size !== 1 || plates.has('')) return false;

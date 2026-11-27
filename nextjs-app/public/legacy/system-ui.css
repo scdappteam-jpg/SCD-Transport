@@ -895,3 +895,10 @@ html.has-open-popup { overflow: hidden; }
 .role-alert-actions button[data-open-house]{border-color:#0b4ea2;color:#0b4ea2}
 .dock-btn.danger{border-color:#f3b4a8;color:#b42318;background:#fff7f5}
 .dock-emergency-tag{align-self:center;padding:2px 8px;border-radius:999px;background:#b42318;color:#fff;font-size:11px;font-weight:700}
+
+/* SRS batch 2: Lithium and partial unload forms reuse the document card */
+.lithium-form,.partial-unload-form{display:grid;gap:8px}
+.lithium-form label,.partial-unload-form label{display:grid;gap:4px;font-size:13px}
+.partial-unload-form fieldset label{display:flex;align-items:center;gap:8px}
+.partial-unload-form fieldset small{color:#64748b}
+.lithium-card{border-left:4px solid #d97706}

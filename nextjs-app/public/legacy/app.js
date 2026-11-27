@@ -333,6 +333,8 @@ function allowedWebViews(role) {
     if (role === "EI_Customer") return [ "dashboard", "orders", "mobile" ];
     if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-inbound", "wh-quality", "orders", "alerts", "contacts" ];
     if (role === "Tagging_Staff") return [ "dashboard", "wh-quality" ];
+    // Console Office checks Lithium documents and scan-confirms before release.
+    if (role === "Console_Office") return [ "dashboard", "orders", "wh-quality", "wh-status", "outbound-open", "alerts", "contacts", "hr" ];
     if (role === "Terminal") return [ "dashboard", "mobile", "orders", "alerts", "contacts", "flight-board", "dock" , ...operations];
     // Billing works in the Field Ops workspace, but only the Billing panel is
     // exposed below.  Without this entry, the account can see its KPI cards
@@ -2297,6 +2299,7 @@ const ROLE_LABEL_TH = {
     Team_Transport: "ทีม Transport",
     Driver: "คนขับ",
     WH_Staff: "พนักงานคลัง",
+    Console_Office: "Console Office",
     EI_Customer: "EI / Customer",
     Check_House: "Check House"
 };
@@ -7339,7 +7342,7 @@ function renderOrderCards() {
         let urgentBadge = "";
         if (isReXray) urgentBadge = `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;animation:pulse 1.5s infinite">⚠ RE-XRAY</span>`; else if (isMissed) urgentBadge = `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">✕ เลยเวลาบิน</span>`; else if (isUrgent) urgentBadge = `<span style="background:#fffbeb;color:#d97706;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">⏰ ${Math.floor(diffH)}ชม.${Math.floor(diffH % 1 * 60)}น.</span>`;
         const cardBorder = isReXray || isMissed ? "border-left:3px solid #ef4444" : isUrgent ? "border-left:3px solid #f59e0b" : "";
-        return `<button class="order-card ${job.houseNumber === state.selectedHouse ? "active" : ""}" type="button" data-house="${job.houseNumber}" style="${cardBorder}">\n      <span class="cube" aria-hidden="true"></span>\n      ${jobReferenceFieldsHtml(job, { compact: true })}\n      <small class="receipt-line">${jobReceiptLabel(job)}</small>\n      <small>${job.customerName || "-"} / ${job.flightTimeLabel || "-"}</small>\n      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0">\n        <span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span>\n        ${urgentBadge}\n        ${!job.csConfirmed ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">รอ CS</span>' : ""}\n        ${job.invoicePending ? '<span class="job-flag invoice-pending" title="ปล่อยรถกรณีพิเศษ ต้องใส่ Invoice ก่อนวางบิล">รอ Invoice</span>' : ""}\n        ${jobChangeBadge(job)}\n        ${(state.loadPlan?.rows || []).some(r => r.houseNumber === job.houseNumber) ? '<span style="background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">LP</span>' : ""}\n      </div>\n    </button>`;
+        return `<button class="order-card ${job.houseNumber === state.selectedHouse ? "active" : ""}" type="button" data-house="${job.houseNumber}" style="${cardBorder}">\n      <span class="cube" aria-hidden="true"></span>\n      ${jobReferenceFieldsHtml(job, { compact: true })}\n      <small class="receipt-line">${jobReceiptLabel(job)}</small>\n      <small>${job.customerName || "-"} / ${job.flightTimeLabel || "-"}</small>\n      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0">\n        <span class="pill ${statusClass(job.status)}" title="${job.status}">${statusLabelTh(job.status)}</span>\n        ${urgentBadge}\n        ${!job.csConfirmed ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">รอ CS</span>' : ""}\n        ${job.invoicePending ? '<span class="job-flag invoice-pending" title="ปล่อยรถกรณีพิเศษ ต้องใส่ Invoice ก่อนวางบิล">รอ Invoice</span>' : ""}${job.heldOnTruck ? '<span class="job-flag invoice-pending" title="เอกสารยังไม่ครบ ห้ามลงคลัง">ค้างบนรถ</span>' : ""}\n        ${jobChangeBadge(job)}\n        ${(state.loadPlan?.rows || []).some(r => r.houseNumber === job.houseNumber) ? '<span style="background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px">LP</span>' : ""}\n      </div>\n    </button>`;
     }).join("");
     if (jobs.length > shown.length) {
         $("#orderCards").insertAdjacentHTML("beforeend",
@@ -9370,6 +9373,79 @@ function renderCargoIssueState(job) {
     button.textContent = issued ? "ดู/พิมพ์ใบ Cargo" : "ออกใบ Cargo";
 }
 
+// Partial unload (SRS 6): the WH3 lead lets the Houses with complete permits
+// unload first; the rest stay on the truck until their documents arrive.
+function truckRoundJobs(job) {
+    const id = window.TransportRounds?.identity(job)?.id;
+    if (!id) return [ job ];
+    return (state.dashboard?.jobs || []).filter(item => String(item.driverId || "") === String(job.driverId || "") && window.TransportRounds.identity(item).id === id);
+}
+function renderPartialUnload(job) {
+    const box = $("#orderPartialUnload");
+    if (!box) return;
+    const role = currentWebUser()?.role || "";
+    const round = job ? truckRoundJobs(job) : [];
+    const waiting = job && job.status === "AwaitingReleaseDocument" && !job.releaseDocumentReceivedAt;
+    const held = round.filter(item => item.heldOnTruck);
+    box.hidden = !(job && (held.length || (waiting && round.length > 1 && [ "WH3_TeamLeader", "Admin" ].includes(role))));
+    if (box.hidden) return;
+    const approval = job.partialUnloadApproval;
+    box.innerHTML = `<div class="ship-doc-head"><h3>ลงของบางส่วน</h3>${held.length ? `<span class="ship-doc-pill doing">ค้างบนรถ ${held.length} House</span>` : ""}</div>
+      ${approval ? `<small>อนุมัติโดย ${safeHtml(approval.byName || approval.by)} · ${safeHtml(formatBangkok(approval.at))} · ${safeHtml(approval.reason)}</small>` : `<small>ค่าเริ่มต้นคือรอใบตรวจปล่อยครบทุก House ถ้าไฟล์ทด่วน หัวหน้าคลังเลือก House ที่เอกสารยังไม่ครบให้ค้างไว้บนรถ แล้วลงเฉพาะ House ที่ครบก่อน</small>`}
+      ${waiting && [ "WH3_TeamLeader", "Admin" ].includes(role) && round.length > 1 ? `<form class="partial-unload-form" data-house="${safeHtml(job.houseNumber)}">
+        <fieldset><legend>House บนรถคันนี้ · ติ๊ก House ที่ต้องค้างไว้บนรถ</legend>
+          ${round.map(item => `<label><input type="checkbox" name="held" value="${safeHtml(item.houseNumber)}" ${item.heldOnTruck ? "checked" : ""}> ${safeHtml(item.houseNumber)} <small>${safeHtml(item.customerName || "")}</small></label>`).join("")}
+          <input name="reason" placeholder="เหตุผล เช่น ไฟล์ทด่วน ต้องลงก่อน" required minlength="5">
+        </fieldset>
+        <div class="ship-doc-actions"><button type="submit" class="primary-button">อนุมัติลงของบางส่วน</button></div>
+      </form>` : ""}`;
+}
+
+document.addEventListener("submit", event => {
+    const form = event.target.closest?.(".partial-unload-form");
+    if (!form) return;
+    event.preventDefault();
+    runAction(event.submitter, async () => {
+        const heldHouseNumbers = [ ...form.querySelectorAll('input[name="held"]:checked') ].map(input => input.value);
+        await api("/api/dock/partial-unload", { houseNumber: form.dataset.house, heldHouseNumbers, reason: form.querySelector('input[name="reason"]').value.trim() });
+        toast(`อนุมัติแล้ว · ค้างบนรถ ${heldHouseNumbers.length} House`);
+        await refresh();
+    });
+});
+
+// Lithium release (SRS 4.3.2): document attached + Console Office scan.
+function renderLithiumCard(job) {
+    const box = $("#orderLithium");
+    if (!box) return;
+    const lithium = job && (job.isLithium || job.requiresLithiumDocs || /lithium/i.test(String(job.productType || "")));
+    box.hidden = !lithium;
+    if (!lithium) return;
+    const role = currentWebUser()?.role || "";
+    const canConfirm = [ "Console_Office", "Admin" ].includes(role);
+    const hasDoc = (job.lithiumDocumentFileIds || []).length > 0 || (state.dashboard?.attachments || []).some(file => file.houseNumber === job.houseNumber && /^(LithiumDocument|LithiumMSDS|MSDS)/i.test(file.fileType || ""));
+    const confirmed = Boolean(job.lithiumConsoleConfirmedAt);
+    box.innerHTML = `<div class="ship-doc-head"><h3>สินค้า Lithium</h3>${confirmed ? '<span class="ship-doc-pill done">Console ยืนยันแล้ว</span>' : '<span class="ship-doc-pill doing">รอ Console ยืนยัน</span>'}</div>
+      <ul class="ship-doc-reasons"><li>เอกสาร Lithium (MSDS หรือ UN38.3): ${hasDoc ? "แนบแล้ว" : "ยังไม่แนบ"}</li><li>Console Office สแกนยืนยัน: ${confirmed ? `${safeHtml(formatBangkok(job.lithiumConsoleConfirmedAt))}${job.lithiumConsoleConfirmedByName ? " · " + safeHtml(job.lithiumConsoleConfirmedByName) : ""}` : "ยังไม่ยืนยัน"}</li></ul>
+      <small>ปล่อยสินค้า (Picking, Load bay, Transfer, Close) ได้เมื่อครบทั้งสองข้อ และผ่าน QA แล้ว</small>
+      ${canConfirm && !confirmed ? `<form class="lithium-form" data-house="${safeHtml(job.houseNumber)}">
+        <label>สแกนบาร์โค้ด House<input name="scanned" autocomplete="off" placeholder="ยิงบาร์โค้ดหรือพิมพ์เลข House" required></label>
+        <label>แนบเอกสาร Lithium${hasDoc ? " (แนบแล้ว เพิ่มได้)" : ""}<input name="files" type="file" accept="image/*,application/pdf" multiple ${hasDoc ? "" : "required"}></label>
+        <div class="ship-doc-actions"><button type="submit" class="primary-button">ยืนยันสินค้า Lithium</button></div>
+      </form>` : ""}`;
+}
+
+document.addEventListener("submit", event => {
+    const form = event.target.closest?.(".lithium-form");
+    if (!form) return;
+    event.preventDefault();
+    runAction(event.submitter, async () => {
+        const documentFiles = await filesToCompressedBase64(form.querySelector('input[name="files"]'));
+        await api("/api/lithium/confirm", { houseNumber: form.dataset.house, scannedCode: form.querySelector('input[name="scanned"]').value.trim(), documentFiles });
+        toast("Console ยืนยันสินค้า Lithium แล้ว");
+        await refresh();
+    });
+});
+
 // Shipping / EI document status (In progress with reasons, or Completed).
 const SHIP_DOC_REASONS = { NoInvoice: "ยังไม่ได้ Invoice จากลูกค้า", CustomerNotConfirmed: "ลูกค้ายังไม่ยืนยันเอกสารหรือใบขน", CustomsFeePending: "รอการชำระค่าธรรมเนียมศุลกากร", ShippingInTransit: "Shipping อยู่ระหว่างเดินทาง", Other: "อื่นๆ" };
 function renderShippingDocs(job) {
@@ -9446,6 +9522,8 @@ function renderTimeline() {
     const job = findJob();
     renderOrderReceipts(job);
     renderShippingDocs(job);
+    renderLithiumCard(job);
+    renderPartialUnload(job);
     markJobSeen(job);
     if (!job) {
         $("#selectedOrderTitle").textContent = "No order selected";

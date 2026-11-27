@@ -531,7 +531,7 @@ function cycleMobileFontScale() {
 
 function allowedMobileTabs(role) {
     if (role === "People_Viewer") return [ "attendance" ];
-    if ([ "CS", "Employee", "Tagging_Staff", "QA_Inspector" ].includes(role)) return [ "attendance" ];
+    if ([ "CS", "Employee", "Tagging_Staff", "QA_Inspector", "Console_Office" ].includes(role)) return [ "attendance" ];
     if (role === "Driver") return [ "pickup", "attendance" ];
     if (role === "WH_Staff") return [ "inbound", "outbound", "attendance" ];
     if (role === "WH3_TeamLeader") return [ "inbound", "outbound", "attendance" ];
@@ -1119,7 +1119,10 @@ function pickupRoundJobsForMobile() {
 }
 
 function releaseDocumentRoundJobs() {
-    return pickupRoundJobsForMobile().filter(job => [ "AwaitingReleaseDocument", "WaitingForDock" ].includes(job.status) || [ "ArrivedWH3", "ReleasedForDock" ].includes(job.driverRouteStatus));
+    const all = pickupRoundJobsForMobile().filter(job => [ "AwaitingReleaseDocument", "WaitingForDock" ].includes(job.status) || [ "ArrivedWH3", "ReleasedForDock" ].includes(job.driverRouteStatus));
+    // Partial unload: Houses the WH3 lead kept on the truck wait for their own documents.
+    const free = all.filter(job => !job.heldOnTruck);
+    return free.some(job => job.status === "AwaitingReleaseDocument") || !all.some(job => job.heldOnTruck) ? free : all.filter(job => job.heldOnTruck);
 }
 
 function updateReleaseDocumentProgress() {

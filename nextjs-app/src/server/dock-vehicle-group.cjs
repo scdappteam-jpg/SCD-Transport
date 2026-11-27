@@ -74,7 +74,7 @@ function normalizeQueue(db){
         const key=roundKey(job)||`house:${houses(entry)[0]}`;
         if(!grouped.has(key)){grouped.set(key,{...entry,houseNumbers:[]});}
         const target=grouped.get(key);
-        target.houseNumbers=unique([...target.houseNumbers,...houses(entry),...jobs(db,job).map(item=>item.houseNumber)]);
+        target.houseNumbers=unique([...target.houseNumbers,...houses(entry),...jobs(db,job).filter(item=>item===job||!item.heldOnTruck&&!item.wh3UnloadCompletedAt).map(item=>item.houseNumber)]);
         if(String(entry.createdAt||entry.arrivedAt||'')<String(target.createdAt||target.arrivedAt||'')){
             for(const field of ['id','createdAt','arrivedAt','createdBy','queueNumber'])if(entry[field]!=null)target[field]=entry[field];
         }
