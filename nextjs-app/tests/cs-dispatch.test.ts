@@ -68,3 +68,13 @@ test('Driver sees the real House Onhand Master CS details and selected truck wit
  c.renderDriverCsHandoff([{...base(),...payload,csInvoiceNo:'SIM-INV',csContactName:'SIM Contact',csContactPhone:'SIM-PHONE',driverName:'A',vehiclePlate:'TRUCK-A'}]);for(const text of ['484001','F001','205-86393230','SIM-INV','SIM Contact','SIM-PHONE','TRUCK-A'])assert.ok(box.innerHTML.includes(text));assert.equal(box.hidden,false);
  c.renderDriverCsHandoff([]);assert.equal(box.hidden,true);
 });
+
+test('job batch rows may name their own driver; every row driver is checked first and plates cannot be shared',()=>{
+ const db={users:[{id:'A',name:'A',role:'Driver',vehiclePlate:'P-1'},{id:'B',name:'B',role:'Driver',vehiclePlate:'P-2'},{id:'C',name:'C',role:'Driver',vehiclePlate:'P-1'},{id:'X',name:'X',role:'Driver',status:'Inactive',vehiclePlate:'P-9'}]};
+ const base={driverId:'A',vehiclePlate:'P-1'};
+ const map=handoff.rowAssignments(db,base,[{houseNumber:'H1'},{houseNumber:'H2',driverId:'B'},{houseNumber:'H3',driverId:'B'},{houseNumber:'H4',driverId:'A'}]);
+ assert.deepEqual([...map.keys()],['B']);assert.deepEqual({...map.get('B')},{driverId:'B',driverName:'B',vehiclePlate:'P-2'});
+ assert.throws(()=>handoff.rowAssignments(db,base,[{houseNumber:'H1',driverId:'X'}]),/คนขับ/);
+ assert.throws(()=>handoff.rowAssignments(db,base,[{houseNumber:'H1',driverId:'C'}]),/P-1/);
+ assert.equal(handoff.rowAssignments(db,{},[{houseNumber:'H1',driverId:'B'}]).size,1);
+});

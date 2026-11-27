@@ -19,6 +19,25 @@ function assignment(db, payload) {
     return {driverId: driver.id, driverName: driver.name || '', vehiclePlate: plate};
 }
 
+// Job batch: a row may name its own driver (one company, several trucks).
+// Every row driver is checked before anything is saved; rows without one
+// follow the batch driver. Each extra driver gets its own batch (= own round).
+function rowAssignments(db, payload, rows) {
+    const byDriver = new Map();
+    for (const row of rows || []) {
+        const id = String(row?.driverId || '').trim();
+        if (!id || id === String(payload.driverId || '') || byDriver.has(id)) continue;
+        byDriver.set(id, assignment(db, {driverId: id}));
+    }
+    const plates = new Map();
+    const main = payload.driverId ? [[String(payload.driverId), payload.vehiclePlate]] : [];
+    for (const [id, plate] of [...main, ...[...byDriver].map(([id, a]) => [id, a.vehiclePlate])]) {
+        if (plate && plates.has(plate) && plates.get(plate) !== id) throw new Error(`ทะเบียน ${plate} ถูกใช้กับคนขับมากกว่า 1 คนในชุดเดียว`);
+        if (plate) plates.set(plate, id);
+    }
+    return byDriver;
+}
+
 function validateApproval(db, payload) {
     const fail=(message,statusCode=422)=>{throw Object.assign(new Error(message),{statusCode});};
     if(!Array.isArray(payload.houseNumbers)||!payload.houseNumbers.length||payload.houseNumbers.some(h=>typeof h!=='string'||!h.trim()))fail('กรุณาเลือก House ที่จะยืนยัน');
@@ -30,4 +49,4 @@ function validateApproval(db, payload) {
     if(!invoiceNo)fail('กรุณากรอกเลข Invoice ก่อน Confirm');
     return {...payload,houseNumbers:houses,invoiceNo};
 }
-module.exports = {applyCsDetails, assignment, validateApproval};
+module.exports = {applyCsDetails, assignment, rowAssignments, validateApproval};

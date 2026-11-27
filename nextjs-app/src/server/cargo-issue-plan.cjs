@@ -20,11 +20,19 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
         if (cargoHeader.pickupTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(cargoHeader.pickupTime)) fail("เวลารับสินค้าไม่ถูกต้อง");
     }
     const fingerprint = createHash("sha256").update(JSON.stringify({ actorId, pages, cargoHeader })).digest("hex");
-    const seen = new Set(), assignments = [];
+    const seen = new Set(), assignments = [], plateDriver = new Map(), driverPlate = new Map();
+    const activeFleetPlates = new Set((db.fleetVehicles || []).filter(v => v && v.status !== "Inactive" && v.plate).map(v => String(v.plate)));
     for (const page of pages) {
         const driver = (db.users || []).find(user => user.id === page.driverId && ["Driver", "WH_Staff", "Admin"].includes(user.role) && user.status !== "Inactive");
         if (!driver) fail("ไม่พบคนขับในแผน กรุณาเลือกใหม่");
-        if (page.vehiclePlate !== (driver.vehiclePlate || "") || page.driverName !== (driver.name || "")) fail("ข้อมูลคนขับหรือทะเบียนเปลี่ยน กรุณาตรวจ Preview ใหม่");
+        if (page.driverName !== (driver.name || "")) fail("ข้อมูลคนขับหรือทะเบียนเปลี่ยน กรุณาตรวจ Preview ใหม่");
+        // The plate is the driver's own vehicle, or any active company fleet vehicle chosen for this lane.
+        const plate = typeof page.vehiclePlate === "string" ? page.vehiclePlate : "";
+        if (plate !== (driver.vehiclePlate || "") && !activeFleetPlates.has(plate)) fail("ข้อมูลคนขับหรือทะเบียนเปลี่ยน กรุณาตรวจ Preview ใหม่");
+        if (plate && plateDriver.has(plate) && plateDriver.get(plate) !== driver.id) fail(`ทะเบียน ${plate} ถูกเลือกให้คนขับมากกว่า 1 คน`);
+        if (driverPlate.has(driver.id) && driverPlate.get(driver.id) !== plate) fail(`คนขับ ${driver.name || driver.id} ถูกเลือกรถมากกว่า 1 คันในแผนเดียว`);
+        if (plate) plateDriver.set(plate, driver.id);
+        driverPlate.set(driver.id, plate);
         if (!Array.isArray(page.jobs) || !page.jobs.length || page.jobs.length > 5) fail("ใบ Cargo ขาเข้าต้องมี 1 ถึง 5 House");
         for (const expected of page.jobs) {
             const house = String(expected.houseNumber || "");
@@ -32,12 +40,12 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
             seen.add(house);
             const job = (db.jobs || []).find(item => item.houseNumber === house);
             if (!job) fail(`ไม่พบ House ${house}`);
-            assignments.push({ job, expected, driver });
+            assignments.push({ job, expected, driver, plate });
         }
     }
     const prior = (db.jobs || []).filter(job => job.cargoIssueRequestId === requestId);
     if (prior.length) {
-        if (prior.length !== assignments.length || assignments.some(({ job, driver }) => job.cargoIssueRequestId !== requestId || job.cargoIssueFingerprint !== fingerprint || job.driverId !== driver.id || !job.cargoIssuedAt)) fail("คำขอเดิมเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่");
+        if (prior.length !== assignments.length || assignments.some(({ job, driver, plate }) => (job.vehiclePlate || "") !== plate || job.cargoIssueRequestId !== requestId || job.cargoIssueFingerprint !== fingerprint || job.driverId !== driver.id || !job.cargoIssuedAt)) fail("คำขอเดิมเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่");
         return { jobs: assignments.map(({ job }) => job), pageCount: pages.length, replayed: true, preview, persisted: !preview };
     }
     // Validate every House before changing any of them.
@@ -46,10 +54,10 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
         if (job.cargoIssuedAt) fail(`House ${job.houseNumber} ออกใบแล้ว กรุณาโหลดข้อมูลใหม่`);
         if (String(job.updatedAt || "") !== String(expected.updatedAt || "")) fail(`House ${job.houseNumber} มีข้อมูลใหม่ กรุณาตรวจ Preview อีกครั้ง`);
     }
-    const jobs = assignments.map(({ job, driver }) => {
+    const jobs = assignments.map(({ job, driver, plate }) => {
         const target = preview ? structuredClone(job) : job;
         Object.assign(target, {
-            driverId: driver.id, driverName: driver.name || "", vehiclePlate: driver.vehiclePlate || "",
+            driverId: driver.id, driverName: driver.name || "", vehiclePlate: plate,
             batchId: `BATCH-${requestId}-${driver.id}`, cargoIssuedAt: now, updatedAt: now,
             cargoIssueRequestId: requestId, cargoIssueFingerprint: fingerprint
         });
@@ -59,7 +67,7 @@ function apply(db, payload, actorId, { preview = false, now = new Date().toISOSt
                 if (Object.hasOwn(cargoHeader, key)) target[field] = cargoHeader[key];
             }
         }
-        target.cargoIssueHistory = [...Array.isArray(target.cargoIssueHistory) ? target.cargoIssueHistory : [], { requestId, driverId: driver.id, vehiclePlate: driver.vehiclePlate || "", issuedAt: now, issuedBy: actorId, batchId: target.batchId, ...(cargoHeader ? { cargoHeader: { ...cargoHeader } } : {}) }];
+        target.cargoIssueHistory = [...Array.isArray(target.cargoIssueHistory) ? target.cargoIssueHistory : [], { requestId, driverId: driver.id, vehiclePlate: plate, issuedAt: now, issuedBy: actorId, batchId: target.batchId, ...(cargoHeader ? { cargoHeader: { ...cargoHeader } } : {}) }];
         return target;
     });
     return { jobs, pageCount: pages.length, replayed: false, preview, persisted: !preview };

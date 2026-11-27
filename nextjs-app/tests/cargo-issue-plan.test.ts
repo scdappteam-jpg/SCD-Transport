@@ -95,3 +95,44 @@ test('actual wizard submits one atomic plan and prints exactly the same A/B page
     assert.deepEqual(JSON.parse(JSON.stringify(forms)), [[{ houses: ['H1'], driver: 'A', plate: 'A-1' }, { houses: ['H2', 'H3'], driver: 'B', plate: 'B-2' }]]);
     assert.deepEqual(db.jobs.map(j => j['driverId']), ['A', 'B', 'B']);
 });
+
+type FleetDb = ReturnType<typeof fixture> & { fleetVehicles: { id: string; plate: string; status: string }[] };
+type History = { vehiclePlate: string }[];
+test('a lane may use an active company fleet vehicle instead of the driver profile plate', () => {
+    const db: FleetDb = { ...fixture(), fleetVehicles: [{ id: 'V1', plate: 'FLEET-9', status: 'Active' }, { id: 'V2', plate: 'OLD-0', status: 'Inactive' }] };
+    const payload = plan(db); payload.pages[1].vehiclePlate = 'FLEET-9';
+    issue.apply(db, payload, 'admin', { now: 'issued' });
+    assert.deepEqual(db.jobs.map((j: Job) => j['vehiclePlate']), ['A-1', 'FLEET-9', 'FLEET-9']);
+    assert.equal((db.jobs[1].cargoIssueHistory as History)[0].vehiclePlate, 'FLEET-9');
+    const changed = structuredClone(payload); changed.pages[1].vehiclePlate = 'B-2';
+    assert.throws(() => issue.apply(db, changed, 'admin'), /คำขอเดิม/);
+});
+test('inactive or unknown fleet plates, one plate on two drivers, or two plates for one driver are refused', () => {
+    for (const kind of ['inactive', 'unknown', 'shared', 'split']) {
+        const db: FleetDb = { ...fixture(4), fleetVehicles: [{ id: 'V1', plate: 'FLEET-9', status: 'Active' }, { id: 'V2', plate: 'OLD-0', status: 'Inactive' }] };
+        const payload = plan(db);
+        if (kind === 'inactive') payload.pages[1].vehiclePlate = 'OLD-0';
+        if (kind === 'unknown') payload.pages[1].vehiclePlate = 'NOPE-1';
+        if (kind === 'shared') { payload.pages[0].vehiclePlate = 'FLEET-9'; payload.pages[1].vehiclePlate = 'FLEET-9'; }
+        if (kind === 'split') {
+            payload.pages.push({ driverId: 'B', driverName: 'Driver B', vehiclePlate: 'FLEET-9', jobs: [{ houseNumber: 'H4', updatedAt: 'before' }] });
+            payload.pages[1].jobs = payload.pages[1].jobs.slice(0, 2);
+        }
+        const before = structuredClone(db);
+        assert.throws(() => issue.apply(db, payload, 'admin'), kind === 'shared' ? /มากกว่า 1 คน/ : kind === 'split' ? /มากกว่า 1 คัน/ : /ทะเบียน/);
+        assert.deepEqual(db, before);
+    }
+});
+test('wizard lane vehicle choice reaches the plan, the printed form and the saved jobs; auto split balances pieces', async () => {
+    const db: FleetDb = { ...fixture(), fleetVehicles: [{ id: 'V1', plate: 'FLEET-9', status: 'Active' }] }, forms: unknown[][] = [];
+    const state: { groupWizard: Record<string, unknown>; [key: string]: unknown } = { users: db.users, dashboard: { jobs: db.jobs }, selectedManualHouses: [], groupWizard: { open: true, step: 3, mode: 'auto', jobs: db.jobs, selectedHouses: db.jobs.map((j: Job) => j.houseNumber), driverId: 'A', laneDrivers: ['A', 'B'], laneVehicles: ['', 'FLEET-9'], jobLaneMap: { H1: 0, H2: 1, H3: 1 }, meta: {} } };
+    const context = vm.createContext({ state, crypto: { randomUUID: () => 'wizard-test-0002' }, HOUSES_PER_PAGE: 5, assignableUsers: () => db.users, cargoDataFromJobs: (jobs: Job[], driver: { id: string; vehiclePlate: string }) => ({ houses: jobs.map(j => j.houseNumber), driver: driver.id, plate: driver.vehiclePlate }), cargoSheetHtml: (data: unknown) => data, api: async (_path: string, payload: unknown) => ({ ok: true, ...issue.apply(db, payload, 'admin') }), printMultipleCargoForms: (data: unknown[]) => forms.push(data), closeGroupWizard: () => {}, renderAll: () => {}, renderGroupWizard: () => {}, setView: () => {}, renderCargoHistory: () => {}, toast: () => {} });
+    vm.runInContext(cut('function groupWizardSourceJobs(', 'function wizardDragStart(') + cut('function computeWizardPagesAndDrivers(', 'function updateGroupWizardPreview(') + cut('function chunkArray(', 'function getPageDriver(') + cut('async function groupWizardNextOrIssue(', 'function outboundPreparationJobs('), context);
+    await vm.runInContext('groupWizardNextOrIssue()', context);
+    assert.deepEqual(JSON.parse(JSON.stringify(forms)), [[{ houses: ['H1'], driver: 'A', plate: 'A-1' }, { houses: ['H2', 'H3'], driver: 'B', plate: 'FLEET-9' }]]);
+    assert.deepEqual(db.jobs.map((j: Job) => j['vehiclePlate']), ['A-1', 'FLEET-9', 'FLEET-9']);
+    const pieces = [9, 4, 3, 2].map((n, i) => ({ houseNumber: `P${i}`, pieceCount: n, csConfirmed: true }));
+    state.groupWizard = { open: true, step: 2, mode: 'auto', jobs: pieces, selectedHouses: pieces.map(j => j.houseNumber), laneDrivers: ['A', 'B'], jobLaneMap: {} };
+    vm.runInContext('wizardAutoSplitByPieces()', context);
+    assert.deepEqual({ ...(state.groupWizard.jobLaneMap as Record<string, number>) }, { P0: 0, P1: 1, P2: 1, P3: 1 });
+});

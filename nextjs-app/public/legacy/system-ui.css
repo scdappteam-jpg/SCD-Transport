@@ -467,7 +467,8 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto auto !important;
   grid-template-areas:
     "house house dest dest"
-    "carton date edit remove";
+    "carton date edit remove"
+    "driver driver driver driver";
   gap: 8px !important;
   width: 100% !important;
   min-width: 0 !important;
@@ -479,6 +480,7 @@
 .workspace #adminPickupItemRows .admin-row-date { grid-area: date; }
 .workspace #adminPickupItemRows .edit-admin-row { grid-area: edit; width: auto !important; }
 .workspace #adminPickupItemRows .remove-admin-row { grid-area: remove; width: auto !important; }
+.workspace #adminPickupItemRows .admin-row-driver { grid-area: driver; min-height: 38px; font-size: 13px; background: #f3f8ff; border: 1px solid #cfe0f5; border-radius: 8px; }
 .workspace #adminPickupItemRows .admin-job-row + .admin-job-row {
   margin-top: 8px;
   padding-top: 8px;
@@ -838,3 +840,13 @@ html.has-open-popup { overflow: hidden; }
   #view-dashboard .dash-quick-range .dash-chip{min-width:0 !important;width:100%;padding:0 4px !important}
   #view-dashboard .dash-toolbar .filter-count{display:inline-flex !important;width:fit-content !important;min-width:0 !important}
 }
+
+/* Grouping wizard: per-lane vehicle choice, piece totals, auto split */
+.wizard-lane-header{flex-wrap:wrap}
+.wizard-lane-driver-select{flex:1 1 120px;min-width:0}
+.wizard-lane-header .wizard-lane-count{order:2}
+.wizard-lane-vehicle-select{order:3;flex:1 1 100%;min-width:0;font-size:12px;border:1px solid #cfe0f5;border-radius:6px;padding:3px 6px;background:#f3f8ff;color:var(--ink)}
+.wizard-lane-count{font-weight:500;color:#334155}
+.wizard-auto-split{margin-left:auto;min-height:34px;padding:0 14px;border:1px solid #0b4ea2;border-radius:8px;background:#fff;color:#0b4ea2;font:500 13px Kanit,sans-serif;cursor:pointer}
+.wizard-auto-split:hover{background:#eef4fb}
+.wizard-auto-split:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}

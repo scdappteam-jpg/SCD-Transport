@@ -1056,6 +1056,7 @@ function validatePickupFlow({requireLoaded: requireLoaded = false} = {}) {
     if (requireLoaded && !hasSimulatedEvidence && !$("#doorClosedImages")?.files?.length) missing.push("แนบรูปปิดประตูตู้/ท้ายรถก่อนจบงาน (กฎ Audit)");
     const _dests = pickupRowsFromInputs().map(row => (row.destination || "").toUpperCase()).filter(Boolean);
     const _nonWh3 = _dests.filter(d => d !== "WH3");
+    if (requireLoaded && pickupCountMismatches().length && ($("#pickupCountMismatchReason")?.value || "").trim().length < 3) missing.push("จำนวนรับไม่ตรงแผน กรุณากรอกเหตุผล");
     if (_nonWh3.length) missing.push(`ตามกฎประชุม สินค้าต้องกลับเข้า WH3 ก่อนส่ง Terminal — พบปลายทาง ${[ ...new Set(_nonWh3) ].join(", ")} กรุณาเปลี่ยนเป็น WH3`);
     if (missing.length) throw new Error(missing.join(" / "));
 }
@@ -1205,7 +1206,32 @@ function syncPickupItemsText() {
     target.value = rows.map(row => `${row.houseNumber},${row.destination},${row.carton}`).join("\n");
     const endPlace = $("#driverEndPlace");
     if (endPlace) endPlace.value = computedEndPlaceFromRows(rows) || "คำนวณจากปลายทางของแต่ละ House";
+    renderPickupCountMismatch(rows);
     return target.value;
+}
+
+// Received vs planned per House. The server refuses a mismatch without a
+// reason, so the field appears as soon as a count differs.
+function pickupCountMismatches(rows = pickupRowsFromInputs()) {
+    return rows.map(row => {
+        const job = findJob(row.houseNumber);
+        const planned = Number(job?.plannedPieceCount ?? job?.pieceCount);
+        const received = Number(row.carton);
+        if (!job || !(planned > 0) || String(row.carton).trim() === "" || !Number.isFinite(received)) return null;
+        return received === planned ? null : { houseNumber: row.houseNumber, planned, received };
+    }).filter(Boolean);
+}
+
+function renderPickupCountMismatch(rows) {
+    const box = $("#pickupCountMismatch");
+    if (!box) return;
+    const list = pickupCountMismatches(rows);
+    box.hidden = !list.length;
+    const ul = $("#pickupCountMismatchList");
+    if (ul) ul.innerHTML = list.map(m => {
+        const diff = m.received - m.planned;
+        return `<li><b>${escapeHtmlMobile(m.houseNumber)}</b> แผน ${m.planned} · รับจริง ${m.received} <span class="${diff < 0 ? "short" : "over"}">(${diff > 0 ? "+" : ""}${diff})</span></li>`;
+    }).join("");
 }
 
 function pickupRowsFromInputs() {
@@ -1877,6 +1903,7 @@ function bindEvents() {
             inspectorName: $("#driverInspectorName").value.trim(),
             receiverName: $("#driverReceiverName").value.trim(),
             endPlace: computedEndPlace(),
+            countMismatchReason: pickupCountMismatches().length ? ($("#pickupCountMismatchReason")?.value || "").trim() : "",
             simulation: simulation
         });
         await refresh();
