@@ -36,4 +36,27 @@ function provisionSuite(db, actor, at) {
         return {...row,created:true,initialPin:pin};
     });
 }
-module.exports={ROLES,initializeCredential,provisionSuite};
+// Admin re-issues a fresh code for every active SIT role account. The code is
+// both the password and the attendance PIN; old sessions, device bindings and
+// failed-PIN lockouts are cleared so the account works on phone and desktop.
+function randomPin(){let pin;do{pin=String(crypto.randomInt(100000,1000000));}while(['123456','654321'].includes(pin)||/^(\d)\1{5}$/.test(pin));return pin;}
+function reissueSuite(db, actor, at) {
+    if(actor?.role!=='Admin') fail('เฉพาะ Admin ออกรหัสบัญชีทดสอบใหม่ได้',403);
+    const users=(db.users||[]).filter(u=>u.isTestAccount===true&&String(u.id).startsWith('sit-role-')&&u.status!=='Inactive');
+    if(!users.length) fail('ยังไม่มีบัญชีทดสอบ ให้กดสร้างบัญชีทดสอบครบทุกบทบาทก่อน',404);
+    const ids=new Set(users.map(u=>u.id));
+    for(const binding of db.attendanceDeviceBindings||[]){
+        if(ids.has(binding.userId)&&binding.status==='Active')Object.assign(binding,{status:'Reset',resetAt:at,resetBy:actor.id,resetReason:'TestCredentialReissued'});
+    }
+    db.deviceLoginAttempts=(db.deviceLoginAttempts||[]).filter(a=>!ids.has(a.userId));
+    db.authSessions=(db.authSessions||[]).filter(s=>!ids.has(s.userId));
+    db.hr ||= {}; db.hr.auditLogs ||= [];
+    return users.map(user=>{
+        const pin=randomPin();
+        initializeCredential(user,pin,at);
+        Object.assign(user,{passwordChangedAt:at,pinFailedAttempts:0,pinLockedUntil:'',updatedAt:at});
+        db.hr.auditLogs.push({action:'TestCredentialReissued',actorId:actor.id,employeeId:user.id,at});
+        return {id:user.id,code:user.code,role:user.role,initialPin:pin};
+    });
+}
+module.exports={ROLES,initializeCredential,provisionSuite,reissueSuite};
