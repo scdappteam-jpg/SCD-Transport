@@ -26,7 +26,7 @@
     <style>[hidden]{display:none !important}#alertBell[hidden]{display:none!important}</style>
     <script src="lucide.min.js"></script>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
-    <link rel="stylesheet" href="system-ui.css?v=20261128c">
+    <link rel="stylesheet" href="system-ui.css?v=20261128d">
   </head>
   <body>
     <a class="skip-link" href="#mainContent">ข้ามไปที่เนื้อหาหลัก</a>
@@ -318,9 +318,9 @@
               </div>
               <aside class="exec-summary-side">
                 <div class="exec-health">
-                  <div class="exec-health-ring" id="execHealthRing" style="--score:0">
+                  <div class="exec-health-ring" id="execHealthRing" style="--score:0" role="img" aria-label="ความพร้อม 0%">
                     <strong id="execHealthScore">0%</strong>
-                    <span>Readiness</span>
+                    <span id="execHealthLevel">ความพร้อม</span>
                   </div>
                   <div>
                     <h3>สถานะควบคุมงาน</h3>

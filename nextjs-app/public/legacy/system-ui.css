@@ -943,3 +943,21 @@ html.has-open-popup { overflow: hidden; }
 .ei-outbound-form{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
 .ei-outbound-form label{display:grid;gap:4px;font-size:13px}
 @media (max-width:640px){.ei-tab{flex:1 1 calc(50% - 6px);justify-content:space-between}.ei-row-actions{width:100%}.ei-row-actions button{flex:1}}
+
+/* Readiness ring: number and label centred together (the old grid split them
+   into top and bottom halves, so the label sat on the stroke), thicker ring,
+   colour by level: green >= 75, amber >= 50, red below. */
+.exec-health{display:flex !important;align-items:center;gap:20px !important}
+.exec-health > div:last-child{min-width:0}
+.exec-health-ring{--ring:#2563eb;width:120px !important;height:120px !important;flex:0 0 120px;display:flex !important;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  background:conic-gradient(var(--ring) calc(var(--score) * 1%), #e8eef7 0) !important}
+.exec-health-ring::before{inset:13px !important;background:var(--surface,#fff) !important}
+.exec-health-ring[data-level="good"]{--ring:#16a34a}
+.exec-health-ring[data-level="warn"]{--ring:#d97706}
+.exec-health-ring[data-level="bad"]{--ring:#dc2626}
+.exec-health-ring > strong{font-size:30px !important;line-height:1;font-weight:700 !important;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.exec-health-ring > span{margin:0 !important;font-size:12px !important;font-weight:600 !important;line-height:1.2;max-width:76px;text-align:center}
+.exec-health-ring[data-level="good"] > span{color:#15803d !important}
+.exec-health-ring[data-level="warn"] > span{color:#b45309 !important}
+.exec-health-ring[data-level="bad"] > span{color:#b91c1c !important}
+@media (max-width:640px){.exec-health-ring{width:96px !important;height:96px !important;flex-basis:96px}.exec-health-ring::before{inset:11px !important}.exec-health-ring > strong{font-size:24px !important}}
