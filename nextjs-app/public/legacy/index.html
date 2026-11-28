@@ -26,7 +26,7 @@
     <style>[hidden]{display:none !important}#alertBell[hidden]{display:none!important}</style>
     <script src="lucide.min.js"></script>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
-    <link rel="stylesheet" href="system-ui.css?v=20261128d">
+    <link rel="stylesheet" href="system-ui.css?v=20261128e">
   </head>
   <body>
     <a class="skip-link" href="#mainContent">ข้ามไปที่เนื้อหาหลัก</a>
@@ -601,6 +601,8 @@
                 <div id="orderShippingDocs" class="ship-doc-card" hidden></div>
                 <div id="orderLithium" class="ship-doc-card lithium-card" hidden></div>
                 <div id="orderPartialUnload" class="ship-doc-card" hidden></div>
+                <div id="orderPairScan" class="ship-doc-card lithium-card" hidden></div>
+                <div id="orderCustomsReturn" class="ship-doc-card" hidden></div>
                 <div class="detail-grid">
                   <article class="card timeline-card">
                     <div class="card-head">
@@ -1244,7 +1246,7 @@
                   <div class="billing-batch-filters">
                     <label>วันที่เริ่ม<input id="batchDateFrom" type="date"></label>
                     <label>วันที่สิ้นสุด<input id="batchDateTo" type="date"></label>
-                    <label>รอบวางบิล<select id="batchPeriodFilter"><option value="All">แยกตามรอบทั้งหมด</option><option value="FullMonth">รวมทั้งเดือน</option><option value="1-10">วันที่ 1-10</option><option value="11-20">วันที่ 11-20</option><option value="21-End">วันที่ 21-สิ้นเดือน</option></select></label>
+                    <label>รอบวางบิล<select id="batchPeriodFilter"><option value="All">แยกตามรอบทั้งหมด</option><option value="FullMonth">รวมทั้งเดือน</option><option value="Daily">รายวัน</option><option value="Weekly">รายสัปดาห์</option><option value="1-10">วันที่ 1-10</option><option value="11-20">วันที่ 11-20</option><option value="21-End">วันที่ 21-สิ้นเดือน</option></select></label>
                     <label>ประเภทค่าบริการ<select id="batchPlanFilter"><option value="All">ทั้งหมด</option><option value="General">งานทั่วไป</option><option value="Trailer">เหมาเทเลอร์</option><option value="Charter6">เหมา 6 ล้อ</option><option value="Fixed10000">เหมา 10,000</option></select></label>
                     <button id="buildBillingGroupsBtn" type="button">จัดกลุ่มงาน</button>
                   </div>
@@ -1253,9 +1255,11 @@
                     <aside id="billingBatchPreview" class="billing-batch-preview"><div class="empty-state">เลือกกลุ่มเพื่อ Preview</div></aside>
                   </div>
                   <div class="billing-batch-actions">
+                    <button id="matchBillingBatchBtn" type="button" class="secondary" disabled="disabled">Match เอกสารจริงทั้งชุด</button>
                     <button id="reviewBillingBatchBtn" type="button" class="secondary" disabled="disabled">ตรวจเอกสารทั้งชุด</button>
                     <button id="generateBillingBatchBtn" type="button" disabled="disabled">สร้าง Draft แบบรวม</button>
                     <button id="exportBillingBatchBtn" type="button" class="ghost-button" disabled="disabled">ส่งออก Excel</button>
+                    <button id="draftAllBillingBtn" type="button" class="ghost-button">สร้าง Draft ทุกกลุ่มที่พร้อม</button>
                   </div>
                 </section>
                 <div class="individual-billing-title"><h2>ตรวจสอบราย House</h2><span>ใช้สำหรับดูรายละเอียดหรือแก้ไขเฉพาะรายการ</span></div>
@@ -1268,6 +1272,7 @@
                     <label>ตรวจเอกสาร / Document review</label>
                     <textarea id="billingReviewNote" rows="3" placeholder="ใบชั่งน้ำหนัก / Cargo Transfer / Loading Detail / เอกสารหน้างาน"></textarea>
                     <div class="form-actions">
+                      <button id="matchBillingBtn" type="button" class="secondary">Match เอกสารจริง</button>
                       <button id="reviewBillingBtn" type="button">เอกสารพร้อม / Reviewed</button>
                       <button id="holdBillingBtn" type="button" class="danger">พักรายการ / Hold</button>
                     </div>
@@ -1924,8 +1929,20 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
                   <article><span>Database</span><strong id="settingDatabaseName">กำลังตรวจสอบ...</strong><b id="settingDatabaseStatus" class="pill pending">Checking</b></article>
                   <article><span>Storage</span><strong id="settingStorageName">กำลังตรวจสอบ...</strong><b id="settingStorageStatus" class="pill pending">Checking</b></article>
                   <article><span>n8n Import</span><strong id="settingN8nName">กำลังตรวจสอบ...</strong><b id="settingN8nStatus" class="pill pending">Checking</b></article>
+                  <article><span>รอบดึงอีเมล</span><strong id="settingImportRound">กำลังตรวจสอบ...</strong><b id="settingImportWaiting" class="pill pending">-</b></article>
                   <article><span>LINE Alert</span><strong id="settingLineName">กำลังตรวจสอบ...</strong><b id="settingLineStatus" class="pill pending">Checking</b></article>
                 </div>
+              </article>
+
+              <article class="card settings-card full" id="importScheduleCard" hidden>
+                <div class="card-head"><div><h2>รอบดึงแผนงานจากอีเมล</h2><p>ไฟล์ Pickup Plan และ Console Plan ที่ n8n ส่งเข้ามา จะรอเข้าระบบพร้อมกันตามรอบที่ตั้งไว้</p></div></div>
+                <form id="importScheduleForm" class="import-schedule-form">
+                  <label><input type="radio" name="mode" value="immediate"> ดึงทันทีเมื่อมีอีเมลใหม่</label>
+                  <label><input type="radio" name="mode" value="fixed"> ตามเวลา <input id="importTimes" value="09:00, 17:00, 20:00" aria-label="เวลาดึงอีเมล คั่นด้วยจุลภาค"></label>
+                  <label><input type="radio" name="mode" value="interval"> ทุก <select id="importInterval" aria-label="ความถี่"><option value="30">30 นาที</option><option value="60">1 ชั่วโมง</option></select></label>
+                  <p id="importScheduleInfo" class="import-schedule-info"></p>
+                  <div class="ship-doc-actions"><button type="submit" class="primary-button">บันทึกรอบดึงอีเมล</button></div>
+                </form>
               </article>
 
               <article class="card settings-card full">
@@ -2724,6 +2741,6 @@ H-3002,c_general,TG640,2026-06-15T18:00:00,General,CrossDock,7800,SIN,BK-002,INV
     <script src="ctf-core/index.js?v=20261125-confirmed-units"></script>
     <script src="personnel-photo-preview.js?v=20261124"></script>
     <script src="operations-workspace.js?v=20261125-unified"></script>
-    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126&amp;dash=20261127&amp;work=20261127b&amp;popups=20261127e&amp;dash2=20261127&amp;fleet=20261127&amp;split=20261127&amp;srs1=20261127&amp;srs2=20261128&amp;ei=20261128"></script>
+    <script src="app.js?v=20261121-unified-credential&amp;cargo=20261125-header&amp;performance=20261124&amp;session=20261124-restore&amp;roles=20261122e&amp;full-loop=3&amp;ctf=20261125-invoice-charge&amp;workspace=20261125&amp;alerts=20261126&amp;dash=20261127&amp;work=20261127b&amp;popups=20261127e&amp;dash2=20261127&amp;fleet=20261127&amp;split=20261127&amp;srs1=20261127&amp;srs2=20261128&amp;ei=20261128&amp;srs3=20261128"></script>
   </body>
 </html>

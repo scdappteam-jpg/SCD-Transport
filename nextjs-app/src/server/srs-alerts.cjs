@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- server-only CommonJS domain service */
 // Targeted operational alerts (SRS 4.1.3, 4.3.1, 4.4.2).
 // Alerts still go through the shared createAlert (dashboard + LINE). This adds
 // who must act (`audience` roles), the House, a kind for filtering, and an
@@ -84,9 +85,23 @@ async function reXray(db, createAlert, job) {
         message: `ต้อง Re-X-Ray: ${job.houseNumber} / Flight ${job.flightNo || "-"} · หัวหน้าคลังจัดคนสนับสนุนหน้างาน` });
 }
 
+// Live ETA (SRS 3.4): each accepted 5-minute GPS ping of a driver who is on
+// the way back to WH3 refreshes the ETA on that driver's Houses.
+function updateDriverEta(db, driverId, gpsText, nowIso) {
+    const eta = etaToWh3(db, gpsText, nowIso);
+    if (!eta) return 0;
+    const items = require("./split-legs.cjs").workItems(db.jobs || []).filter(item => item.driverId === driverId && item.driverRouteStatus === "ReturningWH3" && !item.arrivedWh3At);
+    for (const item of items) {
+        item.etaWh3At = eta.etaAt;
+        item.etaUpdatedAt = nowIso;
+        item.etaDistanceKm = eta.distanceKm;
+    }
+    return items.length;
+}
+
 // Alerts a viewer should see as a pop-up: addressed to their role.
 function forViewer(alerts, role) {
     return (alerts || []).filter(alert => !Array.isArray(alert.audience) || alert.audience.includes(role) || role === "Executive");
 }
 
-module.exports = { parseGps, distanceKm, wh3Point, etaToWh3, notify, leftFactory, arrivedAirport, holdOpened, reXray, forViewer };
+module.exports = { parseGps, distanceKm, wh3Point, etaToWh3, updateDriverEta, notify, leftFactory, arrivedAirport, holdOpened, reXray, forViewer };
