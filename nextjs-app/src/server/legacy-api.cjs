@@ -7638,6 +7638,19 @@ async function handleApi(req, res, pathname) {
             return sendJson(res,200,{ok:true,accounts});
         } catch(error) { return sendJson(res,error.statusCode||400,{error:error.message}); }
     }
+    if (req.method === "POST" && pathname === "/api/users/reissue-test-credentials") {
+        const actor = requireSessionRole(db, req, ["Admin"]);
+        if (!actor) return sendJson(res,403,{error:"ไม่มีสิทธิ์ออกรหัสบัญชีทดสอบ"});
+        const payload = await parseBody(req);
+        if (payload.confirm !== "REISSUE_SIT") return sendJson(res,400,{error:"ต้องยืนยันการออกรหัสใหม่"});
+        try {
+            const accounts = await persistConfirmed(current => userProvisioning.reissueSuite(current, actor, nowIso()));
+            // Keep Supabase Auth in step for any SIT account it manages.
+            const current = readDb();
+            for (const account of accounts) await updateSupabaseAuthPassword(current.users.find(u => u.id === account.id), account.initialPin);
+            return sendJson(res,200,{ok:true,accounts:accounts.map(({id,...rest})=>rest)});
+        } catch(error) { return sendJson(res,error.statusCode||400,{error:error.message}); }
+    }
     if (req.method === "POST" && pathname === "/api/users/upsert") {
         const payload = await parseBody(req);
         const actor = requireSessionRole(db, req, [ "Admin", "Executive" ]);

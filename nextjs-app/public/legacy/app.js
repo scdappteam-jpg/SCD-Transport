@@ -10283,6 +10283,25 @@ function bindEvents() {
     $("#closeStaffFormBtn").addEventListener("click", closeStaffEditor);
     $("#cancelStaffBtn").addEventListener("click", closeStaffEditor);
     $("#createLoginAccountBtn")?.addEventListener("click",()=>openStaffEditor());
+    const showTestCodes=(accounts,note)=>{
+        const box=$("#roleTestSuiteResult");
+        box.hidden=false;
+        box.innerHTML=`<p>${safeHtml(note)}</p><table><thead><tr><th>รหัส</th><th>บทบาท</th><th>รหัสผ่าน / PIN</th></tr></thead><tbody>${accounts.map(a=>`<tr><td>${safeHtml(a.code)}</td><td>${safeHtml(a.role)}</td><td>${safeHtml(a.initialPin||"มีบัญชีแล้ว — ใช้รหัสเดิม")}</td></tr>`).join("")}</tbody></table>`;
+        const download=document.createElement("button");
+        download.type="button"; download.textContent="ดาวน์โหลดรหัส CSV";
+        download.addEventListener("click",()=>{
+            const csv="\uFEFFcode,role,initialPin\n"+accounts.map(a=>[a.code,a.role,a.initialPin||"EXISTING"].join(",")).join("\n");
+            const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+            const link=document.createElement("a");link.href=url;link.download="SCD-SIT-accounts.csv";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        });
+        box.appendChild(download);
+    };
+    $("#reissueTestSuiteBtn")?.addEventListener("click",event=>runAction(event.currentTarget,async()=>{
+        if(!window.confirm("ออกรหัสใหม่ให้บัญชีทดสอบ SIT ทุกบทบาท?\n\nรหัสเดิมและอุปกรณ์ที่ผูกไว้จะใช้ไม่ได้ทันที ผู้ทดสอบต้องเข้าด้วยรหัสใหม่และเปลี่ยนรหัสครั้งแรก"))return;
+        const data=await api("/api/users/reissue-test-credentials",{confirm:"REISSUE_SIT"});
+        showTestCodes(data.accounts,"รหัสใหม่ใช้เป็นทั้งรหัสผ่าน (เข้าระบบบนคอมและมือถือ) และ PIN ลงเวลา เข้าครั้งแรกต้องเปลี่ยนรหัส เก็บรหัสไว้ก่อนออกจากหน้านี้ ระบบจะไม่แสดงซ้ำ");
+        toast("ออกรหัสใหม่ให้บัญชีทดสอบแล้ว");
+    }));
     $("#createRoleTestSuiteBtn")?.addEventListener("click",event=>runAction(event.currentTarget,async()=>{
         const data=await api("/api/users/provision-test-suite",{});
         const box=$("#roleTestSuiteResult");
