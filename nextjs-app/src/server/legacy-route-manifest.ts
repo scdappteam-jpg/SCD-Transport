@@ -26,6 +26,7 @@ export const legacyViewRoutes = {
   "outbound-open": "outbound-open",
   attendance: "attendance",
   "cs-queue": "cs-queue",
+  "shipping": "shipping",
   service: "service"
 } as const;
 

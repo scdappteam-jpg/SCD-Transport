@@ -328,9 +328,9 @@ function allowedWebViews(role) {
     if (role === "People_Viewer") return [];
     if (role === "Driver") return [ "dashboard", "driver-time-log", "contacts", "hr", "flight-board", "dock" ];
     if (role === "WH_Staff") return [ "dashboard", "mobile", "wh-inbound", "wh-quality", "outbound-open", "wh-reservations", "contacts", "hr", "flight-board", "dock" ];
-    if (role === "WH3_TeamLeader") return [ "dashboard", "mobile", "orders", "warehouse", "wh-inbound", "wh-quality", "outbound-open", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
+    if (role === "WH3_TeamLeader") return [ "dashboard", "mobile", "orders", "shipping", "warehouse", "wh-inbound", "wh-quality", "outbound-open", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "attendance", "contacts", "hr", "flight-board", "dock", "service" ];
     if (role === "Team_Transport") return [ "dashboard", "mobile", "orders", "cs-queue", "admin", "grouping", "cargo-history", "driver-time-log", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "flight-board", "dock", "service" , ...operations];
-    if (role === "EI_Customer") return [ "dashboard", "orders", "mobile" ];
+    if (role === "EI_Customer") return [ "dashboard", "shipping", "orders", "mobile" ];
     if (role === "Check_House" || role === "QA_Inspector") return [ "dashboard", "wh-inbound", "wh-quality", "orders", "alerts", "contacts" ];
     if (role === "Tagging_Staff") return [ "dashboard", "wh-quality" ];
     // Console Office checks Lithium documents and scan-confirms before release.
@@ -342,9 +342,9 @@ function allowedWebViews(role) {
     if (role === "Billing") return [ "dashboard", "orders", "mobile", "cargo-history", "wh-status", "load-plan", "outbound-open", "contacts", "hr", "service" , ...operations];
     // CS owns the confirmation step, but must not be able to open Cargo or
     // operate the Transport workflow after confirmation.
-    if (role === "CS") return [ "dashboard", "orders", "cs-queue", "contacts" , ...operations];
-    if (role === "Executive") return [ "dashboard", "mobile", "orders", "alerts", "cargo-history", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "contacts", "hr", "flight-board", "dock", "service" , ...operations];
-    return [ "dashboard", "orders", "calendar", "staff", "contacts", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" , ...operations];
+    if (role === "CS") return [ "dashboard", "orders", "shipping", "cs-queue", "contacts" , ...operations];
+    if (role === "Executive") return [ "dashboard", "mobile", "orders", "shipping", "alerts", "cargo-history", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "load-plan", "outbound-open", "attendance", "contacts", "hr", "flight-board", "dock", "service" , ...operations];
+    return [ "dashboard", "orders", "shipping", "calendar", "staff", "contacts", "hr", "mobile", "cs-queue", "admin", "grouping", "cargo-history", "alerts", "warehouse", "wh-inbound", "wh-quality", "meeting-settings", "driver-time-log", "wh-reservations", "wh-status", "settings", "load-plan", "outbound-open", "attendance", "flight-board", "dock", "service" , ...operations];
 }
 
 function applyWebRoleVisibility() {
@@ -657,6 +657,10 @@ const pageCopy = {
     "outbound-open": {
         breadcrumb: "ขาออก",
         title: "เปิดใบขาออก"
+    },
+    shipping: {
+        breadcrumb: "Shipping · EI",
+        title: "งาน Shipping · EI"
     },
     "cs-queue": {
         breadcrumb: "Transport Queue / ติดตาม CS",
@@ -1234,6 +1238,7 @@ function setView(view) {
     if (view === "meeting-settings") MeetingWorkflows.settings();
     if (view === "driver-time-log") MeetingWorkflows.driverLog();
     if (view === "fleet-demo") renderFleetDemo();
+    if (view === "shipping") window.ShippingEiPage?.render();
     if (view === "load-plan") renderLoadPlan();
     if (view === "outbound-open") renderObOpenPage();
     if (view === "grouping") renderGroupingTabs();
