@@ -3020,7 +3020,15 @@ function renderExecutiveSummary() {
         minute: "2-digit"
     }).format(new Date)}`;
     const ring = $("#execHealthRing");
-    if (ring) ring.style.setProperty("--score", readiness);
+    if (ring) {
+        // Colour states the level at a glance; the label says it in words.
+        const level = readiness >= 75 ? "good" : readiness >= 50 ? "warn" : "bad";
+        ring.style.setProperty("--score", readiness);
+        ring.dataset.level = level;
+        ring.setAttribute("aria-label", `ความพร้อม ${readiness}%`);
+        const levelEl = $("#execHealthLevel");
+        if (levelEl) levelEl.textContent = { good: "พร้อมดี", warn: "ต้องติดตาม", bad: "ต้องเร่งจัดการ" }[level];
+    }
     $("#execHealthScore").textContent = `${readiness}%`;
     $("#execHealthText").textContent = readiness >= 75 ? "ภาพรวมอยู่ในเกณฑ์ดี ติดตามงานเสี่ยงและงานรอวางบิลเป็นหลัก" : readiness >= 45 ? "มีงานที่ต้องเร่งจัดการ ตรวจสอบงานค้างและการมอบหมายคน" : "งานส่วนใหญ่ยังอยู่ต้นกระบวนการ ควรเร่งจัดกลุ่มและติดตามความพร้อม";
     const healthActionsEl = document.getElementById("execHealthActions");
