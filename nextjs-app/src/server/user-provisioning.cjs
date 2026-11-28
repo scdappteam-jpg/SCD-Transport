@@ -16,7 +16,9 @@ function initializeCredential(user, pin, at) {
 // with a SIT### code and a "SIT ทดสอบ" name, e.g. a role added after the
 // suite was first created.
 const SIT_CODE=/^SIT\d{3}$/i;
-function isSitAccount(user){return user?.isTestAccount===true||(SIT_CODE.test(String(user?.code||''))&&/^SIT ทดสอบ /.test(String(user?.name||'')));}
+// Only SIT### codes: other test accounts (e.g. VIEW999 with its fixed PIN)
+// are never part of the suite or of a re-issue.
+function isSitAccount(user){return SIT_CODE.test(String(user?.code||''))&&(user?.isTestAccount===true||/^SIT ทดสอบ /.test(String(user?.name||'')));}
 function provisionSuite(db, actor, at) {
     if(actor?.role!=='Admin') fail('เฉพาะ Admin สร้างชุดบัญชีทดสอบได้',403);
     const users=db.users||[];

@@ -1069,7 +1069,12 @@ function ensureCoreUsers(db) {
         }
     }
     const testViewer = db.users.find(user => String(user.code || '').toUpperCase() === peopleViewer.TEST_VIEWER_CODE && user.isTestAccount === true);
-    if (testViewer) attendanceDeviceAuth.provisionTestPin(db, testViewer, '123456', 'view999-pin-123456-v1', nowIso());
+    if (testViewer) {
+        // v2 restores the fixed test PIN after the 28/11 SIT re-issue also
+        // reset VIEW999, and clears the first-login lock that re-issue set.
+        const restored = attendanceDeviceAuth.provisionTestPin(db, testViewer, '123456', 'view999-pin-123456-v2', nowIso());
+        if (restored.changed) Object.assign(testViewer, { initialCredentialRequired: false, mustChangePin: false });
+    }
     const viewerCodes = user => [ user?.code, ...(user?.loginAliases || []) ].map(value => String(value || '').toUpperCase());
     const hasPrimaryPersonnelViewers = db.users.some(user => user.role === peopleViewer.VIEWER_ROLE && viewerCodes(user).some(code => code === 'VIEW001' || code === 'VIEW002'));
     let yuiViewer = db.users.find(user => user.role === peopleViewer.VIEWER_ROLE && (viewerCodes(user).includes('VIEW003') || String(user.name || '').trim() === 'คุณยุ้ย'));

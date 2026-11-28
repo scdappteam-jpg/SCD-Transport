@@ -59,6 +59,11 @@ test('an older 15-role suite gets the missing role on the next free SIT code, an
   const reissued = service.reissueSuite(b, admin, 'later');
   assert.equal(reissued.length, 16);
   assert.ok(reissued.some((r: Row) => r.id === 'u_console_office_1'));
+  // Other test accounts (VIEW999 keeps its fixed PIN) are never re-issued.
+  const v = oldSuite();
+  v.users.push({ id: 'u_view999', code: 'VIEW999', name: 'ทดสอบ', role: 'People_Viewer', status: 'Active', isTestAccount: true, pinHash: 'fixed' });
+  assert.ok(!service.reissueSuite(v, admin, 'later').some((r: Row) => r.id === 'u_view999'));
+  assert.equal(v.users.find((u: Row) => u.id === 'u_view999')!.pinHash, 'fixed');
   // A real employee who happens to hold a SIT code is never touched.
   const c = oldSuite();
   c.users.push({ id: 'real', code: 'SIT020', name: 'สมชาย', role: 'WH_Staff', status: 'Active', passwordHash: 'keep' });
