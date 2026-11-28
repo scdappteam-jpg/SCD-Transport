@@ -9426,24 +9426,87 @@ document.addEventListener("submit", event => {
     });
 });
 
+// QR for subcontractor / customer trucks (SRS 6): view-only status page plus
+// "arrived at WH3" report, expiring link, revocable.
+let truckLinksCache = null;
+async function loadTruckLinks(force = false) {
+    if (truckLinksCache && !force) return truckLinksCache;
+    try { truckLinksCache = (await api("/api/truck-link", null, "GET")).links || []; } catch (error) { truckLinksCache = []; }
+    return truckLinksCache;
+}
+function renderTruckLink(job) {
+    const box = $("#orderTruckLink");
+    if (!box) return;
+    const allowed = [ "Admin", "Executive", "Team_Transport", "WH3_TeamLeader", "WH_Staff" ].includes(currentWebUser()?.role || "");
+    box.hidden = !(job && allowed && ![ "Cancelled", "Billed", "InvoiceSent" ].includes(job.status));
+    if (box.hidden) return;
+    const draw = links => {
+        const mine = (links || []).filter(link => link.houseNumbers.includes(job.houseNumber));
+        box.innerHTML = `<div class="ship-doc-head"><h3>QR รถร่วม / รถลูกค้า</h3>${mine.length ? `<span class="ship-doc-pill doing">ใช้งานอยู่ ${mine.length}</span>` : ""}</div>
+          <small>คนขับสแกนแล้วเห็นสถานะเฉพาะรถคันนี้ และกดแจ้งถึงคลังได้ ไม่ต้องมีบัญชี</small>
+          ${mine.map(link => `<p class="ei-row-note">รถ ${safeHtml(link.vehiclePlate)} · ${safeHtml(link.houseNumbers.join(", "))} · หมดอายุ ${safeHtml(formatBangkok(link.expiresAt))}${link.arrivedReportedAt ? ` · แจ้งถึงคลัง ${safeHtml(formatBangkok(link.arrivedReportedAt))}` : ""} <button type="button" class="ghost-button" data-truck-revoke="${safeHtml(link.id)}">ยกเลิกลิงก์</button></p>`).join("")}
+          <form class="truck-link-form lithium-form" data-house="${safeHtml(job.houseNumber)}">
+            <label>ทะเบียนรถ<input name="plate" required value="${safeHtml(job.vehiclePlate || "")}"></label>
+            <label>บริษัทรถหรือลูกค้า<input name="company" placeholder="เช่น ขนส่งรถร่วม หรือ ชื่อลูกค้า"></label>
+            <label>ชื่อคนขับ<input name="driver" value="${safeHtml(job.driverName || "")}"></label>
+            <label>House บนรถคันนี้ (คั่นด้วยจุลภาค)<input name="houses" value="${safeHtml(job.houseNumber)}"></label>
+            <label>ใช้ได้กี่ชั่วโมง<select name="hours"><option value="24">24 ชั่วโมง</option><option value="48" selected>48 ชั่วโมง</option><option value="72">72 ชั่วโมง</option></select></label>
+            <div class="ship-doc-actions"><button type="submit" class="primary-button">สร้าง QR</button></div>
+            <p class="truck-link-result" role="status"></p>
+          </form>`;
+    };
+    draw(truckLinksCache);
+    loadTruckLinks().then(draw);
+}
+document.addEventListener("submit", event => {
+    const form = event.target.closest?.(".truck-link-form");
+    if (!form) return;
+    event.preventDefault();
+    runAction(event.submitter, async () => {
+        const houses = form.querySelector('input[name="houses"]').value.split(/[\s,]+/).filter(Boolean);
+        const data = await api("/api/truck-link", { houseNumbers: houses, vehiclePlate: form.querySelector('input[name="plate"]').value.trim(), company: form.querySelector('input[name="company"]').value.trim(), driverName: form.querySelector('input[name="driver"]').value.trim(), hours: Number(form.querySelector('select[name="hours"]').value) });
+        const qrUrl = `/truck-qr#t=${encodeURIComponent(data.token)}&plate=${encodeURIComponent(data.link.vehiclePlate)}`;
+        truckLinksCache = null;
+        await loadTruckLinks(true);
+        renderTruckLink(findJob());
+        const result = $("#orderTruckLink .truck-link-result");
+        if (result) result.innerHTML = `<a href="${safeHtml(qrUrl)}" target="_blank" rel="noopener">เปิด QR เพื่อพิมพ์หรือให้คนขับสแกน</a> · ลิงก์นี้แสดงครั้งเดียว`;
+        toast("สร้าง QR แล้ว");
+    });
+});
+document.addEventListener("click", event => {
+    const revoke = event.target.closest?.("[data-truck-revoke]");
+    if (!revoke) return;
+    runAction(revoke, async () => {
+        await api("/api/truck-link/revoke", { id: revoke.dataset.truckRevoke });
+        await loadTruckLinks(true);
+        renderTruckLink(findJob());
+        toast("ยกเลิกลิงก์แล้ว");
+    });
+});
+
 // Lithium release (SRS 4.3.2): document attached + Console Office scan.
 function renderLithiumCard(job) {
     const box = $("#orderLithium");
     if (!box) return;
+    // Lithium and DG share one card: document + Console Office scan before release.
     const lithium = job && (job.isLithium || job.requiresLithiumDocs || /lithium/i.test(String(job.productType || "")));
-    box.hidden = !lithium;
-    if (!lithium) return;
+    const dg = job && !lithium && (job.cargoType === "dg" || /^DG$/i.test(String(job.dgType || "")) || job.isDangerousGoods || /dangerous/i.test(String(job.productType || "")));
+    box.hidden = !(lithium || dg);
+    if (box.hidden) return;
+    const k = lithium ? { prefix: "lithium", label: "Lithium", doc: "เอกสาร Lithium (MSDS หรือ UN38.3)", re: /^(LithiumDocument|LithiumMSDS|MSDS)/i }
+        : { prefix: "dg", label: "DG", doc: "เอกสาร DG (DGD หรือ MSDS)", re: /^(DGDocument|DGD|MSDS)/i };
     const role = currentWebUser()?.role || "";
     const canConfirm = [ "Console_Office", "Admin" ].includes(role);
-    const hasDoc = (job.lithiumDocumentFileIds || []).length > 0 || (state.dashboard?.attachments || []).some(file => file.houseNumber === job.houseNumber && /^(LithiumDocument|LithiumMSDS|MSDS)/i.test(file.fileType || ""));
-    const confirmed = Boolean(job.lithiumConsoleConfirmedAt);
-    box.innerHTML = `<div class="ship-doc-head"><h3>สินค้า Lithium</h3>${confirmed ? '<span class="ship-doc-pill done">Console ยืนยันแล้ว</span>' : '<span class="ship-doc-pill doing">รอ Console ยืนยัน</span>'}</div>
-      <ul class="ship-doc-reasons"><li>เอกสาร Lithium (MSDS หรือ UN38.3): ${hasDoc ? "แนบแล้ว" : "ยังไม่แนบ"}</li><li>Console Office สแกนยืนยัน: ${confirmed ? `${safeHtml(formatBangkok(job.lithiumConsoleConfirmedAt))}${job.lithiumConsoleConfirmedByName ? " · " + safeHtml(job.lithiumConsoleConfirmedByName) : ""}` : "ยังไม่ยืนยัน"}</li></ul>
+    const hasDoc = (job[k.prefix + "DocumentFileIds"] || []).length > 0 || (state.dashboard?.attachments || []).some(file => file.houseNumber === job.houseNumber && k.re.test(file.fileType || ""));
+    const confirmedAt = job[k.prefix + "ConsoleConfirmedAt"], confirmedBy = job[k.prefix + "ConsoleConfirmedByName"];
+    box.innerHTML = `<div class="ship-doc-head"><h3>สินค้า ${k.label}</h3>${confirmedAt ? '<span class="ship-doc-pill done">Console ยืนยันแล้ว</span>' : '<span class="ship-doc-pill doing">รอ Console ยืนยัน</span>'}</div>
+      <ul class="ship-doc-reasons"><li>${k.doc}: ${hasDoc ? "แนบแล้ว" : "ยังไม่แนบ"}</li><li>Console Office สแกนยืนยัน: ${confirmedAt ? `${safeHtml(formatBangkok(confirmedAt))}${confirmedBy ? " · " + safeHtml(confirmedBy) : ""}` : "ยังไม่ยืนยัน"}</li></ul>
       <small>ปล่อยสินค้า (Picking, Load bay, Transfer, Close) ได้เมื่อครบทั้งสองข้อ และผ่าน QA แล้ว</small>
-      ${canConfirm && !confirmed ? `<form class="lithium-form" data-house="${safeHtml(job.houseNumber)}">
+      ${canConfirm && !confirmedAt ? `<form class="lithium-form" data-house="${safeHtml(job.houseNumber)}">
         <label>สแกนบาร์โค้ด House<input name="scanned" autocomplete="off" placeholder="ยิงบาร์โค้ดหรือพิมพ์เลข House" required></label>
-        <label>แนบเอกสาร Lithium${hasDoc ? " (แนบแล้ว เพิ่มได้)" : ""}<input name="files" type="file" accept="image/*,application/pdf" multiple ${hasDoc ? "" : "required"}></label>
-        <div class="ship-doc-actions"><button type="submit" class="primary-button">ยืนยันสินค้า Lithium</button></div>
+        <label>แนบ${k.doc}${hasDoc ? " (แนบแล้ว เพิ่มได้)" : ""}<input name="files" type="file" accept="image/*,application/pdf" multiple ${hasDoc ? "" : "required"}></label>
+        <div class="ship-doc-actions"><button type="submit" class="primary-button">ยืนยันสินค้า ${k.label}</button></div>
       </form>` : ""}`;
 }
 
@@ -9454,7 +9517,7 @@ document.addEventListener("submit", event => {
     runAction(event.submitter, async () => {
         const documentFiles = await filesToCompressedBase64(form.querySelector('input[name="files"]'));
         await api("/api/lithium/confirm", { houseNumber: form.dataset.house, scannedCode: form.querySelector('input[name="scanned"]').value.trim(), documentFiles });
-        toast("Console ยืนยันสินค้า Lithium แล้ว");
+        toast("Console ยืนยันสินค้าแล้ว");
         await refresh();
     });
 });
@@ -9537,6 +9600,7 @@ function renderTimeline() {
     renderShippingDocs(job);
     renderLithiumCard(job);
     renderPartialUnload(job);
+    renderTruckLink(job);
     markJobSeen(job);
     if (!job) {
         $("#selectedOrderTitle").textContent = "No order selected";

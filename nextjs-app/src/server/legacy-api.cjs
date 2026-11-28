@@ -53,6 +53,8 @@ const srsAlerts = require("./srs-alerts.cjs");
 const dockLayout = require("./dock-layout.cjs");
 const whGeofence = require("./wh-geofence.cjs");
 const lithiumControl = require("./lithium-control.cjs");
+const pieceScan = require("./piece-scan.cjs");
+const truckLink = require("./truck-link.cjs");
 const partialUnload = require("./partial-unload.cjs");
 const eiShipping = require("./ei-shipping.cjs");
 const shippingDocStatus = require("./shipping-doc-status.cjs");
@@ -3743,7 +3745,8 @@ async function handleApi(req, res, pathname) {
             return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role,mustChangePassword:user.mustChangePassword===true,mustChangePin:user.mustChangePin===true}});
         }catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||400,{error:error.message,code:error.code||'DEVICE_LOGIN_FAILED',requestId:error.requestId});}
     }
-    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/device/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    // Truck QR links authenticate with their own expiring token (truck-link.cjs).
+    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/device/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk", "/api/truck-link/view", "/api/truck-link/arrived" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
     if (req.method === "POST" && pathname === "/api/auth/set-pin") {
         const actor=sessionUser(db,req),payload=await parseBody(req);
         if(!actor)return sendJson(res,401,{error:'กรุณาเข้าสู่ระบบใหม่'});
@@ -5746,12 +5749,49 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, { ok: true, approval: result.approval, jobs: result.jobs.map(normalizeJob) });
     }
+    if (pathname.startsWith("/api/truck-link")) {
+        try {
+            if (req.method === "GET" && pathname === "/api/truck-link/view") {
+                return sendJson(res, 200, { ok: true, ...truckLink.view(db, new URL(req.url, "http://localhost").searchParams.get("t"), nowIso()) });
+            }
+            if (req.method === "POST" && pathname === "/api/truck-link/arrived") {
+                const payload = await parseBody(req);
+                const link = truckLink.reportArrived(db, payload.t, payload, nowIso());
+                await srsAlerts.notify(db, createAlert, { kind: "TruckLink-Arrived", title: "รถร่วมแจ้งถึง WH3", severity: "warning", roles: [ "WH3_TeamLeader", "WH_Staff", "Team_Transport", "Admin" ], houseNumber: link.houseNumbers[0],
+                    message: `รถ ${link.vehiclePlate}${link.company ? " (" + link.company + ")" : ""} แจ้งถึง WH3 ผ่าน QR · House ${link.houseNumbers.join(", ")}` });
+                writeDb(db);
+                return sendJson(res, 200, { ok: true, arrivedReportedAt: link.arrivedReportedAt });
+            }
+            const actor = sessionUser(db, req);
+            if (req.method === "GET" && pathname === "/api/truck-link") return sendJson(res, 200, { ok: true, links: truckLink.list(db, actor, nowIso()) });
+            if (req.method === "POST" && pathname === "/api/truck-link") {
+                const result = truckLink.create(db, actor, await parseBody(req), nowIso());
+                writeDb(db);
+                return sendJson(res, 200, { ok: true, ...result });
+            }
+            if (req.method === "POST" && pathname === "/api/truck-link/revoke") {
+                const link = truckLink.revoke(db, actor, (await parseBody(req)).id, nowIso());
+                writeDb(db);
+                return sendJson(res, 200, { ok: true, link });
+            }
+            return sendJson(res, 404, { error: "Not found" });
+        } catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+    }
+    if (pathname === "/api/inbound/piece-scan") {
+        const actor = sessionUser(db, req);
+        try {
+            if (req.method === "GET") return sendJson(res, 200, { ok: true, ...pieceScan.view(db, actor, new URL(req.url, "http://localhost").searchParams.get("houseNumber")) });
+            const result = pieceScan.scan(db, actor, await parseBody(req), nowIso());
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, ...result });
+        } catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+    }
     if (req.method === "POST" && pathname === "/api/lithium/confirm") {
         const payload = await parseBody(req);
         let job;
         try { job = lithiumControl.confirm(db, sessionUser(db, req), payload, nowIso(), (houseNumber, fileType, files) => saveBase64Files(db, { houseNumber, fileType, files })); }
         catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
-        logActivity(db, { houseNumber: job.houseNumber, userId: job.lithiumConsoleConfirmedBy, activityType: "LithiumConsoleConfirmed" });
+        logActivity(db, { houseNumber: job.houseNumber, userId: sessionUser(db, req)?.id, activityType: `${lithiumControl.kindOf(job)}ConsoleConfirmed` });
         writeDb(db);
         return sendJson(res, 200, { ok: true, job: normalizeJob(job) });
     }
