@@ -23,7 +23,7 @@
     <style>[hidden]{display:none!important}html.mobile-auth-pending .login-card{visibility:hidden}#foPinForm{display:grid;gap:8px}#foPinForm .fo-primary-btn{margin-top:8px}</style>
       <link rel="stylesheet" href="inbound-receipt-ui.css?v=1-confirmed-counts">
     <link rel="stylesheet" href="mobile-header.css?v=20261126">
-    <link rel="stylesheet" href="mobile-screens.css?v=20261127c">
+    <link rel="stylesheet" href="mobile-screens.css?v=20261128q">
   </head>
   <body class="mobile-locked">
     <header class="mobile-header">
@@ -140,6 +140,11 @@
           <span class="action-icon"><i data-lucide="package-check" aria-hidden="true"></i></span>
           <b>Inbound</b>
           <small>สแกนเข้าคลัง / WH3</small>
+        </button>
+        <button class="action-card" type="button" data-mobile-tab="quality">
+          <span class="action-icon"><i data-lucide="scan-barcode" aria-hidden="true"></i></span>
+          <b>แท็ก/QA</b>
+          <small>ติดแท็ก · QA ตรวจ</small>
         </button>
         <button class="action-card" type="button" data-mobile-tab="outbound">
           <span class="action-icon"><i data-lucide="plane-takeoff" aria-hidden="true"></i></span>
@@ -340,6 +345,32 @@
             <button id="docCheckBtn" type="button">บันทึกเอกสาร / Save</button>
             <button id="openInboundBtn" type="button" class="soft">เปิดงานรับเข้า / Open</button>
           </div>
+        </section>
+
+        <section class="inbound-step operation-section" id="mInspectCard" data-operation-section="inbound-scan">
+          <h3>ตรวจสภาพและเลขอ้างอิง</h3>
+          <p class="step-note">ใช้ House จากช่องสแกนด้านบน ติ๊กให้ครบทุกข้อแล้วบันทึก</p>
+          <label><input class="m-inspect-check" type="checkbox" value="references"> House / F / Master ตรงสินค้า</label>
+          <label><input class="m-inspect-check" type="checkbox" value="invoice"> Invoice ตรงงาน</label>
+          <label><input class="m-inspect-check" type="checkbox" value="packing"> หีบห่อและประเภทสินค้าถูกต้อง</label>
+          <label><input class="m-inspect-check" type="checkbox" value="condition"> ตรวจสภาพแล้ว ไม่มีข้อผิดปกติที่ยังไม่ตัดสินใจ</label>
+          <button id="mInspectBtn" type="button">บันทึกตรวจสภาพ</button>
+          <p id="mInspectMsg" class="m-msg" role="status"></p>
+        </section>
+
+        <section class="inbound-step operation-section" id="mPieceCard" data-operation-section="inbound-scan">
+          <h3>สแกนรายกล่อง / พาเลท</h3>
+          <div id="mPieces" class="m-pieces"><p class="step-note">สแกน House ด้านบนก่อน แล้วกดโหลดยอดสแกน</p></div>
+          <label for="mPieceUnit">หน่วย</label>
+          <select id="mPieceUnit"><option value="CTN">CTN</option></select>
+          <label for="mPieceCode">บาร์โค้ดกล่อง / พาเลท</label>
+          <input id="mPieceCode" autocomplete="off" inputmode="text" placeholder="ยิงบาร์โค้ดแล้วกด Enter">
+          <div class="button-row two">
+            <button id="mPieceCameraBtn" type="button" class="soft">สแกนด้วยกล้อง</button>
+            <button id="mPieceLoadBtn" type="button" class="soft">โหลดยอดสแกน</button>
+          </div>
+          <button id="mPieceUseBtn" type="button">ใช้ยอดสแกนเป็นยอดรับ</button>
+          <p id="mPieceMsg" class="m-msg" role="status"></p>
         </section>
 
         <section class="inbound-step operation-section" data-operation-section="inbound-scan">
@@ -619,6 +650,37 @@
       </section>
 
       
+      <section class="mobile-panel" id="tab-quality">
+        <div class="bot-row">
+          <div class="bot-avatar">SCD</div>
+          <div class="bubble">สแกนหรือพิมพ์เลข House แล้วถ่ายรูปบาร์โค้ดแท็ก ผู้ติดแท็กกดลงทะเบียนแท็ก ส่วน QA ต้องเป็นคนละบัญชีและถ่ายรูปใหม่ทุกครั้ง</div>
+        </div>
+        <section class="inbound-step">
+          <h3>1. เลือก House</h3>
+          <label for="mqHouse">House Number</label>
+          <input id="mqHouse" autocomplete="off" placeholder="เช่น 4840814312">
+          <div class="button-row two">
+            <button id="mqCameraBtn" type="button" class="soft">สแกนด้วยกล้อง</button>
+            <button id="mqFindBtn" type="button">ค้นหา</button>
+          </div>
+          <div id="mqJob" class="m-quality-job" role="status"></div>
+        </section>
+        <section class="inbound-step">
+          <h3>2. ถ่ายรูปบาร์โค้ดแท็ก</h3>
+          <label for="mqMode">ชนิดแท็ก</label>
+          <select id="mqMode"><option value="Single">Single (1 รูป)</option><option value="Pair">Pair (2 รูป)</option></select>
+          <label for="mqColor">สีแท็ก (ถ้ามี)</label>
+          <input id="mqColor" autocomplete="off" placeholder="เช่น เหลือง">
+          <label for="mqImages">รูปบาร์โค้ด</label>
+          <input id="mqImages" type="file" accept="image/*" capture="environment" multiple>
+          <div class="button-row two">
+            <button id="mqTagBtn" type="button">ลงทะเบียนแท็ก</button>
+            <button id="mqQaBtn" type="button">QA สแกนตรวจ</button>
+          </div>
+          <p id="mqMsg" class="m-msg" role="status"></p>
+        </section>
+      </section>
+
       <section class="mobile-panel" id="tab-attendance">
         <div class="bot-row">
           <div class="bot-avatar">SCD</div>
@@ -895,7 +957,8 @@
     <script src="inbound-receipt-ui.js?v=3-preview-labels&amp;cargo=20261124"></script>
     <script src="inbound-flight-ui.js?v=4-risk-preview"></script>
   <script src="driver-dock-core.js?v=20261031-one-vehicle-one-dock-confirmed-reconcile"></script>
-  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=3&amp;dispatch=20261125-round-completion&amp;header=20261126&amp;screens=20261127&amp;count=20261127&amp;split=20261127&amp;close=20261127&amp;held=20261128"></script>
+  <script src="mobile.js?v=20261121-unified-credential&amp;roles=20261122b&amp;dock-round=1&amp;terminal-queue=3&amp;dispatch=20261125-round-completion&amp;header=20261126&amp;screens=20261127&amp;count=20261127&amp;split=20261127&amp;close=20261127&amp;held=20261128&amp;qa=20261128"></script>
+  <script src="mobile-quality.js?v=20261128"></script>
   </body>
 </html>
 

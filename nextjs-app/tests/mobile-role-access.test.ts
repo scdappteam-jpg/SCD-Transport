@@ -46,13 +46,16 @@ test('mobile handoffs resume from persisted warehouse and EI work without attrib
 });
 
 test('all provisioned roles have explicit mobile access; unknown roles get no operations', () => {
-  const attendanceOnly = ['People_Viewer', 'Employee', 'CS', 'Tagging_Staff', 'QA_Inspector'];
+  const attendanceOnly = ['People_Viewer', 'Employee', 'CS'];
   for (const role of attendanceOnly) assert.deepEqual(tabs(role), ['attendance'], role);
-  for (const role of ['Admin', 'Executive']) assert.deepEqual(tabs(role), ['pickup', 'inbound', 'outbound', 'billing', 'attendance'], role);
+  // Taggers and QA work on the phone: tag/QA scan plus attendance only.
+  for (const role of ['Tagging_Staff', 'QA_Inspector']) assert.deepEqual(tabs(role), ['quality', 'attendance'], role);
+  for (const role of ['Admin', 'Executive']) assert.deepEqual(tabs(role), ['pickup', 'inbound', 'quality', 'outbound', 'billing', 'attendance'], role);
   assert.deepEqual(tabs('Driver'), ['pickup', 'attendance']);
-  for (const role of ['WH_Staff', 'WH3_TeamLeader']) assert.deepEqual(tabs(role), ['inbound', 'outbound', 'attendance'], role);
+  for (const role of ['WH_Staff', 'WH3_TeamLeader']) assert.deepEqual(tabs(role), ['inbound', 'quality', 'outbound', 'attendance'], role);
   assert.deepEqual(tabs('Team_Transport'), ['inbound', 'outbound', 'attendance']);
-  for (const role of ['EI_Customer', 'Check_House', 'Terminal']) assert.deepEqual(tabs(role), ['outbound'], role);
+  for (const role of ['EI_Customer', 'Terminal']) assert.deepEqual(tabs(role), ['outbound'], role);
+  assert.deepEqual(tabs('Check_House'), ['outbound', 'quality']);
   assert.deepEqual(tabs('Billing'), ['billing']);
   assert.deepEqual(tabs('unrecognised-role'), []);
 });

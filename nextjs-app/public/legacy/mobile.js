@@ -531,16 +531,17 @@ function cycleMobileFontScale() {
 
 function allowedMobileTabs(role) {
     if (role === "People_Viewer") return [ "attendance" ];
-    if ([ "CS", "Employee", "Tagging_Staff", "QA_Inspector", "Console_Office" ].includes(role)) return [ "attendance" ];
+    if ([ "Tagging_Staff", "QA_Inspector" ].includes(role)) return [ "quality", "attendance" ];
+    if ([ "CS", "Employee", "Console_Office" ].includes(role)) return [ "attendance" ];
     if (role === "Driver") return [ "pickup", "attendance" ];
-    if (role === "WH_Staff") return [ "inbound", "outbound", "attendance" ];
-    if (role === "WH3_TeamLeader") return [ "inbound", "outbound", "attendance" ];
+    if (role === "WH_Staff") return [ "inbound", "quality", "outbound", "attendance" ];
+    if (role === "WH3_TeamLeader") return [ "inbound", "quality", "outbound", "attendance" ];
     if (role === "Team_Transport") return [ "inbound", "outbound", "attendance" ];
     if (role === "EI_Customer") return [ "outbound" ];
-    if (role === "Check_House") return [ "outbound" ];
+    if (role === "Check_House") return [ "outbound", "quality" ];
     if (role === "Terminal") return [ "outbound" ];
     if (role === "Billing") return [ "billing" ];
-    if ([ "Admin", "Executive" ].includes(role)) return [ "pickup", "inbound", "outbound", "billing", "attendance" ];
+    if ([ "Admin", "Executive" ].includes(role)) return [ "pickup", "inbound", "quality", "outbound", "billing", "attendance" ];
     return [];
 }
 

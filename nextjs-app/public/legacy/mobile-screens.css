@@ -247,3 +247,17 @@ body:not(.mobile-locked) main :is(.badge, .mhr-note, .ez-summary-head span, .mhr
 .split-notice:not([hidden]){display:grid;gap:6px;margin:8px 0;padding:10px 12px;border:1px solid #bcd3f2;border-left:4px solid #0b4ea2;border-radius:12px;background:#eef4fb;color:#14213a}
 .split-notice p{margin:0;font-size:14px;line-height:1.45}
 .split-notice small{display:block;color:#475569;font-size:12.5px}
+
+/* Tag / QA and per-piece scan */
+.m-quality-card{display:grid;gap:6px;margin-top:10px;padding:12px;border:1px solid #bcd3f2;border-left:4px solid #0b4ea2;border-radius:12px;background:#eef4fb;color:#14213a}
+.m-quality-card small{color:#475569;font-size:12.5px}
+.m-quality-row{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;border-top:1px solid #d6e2f3;padding-top:6px}
+.m-quality-row span{color:#475569}
+.m-quality-row b{text-align:right}
+.m-pieces{display:grid;gap:2px;margin:6px 0 10px;padding:10px 12px;border:1px dashed #bcd3f2;border-radius:12px;background:#f8fbff}
+.m-pieces p{margin:0}
+.m-pieces small{color:#475569;font-size:12px}
+.m-piece-total{font-size:14px}
+.m-ok{color:#0b6b3a}
+.m-msg{margin:8px 0 0;font-size:13.5px;color:#0b6b3a}
+.m-msg:empty{display:none}
