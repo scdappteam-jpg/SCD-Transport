@@ -4454,12 +4454,12 @@ async function handleApi(req, res, pathname) {
         db.dock ||= {};
         db.dock.queue = [];
         db.dock.log = [];
+        // Clear every round field, including the multi-House list, so a
+        // re-imported House can be queued again. Closed bays stay closed.
         for (const bay of db.dock.bays || []) {
-            if (bay.status !== "Closed") bay.status = "Available";
-            delete bay.houseNumber;
-            delete bay.vehiclePlate;
-            delete bay.driverName;
-            delete bay.assignedAt;
+            const closed = bay.status === "Closed";
+            dockVehicleGroup.clearBay(bay);
+            if (closed) bay.status = "Closed";
         }
 
         // งานบริการ/เตรียมวางบิล ลบเฉพาะเมื่อสั่งมาเท่านั้น (ตารางเรทไม่ถูกแตะ)

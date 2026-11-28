@@ -39,3 +39,8 @@ test('legacy duplicate bays for the same House consolidate without a round ident
  const db:any={jobs:[job],dock:{bays:[{id:'D8',name:'ท่า 8',status:'Occupied',houseNumber:'SIT-B1',assignedAt:'2026-10-31T01:00:00Z'},{id:'D9',name:'ท่า 9',status:'Occupied',houseNumber:'SIT-B1',assignedAt:'2026-10-31T01:01:00Z'},{id:'D10',name:'ท่า 10',status:'Occupied',houseNumber:'SIT-B1',assignedAt:'2026-10-31T01:02:00Z'}]}};
  assert.deepEqual(groups.normalizeBays(db),{merged:1,blocked:0});assert.equal(db.dock.bays[0].status,'Occupied');assert.equal(db.dock.bays[1].status,'Available');assert.equal(db.dock.bays[2].status,'Available');assert.equal(job.dockBayId,'D8');
 });
+test('clearing a bay drops every House of the round so the same Houses can queue again',()=>{
+ const bay:Record<string,unknown>={id:'D6',status:'Occupied',houseNumber:'A1',houseNumbers:['A1','A2','A3'],vehiclePlate:'SIT-1',driverName:'D',assignedAt:'2026-11-28T01:00:00Z',queueNumber:9};
+ groups.clearBay(bay);
+ assert.equal(bay.status,'Available');assert.deepEqual(groups.houses(bay),[]);assert.equal(groups.contains(bay,'A2'),false);assert.equal(bay.assignedAt,'');assert.equal(bay.queueNumber,null);
+});
