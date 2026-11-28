@@ -731,6 +731,27 @@ async function refreshDbIfSharedStateChanged(force = false, onlyIfChanged = fals
     }
 }
 
+// Bulk imports must not report success unless the shared database took the
+// write. writeDb() persists in the background, and on a version conflict the
+// snapshot is dropped. Here the import waits for the shared write; on a
+// conflict it reloads the latest shared state and applies the import once
+// more. If the write still is not stored, the caller gets an error.
+async function persistConfirmed(apply) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt && supabaseEnabled()) await refreshDbIfSharedStateChanged(true);
+        const current = readDb();
+        const result = apply(current);
+        if (!result || result.preview) return result;
+        writeDb(current);
+        if (!supabaseEnabled()) return result;
+        await dbPersistPromise.catch(() => {});
+        if (lastStateWriteError?.code === "STATE_WRITE_CONFLICT") { lastStateWriteError = null; continue; }
+        if (supabaseHealth.pendingWrites) throw Object.assign(new Error("ยังบันทึกลงฐานข้อมูลกลางไม่สำเร็จ ระบบจะลองใหม่อัตโนมัติ กรุณาเปิดหน้านี้ตรวจอีกครั้งใน 2 นาที"), { statusCode: 503 });
+        return result;
+    }
+    throw Object.assign(new Error("ข้อมูลกลางเปลี่ยนระหว่างบันทึก กรุณากดนำเข้าอีกครั้ง"), { statusCode: 409 });
+}
+
 async function persistDbToSupabase(db, expectedVersion = dbCacheUpdatedAt, commitId) {
     if (!supabaseEnabled()) return;
     const { main, jobChunks, alertChunks } = compactStateDocument(db);
@@ -970,7 +991,10 @@ function summarizeDb(db = {}) {
         attachments: Array.isArray(db.attachments) ? db.attachments.length : 0,
         billing: Array.isArray(db.billing) ? db.billing.length : 0,
         loadPlans: Array.isArray(db.loadPlans) ? db.loadPlans.length : 0,
-        activityLogs: Array.isArray(db.activityLogs) ? db.activityLogs.length : 0
+        activityLogs: Array.isArray(db.activityLogs) ? db.activityLogs.length : 0,
+        contacts: Array.isArray(db.contacts) ? db.contacts.length : 0,
+        fleetVehicles: Array.isArray(db.fleetVehicles) ? db.fleetVehicles.length : 0,
+        contactImports: Array.isArray(db.contactImports) ? db.contactImports.length : 0
     };
 }
 
@@ -4091,19 +4115,17 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/contacts/bulk-import") {
         const payload = await parseBody(req);
-        const currentDb = readDb();
         let result;
         try {
-            result = contactDirectory.importContacts(currentDb, {
+            result = await persistConfirmed(currentDb => contactDirectory.importContacts(currentDb, {
                 actor: sessionUser(currentDb, req),
                 records: payload.records,
                 preview: payload.preview !== false,
                 now: nowIso()
-            });
+            }));
         } catch (error) {
             return sendJson(res, error.statusCode || 400, { error: error.message });
         }
-        if (!result.preview) writeDb(currentDb);
         return sendJson(res, 200, { ok: true, ...result });
     }
     if (req.method === "GET" && pathname === "/api/fleet/directory") {
@@ -4114,17 +4136,15 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/fleet/bulk-import") {
         const payload = await parseBody(req);
-        const currentDb = readDb();
         let result;
         try {
-            result = fleetDriverImport.importFleetDrivers(currentDb, {
+            result = await persistConfirmed(currentDb => fleetDriverImport.importFleetDrivers(currentDb, {
                 actor: sessionUser(currentDb, req), records: payload.records,
                 preview: payload.preview !== false, now: nowIso()
-            });
+            }));
         } catch (error) {
             return sendJson(res, error.statusCode || 400, { error: error.message });
         }
-        if (!result.preview) writeDb(currentDb);
         return sendJson(res, 200, { ok: true, ...result });
     }
     if (req.method === "POST" && pathname === "/api/scan-barcode") {
@@ -8911,20 +8931,17 @@ async function handleApi(req, res, pathname) {
     }
     if (req.method === "POST" && pathname === "/api/hr/bulk-import") {
         const payload = await parseBody(req);
-        const db = readDb();
-        const actor = sessionUser(db, req);
         let result;
         try {
-            result = hrBulkImport.importRoster(db, {
-                actor,
+            result = await persistConfirmed(db => hrBulkImport.importRoster(db, {
+                actor: sessionUser(db, req),
                 records: payload.records,
                 preview: payload.preview !== false,
                 now: nowIso()
-            });
+            }));
         } catch (error) {
             return sendJson(res, error.statusCode || 400, { error: error.message });
         }
-        if (!result.preview) writeDb(db);
         return sendJson(res, 200, { ok: true, ...result });
     }
     if (req.method === 'POST' && pathname === '/api/hr/policy') {
