@@ -82,4 +82,4 @@ function normalizeQueue(db){
     db.dock.queue=[...grouped.values()].map(entry=>({...entry,houseNumber:entry.houseNumbers[0]}));
     return db.dock.queue;
 }
-module.exports={houses,contains,roundKey,jobs,forHouses,entryForHouse,bayForHouse,assertVehicleAvailable,normalizeQueue,normalizeBays};
+module.exports={clearBay,houses,contains,roundKey,jobs,forHouses,entryForHouse,bayForHouse,assertVehicleAvailable,normalizeQueue,normalizeBays};
