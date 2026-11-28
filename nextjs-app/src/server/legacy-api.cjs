@@ -53,8 +53,14 @@ const srsAlerts = require("./srs-alerts.cjs");
 const dockLayout = require("./dock-layout.cjs");
 const whGeofence = require("./wh-geofence.cjs");
 const lithiumControl = require("./lithium-control.cjs");
+const pieceScan = require("./piece-scan.cjs");
+const truckLink = require("./truck-link.cjs");
 const partialUnload = require("./partial-unload.cjs");
 const eiShipping = require("./ei-shipping.cjs");
+const importSchedule = require("./import-schedule.cjs");
+const pairScan = require("./pair-scan.cjs");
+const billingMatch = require("./billing-match.cjs");
+const customsReturn = require("./customs-return.cjs");
 const shippingDocStatus = require("./shipping-doc-status.cjs");
 const attachmentStorageService = require("./attachment-storage.cjs");
 const warehouseReservationList = require("./warehouse-reservation-list.cjs");
@@ -2920,6 +2926,11 @@ function importGlobalConsolRows(db, csvText) {
             } else {
                 const newDest = s.dest || h.dest || "";
                 if ((existing.destAirport || "") !== newDest) changeSet.push("DEST_CHANGED");
+                const cleanMaster = value => String(value || "").replace(/[\s-]/g, "").toUpperCase();
+                if (existing.mawbNumber && s.mawb && cleanMaster(existing.mawbNumber) !== cleanMaster(s.mawb)) {
+                    changeSet.push("MASTER_CHANGED");
+                    existing.masterChangeHistory = [ ...(existing.masterChangeHistory || []), { at: nowIso(), from: existing.mawbNumber, to: s.mawb, source: "ConsolPlan" } ].slice(-20);
+                }
                 changeSet.push(...consolSchedule.scheduleChanges(existing, { flightNo: s.flight, flightTime: flightDateTime }));
                 if (changeSet.length) changedJobs += 1; else unchangedJobs += 1;
             }
@@ -3427,6 +3438,111 @@ function updateTrackedStep(db, job, payload) {
     return job.stepTracking[stepKey];
 }
 
+// Imports plan files pushed by n8n (or held for a scheduled round) and records
+// the result. Shared by the webhook and the scheduled round runner.
+async function processEmailAttachments(db, attachments, meta = {}) {
+    db.integrations ||= {};
+    db.integrations.n8nEmailHashes ||= {};
+    const summary = {
+        files: [],
+        imported: 0,
+        newJobs: 0,
+        changedJobs: 0,
+        skippedOldRows: 0,
+        skipped: 0,
+        errors: 0
+    };
+    for (const att of attachments) {
+        const name = String(att.fileName || att.filename || att.name || "attachment").slice(0, 180);
+        const raw = String(att.base64 || att.data || att.content || "");
+        if (!raw) {
+            summary.files.push({ file: name, status: "empty" });
+            summary.errors += 1;
+            continue;
+        }
+        const clean = raw.includes(",") ? raw.split(",").pop() : raw;
+        let buf = null;
+        try {
+            buf = Buffer.from(clean, "base64");
+        } catch (err) {
+            buf = null;
+        }
+        if (!buf || !buf.length) {
+            summary.files.push({ file: name, status: "bad_base64" });
+            summary.errors += 1;
+            continue;
+        }
+        const hash = crypto.createHash("sha256").update(buf).digest("hex");
+        if (db.integrations.n8nEmailHashes[hash]) {
+            summary.files.push({ file: name, status: "duplicate_skipped" });
+            summary.skipped += 1;
+            continue;
+        }
+        let result = null;
+        let kind = "";
+        try {
+            const isXlsx = /\.xlsx$/i.test(name) || (buf[0] === 80 && buf[1] === 75);
+            if (isXlsx) {
+                const rows = parseXlsxRows(buf);
+                kind = detectXlsxKind(rows);
+                if (kind === "consol") result = importGlobalConsolRows(db, consolXlsxToCsv(rows));
+                else if (kind === "pickup") result = importPickupXlsxRows(db, rows);
+            } else {
+                const csvText = buf.toString("utf8");
+                kind = isGlobalConsolFormat(csvText) ? "consol-csv" : "scd-csv";
+                result = kind === "consol-csv" ? importGlobalConsolRows(db, csvText) : importScdRows(db, csvText);
+            }
+        } catch (err) {
+            summary.files.push({ file: name, status: "parse_failed", error: err.message });
+            summary.errors += 1;
+            continue;
+        }
+        if (!result) {
+            summary.files.push({ file: name, status: "unknown_format", kind: kind });
+            summary.errors += 1;
+            continue;
+        }
+        recordImportHistory(db, result, name, "n8n-email");
+        db.integrations.n8nEmailHashes[hash] = nowIso();
+        summary.imported += result.imported.length;
+        summary.newJobs += result.newJobs || 0;
+        summary.changedJobs += result.changedJobs || 0;
+        summary.skippedOldRows += result.skippedOldRows || 0;
+        summary.files.push({
+            file: name,
+            status: "imported",
+            kind: kind,
+            newJobs: result.newJobs || 0,
+            changedJobs: result.changedJobs || 0,
+            skippedOldRows: result.skippedOldRows || 0
+        });
+    }
+    const hashKeys = Object.keys(db.integrations.n8nEmailHashes);
+    if (hashKeys.length > 200) {
+        for (const key of hashKeys.slice(0, hashKeys.length - 200)) delete db.integrations.n8nEmailHashes[key];
+    }
+    db.integrations.n8nEmail = {
+        lastReceivedAt: nowIso(),
+        lastSubject: String(meta.subject || "").slice(0, 200),
+        lastFrom: String(meta.from || "").slice(0, 120),
+        totalReceived: Number(db.integrations.n8nEmail?.totalReceived || 0) + 1,
+        lastSummary: {
+            imported: summary.imported,
+            newJobs: summary.newJobs,
+            changedJobs: summary.changedJobs,
+            skippedOldRows: summary.skippedOldRows,
+            skipped: summary.skipped,
+            errors: summary.errors
+        }
+    };
+    if (summary.imported || summary.newJobs) {
+        await createAlert(db, `อีเมลอัตโนมัติ (n8n): เปิดงานใหม่ ${summary.newJobs} งาน อัปเดต ${summary.changedJobs} งาน จาก "${db.integrations.n8nEmail.lastSubject || "อีเมล"}"`, "info");
+    } else if (summary.errors) {
+        await createAlert(db, `อีเมลอัตโนมัติ (n8n): อ่านไฟล์แนบไม่สำเร็จ ${summary.errors} ไฟล์ — ตรวจสอบรูปแบบไฟล์`, "warning");
+    }
+    return summary;
+}
+
 async function createAlert(db, message, severity = "warning") {
     const alert = {
         id: `ALERT-${Date.now()}`,
@@ -3743,7 +3859,8 @@ async function handleApi(req, res, pathname) {
             return sendJson(res,200,{ok:true,token,expiresInSeconds:43200,user:{id:user.id,code:user.code,name:user.name,nickname:user.nickname||'',role:user.role,mustChangePassword:user.mustChangePassword===true,mustChangePin:user.mustChangePin===true}});
         }catch(error){writeDb(db);return sendJson(res,Number(error.statusCode)||400,{error:error.message,code:error.code||'DEVICE_LOGIN_FAILED',requestId:error.requestId});}
     }
-    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/device/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
+    // Truck QR links authenticate with their own expiring token (truck-link.cjs).
+    if (SERVER_AUTH_REQUIRED && ![ "/api/auth/users", "/api/auth/login", "/api/auth/device/login", "/api/integrations/n8n-email", "/api/integrations/flight-risk", "/api/truck-link/view", "/api/truck-link/arrived" ].includes(pathname) && !sessionUser(db, req)) return sendJson(res, 401, { error: "กรุณาเข้าสู่ระบบใหม่" });
     if (req.method === "POST" && pathname === "/api/auth/set-pin") {
         const actor=sessionUser(db,req),payload=await parseBody(req);
         if(!actor)return sendJson(res,401,{error:'กรุณาเข้าสู่ระบบใหม่'});
@@ -4095,6 +4212,10 @@ async function handleApi(req, res, pathname) {
         } catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
     }
     if (req.method === "GET" && pathname === "/api/bootstrap") {
+        if ((db.importInbox || []).length && importSchedule.config(db).mode !== "immediate" && importSchedule.isDue(db, nowIso())) {
+            try { await processEmailAttachments(db, importSchedule.drain(db, nowIso()), { subject: "รอบดึงอีเมลตามเวลา" }); writeDb(db); }
+            catch (error) { console.warn("scheduled import round failed", error.message); }
+        }
         if (refreshFlightSla(db)) writeDb(db);
         return sendJson(res, 200, {
             users: publicUsers(db),
@@ -4660,6 +4781,16 @@ async function handleApi(req, res, pathname) {
             time: nowIso()
         });
     }
+    if (pathname === "/api/integrations/import-schedule") {
+        const viewer = sessionUser(db, req);
+        if (!viewer || ![ "Admin", "Executive", "Team_Transport" ].includes(viewer.role)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดูรอบดึงอีเมล" });
+        if (req.method === "POST") {
+            try { importSchedule.save(db, viewer, await parseBody(req), nowIso()); }
+            catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+            writeDb(db);
+        }
+        return sendJson(res, 200, { ok: true, schedule: importSchedule.status(db, nowIso()) });
+    }
     if (req.method === "GET" && pathname === "/api/integrations/status") {
         return sendJson(res, 200, {
             persistence: {
@@ -4670,7 +4801,8 @@ async function handleApi(req, res, pathname) {
             importFeed: {
                 directory: IMPORT_FEED_DIR,
                 intervalMinutes: Math.round(IMPORT_INTERVAL_MS / 6e4),
-                lastRun: db.integrations?.lastFeedRun || null
+                lastRun: db.integrations?.lastFeedRun || null,
+                schedule: importSchedule.status(db, nowIso())
             },
             n8n: {
                 configured: Boolean(process.env.N8N_WEBHOOK_KEY),
@@ -5230,106 +5362,15 @@ async function handleApi(req, res, pathname) {
         if (receivedKey !== configuredKey) return sendJson(res, 401, {
             error: "Invalid webhook key"
         });
-        const attachments = Array.isArray(payload.attachments) ? payload.attachments : [];
-        db.integrations ||= {};
-        db.integrations.n8nEmailHashes ||= {};
-        const summary = {
-            files: [],
-            imported: 0,
-            newJobs: 0,
-            changedJobs: 0,
-            skippedOldRows: 0,
-            skipped: 0,
-            errors: 0
-        };
-        for (const att of attachments) {
-            const name = String(att.fileName || att.filename || att.name || "attachment").slice(0, 180);
-            const raw = String(att.base64 || att.data || att.content || "");
-            if (!raw) {
-                summary.files.push({ file: name, status: "empty" });
-                summary.errors += 1;
-                continue;
-            }
-            const clean = raw.includes(",") ? raw.split(",").pop() : raw;
-            let buf = null;
-            try {
-                buf = Buffer.from(clean, "base64");
-            } catch (err) {
-                buf = null;
-            }
-            if (!buf || !buf.length) {
-                summary.files.push({ file: name, status: "bad_base64" });
-                summary.errors += 1;
-                continue;
-            }
-            const hash = crypto.createHash("sha256").update(buf).digest("hex");
-            if (db.integrations.n8nEmailHashes[hash]) {
-                summary.files.push({ file: name, status: "duplicate_skipped" });
-                summary.skipped += 1;
-                continue;
-            }
-            let result = null;
-            let kind = "";
-            try {
-                const isXlsx = /\.xlsx$/i.test(name) || (buf[0] === 80 && buf[1] === 75);
-                if (isXlsx) {
-                    const rows = parseXlsxRows(buf);
-                    kind = detectXlsxKind(rows);
-                    if (kind === "consol") result = importGlobalConsolRows(db, consolXlsxToCsv(rows));
-                    else if (kind === "pickup") result = importPickupXlsxRows(db, rows);
-                } else {
-                    const csvText = buf.toString("utf8");
-                    kind = isGlobalConsolFormat(csvText) ? "consol-csv" : "scd-csv";
-                    result = kind === "consol-csv" ? importGlobalConsolRows(db, csvText) : importScdRows(db, csvText);
-                }
-            } catch (err) {
-                summary.files.push({ file: name, status: "parse_failed", error: err.message });
-                summary.errors += 1;
-                continue;
-            }
-            if (!result) {
-                summary.files.push({ file: name, status: "unknown_format", kind: kind });
-                summary.errors += 1;
-                continue;
-            }
-            recordImportHistory(db, result, name, "n8n-email");
-            db.integrations.n8nEmailHashes[hash] = nowIso();
-            summary.imported += result.imported.length;
-            summary.newJobs += result.newJobs || 0;
-            summary.changedJobs += result.changedJobs || 0;
-            summary.skippedOldRows += result.skippedOldRows || 0;
-            summary.files.push({
-                file: name,
-                status: "imported",
-                kind: kind,
-                newJobs: result.newJobs || 0,
-                changedJobs: result.changedJobs || 0,
-                skippedOldRows: result.skippedOldRows || 0
-            });
+        const incoming = Array.isArray(payload.attachments) ? payload.attachments : [];
+        // Scheduled rounds (SRS 3.2): hold files until the round time.
+        if (!importSchedule.isDue(db, nowIso())) {
+            const waiting = importSchedule.enqueue(db, incoming, payload, nowIso());
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, queued: incoming.length, waitingFiles: waiting, nextRunAt: importSchedule.status(db, nowIso()).nextRunAt });
         }
-        const hashKeys = Object.keys(db.integrations.n8nEmailHashes);
-        if (hashKeys.length > 200) {
-            for (const key of hashKeys.slice(0, hashKeys.length - 200)) delete db.integrations.n8nEmailHashes[key];
-        }
-        db.integrations.n8nEmail = {
-            lastReceivedAt: nowIso(),
-            lastSubject: String(payload.subject || "").slice(0, 200),
-            lastFrom: String(payload.from || "").slice(0, 120),
-            totalReceived: Number(db.integrations.n8nEmail?.totalReceived || 0) + 1,
-            lastSummary: {
-                imported: summary.imported,
-                newJobs: summary.newJobs,
-                changedJobs: summary.changedJobs,
-                skippedOldRows: summary.skippedOldRows,
-                skipped: summary.skipped,
-                errors: summary.errors
-            }
-        };
-        if (summary.imported || summary.newJobs) {
-            await createAlert(db, `อีเมลอัตโนมัติ (n8n): เปิดงานใหม่ ${summary.newJobs} งาน อัปเดต ${summary.changedJobs} งาน จาก "${db.integrations.n8nEmail.lastSubject || "อีเมล"}"`, "info");
-        } else if (summary.errors) {
-            await createAlert(db, `อีเมลอัตโนมัติ (n8n): อ่านไฟล์แนบไม่สำเร็จ ${summary.errors} ไฟล์ — ตรวจสอบรูปแบบไฟล์`, "warning");
-        }
+        const attachments = [ ...importSchedule.drain(db, nowIso()), ...incoming ];
+        const summary = await processEmailAttachments(db, attachments, payload);
         writeDb(db);
         return sendJson(res, 200, {
             ok: true,
@@ -5746,12 +5787,63 @@ async function handleApi(req, res, pathname) {
         writeDb(db);
         return sendJson(res, 200, { ok: true, approval: result.approval, jobs: result.jobs.map(normalizeJob) });
     }
+    if (pathname.startsWith("/api/truck-link")) {
+        try {
+            if (req.method === "GET" && pathname === "/api/truck-link/view") {
+                return sendJson(res, 200, { ok: true, ...truckLink.view(db, new URL(req.url, "http://localhost").searchParams.get("t"), nowIso()) });
+            }
+            if (req.method === "POST" && pathname === "/api/truck-link/arrived") {
+                const payload = await parseBody(req);
+                const link = truckLink.reportArrived(db, payload.t, payload, nowIso());
+                await srsAlerts.notify(db, createAlert, { kind: "TruckLink-Arrived", title: "รถร่วมแจ้งถึง WH3", severity: "warning", roles: [ "WH3_TeamLeader", "WH_Staff", "Team_Transport", "Admin" ], houseNumber: link.houseNumbers[0],
+                    message: `รถ ${link.vehiclePlate}${link.company ? " (" + link.company + ")" : ""} แจ้งถึง WH3 ผ่าน QR · House ${link.houseNumbers.join(", ")}` });
+                writeDb(db);
+                return sendJson(res, 200, { ok: true, arrivedReportedAt: link.arrivedReportedAt });
+            }
+            const actor = sessionUser(db, req);
+            if (req.method === "GET" && pathname === "/api/truck-link") return sendJson(res, 200, { ok: true, links: truckLink.list(db, actor, nowIso()) });
+            if (req.method === "POST" && pathname === "/api/truck-link") {
+                const result = truckLink.create(db, actor, await parseBody(req), nowIso());
+                writeDb(db);
+                return sendJson(res, 200, { ok: true, ...result });
+            }
+            if (req.method === "POST" && pathname === "/api/truck-link/revoke") {
+                const link = truckLink.revoke(db, actor, (await parseBody(req)).id, nowIso());
+                writeDb(db);
+                return sendJson(res, 200, { ok: true, link });
+            }
+            return sendJson(res, 404, { error: "Not found" });
+        } catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+    }
+    if (pathname === "/api/inbound/piece-scan") {
+        const actor = sessionUser(db, req);
+        try {
+            if (req.method === "GET") return sendJson(res, 200, { ok: true, ...pieceScan.view(db, actor, new URL(req.url, "http://localhost").searchParams.get("houseNumber")) });
+            const result = pieceScan.scan(db, actor, await parseBody(req), nowIso());
+            writeDb(db);
+            return sendJson(res, 200, { ok: true, ...result });
+        } catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+    }
+    if (req.method === "POST" && pathname === "/api/qa/pair-scan") {
+        const payload = await parseBody(req);
+        const actor = sessionUser(db, req);
+        let result;
+        try { result = pairScan.scan(db, actor, payload, nowIso()); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        logActivity(db, { houseNumber: result.job.houseNumber, userId: actor.id, activityType: result.ok ? "PairScanMatched" : "PairScanMismatch", note: result.error || "" });
+        if (!result.ok) {
+            try { await srsAlerts.notify(db, createAlert, { kind: "PairScan-Mismatch", title: "สแกนคู่บาร์โค้ดไม่ตรงแผน", severity: "danger", roles: [ "WH3_TeamLeader", "QA_Inspector", "Admin" ], houseNumber: result.job.houseNumber, message: result.error }); }
+            catch (error) { console.warn("pair scan alert failed", error.message); }
+        }
+        writeDb(db);
+        return sendJson(res, result.ok ? 200 : 422, result.ok ? { ok: true, job: normalizeJob(result.job) } : { error: result.error });
+    }
     if (req.method === "POST" && pathname === "/api/lithium/confirm") {
         const payload = await parseBody(req);
         let job;
         try { job = lithiumControl.confirm(db, sessionUser(db, req), payload, nowIso(), (houseNumber, fileType, files) => saveBase64Files(db, { houseNumber, fileType, files })); }
         catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
-        logActivity(db, { houseNumber: job.houseNumber, userId: job.lithiumConsoleConfirmedBy, activityType: "LithiumConsoleConfirmed" });
+        logActivity(db, { houseNumber: job.houseNumber, userId: sessionUser(db, req)?.id, activityType: `${lithiumControl.kindOf(job)}ConsoleConfirmed` });
         writeDb(db);
         return sendJson(res, 200, { ok: true, job: normalizeJob(job) });
     }
@@ -7214,12 +7306,15 @@ async function handleApi(req, res, pathname) {
         const documentProblems = [];
         jobs.forEach(job => {
             const docs = billingDocumentStatus(db, job);
-            job.billingReviewStatus = docs.ready ? "Reviewed" : "PendingBillingReview";
+            // The physical documents must be matched before review (SRS 4.5.2).
+            const ready = docs.ready && billingMatch.isMatched(job);
+            if (!billingMatch.isMatched(job)) docs.blockers = [ ...docs.blockers, "physical_documents_not_matched" ];
+            job.billingReviewStatus = ready ? "Reviewed" : "PendingBillingReview";
             job.billingReviewNote = payload.groupName || "Batch review";
             job.billingDocuments = docs;
-            job.status = docs.ready ? "BillingReviewed" : "PendingBillingReview";
+            job.status = ready ? "BillingReviewed" : "PendingBillingReview";
             job.updatedAt = nowIso();
-            if (!docs.ready) documentProblems.push({
+            if (!ready) documentProblems.push({
                 houseNumber: job.houseNumber,
                 documents: docs
             });
@@ -7346,6 +7441,36 @@ async function handleApi(req, res, pathname) {
             dashboard: buildDashboard(db)
         });
     }
+    if (req.method === "POST" && pathname === "/api/jobs/customs-cancel") {
+        const payload = await parseBody(req);
+        const actor = sessionUser(db, req);
+        let result;
+        try { result = customsReturn.cancel(db, actor, payload, nowIso(), (houseNumber, fileType, files) => saveBase64Files(db, { houseNumber, fileType, files })); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        logActivity(db, { houseNumber: result.job.houseNumber, userId: actor.id, activityType: "CancelledAfterCustoms", note: result.job.cancelReason });
+        logActivity(db, { houseNumber: result.returnJob.houseNumber, userId: actor.id, activityType: "ReturnJobCreated", note: `ตีกลับจาก ${result.job.houseNumber}` });
+        try {
+            await srsAlerts.notify(db, createAlert, { kind: "Customs-Return", title: "ยกเลิกหลังผ่านศุลกากร", severity: "warning", roles: [ "Team_Transport", "CS", "Billing", "Admin" ], houseNumber: result.job.houseNumber,
+                message: `ยกเลิก House ${result.job.houseNumber} หลังผ่านศุลกากร (${result.job.customsCancellation.categoryLabel}) · สร้างงานตีกลับ ${result.returnJob.houseNumber} รอจัดรถ${result.job.customsCancellation.chargeable ? " · เรียกเก็บค่าบริการ" : ""}` });
+        } catch (error) { console.warn("customs return alert failed", error.message); }
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, job: normalizeJob(result.job), returnJob: normalizeJob(result.returnJob) });
+    }
+    if (req.method === "GET" && pathname === "/api/jobs/cancellation-stats") {
+        const viewer = sessionUser(db, req);
+        if (!viewer || ![ "Admin", "Executive", "Billing", "CS", "Team_Transport" ].includes(viewer.role)) return sendJson(res, 403, { error: "ไม่มีสิทธิ์ดูสถิติการยกเลิก" });
+        const month = new URL(req.url, "http://localhost").searchParams.get("month") || "";
+        return sendJson(res, 200, { ok: true, ...customsReturn.stats(db, /^\d{4}-\d{2}$/.test(month) ? month : "") });
+    }
+    if (req.method === "POST" && pathname === "/api/billing/match") {
+        const payload = await parseBody(req);
+        let jobs;
+        try { jobs = billingMatch.match(db, sessionUser(db, req), payload, nowIso()); }
+        catch (error) { return sendJson(res, error.statusCode || 422, { error: error.message }); }
+        for (const job of jobs) logActivity(db, { houseNumber: job.houseNumber, userId: job.physicalDocMatch.by, activityType: job.physicalDocMatch.matched ? "PhysicalDocMatched" : "PhysicalDocMismatch", note: job.physicalDocMatch.note });
+        writeDb(db);
+        return sendJson(res, 200, { ok: true, jobs: jobs.map(normalizeJob), dashboard: buildDashboard(db) });
+    }
     if (req.method === "POST" && pathname === "/api/billing/review") {
         const payload = await parseBody(req);
         const actor = requireBillingActor(sessionUser(db, req));
@@ -7362,6 +7487,9 @@ async function handleApi(req, res, pathname) {
         }
         const docs = billingDocumentStatus(db, job);
         const approved = payload.status === "Reviewed";
+        if (approved && !billingMatch.isMatched(job)) {
+            return sendJson(res, 422, { error: "ยังไม่ได้ Match เอกสารฉบับจริงกับรูปในระบบ กด Match ก่อนตรวจผ่าน", docs: docs });
+        }
         if (approved && !docs.ready) {
             return sendJson(res, 422, {
                 error: `Billing documents incomplete: ${docs.blockers.join(", ")}`,
@@ -9451,6 +9579,10 @@ async function handleApi(req, res, pathname) {
         })() : Infinity;
         const elapsedMs = previous ? Date.parse(receivedAt) - Date.parse(previous.at) : Infinity;
         const accepted = !previous || elapsedMs >= 5 * 60 * 1000 || movedMeters >= 50;
+        if (accepted && (db.users || []).find(user => user.id === userId)?.role === "Driver") {
+            try { srsAlerts.updateDriverEta(db, userId, `${locationResult.latitude},${locationResult.longitude}`, receivedAt); }
+            catch (error) { console.warn("ETA update failed", error.message); }
+        }
         if (accepted) {
             const restarting = !record.locationTrackingStartedAt || record.locationTrackingStoppedAt;
             const point = {
