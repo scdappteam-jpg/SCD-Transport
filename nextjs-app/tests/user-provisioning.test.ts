@@ -39,3 +39,29 @@ test('re-issuing SIT codes resets password, PIN, devices, lockouts and sessions 
   assert.deepEqual(db.authSessions!.map((s: Row) => s.userId), ['u_real']);
   assert.equal(db.users[1].passwordHash, 'keep');
 });
+
+test('an older 15-role suite gets the missing role on the next free SIT code, and a hand-added SIT account joins re-issue', () => {
+  type Row = Record<string, unknown>;
+  const admin = { id: 'u_admin', role: 'Admin' };
+  const oldRoles = service.ROLES.filter((r: string) => r !== 'Console_Office');
+  const oldSuite = (): { users: Row[] } => ({ users: oldRoles.map((role: string, i: number) => ({ id: `sit-role-${role.toLowerCase()}`, code: `SIT${String(i + 1).padStart(3, '0')}`, name: `SIT ทดสอบ ${role}`, role, status: 'Active', isTestAccount: true })) });
+  // Missing role: created with the next free code instead of failing on SIT011.
+  const a = oldSuite();
+  const rows = service.provisionSuite(a, admin, 'now');
+  const consoleRow = rows.find((r: Row) => r.role === 'Console_Office');
+  assert.equal(consoleRow.created, true);
+  assert.equal(consoleRow.code, 'SIT016');
+  assert.equal(rows.filter((r: Row) => r.created).length, 1);
+  // Hand-added account with a SIT code and SIT name is adopted, not duplicated.
+  const b = oldSuite();
+  b.users.push({ id: 'u_console_office_1', code: 'SIT016', name: 'SIT ทดสอบ Console_Office', role: 'Console_Office', status: 'Active' });
+  assert.equal(service.provisionSuite(b, admin, 'now').filter((r: Row) => r.created).length, 0);
+  const reissued = service.reissueSuite(b, admin, 'later');
+  assert.equal(reissued.length, 16);
+  assert.ok(reissued.some((r: Row) => r.id === 'u_console_office_1'));
+  // A real employee who happens to hold a SIT code is never touched.
+  const c = oldSuite();
+  c.users.push({ id: 'real', code: 'SIT020', name: 'สมชาย', role: 'WH_Staff', status: 'Active', passwordHash: 'keep' });
+  service.reissueSuite(c, admin, 'later');
+  assert.equal(c.users.find((u: Row) => u.id === 'real')!.passwordHash, 'keep');
+});
