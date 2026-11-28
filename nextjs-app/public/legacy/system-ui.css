@@ -887,7 +887,8 @@ html.has-open-popup { overflow: hidden; }
 #roleAlertPop{position:fixed;right:16px;bottom:16px;z-index:2000;display:grid;gap:10px;width:min(380px,calc(100vw - 32px))}
 .role-alert{padding:12px 14px;border-radius:12px;border-left:4px solid #0b4ea2;background:#fff;box-shadow:0 12px 32px #0f172a2e;font-size:13.5px}
 .role-alert.warning{border-left-color:#d97706}
-.role-alert.danger{border-left-color:#b42318}
+.role-alert.danger{border-left-color:#b42318;background:#fff}
+.role-alert strong,.role-alert p{color:#172033}
 .role-alert strong{display:block;font-size:14px;margin-bottom:2px}
 .role-alert p{margin:0 0 8px;color:#334155;line-height:1.45}
 .role-alert-actions{display:flex;gap:8px;justify-content:flex-end}
@@ -907,7 +908,9 @@ html.has-open-popup { overflow: hidden; }
 .ei-page{display:grid;gap:14px}
 .ei-alerts{display:grid;gap:8px}
 .ei-alert{display:grid;gap:2px;padding:10px 14px;border-radius:12px;border-left:4px solid #0b4ea2;background:var(--surface,#fff);border-top:1px solid var(--line,#e3eaf3);border-right:1px solid var(--line,#e3eaf3);border-bottom:1px solid var(--line,#e3eaf3);font-size:13px}
-.ei-alert.warning{border-left-color:#d97706}.ei-alert.danger{border-left-color:#b42318}
+.ei-alert.sev-warning{border-left-color:#d97706}.ei-alert.sev-danger{border-left-color:#b42318}
+/* explicit colors: a generic .danger rule elsewhere paints text white */
+.ei-alert strong,.ei-alert span{color:#172033;background:none}
 .ei-alert small{color:#64748b}
 .ei-toolbar{display:flex;gap:8px;flex-wrap:wrap}
 .ei-toolbar input{flex:1 1 260px;min-height:42px}

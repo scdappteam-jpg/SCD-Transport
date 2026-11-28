@@ -68,7 +68,7 @@
         if (!box || !data) return;
         const info = TABS.find(t => t[0] === tab) || TABS[0];
         box.innerHTML = `
-          ${(data.alerts || []).length ? `<div class="ei-alerts" aria-label="แจ้งเตือนล่าสุด">${data.alerts.slice(0, 3).map(a => `<div class="ei-alert ${safeHtml(a.severity || "info")}"><strong>${safeHtml(a.title || "แจ้งเตือน")}</strong><span>${safeHtml(a.message)}</span><small>${safeHtml(when(a.createdAt))}</small></div>`).join("")}</div>` : ""}
+          ${(data.alerts || []).length ? `<div class="ei-alerts" aria-label="แจ้งเตือนล่าสุด">${data.alerts.slice(0, 3).map(a => `<div class="ei-alert sev-${safeHtml(a.severity || "info")}"><strong>${safeHtml(a.title || "แจ้งเตือน")}</strong><span>${safeHtml(a.message)}</span><small>${safeHtml(when(a.createdAt))}</small></div>`).join("")}</div>` : ""}
           <div class="ei-toolbar"><input id="eiSearch" type="search" placeholder="ค้นหา House, Master, Flight, ลูกค้า, ทะเบียน" value="${safeHtml(search)}" aria-label="ค้นหางาน"><button type="button" class="ghost-button" id="eiReload">รีเฟรช</button></div>
           <div class="ei-tabs" role="tablist" aria-label="งาน Shipping · EI">${TABS.map(([key, label]) => `<button type="button" role="tab" class="ei-tab" data-ei-tab="${key}" aria-selected="${key === tab}">${label}<b>${data.counts?.[key] || 0}</b></button>`).join("")}</div>
           <p class="ei-tab-hint">${safeHtml(info[2])}</p>
