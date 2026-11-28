@@ -47,7 +47,8 @@ function approvalPlan(db, job, actor, p, scans, at) {
     const tags = scanSet(db,job,tagging.mode,scans);
     if (tags.some((tag,i)=>tag.barcode!==tagging.tags[i].barcode)) fail('ผลสแกนไม่ตรงกับแท็กที่ลงทะเบียน');
     if (tags.some(tag=>tagging.tags.some(original=>original.imageHash===tag.imageHash))) fail('QA ต้องถ่าย/สแกนตรวจใหม่ ไม่ใช้ภาพเดิมของผู้ติดแท็ก');
-    return {id:crypto.randomUUID(),revision:tagging.revision,approvedBy:actor.id,approvedAt:at,tags};
+    // Master/Flight at approval time: a later change needs a House + Master pair scan.
+    return {id:crypto.randomUUID(),revision:tagging.revision,approvedBy:actor.id,approvedAt:at,tags,reference:require('./pair-scan.cjs').reference(job)};
 }
 function applyTag(job, record) {
     job.trackType=record.mode;
@@ -94,7 +95,10 @@ function enforceMovement(db,path,p) {
         // Core cargo gates must not depend on a rollout flag or a client flag.
         assertApproved(job);
         // Lithium: document + Console Office scan before goods leave storage.
-        if (require('./lithium-control.cjs').releasesGoods(path,p)) require('./lithium-control.cjs').assertReleased(db,job);
+        if (require('./lithium-control.cjs').releasesGoods(path,p)) {
+            require('./lithium-control.cjs').assertReleased(db,job);
+            require('./pair-scan.cjs').assertCurrent(job);
+        }
         if (!inboundPutawayPaths.has(path) && path !== '/api/warehouse/location/release') require('./inbound-receipts.cjs').assertReceiptComplete(job);
         if(inboundPutawayPaths.has(path))inbound.assertPutaway(db,job,p);
         if ((p.trackType && p.trackType!==(job.trackType||'Single')) || (p.stickerColor && p.stickerColor!==(job.inboundStickerColor||''))) fail('ข้อมูลแท็กเปลี่ยน ต้องลงทะเบียนและสแกน QA ใหม่ก่อนย้าย');

@@ -3614,6 +3614,40 @@ function loadSettingsForm() {
     $("#settingDefaultRange").value = localStorage.getItem("smartLogisticsDefaultRange") || "10";
 }
 
+// Plan e-mail import rounds (SRS 3.2).
+function importScheduleLabel(s) {
+    if (!s) return "-";
+    if (s.mode === "fixed") return `ตามเวลา ${s.times.join(", ")} น.`;
+    if (s.mode === "interval") return `ทุก ${s.intervalMinutes === 60 ? "1 ชั่วโมง" : s.intervalMinutes + " นาที"}`;
+    return "ดึงทันที";
+}
+function renderImportSchedule(s) {
+    if (!s) return;
+    const round = $("#settingImportRound"), waiting = $("#settingImportWaiting");
+    if (round) round.textContent = importScheduleLabel(s);
+    if (waiting) { waiting.textContent = s.waitingFiles ? `รอ ${s.waitingFiles} ไฟล์` : "ไม่มีค้าง"; waiting.className = `pill ${s.waitingFiles ? "pending" : "completed"}`; }
+    const card = $("#importScheduleCard");
+    if (!card) return;
+    card.hidden = currentWebUser()?.role !== "Admin";
+    const form = $("#importScheduleForm");
+    form.querySelectorAll('input[name="mode"]').forEach(input => { input.checked = input.value === s.mode; });
+    $("#importTimes").value = (s.times || []).join(", ");
+    $("#importInterval").value = String(s.intervalMinutes || 30);
+    $("#importScheduleInfo").textContent = `${importScheduleLabel(s)} · ไฟล์รอเข้า ${s.waitingFiles || 0} ไฟล์ · รอบล่าสุด ${s.lastRunAt ? formatBangkok(s.lastRunAt) : "-"} · รอบถัดไป ${s.mode === "immediate" ? "ทันทีที่มีอีเมล" : formatBangkok(s.nextRunAt)}`;
+}
+document.addEventListener("submit", event => {
+    const form = event.target.closest?.("#importScheduleForm");
+    if (!form) return;
+    event.preventDefault();
+    runAction(event.submitter, async () => {
+        const mode = form.querySelector('input[name="mode"]:checked')?.value || "immediate";
+        const times = $("#importTimes").value.split(/[\s,]+/).filter(Boolean).map(t => t.length === 4 ? "0" + t : t);
+        const data = await api("/api/integrations/import-schedule", { mode, times, intervalMinutes: Number($("#importInterval").value) });
+        renderImportSchedule(data.schedule);
+        toast(`บันทึกรอบดึงอีเมลแล้ว · ${importScheduleLabel(data.schedule)}`);
+    });
+});
+
 async function loadIntegrationStatus() {
     const setStatus = (nameId, statusId, name, configured) => {
         const nameEl = $(nameId);
@@ -3630,6 +3664,7 @@ async function loadIntegrationStatus() {
         setStatus("#settingStorageName", "#settingStorageStatus", data.persistence?.storage || "Server storage", Boolean(data.persistence?.configured));
         setStatus("#settingN8nName", "#settingN8nStatus", data.n8n?.configured ? "Webhook configured" : "Webhook key missing", Boolean(data.n8n?.configured));
         setStatus("#settingLineName", "#settingLineStatus", data.line?.configured ? "Webhook configured" : "Webhook URL missing", Boolean(data.line?.configured));
+        renderImportSchedule(data.importFeed?.schedule);
     } catch {
         [ ["#settingDatabaseName", "#settingDatabaseStatus"], ["#settingStorageName", "#settingStorageStatus"], ["#settingN8nName", "#settingN8nStatus"], ["#settingLineName", "#settingLineStatus"] ].forEach(([nameId, statusId]) => {
             setStatus(nameId, statusId, "ตรวจสอบสถานะไม่สำเร็จ", false);
@@ -8643,7 +8678,21 @@ function billingPlanLabel(plan) {
 }
 
 function billingPeriodLabel(period) {
-    return period === "FullMonth" ? "รวมทั้งเดือน" : `รอบ ${period}`;
+    if (period === "FullMonth") return "รวมทั้งเดือน";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(period)) return `วันที่ ${period}`;
+    if (/^\d{4}-W\d{2}$/.test(period)) return `สัปดาห์ ${period}`;
+    return `รอบ ${period}`;
+}
+
+// Daily / weekly billing rounds (SRS 4.5.2), next to the 10-day and monthly ones.
+function billingWeekLabel(dateText) {
+    const d = new Date(`${dateText}T00:00:00Z`);
+    if (Number.isNaN(d.getTime())) return "Unknown";
+    const day = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - day + 3);
+    const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    const week = 1 + Math.round(((d - firstThursday) / 864e5 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+    return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
 function billingTripKey(job) { return TransportRounds.billingKey(job); }
@@ -8664,10 +8713,10 @@ function buildBillingBatchGroups() {
     const eligible = (state.dashboard?.jobs || []).filter(job => job.readyForBilling || [ "BillingReviewed", "InvoiceDrafted", "PendingBillingReview" ].includes(job.status)).filter(job => {
         const date = billingJobDate(job);
         return (!dateFrom || date >= dateFrom) && (!dateTo || date <= dateTo);
-    }).filter(job => [ "All", "FullMonth" ].includes(periodFilter) || billingPeriodForJob(job) === periodFilter).filter(job => planFilter === "All" || billingPlanForJob(job) === planFilter);
+    }).filter(job => [ "All", "FullMonth", "Daily", "Weekly" ].includes(periodFilter) || billingPeriodForJob(job) === periodFilter).filter(job => planFilter === "All" || billingPlanForJob(job) === planFilter);
     const grouped = new Map;
     eligible.forEach(job => {
-        const period = periodFilter === "FullMonth" ? "FullMonth" : billingPeriodForJob(job);
+        const period = periodFilter === "FullMonth" ? "FullMonth" : periodFilter === "Daily" ? billingJobDate(job).slice(0, 10) : periodFilter === "Weekly" ? billingWeekLabel(billingJobDate(job).slice(0, 10)) : billingPeriodForJob(job);
         const plan = billingPlanForJob(job);
         const key = `${job.customerId || job.customerName}|${billingJobDate(job).slice(0, 7)}|${period}|${plan}`;
         if (!grouped.has(key)) grouped.set(key, {
@@ -8725,7 +8774,7 @@ function selectedBillingBatch() {
 function renderBillingBatchPreview() {
     const group = selectedBillingBatch();
     const preview = $("#billingBatchPreview");
-    [ "reviewBillingBatchBtn", "generateBillingBatchBtn", "exportBillingBatchBtn" ].forEach(id => {
+    [ "matchBillingBatchBtn", "reviewBillingBatchBtn", "generateBillingBatchBtn", "exportBillingBatchBtn" ].forEach(id => {
         $("#" + id).disabled = !group;
     });
     if (!group) {
@@ -9485,6 +9534,89 @@ document.addEventListener("click", event => {
     });
 });
 
+// Cancel after customs clearance (SRS 6): photo of the customs return
+// request, reason for billing and statistics, and a return job for Transport.
+const CUSTOMS_CANCEL_CATEGORIES = { CustomerCancelled: "ลูกค้ายกเลิก", DocumentError: "เอกสารผิดพลาด", FlightCancelled: "ยกเลิกหรือเปลี่ยนไฟล์ท", CargoProblem: "สินค้ามีปัญหา", Other: "อื่นๆ" };
+function renderCustomsReturn(job) {
+    const box = $("#orderCustomsReturn");
+    if (!box) return;
+    const role = currentWebUser()?.role || "";
+    const done = job?.customsCancellation;
+    const cleared = job && (job.releaseDocumentReceivedAt || job.eiApprovedAt || job.eiApproved);
+    const canCancel = [ "Admin", "Executive", "Team_Transport", "CS" ].includes(role) && cleared && job.status !== "Cancelled" && ![ "InvoiceDrafted", "InvoiceSent", "Billed" ].includes(job.status);
+    box.hidden = !(done || canCancel || job?.returnOfHouse);
+    if (box.hidden) return;
+    if (job.returnOfHouse) {
+        box.innerHTML = `<div class="ship-doc-head"><h3>งานตีกลับ</h3><span class="ship-doc-pill doing">รอจัดรถ</span></div><small>สร้างจากการยกเลิก House ${safeHtml(job.returnOfHouse)} หลังผ่านศุลกากร · ปลายทาง ${safeHtml(job.endPlace || "-")}${job.cancellationChargeable ? " · เรียกเก็บค่าบริการ" : ""}</small>`;
+        return;
+    }
+    if (done) {
+        box.innerHTML = `<div class="ship-doc-head"><h3>ยกเลิกหลังผ่านศุลกากร</h3><span class="ship-doc-pill">ยกเลิกแล้ว</span></div>
+          <ul class="ship-doc-reasons"><li>สาเหตุ: ${safeHtml(done.categoryLabel)} · ${safeHtml(done.reason)}</li><li>งานตีกลับ: ${safeHtml(done.returnHouseNumber)} (${done.destination === "WH3" ? "เข้าคลัง WH3" : "กลับโรงงาน"})</li><li>${done.chargeable ? "เรียกเก็บค่าบริการ" : "ไม่เรียกเก็บค่าบริการ"}</li></ul>
+          <small>${safeHtml(formatBangkok(done.at))} · ${safeHtml(done.byName || done.by)}</small>`;
+        return;
+    }
+    box.innerHTML = `<div class="ship-doc-head"><h3>ยกเลิกหลังผ่านศุลกากร</h3></div>
+      <small>งานนี้ผ่านพิธีการศุลกากรแล้ว ถ้ายกเลิก ต้องแนบรูปเอกสารคำร้องขอตรวจรับคืน ระบบจะสร้างงานจัดรถตีกลับให้</small>
+      <form class="customs-cancel-form lithium-form" data-house="${safeHtml(job.houseNumber)}">
+        <label>สาเหตุ<select name="category" required><option value="">เลือกสาเหตุ</option>${Object.entries(CUSTOMS_CANCEL_CATEGORIES).map(([code, label]) => `<option value="${code}">${label}</option>`).join("")}</select></label>
+        <label>รายละเอียด<input name="reason" required minlength="5" placeholder="เช่น ลูกค้าแจ้งยกเลิก shipment ทางอีเมล"></label>
+        <label>ตีกลับไปที่<select name="destination" required><option value="Factory">โรงงานหรือลูกค้า</option><option value="WH3">คลัง WH3</option></select></label>
+        <label><span><input type="checkbox" name="chargeable" checked> เรียกเก็บค่าบริการ</span></label>
+        <label>รูปเอกสารคำร้องขอตรวจรับคืนจากศุลกากร<input name="files" type="file" accept="image/*,application/pdf" capture="environment" multiple required></label>
+        <div class="ship-doc-actions"><button type="submit" class="ghost-button danger">ยกเลิกและสร้างงานตีกลับ</button></div>
+      </form>`;
+}
+document.addEventListener("submit", event => {
+    const form = event.target.closest?.(".customs-cancel-form");
+    if (!form) return;
+    event.preventDefault();
+    runAction(event.submitter, async () => {
+        if (!await showWhConfirm(`ยืนยันยกเลิก House ${form.dataset.house} และสร้างงานตีกลับ?`)) return;
+        const returnRequestFiles = await filesToCompressedBase64(form.querySelector('input[name="files"]'));
+        const data = await api("/api/jobs/customs-cancel", { houseNumber: form.dataset.house, category: form.querySelector('select[name="category"]').value, reason: form.querySelector('input[name="reason"]').value.trim(), destination: form.querySelector('select[name="destination"]').value, chargeable: form.querySelector('input[name="chargeable"]').checked, returnRequestFiles });
+        toast(`ยกเลิกแล้ว · สร้างงานตีกลับ ${data.returnJob.houseNumber}`);
+        await refresh();
+    });
+});
+
+// Master / Flight change (SRS 5.3): QA scans House (top) + Master (bottom).
+function pairScanNeeded(job) {
+    const clean = value => String(value || "").replace(/[\s-]/g, "").toUpperCase();
+    const now = { master: clean(job.mawbNumber || job.masterNumber), flight: clean(job.flightNo) };
+    const base = job.pairScanRef || job.qaApproval?.reference;
+    if (base) return base.master !== now.master || base.flight !== now.flight;
+    const since = Date.parse(job.pairScanAt || job.qaApproval?.approvedAt || 0) || 0;
+    return [ ...(job.flightChangeHistory || []), ...(job.masterChangeHistory || []) ].some(change => (Date.parse(change.at || change.changedAt || 0) || 0) > since);
+}
+function renderPairScan(job) {
+    const box = $("#orderPairScan");
+    if (!box) return;
+    const needed = Boolean(job) && pairScanNeeded(job);
+    const lastFail = (job?.pairScanHistory || []).slice(-1)[0];
+    box.hidden = !needed;
+    if (!needed) return;
+    const canScan = [ "QA_Inspector", "Check_House", "Admin" ].includes(currentWebUser()?.role || "");
+    box.innerHTML = `<div class="ship-doc-head"><h3>ต้องสแกนคู่บาร์โค้ด</h3><span class="ship-doc-pill doing">ห้ามปล่อยสินค้า</span></div>
+      <small>Master หรือ Flight เปลี่ยนหลังตรวจ QA · Master ล่าสุด ${safeHtml(job.mawbNumber || job.masterNumber || "-")} · Flight ${safeHtml(job.flightNo || "-")}</small>
+      ${lastFail && !lastFail.ok ? `<p class="ei-row-note">สแกนครั้งล่าสุดไม่ตรง: บน ${safeHtml(lastFail.houseCode)} · ล่าง ${safeHtml(lastFail.masterCode)}</p>` : ""}
+      ${canScan ? `<form class="pair-scan-form lithium-form" data-house="${safeHtml(job.houseNumber)}">
+        <label>บาร์โค้ดบน (House)<input name="houseCode" autocomplete="off" required></label>
+        <label>บาร์โค้ดล่าง (Master)<input name="masterCode" autocomplete="off" required></label>
+        <div class="ship-doc-actions"><button type="submit" class="primary-button">ตรวจคู่บาร์โค้ด</button></div>
+      </form>` : `<small>ให้ QA หรือ Check House สแกนที่หน้านี้</small>`}`;
+}
+document.addEventListener("submit", event => {
+    const form = event.target.closest?.(".pair-scan-form");
+    if (!form) return;
+    event.preventDefault();
+    runAction(event.submitter, async () => {
+        await api("/api/qa/pair-scan", { houseNumber: form.dataset.house, houseCode: form.querySelector('input[name="houseCode"]').value.trim(), masterCode: form.querySelector('input[name="masterCode"]').value.trim() });
+        toast("คู่บาร์โค้ดตรงกับแผนล่าสุด ปล่อยสินค้าได้");
+        await refresh();
+    });
+});
+
 // Lithium release (SRS 4.3.2): document attached + Console Office scan.
 function renderLithiumCard(job) {
     const box = $("#orderLithium");
@@ -9601,6 +9733,8 @@ function renderTimeline() {
     renderLithiumCard(job);
     renderPartialUnload(job);
     renderTruckLink(job);
+    renderPairScan(job);
+    renderCustomsReturn(job);
     markJobSeen(job);
     if (!job) {
         $("#selectedOrderTitle").textContent = "No order selected";
@@ -10814,6 +10948,34 @@ function bindEvents() {
         toast("สร้าง Draft ใบวางบิลแบบกลุ่มแล้ว");
     }));
     $("#exportBillingBatchBtn")?.addEventListener("click", exportSelectedBillingBatch);
+    $("#matchBillingBatchBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
+        const group = selectedBillingBatch();
+        if (!group) throw new Error("กรุณาเลือกกลุ่มวางบิล");
+        const answer = await scdPrompt({ title: `Match เอกสารจริง ${group.jobs.length} House`, note: "เทียบเอกสารฉบับจริงกับรูปในระบบแล้ว ถ้าตรงทั้งหมดให้กดยืนยันโดยเว้นว่าง ถ้าไม่ตรงให้พิมพ์ว่าต่างกันตรงไหน", label: "หมายเหตุ (เว้นว่างถ้าตรงทั้งหมด)", okText: "บันทึก Match" });
+        if (answer === null || answer === undefined) return;
+        const note = String(answer).trim();
+        const data = await api("/api/billing/match", { houseNumbers: group.jobs.map(job => job.houseNumber), matched: !note, note });
+        state.dashboard = data.dashboard;
+        renderAll();
+        toast(note ? `บันทึกว่าเอกสารไม่ตรง ${group.jobs.length} House` : `Match เอกสารจริงแล้ว ${group.jobs.length} House`);
+    }));
+    $("#draftAllBillingBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
+        const groups = buildBillingBatchGroups().filter(group => group.reviewed && group.tripCountKnown && group.jobs.every(job => job.status !== "InvoiceDrafted"));
+        if (!groups.length) throw new Error("ยังไม่มีกลุ่มที่ตรวจเอกสารครบและผูกรอบรถครบ");
+        if (!await showWhConfirm(`สร้าง Draft ใบวางบิล ${groups.length} กลุ่ม (${groups.reduce((n, g) => n + g.jobs.length, 0)} House) ตามรอบที่เลือก?`)) return;
+        let made = 0;
+        const failed = [];
+        for (const group of groups) {
+            try {
+                const data = await api("/api/billing/generate-batch", { ...billingSitOptions(), houseNumbers: group.jobs.map(job => job.houseNumber), billingMonth: group.month, billingPeriod: group.period, billingPlan: group.plan, amount: group.amount });
+                state.dashboard = data.dashboard;
+                made++;
+            } catch (error) { failed.push(`${group.customerName} ${billingPeriodLabel(group.period)}: ${error.message}`); }
+        }
+        renderAll();
+        toast(failed.length ? `สร้าง Draft ${made} กลุ่ม · ไม่สำเร็จ ${failed.length} กลุ่ม` : `สร้าง Draft ครบ ${made} กลุ่มแล้ว`);
+        if (failed.length) $("#billingResult").innerHTML = failed.map(item => `<div>${safeHtml(item)}</div>`).join("");
+    }));
     $("#scanHouse").addEventListener("input", event => {
         const normalized = normalizeHouseBarcode(event.currentTarget.value);
         if (normalized !== event.currentTarget.value.trim() && normalized.length >= 8) event.currentTarget.value = normalized;
@@ -11267,6 +11429,17 @@ function bindEvents() {
             once: true
         });
     });
+    $("#matchBillingBtn")?.addEventListener("click", event => runAction(event.currentTarget, async () => {
+        const house = $("#billingHouse").value.trim();
+        if (!house) throw new Error("กรอก House ก่อนกด Match");
+        const answer = await scdPrompt({ title: `Match เอกสารจริง ${house}`, note: "ถ้าเอกสารจริงตรงกับรูปในระบบ กดบันทึกโดยเว้นว่าง ถ้าไม่ตรง ให้พิมพ์ว่าต่างกันตรงไหน", label: "หมายเหตุ (เว้นว่างถ้าตรง)", okText: "บันทึก Match" });
+        if (answer === null || answer === undefined) return;
+        const note = String(answer).trim();
+        const data = await api("/api/billing/match", { houseNumber: house, matched: !note, note });
+        state.dashboard = data.dashboard;
+        renderAll();
+        toast(note ? `บันทึกว่าเอกสารไม่ตรง: ${house}` : `Match เอกสารจริงแล้ว: ${house}`);
+    }));
     $("#reviewBillingBtn").addEventListener("click", event => runAction(event.currentTarget, async () => {
         const data = await api("/api/billing/review", {
             houseNumber: $("#billingHouse").value.trim(),
